@@ -1,9 +1,11 @@
-# Workflow Analyzer
-工作流解析和提交接口
+# Adaptive Scheduling Framework
+自适应调度框架
 
 ## 如何使用调度框架
-
 TODO: 教程文档
+
+### 日志模块
+[日志模块文档](./docs/logs.md)
 
 ## 如何部署调度框架
 TODO：部署文档
@@ -37,7 +39,6 @@ make all WHAT=./cmd/proxy FRAMEWORK_VERBOSE=3
 ### 部署Resourcelet
 
 ### 部署Scheduler
-
 ## 技术支持
 
 
