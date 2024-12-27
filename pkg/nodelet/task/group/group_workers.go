@@ -97,7 +97,8 @@ func (g *groupWorkers) startGroup(group *apis.Group) {
 	// 首先先将任务放入到pending队列当中
 	success := g.queueManager.AddToPending(group.Status.GroupID, group)
 	if !success {
-		logs.Error("move group to pending queue failed")
+		logs.Error("move group into pending queue failed, because groupID has been in pending queue")
+		return
 	}
 	//修改Pennding队列当中改group的信息（同时也同步到group_manager当中），状态都改为penning
 	g.handleGroupPenndingUpdate(group) //-----有问题
@@ -121,17 +122,21 @@ func (g *groupWorkers) startGroup(group *apis.Group) {
 	// TODO: 开始部署
 	logs.Infof("start group %s", group.Name)
 	//根据group当中的Action开启相应的runtime  group(Spec:Actions)--action（Spec：Runtimes）
-	for _, action := range group.Spec.Actions {
-		if !g.checkActionDependencies(&action, group) {
+	for i := range group.Spec.Actions {
+		action := &group.Spec.Actions[i]
+		if !g.checkActionDependencies(action, group) {
 			logs.Infof("Action %s in group %s waiting for dependencies", action.Name, group.Name)
+			action.Status.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查
 			continue
 		}
-		for _, ru := range action.Spec.Runtimes {
-			if !g.checkRuntimeDepencies(&ru, &action) {
+		for j := range action.Spec.Runtimes {
+			ru := &action.Spec.Runtimes[j]
+			if !g.checkRuntimeDepencies(ru, action) {
 				logs.Infof("Runtime %s in group %s waiting for dependencies", ru.Name, group.Name)
+				ru.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查，检查成功才执行
 				continue
 			}
-			err := g.runtimeManager.Run(group, &action, &ru)
+			err := g.runtimeManager.Run(group, action, ru)
 			if err != nil {
 				logs.Error("run task err:", err.Error())
 			}
@@ -175,11 +180,11 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 	if g.runtimeManager == nil {
 		logs.Error("runtimeManager is nil")
 	}
-	actions := group.Spec.Actions
-	for _, action := range actions {
-		runtimes := action.Spec.Runtimes
-		for _, runtime := range runtimes {
-			err := g.runtimeManager.Kill(group, &action, &runtime)
+	for i := range group.Spec.Actions {
+		action := &group.Spec.Actions[i]
+		for j := range action.Spec.Runtimes {
+			ru := &action.Spec.Runtimes[j]
+			err := g.runtimeManager.Kill(group, action, ru)
 			if err != nil {
 				logs.Error("kill task err:", err.Error())
 			}

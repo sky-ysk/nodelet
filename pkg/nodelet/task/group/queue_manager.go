@@ -164,7 +164,7 @@ func (gq *GroupQueues) DeleteGroup(group *apis.Group) {
 		case "completed":
 			gq.DeleteFromCompleted(groupID)
 		default:
-			err = fmt.Errorf("Unfind group named %s", groupID)
+			err = fmt.Errorf("Unfind group ID %s in queue_manager", groupID)
 		}
 	}
 	if err == nil {

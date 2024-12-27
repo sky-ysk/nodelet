@@ -180,7 +180,7 @@ func (gmo *GroupMonitor) RunningCheck() {
 						continue
 					}
 					//检查runtime、Action当中的parents是否执行完成，如果父亲节点完成，则让他执行 ---这里有bug，就是任务已经放入running队列，但是还没执行完，这时候runningCheck循环遍历到当前runtime的状态为Pennding，查看是否满足执行条件，发现是满足的，结果有跑起来该任务
-					if action.Status.Phase == apis.Pending && action.Status.IsWaiting {
+					if action.Status.Phase == apis.Pending && action.Status.Waiting {
 						if !gmo.checkActionDependencies(&action, task) {
 							logs.Infof("Action %s depends on parent action, parent not finish ", action.Name)
 							continue
@@ -190,10 +190,12 @@ func (gmo *GroupMonitor) RunningCheck() {
 								logs.Infof("Runtime %s depends on parent runtime", r.Name)
 								continue
 							}
-							//说明runtime可以执行
-							err := gmo.runtimeManager.Run(task, &action, &r)
-							if err != nil {
-								logs.Error("run task err", err.Error())
+							if r.Waiting { //如果说runtime也是被标记等待执行的状态，这才能开始执行
+								//说明runtime可以执行
+								err := gmo.runtimeManager.Run(task, &action, &r)
+								if err != nil {
+									logs.Error("run task err", err.Error())
+								}
 							}
 						}
 					}

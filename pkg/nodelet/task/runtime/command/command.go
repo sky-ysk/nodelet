@@ -108,6 +108,8 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, action *apis.Action, runti
 	logs.Infof("taskName:\t %s is Running", runtime.Name)
 
 	if err := CMD.Start(); err != nil {
+		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
+		cr.notifyRuntimeStartPhase(group, action, runtime, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
@@ -135,6 +137,7 @@ func (cr *CommandRuntime) monitorCMD(group *apis.Group, action *apis.Action, run
 		logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
 		// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
 		cr.notifyRuntimeEndPhase(group, action, runtime, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.processManager.RemoveProcess(runtime.Name)
 	}
 	logs.Infof("command %s completed", runtime.Name)
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
