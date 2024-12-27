@@ -1,0 +1,259 @@
+package cache
+
+import (
+	"fmt"
+	"hit.edu/framework/pkg/api/meta"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"strings"
+)
+
+// 存储结构的基础接口
+type Store interface {
+
+	//
+	Add(obj interface{}) error
+
+	//
+	Update(obj interface{}) error
+
+	//
+	Delete(obj interface{}) error
+
+	//
+	List() []interface{}
+
+	//
+	Get(obj interface{}) (item interface{}, exists bool, err error)
+
+	//
+	GetByKey(key string) (item interface{}, exists bool, err error)
+
+	//
+	ListKeys() []string
+
+	//
+	Replace([]interface{}, string) error
+
+	//
+	Resync() error
+}
+
+// `*cache` implements Indexer in terms of a ThreadSafeStore and an
+// associated KeyFunc.
+// Cache定义
+type cache struct {
+	// cacheStorage bears the burden of thread safety for the cache
+	cacheStorage ThreadSafeStore
+	// keyFunc is used to make the key for objects stored in and retrieved from items, and
+	// should be deterministic.
+	keyFunc KeyFunc
+}
+
+var _ Store = &cache{}
+
+// Add inserts an item into the cache.
+func (c *cache) Add(obj interface{}) error {
+	key, err := c.keyFunc(obj)
+	if err != nil {
+		return KeyError{obj, err}
+	}
+	c.cacheStorage.Add(key, obj)
+	return nil
+}
+
+// Update sets an item in the cache to its updated state.
+func (c *cache) Update(obj interface{}) error {
+	key, err := c.keyFunc(obj)
+	if err != nil {
+		return KeyError{obj, err}
+	}
+	c.cacheStorage.Update(key, obj)
+	return nil
+}
+
+// Delete removes an item from the cache.
+func (c *cache) Delete(obj interface{}) error {
+	key, err := c.keyFunc(obj)
+	if err != nil {
+		return KeyError{obj, err}
+	}
+	c.cacheStorage.Delete(key)
+	return nil
+}
+
+// List returns a list of all the items.
+// List is completely threadsafe as long as you treat all items as immutable.
+func (c *cache) List() []interface{} {
+	return c.cacheStorage.List()
+}
+
+// ListKeys returns a list of all the keys of the objects currently
+// in the cache.
+func (c *cache) ListKeys() []string {
+	return c.cacheStorage.ListKeys()
+}
+
+// GetIndexers returns the indexers of cache
+func (c *cache) GetIndexers() Indexers {
+	return c.cacheStorage.GetIndexers()
+}
+
+// Index returns a list of items that match on the index function
+// Index is thread-safe so long as you treat all items as immutable
+func (c *cache) Index(indexName string, obj interface{}) ([]interface{}, error) {
+	return c.cacheStorage.Index(indexName, obj)
+}
+
+// IndexKeys returns the storage keys of the stored objects whose set of
+// indexed values for the named index includes the given indexed value.
+// The returned keys are suitable to pass to GetByKey().
+func (c *cache) IndexKeys(indexName, indexedValue string) ([]string, error) {
+	return c.cacheStorage.IndexKeys(indexName, indexedValue)
+}
+
+// ListIndexFuncValues returns the list of generated values of an Index func
+func (c *cache) ListIndexFuncValues(indexName string) []string {
+	return c.cacheStorage.ListIndexFuncValues(indexName)
+}
+
+// ByIndex returns the stored objects whose set of indexed values
+// for the named index includes the given indexed value.
+func (c *cache) ByIndex(indexName, indexedValue string) ([]interface{}, error) {
+	return c.cacheStorage.ByIndex(indexName, indexedValue)
+}
+
+func (c *cache) AddIndexers(newIndexers Indexers) error {
+	return c.cacheStorage.AddIndexers(newIndexers)
+}
+
+// Get returns the requested item, or sets exists=false.
+// Get is completely threadsafe as long as you treat all items as immutable.
+func (c *cache) Get(obj interface{}) (item interface{}, exists bool, err error) {
+	key, err := c.keyFunc(obj)
+	if err != nil {
+		return nil, false, KeyError{obj, err}
+	}
+	return c.GetByKey(key)
+}
+
+// GetByKey returns the request item, or exists=false.
+// GetByKey is completely threadsafe as long as you treat all items as immutable.
+func (c *cache) GetByKey(key string) (item interface{}, exists bool, err error) {
+	item, exists = c.cacheStorage.Get(key)
+	return item, exists, nil
+}
+
+// Replace will delete the contents of 'c', using instead the given list.
+// 'c' takes ownership of the list, you should not reference the list again
+// after calling this function.
+func (c *cache) Replace(list []interface{}, resourceVersion string) error {
+	items := make(map[string]interface{}, len(list))
+	for _, item := range list {
+		key, err := c.keyFunc(item)
+		if err != nil {
+			return KeyError{item, err}
+		}
+		items[key] = item
+	}
+	c.cacheStorage.Replace(items, resourceVersion)
+	return nil
+}
+
+// Resync is meaningless for one of these
+func (c *cache) Resync() error {
+	return nil
+}
+
+type KeyFunc func(obj interface{}) (string, error)
+
+type KeyError struct {
+	Obj interface{}
+	Err error
+}
+
+// Error gives a human-readable description of the error.
+func (k KeyError) Error() string {
+	return fmt.Sprintf("couldn't create key for object %+v: %v", k.Obj, k.Err)
+}
+
+// Unwrap implements errors.Unwrap
+func (k KeyError) Unwrap() error {
+	return k.Err
+}
+
+// ExplicitKey can be passed to MetaNamespaceKeyFunc if you have the key for
+// the object but not the object itself.
+type ExplicitKey string
+
+// MetaNamespaceKeyFunc is a convenient default KeyFunc which knows how to make
+// keys for API objects which implement meta.Interface.
+// The key uses the format <namespace>/<name> unless <namespace> is empty, then
+// it's just <name>.
+//
+// Clients that want a structured alternative can use ObjectToName or MetaObjectToName.
+// Note: this would not be a client that wants a key for a Store because those are
+// necessarily strings.
+
+func MetaNamespaceKeyFunc(obj interface{}) (string, error) {
+	if key, ok := obj.(ExplicitKey); ok {
+		return string(key), nil
+	}
+	objName, err := ObjectToName(obj)
+	if err != nil {
+		return "", err
+	}
+	return objName.String(), nil
+}
+
+// ObjectToName returns the structured name for the given object,
+// if indeed it can be viewed as a meta.Object.
+func ObjectToName(obj interface{}) (ObjectName, error) {
+	meta, err := meta.Accessor(obj)
+	if err != nil {
+		return ObjectName{}, fmt.Errorf("object has no meta: %v", err)
+	}
+	return MetaObjectToName(meta), nil
+}
+
+// MetaObjectToName returns the structured name for the given object
+func MetaObjectToName(obj metav1.Object) ObjectName {
+	if len(obj.GetNamespace()) > 0 {
+		return ObjectName{Namespace: obj.GetNamespace(), Name: obj.GetName()}
+	}
+	return ObjectName{Namespace: "", Name: obj.GetName()}
+}
+
+// SplitMetaNamespaceKey returns the namespace and name that
+// MetaNamespaceKeyFunc encoded into key.
+//
+// TODO: replace key-as-string with a key-as-struct so that this
+// packing/unpacking won't be necessary.
+func SplitMetaNamespaceKey(key string) (namespace, name string, err error) {
+	parts := strings.Split(key, "/")
+	switch len(parts) {
+	case 1:
+		// name only, no namespace
+		return "", parts[0], nil
+	case 2:
+		// namespace and name
+		return parts[0], parts[1], nil
+	}
+
+	return "", "", fmt.Errorf("unexpected key format: %q", key)
+}
+
+// NewStore returns a Store implemented simply with a map and a lock.
+func NewStore(keyFunc KeyFunc) Store {
+	return &cache{
+		cacheStorage: NewThreadSafeStore(Indexers{}, Indices{}),
+		keyFunc:      keyFunc,
+	}
+}
+
+// NewIndexer returns an Indexer implemented simply with a map and a lock.
+func NewIndexer(keyFunc KeyFunc, indexers Indexers) Indexer {
+	return &cache{
+		cacheStorage: NewThreadSafeStore(indexers, Indices{}),
+		keyFunc:      keyFunc,
+	}
+}

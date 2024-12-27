@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "properties": {
+    "time": {
+      "type": "string",
+      "format":"date"
+    }
+  },
+  "required": ["time"],
+  "additionalProperties": false
+}

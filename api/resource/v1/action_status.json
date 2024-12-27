@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "action_id" : {"type" :  "string"} ,
+    "belongs" : {
+      "$ref" :  "./id_ref.json"
+    },
+    "phase" : {"type" : "string"},
+    "resources" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./resource_status.json"}
+    },
+    "devices" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./device_status.json"}
+    },
+    "data" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./data_status.json"}
+    },
+    "scenes" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./scene_status.json"}
+    },
+    "status" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./runtime_status.json"}
+    },
+    "results" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./result.json"}
+    },
+    "start" : {
+      "$ref" :  "./time.json"
+    },
+    "finish" : {
+      "$ref" :  "./time.json"
+    },
+    "last_time" : {
+      "$ref" :  "./time.json"
+    }
+  },
+  "required" : ["action_id" , "belongs" , "phase" , "resources" , "devices" , "data" , "scenes" ,"status" , "results" , "start" , "finish" , "last_time"],
+  "additionalProperties": false
+}

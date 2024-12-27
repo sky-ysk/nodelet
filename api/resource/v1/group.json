@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "spec" : {
+      "$ref" :  "./group_spec.json"
+    },
+    "status" : {
+      "$ref" :  "./group_status.json"
+    }
+  },
+  "required" : ["spec" , "status"],
+  "additionalProperties": false
+}

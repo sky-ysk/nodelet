@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "task_id" : {"type" :  "string"},
+    "belongs" : {
+      "$ref" :  "./id_ref.json"
+    },
+    "phase" : {"type" :  "string"},
+    "group_status" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./group_status.json"}
+    },
+    "start" : {
+      "$ref" :  "./time.json"
+    },
+    "finish" : {
+      "$ref" :  "./time.json"
+    },
+    "last_time" : {
+      "$ref" :  "./time.json"
+    }
+  },
+  "required" : ["task_id" , "belongs" , "phase" , "group_status" , "start" , "finish" , "last_time"],
+  "additionalProperties": false
+}

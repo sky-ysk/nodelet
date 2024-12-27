@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties" : {
+    "resources" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./resource_spec.json"}
+    },
+    "devices" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./device_spec.json"}
+    },
+    "data" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./data_spec.json"}
+    },
+    "scenes" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./scene_spec.json"}
+    },
+    "type" : {"type" :  "string"},
+    "name" : {"type" :  "string"} ,
+    "image" : {"type" :  "string"} ,
+    "command" : {
+      "type" : "array" ,
+      "items" : {"type" :  "string"}
+    },
+    "args" : {
+      "type" : "array" ,
+      "items" : {"type" :  "string"}
+    },
+    "env_var" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./env_var.json"}
+    },
+    "inputs" : {
+      "$ref" :  "./input.json"
+    },
+    "outputs" : {
+      "$ref" :  "./output.json"
+    }
+  },
+  "required" : ["resources" , "devices" , "data" , "scenes" , "type" , "name" , "image" ,"command" , "args" , "env_var" , "inputs" , "outputs"],
+  "additionalProperties": false
+}

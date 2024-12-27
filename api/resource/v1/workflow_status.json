@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+    "type" : "object",
+    "properties" : {
+      "workflow_id" : {"type" :  "string"} ,
+      "phase" : {"type" :  "string"} ,
+      "status" : {
+        "type" : "array" ,
+        "items" : {"$ref" :  "./task_status.json"}
+      },
+      "start" : {
+        "$ref" :  "./time.json"
+      },
+      "finish" : {
+        "$ref" :  "./time.json"
+      },
+      "last_time" : {
+        "$ref" :  "./time.json"
+      }
+    },
+    "required" : ["workflow_id" , "phase" , "status" , "start" , "finish" , "last_time"],
+    "additionalProperties": false
+}

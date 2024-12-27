@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties" : {
+    "result_id" : {"type" :  "string"} ,
+    "belongs" : {
+      "$ref" :  "./id_ref.json"
+    },
+    "Type" : {"type" :  "string"}
+  },
+  "required" : ["result_id" , "belongs" , "type"],
+  "additionalProperties": false
+}

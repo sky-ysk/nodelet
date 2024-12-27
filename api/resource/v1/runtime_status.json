@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties" : {
+    "name" : {"type" :  "string"},
+    "process_id" : {"type" :  "string"} ,
+    "phase" : {"type" :  "string"} ,
+    "start" : {
+      "$ref" :  "./time.json"
+    },
+    "finish" : {
+      "$ref" :  "./time.json"
+    },
+    "last_time" : {
+      "$ref" :  "./time.json"
+    }
+  },
+  "required" : ["name" , "process_id" , "phase" , "start" , "finish" , "last_time"],
+  "additionalProperties": false
+}

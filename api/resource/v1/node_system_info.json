@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties" : {
+    "machine_id" : {"type" :  "string"},
+    "system_uuid" : {"type" :  "string"} ,
+    "boot_id" : {"type" :  "string"} ,
+    "kernel_version" : {"type" :  "string"} ,
+    "os_image" : {"type" :  "string"} ,
+    "container_runtime_version" : {"type" :  "string"} ,
+    "nodelet_version" : {"type" :  "string"} ,
+    "os" : {"type" :  "string"} ,
+    "architecture" : {"type" :  "string"}
+  },
+  "required" : ["machine_id" , "system_uuid" , "boot_id" , "kernel_version" , "os_image" , "container_runtime_version" , "nodelet_version" , "os" , "architecture"],
+  "additionalProperties": false
+}

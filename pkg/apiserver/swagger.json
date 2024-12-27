@@ -1,0 +1,5844 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Resource for managing API Resources",
+    "title": "Supported Resources API",
+    "version": "v0.0.0"
+  },
+  "paths": {
+    "/apis/resources/v1/actions": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "list or watch objects of kind Action",
+        "operationId": "func1",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "watch",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "allowWatchBookmarks",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.ActionList"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create an Action",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete collection of Action",
+        "operationId": "func7",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.Status"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/actions/{name}": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read the specified Action",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace the specified Action",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete an Action",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update the specified Action",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/actions/{name}/spec": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read spec of the specified Action",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace spec of the specified Action",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create spec of Action",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete spec of Action",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update spec of the specified Action",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/actions/{name}/status": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read status of the specified Action",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace status of the specified Action",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create status of Action",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete status of Action",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update status of the specified Action",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Action",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Action"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/groups": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "list or watch objects of kind Group",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "watch",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "allowWatchBookmarks",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.GroupList"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create a Group",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete collection of Group",
+        "operationId": "func7",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.Status"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/groups/{name}": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read the specified Group",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace the specified Group",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete a Group",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update the specified Group",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/groups/{name}/spec": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read spec of the specified Group",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace spec of the specified Group",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create spec of Group",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete spec of Group",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update spec of the specified Group",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/groups/{name}/status": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read status of the specified Group",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace status of the specified Group",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create status of Group",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete status of Group",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update status of the specified Group",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Group",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Group"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/nodes": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "list or watch objects of kind Node",
+        "operationId": "func3",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "watch",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "allowWatchBookmarks",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.NodeList"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create a Node",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete collection of Node",
+        "operationId": "func7",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.Status"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/nodes/{name}": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read the specified Node",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace the specified Node",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete a Node",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update the specified Node",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/nodes/{name}/spec": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read spec of the specified Node",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace spec of the specified Node",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create spec of Node",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete spec of Node",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update spec of the specified Node",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/nodes/{name}/status": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read status of the specified Node",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace status of the specified Node",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create status of Node",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete status of Node",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update status of the specified Node",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Node",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Node"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/tasks": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "list or watch objects of kind Task",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "watch",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "allowWatchBookmarks",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.TaskList"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create a Task",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete collection of Task",
+        "operationId": "func7",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.Status"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/tasks/{name}": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read the specified Task",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace the specified Task",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete a Task",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update the specified Task",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/tasks/{name}/spec": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read spec of the specified Task",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace spec of the specified Task",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create spec of Task",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete spec of Task",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update spec of the specified Task",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/tasks/{name}/status": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read status of the specified Task",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace status of the specified Task",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create status of Task",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete status of Task",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update status of the specified Task",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Task",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Task"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/workflows": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "list or watch objects of kind Workflow",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "watch",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "allowWatchBookmarks",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.WorkflowList"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create a Workflow",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete collection of Workflow",
+        "operationId": "func7",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "labelSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldSelector",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersion",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "resourceVersionMatch",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "timeoutSeconds",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "continue",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "sendInitialEvents",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "progressNotify",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.Status"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/workflows/{name}": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read the specified Workflow",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace the specified Workflow",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete a Workflow",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update the specified Workflow",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/workflows/{name}/spec": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read spec of the specified Workflow",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace spec of the specified Workflow",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create spec of Workflow",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete spec of Workflow",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update spec of the specified Workflow",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      }
+    },
+    "/apis/resources/v1/workflows/{name}/status": {
+      "get": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "read status of the specified Workflow",
+        "operationId": "func2",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "replace status of the specified Workflow",
+        "operationId": "func5",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "create status of Workflow",
+        "operationId": "func4",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "delete status of Workflow",
+        "operationId": "func6",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/meta.DeleteOptions"
+            }
+          },
+          {
+            "type": "integer",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "propagationPolicy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      },
+      "patch": {
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "summary": "partially update status of the specified Workflow",
+        "operationId": "func8",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "fieldValidation",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the Workflow",
+            "name": "name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/apis.Workflow"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "apis.Action": {
+      "required": [
+        "Spec",
+        "Status"
+      ],
+      "properties": {
+        "Spec": {
+          "$ref": "#/definitions/apis.ActionSpec"
+        },
+        "Status": {
+          "$ref": "#/definitions/apis.ActionStatus"
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "creationTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "deletionGracePeriodSeconds": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "deletionTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "generateName": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "resourceVersion": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.ActionList": {
+      "required": [
+        "Items"
+      ],
+      "properties": {
+        "Items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Action"
+          }
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "continue": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "remainingItemCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resourceVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.ActionSpec": {
+      "required": [
+        "Name",
+        "Parents",
+        "Desc",
+        "Type",
+        "Conditions",
+        "Runtimes",
+        "EnableFineGrainedControl"
+      ],
+      "properties": {
+        "Conditions": {
+          "$ref": "#/definitions/apis.Conditions"
+        },
+        "Desc": {
+          "$ref": "#/definitions/apis.Description"
+        },
+        "EnableFineGrainedControl": {
+          "type": "boolean"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Parents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Runtimes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Runtime"
+          }
+        },
+        "Type": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.ActionStatus": {
+      "required": [
+        "ActionID",
+        "Belongs",
+        "Phase",
+        "Resources",
+        "Devices",
+        "Data",
+        "Scenes",
+        "RuntimeStatus",
+        "Results",
+        "StartAt",
+        "FinishAt",
+        "LastTime"
+      ],
+      "properties": {
+        "ActionID": {
+          "type": "string"
+        },
+        "Belongs": {
+          "$ref": "#/definitions/apis.IDRef"
+        },
+        "Data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.DataStatus"
+          }
+        },
+        "Devices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.DeviceStatus"
+          }
+        },
+        "FinishAt": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "LastTime": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "Phase": {
+          "type": "string"
+        },
+        "Resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.ResourceStatus"
+          }
+        },
+        "Results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Result"
+          }
+        },
+        "RuntimeStatus": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.RuntimeStatus"
+          }
+        },
+        "Scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.SceneStatus"
+          }
+        },
+        "StartAt": {
+          "$ref": "#/definitions/apis.Time"
+        }
+      }
+    },
+    "apis.ConditionFormula": {
+      "required": [
+        "LeftValue",
+        "RightValue",
+        "Signal",
+        "Join"
+      ],
+      "properties": {
+        "Join": {
+          "type": "string"
+        },
+        "LeftValue": {
+          "$ref": "#/definitions/apis.ConditionValue"
+        },
+        "RightValue": {
+          "$ref": "#/definitions/apis.ConditionValue"
+        },
+        "Signal": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.ConditionValue": {
+      "required": [
+        "Type",
+        "Name",
+        "Value",
+        "ValueType"
+      ],
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "string"
+        },
+        "ValueType": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Conditions": {
+      "required": [
+        "Formulas"
+      ],
+      "properties": {
+        "Formulas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.ConditionFormula"
+          }
+        }
+      }
+    },
+    "apis.ContainerImage": {
+      "required": [
+        "Names",
+        "SizeBytes"
+      ],
+      "properties": {
+        "Names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "SizeBytes": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "apis.DataSpec": {},
+    "apis.DataStatus": {},
+    "apis.Description": {
+      "required": [
+        "Label",
+        "Docs"
+      ],
+      "properties": {
+        "Docs": {
+          "type": "string"
+        },
+        "Label": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "apis.DeviceSpec": {},
+    "apis.DeviceStatus": {},
+    "apis.EnvVar": {
+      "required": [
+        "Name",
+        "Value"
+      ],
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Group": {
+      "required": [
+        "Spec",
+        "Status"
+      ],
+      "properties": {
+        "Spec": {
+          "$ref": "#/definitions/apis.GroupSpec"
+        },
+        "Status": {
+          "$ref": "#/definitions/apis.GroupStatus"
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "creationTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "deletionGracePeriodSeconds": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "deletionTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "generateName": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "resourceVersion": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.GroupList": {
+      "required": [
+        "Items"
+      ],
+      "properties": {
+        "Items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Group"
+          }
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "continue": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "remainingItemCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resourceVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.GroupSpec": {
+      "required": [
+        "Name",
+        "Parents",
+        "Desc",
+        "Type",
+        "Conditions",
+        "Actions"
+      ],
+      "properties": {
+        "Actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Action"
+          }
+        },
+        "Conditions": {
+          "$ref": "#/definitions/apis.Conditions"
+        },
+        "Desc": {
+          "$ref": "#/definitions/apis.Description"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Parents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Type": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.GroupStatus": {
+      "required": [
+        "GroupID",
+        "Belongs",
+        "Phase",
+        "ActionStatus",
+        "StartAt",
+        "FinishAt",
+        "LastTime"
+      ],
+      "properties": {
+        "ActionStatus": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.ActionStatus"
+          }
+        },
+        "Belongs": {
+          "$ref": "#/definitions/apis.IDRef"
+        },
+        "FinishAt": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "GroupID": {
+          "type": "string"
+        },
+        "LastTime": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "Phase": {
+          "type": "string"
+        },
+        "StartAt": {
+          "$ref": "#/definitions/apis.Time"
+        }
+      }
+    },
+    "apis.IDRef": {
+      "required": [
+        "WorkflowID",
+        "TaskID",
+        "GroupID",
+        "ActionID"
+      ],
+      "properties": {
+        "ActionID": {
+          "type": "string"
+        },
+        "GroupID": {
+          "type": "string"
+        },
+        "TaskID": {
+          "type": "string"
+        },
+        "WorkflowID": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Input": {
+      "required": [
+        "Type",
+        "Name",
+        "Value",
+        "ValueType"
+      ],
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "string"
+        },
+        "ValueType": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Node": {
+      "description": "Node is a worker node ",
+      "required": [
+        "Spec",
+        "Status"
+      ],
+      "properties": {
+        "Spec": {
+          "$ref": "#/definitions/apis.NodeSpec"
+        },
+        "Status": {
+          "$ref": "#/definitions/apis.NodeStatus"
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "creationTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "deletionGracePeriodSeconds": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "deletionTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "generateName": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "resourceVersion": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.NodeAddress": {
+      "required": [
+        "Type",
+        "Address"
+      ],
+      "properties": {
+        "Address": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.NodeList": {
+      "description": "list of all Nodes",
+      "required": [
+        "Items"
+      ],
+      "properties": {
+        "Items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Node"
+          }
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "continue": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "remainingItemCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resourceVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.NodeSpec": {
+      "required": [
+        "NodeName",
+        "HostName",
+        "Unschedulable"
+      ],
+      "properties": {
+        "HostName": {
+          "type": "string"
+        },
+        "NodeName": {
+          "type": "string"
+        },
+        "Unschedulable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "apis.NodeStatus": {
+      "required": [
+        "Capacity",
+        "Allocatable",
+        "Images",
+        "Wasms",
+        "Addresses",
+        "NodeInfo"
+      ],
+      "properties": {
+        "Addresses": {
+          "$ref": "#/definitions/apis.NodeAddress"
+        },
+        "Allocatable": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/apis.Quantity"
+          }
+        },
+        "Capacity": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/apis.Quantity"
+          }
+        },
+        "Images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.ContainerImage"
+          }
+        },
+        "NodeInfo": {
+          "$ref": "#/definitions/apis.NodeSystemInfo"
+        },
+        "Wasms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.WasmImage"
+          }
+        }
+      }
+    },
+    "apis.NodeSystemInfo": {
+      "required": [
+        "MachineID",
+        "SystemUUID",
+        "BootID",
+        "KernelVersion",
+        "OSImage",
+        "ContainerRuntimeVersion",
+        "NodeletVersion",
+        "OperatingSystem",
+        "Architecture"
+      ],
+      "properties": {
+        "Architecture": {
+          "type": "string"
+        },
+        "BootID": {
+          "type": "string"
+        },
+        "ContainerRuntimeVersion": {
+          "type": "string"
+        },
+        "KernelVersion": {
+          "type": "string"
+        },
+        "MachineID": {
+          "type": "string"
+        },
+        "NodeletVersion": {
+          "type": "string"
+        },
+        "OSImage": {
+          "type": "string"
+        },
+        "OperatingSystem": {
+          "type": "string"
+        },
+        "SystemUUID": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Output": {
+      "required": [
+        "Type",
+        "Name",
+        "Value",
+        "ValueType"
+      ],
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "string"
+        },
+        "ValueType": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Quantity": {
+      "required": [
+        "i",
+        "format"
+      ],
+      "properties": {
+        "format": {
+          "type": "string"
+        },
+        "i": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "apis.ResourceSpec": {},
+    "apis.ResourceStatus": {},
+    "apis.Result": {
+      "required": [
+        "ResultID",
+        "Belongs",
+        "Type"
+      ],
+      "properties": {
+        "Belongs": {
+          "$ref": "#/definitions/apis.IDRef"
+        },
+        "ResultID": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Runtime": {
+      "required": [
+        "Resources",
+        "Devices",
+        "Data",
+        "Scenes",
+        "Type",
+        "Name",
+        "Image",
+        "Command",
+        "Args",
+        "EnvVar",
+        "Inputs",
+        "Outputs"
+      ],
+      "properties": {
+        "Args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.DataSpec"
+          }
+        },
+        "Devices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.DeviceSpec"
+          }
+        },
+        "EnvVar": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.EnvVar"
+          }
+        },
+        "Image": {
+          "type": "string"
+        },
+        "Inputs": {
+          "$ref": "#/definitions/apis.Input"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Outputs": {
+          "$ref": "#/definitions/apis.Output"
+        },
+        "Resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.ResourceSpec"
+          }
+        },
+        "Scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.SceneSpec"
+          }
+        },
+        "Type": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.RuntimeStatus": {
+      "required": [
+        "NodeName",
+        "ProcessId",
+        "Phase",
+        "StartAt",
+        "FinishAt",
+        "LastTime"
+      ],
+      "properties": {
+        "FinishAt": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "LastTime": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "NodeName": {
+          "type": "string"
+        },
+        "Phase": {
+          "type": "string"
+        },
+        "ProcessId": {
+          "type": "string"
+        },
+        "StartAt": {
+          "$ref": "#/definitions/apis.Time"
+        }
+      }
+    },
+    "apis.SceneSpec": {},
+    "apis.SceneStatus": {},
+    "apis.Task": {
+      "required": [
+        "Spec",
+        "Status"
+      ],
+      "properties": {
+        "Spec": {
+          "$ref": "#/definitions/apis.TaskSpec"
+        },
+        "Status": {
+          "$ref": "#/definitions/apis.TaskStatus"
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "creationTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "deletionGracePeriodSeconds": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "deletionTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "generateName": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "resourceVersion": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.TaskList": {
+      "required": [
+        "Items"
+      ],
+      "properties": {
+        "Items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Task"
+          }
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "continue": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "remainingItemCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resourceVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.TaskSpec": {
+      "required": [
+        "Name",
+        "Parents",
+        "Desc",
+        "Type",
+        "Conditions",
+        "Groups"
+      ],
+      "properties": {
+        "Conditions": {
+          "$ref": "#/definitions/apis.Conditions"
+        },
+        "Desc": {
+          "$ref": "#/definitions/apis.Description"
+        },
+        "Groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Group"
+          }
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Parents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Type": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.TaskStatus": {
+      "required": [
+        "TaskID",
+        "Belongs",
+        "Phase",
+        "GroupStatus",
+        "StartAt",
+        "FinishAt",
+        "LastTime"
+      ],
+      "properties": {
+        "Belongs": {
+          "$ref": "#/definitions/apis.IDRef"
+        },
+        "FinishAt": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "GroupStatus": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.GroupStatus"
+          }
+        },
+        "LastTime": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "Phase": {
+          "type": "string"
+        },
+        "StartAt": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "TaskID": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.Time": {
+      "required": [
+        "Time"
+      ],
+      "properties": {
+        "Time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "apis.WasmImage": {
+      "required": [
+        "Names",
+        "SizeBytes"
+      ],
+      "properties": {
+        "Names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "SizeBytes": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "apis.Workflow": {
+      "required": [
+        "Spec",
+        "Status"
+      ],
+      "properties": {
+        "Spec": {
+          "$ref": "#/definitions/apis.WorkflowSpec"
+        },
+        "Status": {
+          "$ref": "#/definitions/apis.WorkflowStatus"
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "creationTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "deletionGracePeriodSeconds": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "deletionTimestamp": {
+          "$ref": "#/definitions/meta.Time"
+        },
+        "generateName": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "resourceVersion": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.WorkflowList": {
+      "required": [
+        "Items"
+      ],
+      "properties": {
+        "Items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Workflow"
+          }
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "continue": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "remainingItemCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resourceVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "apis.WorkflowSpec": {
+      "required": [
+        "Name",
+        "Desc",
+        "Tasks"
+      ],
+      "properties": {
+        "Desc": {
+          "$ref": "#/definitions/apis.Description"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.Task"
+          }
+        }
+      }
+    },
+    "apis.WorkflowStatus": {
+      "required": [
+        "WorkflowID",
+        "Phase",
+        "TaskStatus",
+        "StartAt",
+        "FinishAt",
+        "LastTime"
+      ],
+      "properties": {
+        "FinishAt": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "LastTime": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "Phase": {
+          "type": "string"
+        },
+        "StartAt": {
+          "$ref": "#/definitions/apis.Time"
+        },
+        "TaskStatus": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apis.TaskStatus"
+          }
+        },
+        "WorkflowID": {
+          "type": "string"
+        }
+      }
+    },
+    "meta.DeleteOptions": {
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "dryRun": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gracePeriodSeconds": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "orphanDependents": {
+          "type": "boolean"
+        },
+        "preconditions": {
+          "$ref": "#/definitions/meta.Preconditions"
+        },
+        "propagationPolicy": {
+          "type": "string"
+        }
+      }
+    },
+    "meta.Preconditions": {
+      "properties": {
+        "resourceVersion": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
+    "meta.Time": {
+      "required": [
+        "Time"
+      ],
+      "properties": {
+        "Time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1.ListMeta": {
+      "description": "ListMeta describes metadata that synthetic resources must have, including lists and various status objects. A resource may have only one of {ObjectMeta, ListMeta}.",
+      "properties": {
+        "continue": {
+          "description": "continue may be set if the user set a limit on the number of items returned, and indicates that the server has more data available. The value is opaque and may be used to issue another request to the endpoint that served this list to retrieve the next set of available objects. Continuing a consistent list may not be possible if the server configuration has changed or more than a few minutes have passed. The resourceVersion field returned when using this continue value will be identical to the value in the first response, unless you have received this token from an error message.",
+          "type": "string"
+        },
+        "remainingItemCount": {
+          "description": "remainingItemCount is the number of subsequent items in the list which are not included in this list response. If the list request contained label or field selectors, then the number of remaining items is unknown and the field will be left unset and omitted during serialization. If the list is complete (either because it is not chunking or because this is the last chunk), then there are no more remaining items and this field will be left unset and omitted during serialization. Servers older than v1.15 do not set this field. The intended use of the remainingItemCount is *estimating* the size of a collection. Clients should not rely on the remainingItemCount to be set or to be exact.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "resourceVersion": {
+          "description": "String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+          "type": "string"
+        },
+        "selfLink": {
+          "description": "Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.",
+          "type": "string"
+        }
+      }
+    },
+    "v1.Status": {
+      "description": "Status is a return value for calls that don't return other objects.",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "code": {
+          "description": "Suggested HTTP return code for this status, 0 if not set.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "details": {
+          "description": "Extended data associated with the reason.  Each reason may define its own extended details. This field is optional and the data returned is not guaranteed to conform to any schema except that defined by the reason type.",
+          "$ref": "#/definitions/v1.StatusDetails"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "message": {
+          "description": "A human-readable description of the status of this operation.",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "$ref": "#/definitions/v1.ListMeta"
+        },
+        "reason": {
+          "description": "A machine-readable description of why this operation is in the \"Failure\" status. If this value is empty there is no information available. A Reason clarifies an HTTP status code but does not override it.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status of the operation. One of: \"Success\" or \"Failure\". More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status",
+          "type": "string"
+        }
+      }
+    },
+    "v1.StatusCause": {
+      "description": "StatusCause provides more information about an api.Status failure, including cases when multiple errors are encountered.",
+      "properties": {
+        "field": {
+          "description": "The field of the resource that has caused this error, as named by its JSON serialization. May include dot and postfix notation for nested attributes. Arrays are zero-indexed.  Fields may appear more than once in an array of causes due to fields having multiple errors. Optional.\n\nExamples:\n  \"name\" - the field \"name\" on the current resource\n  \"items[0].name\" - the field \"name\" on the first array entry in \"items\"",
+          "type": "string"
+        },
+        "message": {
+          "description": "A human-readable description of the cause of the error.  This field may be presented as-is to a reader.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "A machine-readable description of the cause of the error. If this value is empty there is no information available.",
+          "type": "string"
+        }
+      }
+    },
+    "v1.StatusDetails": {
+      "description": "StatusDetails is a set of additional properties that MAY be set by the server to provide additional information about a response. The Reason field of a Status object defines what attributes will be set. Clients must ignore fields that do not match the defined type of each attribute, and should assume that any attribute may be empty, invalid, or under defined.",
+      "properties": {
+        "causes": {
+          "description": "The Causes array includes more details associated with the StatusReason failure. Not all StatusReasons may provide detailed causes.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.StatusCause"
+          }
+        },
+        "group": {
+          "description": "The group attribute of the resource associated with the status StatusReason.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name attribute of the resource associated with the status StatusReason (when there is a single name which can be described).",
+          "type": "string"
+        },
+        "retryAfterSeconds": {
+          "description": "If specified, the time in seconds before the operation should be retried. Some errors may indicate the client must take an alternate action - for those errors this field may indicate how long to wait before taking the alternate action.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "uid": {
+          "description": "UID of the resource. (when there is a single resource which can be described). More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

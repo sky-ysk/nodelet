@@ -1,0 +1,25 @@
+package net
+
+import (
+	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/component-base/logs"
+)
+
+type NetRuntime struct {
+}
+
+func NewNetRuntime() NetRuntime {
+	return NetRuntime{}
+}
+func (nr NetRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+	logs.Infof("net runtime for task:%s", group.Name)
+	return nil
+}
+func (nr NetRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+	logs.Infof("net runtime kill task:%s", group.Name)
+	return nil
+}
+func (nr NetRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
+
+	return "", nil
+}

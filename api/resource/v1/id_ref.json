@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "workflow_id" : {"type" :  "string"},
+    "task_id" : {"type" :  "string"} ,
+    "group_id" : {"type" :  "string"} ,
+    "action_id" : {"type" :  "string"}
+  },
+  "required" : ["workflow_id" , "task_id" , "group_id" , "action_id"],
+  "additionalProperties": false
+}

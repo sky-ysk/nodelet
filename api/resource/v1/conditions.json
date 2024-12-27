@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "formulas" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./condition_formula.json"}
+    }
+  },
+  "required" : ["formulas"],
+  "additionalProperties": false
+}

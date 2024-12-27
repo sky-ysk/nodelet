@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties" : {
+      "node_name" : {"type" :  "string"} ,
+      "host_name" : {"type" :  "string"} ,
+      "unschedulable" : {"type" :  "boolean"}
+    },
+    "required" : ["node_name" , "host_name" , "unschedulable"],
+    "additionalProperties": false
+}

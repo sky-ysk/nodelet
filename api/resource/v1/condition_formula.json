@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "left_value" : {
+      "$ref" :  "./condition_value.json"
+    },
+    "right_value" : {
+      "$ref" :  "./condition_value.json"
+    },
+    "signal" : {"type" :  "string"},
+    "join" : {"type" :  "string"}
+  },
+  "required" : ["left_value" , "right_value" , "signal" , "join"],
+  "additionalProperties": false
+}

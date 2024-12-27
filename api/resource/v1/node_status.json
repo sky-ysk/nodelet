@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties" : {
+    "images" : {
+      "type" : "array",
+      "items" : {"$ref" :  "./container_image.json"}
+    },
+    "wasms" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./wasm_image.json"}
+    },
+    "addresses" : {
+      "$ref" :  "./node_address.json"
+    },
+    "info" : {
+      "$ref" :  "./node_system_info.json"
+    }
+  },
+  "required" : ["images" , "wasms" , "addresses" , "info"],
+  "additionalProperties": false
+}

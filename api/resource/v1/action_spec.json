@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object",
+  "properties" : {
+    "name" : {"type" :  "string"},
+    "parents" : {
+      "type" : "array" ,
+      "items" : {"type" :  "string"}
+    },
+    "desc" : {
+      "$ref" :  "./description.json"
+    },
+    "type" : {"type" : "string"},
+    "conditions" : {
+      "$ref" :  "./conditions.json"
+    },
+    "runtimes" : {
+      "type" : "array" ,
+      "items" : {"$ref" :  "./runtime.json"}
+    },
+    "enable_control" : {"type" :  "boolean"}
+  },
+  "required" : ["name" , "parents" , "desc" , "type" , "conditions" , "runtimes" , "enable_control"],
+  "additionalProperties": false
+
+}

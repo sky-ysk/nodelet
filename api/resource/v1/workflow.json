@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type" : "object" ,
+  "properties" : {
+    "spec" : {"$ref" :  "./workflow_spec.json"},
+    "status" : {"$ref" :  "./workflow_status.json"}
+  },
+  "required" : ["spec" , "status"],
+  "additionalProperties": false
+}
