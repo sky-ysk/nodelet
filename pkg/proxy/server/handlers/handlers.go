@@ -31,26 +31,26 @@ func (h *Handlers) InstallWorkflowHandlers(container *restful.Container) {
 	container.Add(wh.NewGetWebService())
 }
 
-func InstallTaskHandlers(container *restful.Container) {
+func (h *Handlers) InstallTaskHandlers(container *restful.Container) {
 	// Tasks相关
-	tsh := task.NewTasksHandler()
+	tsh := task.NewTasksHandler(h.ClientSet)
 	// 查询Tasks
 	container.Add(tsh.NewGetWebService())
 
 	// Task相关
 	// 查询单个Task
-	th := task.NewTaskHandler()
+	th := task.NewTaskHandler(h.ClientSet)
 	container.Add(th.NewGetWebService())
 }
 
-func InstallNodeHandlers(container *restful.Container) {
+func (h *Handlers) InstallNodeHandlers(container *restful.Container) {
 	// Nodes相关
-	nsh := node.NewNodesHandler()
+	nsh := node.NewNodesHandler(h.ClientSet)
 	// 查询Nodes
 	container.Add(nsh.NewGetWebService())
 
 	// Node相关
 	// 查询单个Node
-	nh := node.NewNodeHandler()
+	nh := node.NewNodeHandler(h.ClientSet)
 	container.Add(nh.NewGetWebService())
 }

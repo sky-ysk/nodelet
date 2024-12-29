@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	NAMESPACE  = "resource"
+	NAMESPACE  = "framework"
 	GROUP      = "v1"
 	TAG        = "Node"
 	API_PREFIX = "/" + NAMESPACE + "/" + GROUP

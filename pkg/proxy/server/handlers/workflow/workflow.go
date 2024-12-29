@@ -26,31 +26,31 @@ func NewWorkflowHandler(clientSet *clients.ClientSet) *WorkflowHandler {
 	}
 }
 
-func (w *WorkflowHandler) GetWorkflow(request *restful.Request, response *restful.Response) {
-	// TODO: 使用client-go实现查询
+func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restful.Response) {
 	name := request.PathParameter(WorkflowName)
-	result, err := w.client.Get(context.TODO(), name, metav1.GetOptions{})
+	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("get workflow %s error: %v", name, err)
+		logs.Errorf("Get workflow %s error: %v", name, err)
 		response.WriteError(http.StatusInternalServerError, err)
 	}
 	err = response.WriteEntity(result)
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("Get workflows")
+	logs.Debugf("Get workflow")
 }
 
-func (w *WorkflowHandler) CreateWorkflow(request *restful.Request, response *restful.Response) {
+func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *restful.Response) {
 	// 先查询Workflow是否存在
 	name := request.PathParameter(WorkflowName)
-	result, err := w.client.Get(context.TODO(), name, metav1.GetOptions{})
+	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("get workflow %s error: %v", name, err)
+		logs.Errorf("Get workflow %s error: %v", name, err)
 		//response.WriteError(http.StatusInternalServerError, err)
 	}
 	if result.Name == name {
-		logs.Errorf("create workflow %s ,workflow existed: %v", name, result)
+		logs.Errorf("Create workflow %s error, workflow existed: %v", name, result)
+		err = fmt.Errorf("Create workflow %s error, workflow existed: %v", name, result)
 		response.WriteError(http.StatusInternalServerError, err)
 		return
 	}
@@ -59,7 +59,7 @@ func (w *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	ew := &apis.Workflow{}
 	err = request.ReadEntity(ew)
 	if err != nil {
-		logs.Errorf("failed to create workflow %s, error: %v", name, err)
+		logs.Errorf("Failed to create workflow %s, error: %v", name, err)
 		response.WriteError(http.StatusInternalServerError, err)
 		return
 	}
@@ -68,10 +68,10 @@ func (w *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	logs.Debugf("Create workflow %s", name)
 
 	// 将Workflow写入数据库中
-	result, err = w.client.Create(context.TODO(), ew, metav1.CreateOptions{})
+	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
-		logs.Errorf("create workflow %s error: %v", name, err)
+		logs.Errorf("Create workflow %s error: %v", name, err)
 		return
 	}
 	// 返回结果
@@ -79,7 +79,7 @@ func (w *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("Create workflows")
+	logs.Debugf("Create workflow %v", result)
 }
 
 // TODO: Update Workflow
@@ -96,7 +96,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.GetWorkflow).
 		Doc("Get a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Operation("getWorkflow").
+		Operation("Get workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)
@@ -105,7 +105,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.CreateWorkflow).
 		Doc("Create a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Operation("Create Workflow").
+		Operation("Create workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)

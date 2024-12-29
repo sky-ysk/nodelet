@@ -25,11 +25,11 @@ func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
 	}
 }
 
-func (w *WorkflowsHandler) GetWorkflows(request *restful.Request, response *restful.Response) {
+func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *restful.Response) {
 	// 使用client-go实现查询
-	results, err := w.client.List(context.TODO(), metav1.ListOptions{})
+	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("get workflows failed: %v", err)
+		logs.Errorf("Get workflows failed: %v", err)
 		response.WriteError(http.StatusInternalServerError, err)
 	}
 
@@ -37,8 +37,10 @@ func (w *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("get workflows")
+	logs.Debugf("Get workflows")
 }
+
+// TODO: DeleteAll
 
 func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
@@ -49,7 +51,7 @@ func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 		Doc("Get all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		To(h.GetWorkflows).
-		Operation("getWorkflows").
+		Operation("Get workflows").
 		Returns(200, "OK", []apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)

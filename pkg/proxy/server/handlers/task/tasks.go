@@ -1,42 +1,43 @@
 package task
 
 import (
+	"context"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 )
 
-type TasksHandler struct{}
+type TasksHandler struct {
+	client core.TaskInterface
+}
 
 var _ Handler = &TasksHandler{}
 
-func NewTasksHandler() *TasksHandler {
-	return &TasksHandler{}
+func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
+	c := clientSet.Core().Tasks(apis.NamespaceAll)
+	return &TasksHandler{
+		client: c,
+	}
 }
 
-func GetTasks(request *restful.Request, response *restful.Response) {
-	// TODO: 使用client-go实现查询
-	task1 := apis.Task{
-		Spec: apis.TaskSpec{
-			Name: "TestTask",
-		},
+func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Response) {
+	// 使用client-go实现查询
+	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		logs.Errorf("Get tasks failed: %v", err)
+		response.WriteError(http.StatusInternalServerError, err)
 	}
 
-	task2 := apis.Task{
-		Spec: apis.TaskSpec{
-			Name: "TestTask",
-		},
-	}
-
-	tasks := []apis.Task{task1, task2}
-
-	err := response.WriteEntity(tasks)
+	err = response.WriteEntity(results)
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("get tasks")
+	logs.Debugf("Get tasks")
 }
 
 func (h *TasksHandler) NewGetWebService() *restful.WebService {
@@ -49,8 +50,8 @@ func (h *TasksHandler) NewGetWebService() *restful.WebService {
 		//Docs
 		Doc("Get all tasks").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		To(GetTasks).
-		Operation("getTasks").
+		To(h.GetTasks).
+		Operation("Get tasks").
 		Returns(200, "OK", []apis.Task{}).
 		Returns(400, "Not Found", nil),
 	)

@@ -17,14 +17,17 @@ make all WHAT=./cmd/proxy FRAMEWORK_VERBOSE=3
 make all WHAT=./cmd/apiserver FRAMEWORK_VERBOSE=3
 make all WHAT=./cmd/registry FRAMEWORK_VERBOSE=3
 make all WHAT=./cmd/nodelet FRAMEWORK_VERBOSE=3
-make all WHAT=./cmd/proxy FRAMEWORK_VERBOSE=3
+make all WHAT=./cmd/scheduler FRAMEWORK_VERBOSE=3
 ```
 二进制文件在`_output/xxx/bin`目录下
 
 ### 部署API-Server
-本地安etcd，启动etcd.service
+本地安etcd，启动etcd.service  
 然后执行启动命令
-`apiserver --etcd-servers=127.0.0.1:2379`
+`apiserver --etcd-servers=127.0.0.1:2379`  
+
+如果要查看etcd后台数据，安装etcdkeeper
+
 
 ### 部署client-go
 参考pkg/client-go/examples中的用法
