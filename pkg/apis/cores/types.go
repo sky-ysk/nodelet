@@ -451,6 +451,8 @@ type GroupSpec struct {
 	SkipScorePlugins []string `json:"skip_score_plugins,omitempty" yaml:"skip_score_plugins"`
 
 	SkipFilterPlugins []string `json:"skip_filter_plugins,omitempty" yaml:"skip_filter_plugins"`
+	//添加-hzy
+	Replicas int32 `json:"replicas,omitempty" yaml:"replicas"`
 }
 
 type GroupStatus struct {
@@ -476,6 +478,8 @@ type GroupStatus struct {
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+	//添加-hzy
+	CheckDependencyCount int32 `json:"check_dependency_count,omitempty" yaml:"check_dependency_count"`
 }
 
 // ---------- Action
@@ -638,6 +642,10 @@ type Runtime struct {
 	// 输出数据
 	//  输出数据作为参数注入到命令参数中
 	Outputs Output `json:"outputs,omitempty" yaml:"outputs"`
+
+	//添加-hzy
+	Parents []string `json:"parents,omitempty" yaml:"parents"`
+	Waiting bool     `json:"waiting,omitempty" yaml:"waiting"`
 }
 
 //	 输入的数据有以下几类
@@ -720,6 +728,9 @@ type ActionStatus struct {
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+
+	//增加一个参数-hzy
+	Waiting bool `json:"waiting,omitempty" yaml:"waiting"`
 }
 
 type RuntimeStatus struct {
@@ -737,6 +748,9 @@ type RuntimeStatus struct {
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+
+	//增加一个参数0hzy
+	RuntimeID string `json:"runtime_id,omitempty" yaml:"runtime_id"`
 }
 
 // 任务的输出结果

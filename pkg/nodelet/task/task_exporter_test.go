@@ -63,6 +63,60 @@ func yoloTrainTaskGroup() []*apis.Group {
 	groups := []*apis.Group{&newGroup}
 	return groups
 }
+func yoloTrainTaskGroupInlinux() []*apis.Group {
+	newGroup := apis.Group{
+		ObjectMeta: meta.ObjectMeta{Name: "cmd_yolo_train"},
+		Spec: apis.GroupSpec{
+			Name:    "TestGroup",
+			Parents: make([]string, 0),
+			Actions: []apis.Action{
+				apis.Action{
+					ObjectMeta: meta.ObjectMeta{Name: "cmd_yolo_train_action"},
+					Spec: apis.ActionSpec{
+						Name: "TestAction",
+						Runtimes: []apis.Runtime{
+							apis.Runtime{
+								Name:    "CMD",
+								Image:   "",
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+							},
+						},
+					},
+					Status: apis.ActionStatus{
+						ActionID: "cmd_yolo_train_action:test-group",
+						Phase:    apis.Unknown,
+						RuntimeStatus: []apis.RuntimeStatus{
+							apis.RuntimeStatus{
+								RuntimeID: "CMD:cmd_yolo_train_action:test-group",
+								Phase:     apis.Unknown,
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: apis.GroupStatus{
+			GroupID: "test-group",
+			ActionStatus: []apis.ActionStatus{
+				apis.ActionStatus{
+					ActionID: "cmd_yolo_train_action:test-group",
+					RuntimeStatus: []apis.RuntimeStatus{
+						apis.RuntimeStatus{
+							RuntimeID: "CMD:cmd_yolo_train_action:test-group",
+							Phase:     apis.Unknown,
+						},
+					},
+					Phase: apis.Unknown,
+				},
+			},
+		},
+	}
+	groups := []*apis.Group{&newGroup}
+	return groups
+}
+
 func yoloPredictTaskGroup() []*apis.Group {
 	newGroup := apis.Group{
 		ObjectMeta: meta.ObjectMeta{Name: "cmd_yolo_train"},
