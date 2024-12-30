@@ -145,13 +145,13 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 	// 配置资源监控模块
 	scheduleChan := make(chan internal.ScheduleSignal)
 	//queue := internal.NewSchedulingQueue()
+	schedQueue := queue.NewPriorityQueue()
+
 	sched := &Scheduler{
 		StopEverything:  stopEverything,
 		ScheduleSigChan: scheduleChan,
-		//SchedulingQueue: *queue,
+		SchedulingQueue: schedQueue,
 	}
-
-	schedQueue := &queue.PriorityQueue{}
 
 	sched.applyDefaultHandlers()
 	sched.ReadyGroup = schedQueue.Pop

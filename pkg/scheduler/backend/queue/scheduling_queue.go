@@ -46,7 +46,7 @@ type SchedulingQueue interface {
 type PriorityQueue struct {
 	stop chan struct{}
 
-	readyQ readyQueue
+	readyQ *readyQueue
 
 	pendingQueue PendingGroups
 
@@ -57,7 +57,7 @@ func NewPriorityQueue() *PriorityQueue {
 	logs.Info("NewPriorityQueue method")
 	return &PriorityQueue{
 		stop:         make(chan struct{}),
-		readyQ:       *newReadyQueue(),
+		readyQ:       newReadyQueue(),
 		pendingQueue: *newPendingQueue(),
 		lock:         sync.RWMutex{},
 	}
@@ -101,6 +101,7 @@ func (p *PriorityQueue) AddToPending(ctx context.Context, group *apis.Group) {
 	if added := p.moveToPendingQ(ctx, gInfo); added {
 		msg := fmt.Sprintf("group %s now in pending queue", gInfo.Group.Spec.Name)
 		logs.Info(msg)
+		fmt.Println(msg)
 		p.readyQ.broadcast()
 	}
 }
@@ -109,9 +110,6 @@ func (p *PriorityQueue) Run(ctx context.Context) {
 	go wait.Until(func() {
 		p.flushPendingQueue(ctx)
 	}, 1.0*time.Second, p.stop)
-	//go wait.Until(func() {
-	//	p.flushUnschedulablePodsLeftover(logger)
-	//}, 30*time.Second, p.stop)
 }
 
 func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
@@ -119,17 +117,21 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	defer p.lock.Unlock()
 	removeGroupss := make([]*config.QueuedGroupInfo, 0)
 	logs.Info("now run the flush method")
+	fmt.Println("now run the flush method")
 	for k, v := range p.pendingQueue.groupInfoMap {
 		if checkGroupReady(v) {
 			removeGroupss = append(removeGroupss, v)
 			p.moveToActiveQ(ctx, v)
+			p.readyQ.cond.Signal()
 			msg := fmt.Sprintf("group %s is ready , move to active queue", k)
+			fmt.Println(msg)
 			logs.Info(msg)
 		}
 	}
 	for _, group := range removeGroupss {
 		p.pendingQueue.underLockDelete(group)
 		msg := fmt.Sprintf("group %s is removed from pending queue", group.Group.Spec.Name)
+		fmt.Println(msg)
 		logs.Info(msg)
 	}
 }
