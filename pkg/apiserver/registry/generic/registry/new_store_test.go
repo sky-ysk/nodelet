@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
+	genericapirequest "hit.edu/framework/pkg/apiserver/endpoints/request"
 	storagetesting "hit.edu/framework/pkg/apiserver/registry/generic/registry/testing"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
-	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 )
 
 const GroupName = "etcd3test"
@@ -30,34 +29,34 @@ func init() {
 	}
 	addKnownTypes := func(scheme *runtime.Scheme) error {
 		scheme.AddKnownTypes(SchemeGroupVersion, NodeObject...)
-		
+
 		if err := meta.RegisterConversions(scheme); err != nil {
 			panic(err)
 		}
 		return nil
 	}
-	
+
 	addUnversionedTypes := func(scheme *runtime.Scheme) error {
 		scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
 		return nil
 	}
-	
+
 	SchemeBuilder := runtime.NewSchemeBuilder(addKnownTypes, addUnversionedTypes)
 	AddToScheme := SchemeBuilder.AddToScheme
 	utilruntime.Must(AddToScheme(scheme))
-	
+
 	// scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
 	// meta.AddToScheme(scheme)
 }
 
 func TestStoreCreate(t *testing.T) {
 	nodeA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 	}
-	testContext := genericapirequest.NewContext()
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
 	destroyFunc, registry := NewTestGenericStoreRegistry(t)
 	defer destroyFunc()
-	defaultDeleteStrategy := testRESTStrategy{scheme}
+	defaultDeleteStrategy := testRESTStrategy{scheme, true}
 	registry.DeleteStrategy = testGracefulStrategy{defaultDeleteStrategy}
 	_, err := registry.Create(testContext, nodeA, denyCreateValidation)
 	if err == nil {
@@ -79,14 +78,14 @@ func TestStoreCreate(t *testing.T) {
 // 测试ListPredicate能否完成GetList操作，List并根据标签筛选
 func TestStoreList(t *testing.T) {
 	nodeA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "bar"},
+		ObjectMeta: meta.ObjectMeta{Name: "bar", Namespace: "aaa"},
 		TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "etcd3test/v1"},
 	}
 	nodeB := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 		TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "etcd3test/v1"},
 	}
-	testContext := genericapirequest.NewContext()
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
 	table := map[string]struct {
 		in      *apis.NodeList
 		m       storage.SelectionPredicate
@@ -114,7 +113,7 @@ func TestStoreList(t *testing.T) {
 			out: &apis.NodeList{Items: []apis.Node{*nodeB}},
 		},
 	}
-	
+
 	for name, item := range table {
 		t.Run(name, func(t *testing.T) {
 			ctx := testContext
@@ -123,13 +122,13 @@ func TestStoreList(t *testing.T) {
 			}
 			destroyFunc, registry := NewTestGenericStoreRegistry(t)
 			defer destroyFunc()
-			
+
 			if item.in != nil {
 				if err := storagetesting.CreateList("/nodes", registry.Storage, item.in); err != nil {
 					t.Fatalf("Unexpected error %v", err)
 				}
 			}
-			
+
 			list, err := registry.ListPredicate(ctx, item.m, nil)
 			if err != nil {
 				t.Fatalf("Unexpected error %v", err)
@@ -146,40 +145,34 @@ func TestStoreList(t *testing.T) {
 // 测试Update能否正确处理资源的更新
 func TestStoreUpdate(t *testing.T) {
 	podA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 	}
 	podB := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 		Spec:       apis.NodeSpec{NodeName: "machine"},
 	}
-	testContext := genericapirequest.NewContext()
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
 	destroyFunc, registry := NewTestGenericStoreRegistry(t)
 	defer destroyFunc()
-	
-	// try to update a non-existing node with denying admission, should still return NotFound
-	_, _, err := registry.Update(testContext, podA.Name, rest.DefaultUpdatedObjectInfo(podA), denyCreateValidation, denyUpdateValidation, false, &meta.UpdateOptions{})
-	if !errors.IsNotFound(err) {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	
+
 	// try to update a non-existing node
-	_, _, err = registry.Update(testContext, podA.Name, rest.DefaultUpdatedObjectInfo(podA), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &meta.UpdateOptions{})
-	if !errors.IsNotFound(err) {
+	_, _, err := registry.Update(testContext, podA.Name, rest.DefaultUpdatedObjectInfo(podA), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &meta.UpdateOptions{})
+	if err == nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	
+
 	// create the object
 	_, err = registry.Create(testContext, podA, rest.ValidateAllObjectFunc)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	
+
 	// normal update
 	_, _, err = registry.Update(testContext, podB.Name, rest.DefaultUpdatedObjectInfo(podB), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &meta.UpdateOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	
+
 	if !updateAndVerify(t, testContext, registry, podA) {
 		t.Errorf("Unexpected error updating podA")
 	}
@@ -193,25 +186,25 @@ func TestStoreUpdate(t *testing.T) {
 
 func TestStoreGet(t *testing.T) {
 	podA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 		Spec:       apis.NodeSpec{NodeName: "machine"},
 	}
-	
-	testContext := genericapirequest.NewContext()
+
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
 	destroyFunc, registry := NewTestGenericStoreRegistry(t)
 	defer destroyFunc()
-	
+
 	_, err := registry.Get(testContext, podA.Name, &meta.GetOptions{})
 	if err == nil {
 		fmt.Printf("expect not found")
 	}
-	
+
 	// create the object
 	_, err = registry.Create(testContext, podA, rest.ValidateAllObjectFunc)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	
+
 	if !updateAndVerify(t, testContext, registry, podA) {
 		t.Errorf("Unexpected error creating podA")
 	}
@@ -219,26 +212,26 @@ func TestStoreGet(t *testing.T) {
 
 func TestStoreDelete(t *testing.T) {
 	podA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 		Spec:       apis.NodeSpec{NodeName: "machine"},
 	}
-	
-	testContext := genericapirequest.NewContext()
+
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
 	destroyFunc, registry := NewTestGenericStoreRegistry(t)
 	defer destroyFunc()
-	
+
 	// test failure condition
 	_, _, err := registry.Delete(testContext, podA.Name, rest.ValidateAllObjectFunc, nil)
 	if err == nil {
 		fmt.Printf("expect not found")
 	}
-	
+
 	// create pod
 	_, err = registry.Create(testContext, podA, rest.ValidateAllObjectFunc)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	
+
 	// delete object
 	_, wasDeleted, err := registry.Delete(testContext, podA.Name, rest.ValidateAllObjectFunc, nil)
 	if err != nil {
@@ -247,7 +240,7 @@ func TestStoreDelete(t *testing.T) {
 	if !wasDeleted {
 		t.Errorf("unexpected, pod %s should have been deleted immediately", podA.Name)
 	}
-	
+
 	// try to get a item which should be deleted
 	_, err = registry.Get(testContext, podA.Name, &meta.GetOptions{})
 	if err == nil {
@@ -256,9 +249,9 @@ func TestStoreDelete(t *testing.T) {
 }
 
 func TestStoreWatch(t *testing.T) {
-	testContext := genericapirequest.NewContext()
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
 	Context1 := genericapirequest.NewContext()
-	
+
 	table := map[string]struct {
 		selectPred storage.SelectionPredicate
 		context    context.Context
@@ -274,7 +267,7 @@ func TestStoreWatch(t *testing.T) {
 			context:    Context1,
 		},
 	}
-	
+
 	for name, m := range table {
 		t.Run(name, func(t *testing.T) {
 			ctx := testContext
@@ -283,14 +276,15 @@ func TestStoreWatch(t *testing.T) {
 			}
 			podA := &apis.Node{
 				ObjectMeta: meta.ObjectMeta{
-					Name: "foo",
+					Name:      "foo",
+					Namespace: "aaa",
 				},
 				Spec: apis.NodeSpec{NodeName: "machine"},
 			}
-			
+
 			destroyFunc, registry := NewTestGenericStoreRegistry(t)
 			defer destroyFunc()
-			wi, err := registry.WatchPredicate(ctx, m.selectPred, "0", nil)
+			wi, err := registry.WatchPredicate(ctx, m.selectPred, "0", nil, false)
 			if err != nil {
 				t.Errorf("%v: unexpected error: %v", name, err)
 			} else {

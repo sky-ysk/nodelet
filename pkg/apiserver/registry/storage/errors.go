@@ -6,9 +6,10 @@ import (
 	"errors"
 	"fmt"
 
+	"net/http"
+
+	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apiserver/registry/storage/field"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -180,23 +181,30 @@ func NewInternalErrorf(format string, a ...interface{}) InternalError {
 
 var tooLargeResourceVersionCauseMsg = "Too large resource version"
 
-// NewTooLargeResourceVersionError returns a timeout error with the given retrySeconds for a request for
-// a minimum resource version that is larger than the largest currently available resource version for a requested resource.
+type StatusError struct {
+	ErrStatus meta.Status
+}
+
+func (e *StatusError) Error() string {
+	return e.ErrStatus.Message
+}
+
 func NewTooLargeResourceVersionError(minimumResourceVersion, currentRevision uint64, retrySeconds int) error {
-	err := apierrors.NewTimeoutError(fmt.Sprintf("Too large resource version: %d, current: %d", minimumResourceVersion, currentRevision), retrySeconds)
-	err.ErrStatus.Details.Causes = []metav1.StatusCause{
+	err := &StatusError{
+		ErrStatus: meta.Status{
+			Status:  meta.StatusFailure,
+			Code:    http.StatusGatewayTimeout,
+			Reason:  meta.StatusReasonTimeout,
+			Message: fmt.Sprintf("Timeout: %s", fmt.Sprintf("Too large resource version: %d, current: %d", minimumResourceVersion, currentRevision)),
+			Details: &meta.StatusDetails{
+				RetryAfterSeconds: int32(retrySeconds),
+			},
+		}}
+	err.ErrStatus.Details.Causes = []meta.StatusCause{
 		{
-			Type:    metav1.CauseTypeResourceVersionTooLarge,
+			Type:    meta.CauseTypeResourceVersionTooLarge,
 			Message: tooLargeResourceVersionCauseMsg,
 		},
 	}
 	return err
-}
-
-// IsTooLargeResourceVersion returns true if the error is a TooLargeResourceVersion error.
-func IsTooLargeResourceVersion(err error) bool {
-	if !apierrors.IsTimeout(err) {
-		return false
-	}
-	return apierrors.HasStatusCause(err, metav1.CauseTypeResourceVersionTooLarge)
 }

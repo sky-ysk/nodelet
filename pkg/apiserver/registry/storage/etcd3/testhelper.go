@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/apimachinery/util/wait"
-	"hit.edu/framework/pkg/apimachinery/watch"
 	"path"
 	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-	
+
+	"hit.edu/framework/pkg/apimachinery/util/wait"
+	"hit.edu/framework/pkg/apimachinery/watch"
+
 	"github.com/google/go-cmp/cmp"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -57,13 +58,13 @@ func DeepEqualSafeNodeSpec() apis.NodeSpec {
 }
 
 func computeNodeKey(obj *apis.Node) string {
-	return fmt.Sprintf("/pods/%s/%s", obj.Namespace, obj.Name)
+	return fmt.Sprintf("/nodes/%s/%s", obj.Namespace, obj.Name)
 }
 
 func testPropagateStore(ctx context.Context, t *testing.T, store storage.Interface, obj *apis.Node) (string, *apis.Node) {
 	// Setup store with a key and grab the output for returning.
 	key := computeNodeKey(obj)
-	
+
 	// Setup store with the specified key and grab the output for returning.
 	err := store.Delete(ctx, key, &apis.Node{}, nil, storage.ValidateAllObjectFunc, nil)
 	if err != nil && !storage.IsNotFound(err) {
@@ -211,7 +212,7 @@ func resourceVersionNotOlderThan(sentinel string) func(string) error {
 // StorageInjectingListErrors injects a dummy error for first N GetList calls.
 type StorageInjectingListErrors struct {
 	storage.Interface
-	
+
 	lock   sync.Mutex
 	Errors int
 }
@@ -285,7 +286,7 @@ func (p *PrefixTransformer) GetReadsAndReset() uint64 {
 type reproducingTransformer struct {
 	wrapped value.Transformer
 	store   storage.Interface
-	
+
 	index      uint32
 	nextObject func(uint32) (string, *apis.Node)
 }
@@ -338,6 +339,6 @@ type PrefixTransformerModifier func(*PrefixTransformer) value.Transformer
 
 type InterfaceWithPrefixTransformer interface {
 	storage.Interface
-	
+
 	UpdatePrefixTransformer(PrefixTransformerModifier) func()
 }
