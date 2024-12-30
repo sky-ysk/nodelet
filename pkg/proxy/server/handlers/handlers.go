@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/emicklei/go-restful/v3"
 	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/proxy/server/handlers/group"
 	"hit.edu/framework/pkg/proxy/server/handlers/node"
 	"hit.edu/framework/pkg/proxy/server/handlers/task"
 	"hit.edu/framework/pkg/proxy/server/handlers/workflow"
@@ -53,4 +54,16 @@ func (h *Handlers) InstallNodeHandlers(container *restful.Container) {
 	// 查询单个Node
 	nh := node.NewNodeHandler(h.ClientSet)
 	container.Add(nh.NewGetWebService())
+}
+
+func (h *Handlers) InstallGroupHandlers(container *restful.Container) {
+	// Groups相关
+	gsh := group.NewGroupsHandler(h.ClientSet)
+	// 查询Groups
+	container.Add(gsh.NewGetWebService())
+
+	// Group相关
+	// 查询单个Group
+	gh := group.NewGroupHandler(h.ClientSet)
+	container.Add(gh.NewGetWebService())
 }

@@ -41,6 +41,8 @@ func (s *Server) InstallDefaultHandlers() {
 	s.handlers.InstallWorkflowHandlers(s.container)
 	// Task相关
 	s.handlers.InstallTaskHandlers(s.container)
+	// Group相关
+	s.handlers.InstallGroupHandlers(s.container)
 
 	// Resource相关
 	// Node

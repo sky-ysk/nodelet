@@ -5,6 +5,7 @@ import (
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
+	"github.com/google/uuid"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
@@ -14,15 +15,18 @@ import (
 )
 
 type TaskHandler struct {
-	client core.TaskInterface
+	client      core.TaskInterface
+	groupClient core.GroupInterface
 }
 
 var _ Handler = &TaskHandler{}
 
 func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
 	c := clientSet.Core().Tasks(apis.NamespaceAll)
+	gc := clientSet.Core().Groups(apis.NamespaceAll)
 	return &TaskHandler{
-		client: c,
+		client:      c,
+		groupClient: gc,
 	}
 }
 
@@ -49,6 +53,7 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		logs.Errorf("Get task %s error: %v", name, err)
 		//response.WriteError(http.StatusInternalServerError, err)
 	}
+	// TODO: 删除Name
 	if result.Name == name {
 		logs.Errorf("Create task %s error, task existed: %v", name, result)
 		err = fmt.Errorf("Create task %s error, task existed: %v", name, result)
@@ -65,16 +70,49 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		return
 	}
 	// TODO: 格式校验
-	// TODO: 为Workflow分配ID
-	logs.Debugf("Create task %s", name)
+	// TODO: Task分配ID
+	tu := uuid.New().String()
+	ew.Status.TaskID = tu
+	logs.Debugf("Create task %s, id %s", name, tu)
 
-	// 将Workflow写入数据库中
+	// Task写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 		logs.Errorf("Create task %s error: %v", name, err)
 		return
 	}
+
+	// 构造Groups
+	for _, g := range ew.Spec.Groups {
+		//
+		g.ObjectMeta = metav1.ObjectMeta{
+			Name: g.Spec.Name,
+		}
+		//
+		g.TypeMeta = metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		}
+
+		// 分配Group的GroupID
+		gu := uuid.New().String()
+		g.Status.GroupID = gu
+
+		// Group的TaskID
+		g.Status.Belongs.TaskID = tu
+
+		_, err = h.groupClient.Create(context.TODO(), &g, metav1.CreateOptions{})
+
+		if err != nil {
+			response.WriteError(http.StatusInternalServerError, err)
+			logs.Errorf("Create task %s group %s error: %v", name, g.Name, err)
+			logs.Errorf("Group %v", g)
+			return
+		}
+	}
+	// TODO: 错误处理
+
 	// 返回结果
 	err = response.WriteEntity(result)
 	if err != nil {
