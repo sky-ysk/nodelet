@@ -10,9 +10,9 @@ import (
 	metainternalversionscheme "hit.edu/framework/pkg/apis/meta/internalversion/scheme"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
+	"hit.edu/framework/pkg/apiserver/endpoints/request"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	"net/http"
 )
 

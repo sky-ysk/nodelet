@@ -3,16 +3,20 @@ package rest
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apiserver/registry/storage/field"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apis/meta"
+	genericapirequest "hit.edu/framework/pkg/apiserver/endpoints/request"
 )
 
 // RESTUpdateStrategy 定义了更新策略的最小验证
 type RESTUpdateStrategy interface {
 	runtime.ObjectTyper
+	// NamespaceScoped判断资源是否支持NameSpace
+	NamespaceScoped() bool
 	// PrepareForUpdate 在创建之前调用，以实现标准化
 	PrepareForUpdate(ctx context.Context, obj, old runtime.Object)
 	// ValidateUpdate 在默认字段填充好，还未持久化前调用，返回验证错误
@@ -36,7 +40,7 @@ func validateCommonFields(obj, old runtime.Object, strategy RESTUpdateStrategy) 
 	}
 	//allErrs = append(allErrs, genericvalidation.ValidateObjectMetaAccessor(objectMeta, false, path.ValidatePathSegmentName, field.NewPath("metadata"))...)
 	//allErrs = append(allErrs, genericvalidation.ValidateObjectMetaAccessorUpdate(objectMeta, oldObjectMeta, field.NewPath("metadata"))...)
-	
+
 	return allErrs, nil
 }
 
@@ -49,15 +53,24 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 	if kerr != nil {
 		return kerr
 	}
+
+	requestNamespace, _ := genericapirequest.NamespaceFrom(ctx)
+	//if !ok {
+	//	return errors.NewInternalError(fmt.Errorf("no namespace information found in request context"))
+	//}
+	if err := EnsureObjectNamespaceMatchesRequestNamespace(ExpectedNamespaceForScope(requestNamespace, strategy.NamespaceScoped()), objectMeta); err != nil {
+		return err
+	}
+
 	// 确保请求不更新generation字段
 	oldMeta, err := meta.Accessor(old)
 	if err != nil {
 		return err
 	}
 	objectMeta.SetGeneration(oldMeta.GetGeneration())
-	
+
 	strategy.PrepareForUpdate(ctx, obj, old)
-	
+
 	// 未提供UID则使用旧对象的UID
 	if len(objectMeta.GetUID()) == 0 {
 		objectMeta.SetUID(oldMeta.GetUID())
@@ -81,7 +94,7 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 		return errors.NewInvalid(kind.GroupKind(), objectMeta.GetName(), errs)
 	}
 	strategy.Canonicalize(obj)
-	
+
 	return nil
 }
 
@@ -92,7 +105,7 @@ type TransformFunc func(ctx context.Context, newObj runtime.Object, oldObj runti
 type defaultUpdatedObjectInfo struct {
 	// obj 是更新后的对象
 	obj runtime.Object
-	
+
 	// transformers 是一个可选的转换函数列表，用于修改更新后的对象
 	transformers []TransformFunc
 }

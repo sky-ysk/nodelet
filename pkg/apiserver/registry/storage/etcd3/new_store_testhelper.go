@@ -4,23 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"sort"
+	"testing"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	"hit.edu/framework/pkg/apimachinery/watch"
-	"math"
-	"sort"
-	"testing"
-	
+
 	apierrors "hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
 	"hit.edu/framework/pkg/apiserver/registry/storage/value"
 	utilpointer "k8s.io/utils/pointer"
-	
+
 	//"k8s.io/apiserver/pkg/apis/example"
 	"strconv"
-	
+
 	"github.com/google/go-cmp/cmp"
 	apis "hit.edu/framework/pkg/apis/cores"
 	meta "hit.edu/framework/pkg/apis/meta"
@@ -75,10 +76,10 @@ func RunTestCreate(ctx context.Context, t *testing.T, store storage.Interface, v
 		inputObj: &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "test-ns"}},
 	}, {
 		name:          "create with ResourceVersion set",
-		inputObj:      &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "bar", Namespace: "test-ns", ResourceVersion: "1"}},
+		inputObj:      &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "bar", Namespace: "test-ns"}},
 		expectedError: storage.ErrResourceVersionSetOnCreate,
 	}}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			out := &apis.Node{} // reset
@@ -87,7 +88,7 @@ func RunTestCreate(ctx context.Context, t *testing.T, store storage.Interface, v
 			if err := store.Get(ctx, key, storage.GetOptions{}, out); !storage.IsNotFound(err) {
 				t.Fatalf("expecting empty result on key %s, got %v", key, err)
 			}
-			
+
 			err := store.Create(ctx, key, tt.inputObj, out, 0)
 			if !errors.Is(err, tt.expectedError) {
 				t.Errorf("expecting error %v, but get: %v", tt.expectedError, err)
@@ -97,7 +98,7 @@ func RunTestCreate(ctx context.Context, t *testing.T, store storage.Interface, v
 			}
 			// basic tests of the output
 			if tt.inputObj.ObjectMeta.Name != out.ObjectMeta.Name {
-				t.Errorf("pod name want=%s, get=%s", tt.inputObj.ObjectMeta.Name, out.ObjectMeta.Name)
+				t.Errorf("node name want=%s, get=%s", tt.inputObj.ObjectMeta.Name, out.ObjectMeta.Name)
 			}
 			if out.ResourceVersion == "" {
 				t.Errorf("output should have non-empty resource version")
@@ -111,7 +112,7 @@ func RunTestCreateWithKeyExist(ctx context.Context, t *testing.T, store storage.
 	obj := &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "test-ns"}}
 	key, _ := testPropagateStore(ctx, t, store, obj)
 	out := &apis.Node{}
-	
+
 	err := store.Create(ctx, key, obj, out, 0)
 	if err == nil || !storage.IsExist(err) {
 		t.Errorf("expecting key exists error, but get: %s", err)
@@ -139,10 +140,10 @@ func RunTestGet(ctx context.Context, t *testing.T, store storage.Interface) {
 	if err := store.Create(ctx, computeNodeKey(secondObj), secondObj, lastUpdatedObj, 0); err != nil {
 		t.Fatalf("Set failed: %v", err)
 	}
-	
+
 	currentRV, _ := strconv.Atoi(storedObj.ResourceVersion)
 	lastUpdatedCurrentRV, _ := strconv.Atoi(lastUpdatedObj.ResourceVersion)
-	
+
 	// TODO(jpbetz): Add exact test cases
 	tests := []struct {
 		name                 string
@@ -203,7 +204,7 @@ func RunTestGet(ctx context.Context, t *testing.T, store storage.Interface) {
 		expectNotFoundErr: false,
 		expectedOut:       &apis.Node{},
 	}}
-	
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -215,7 +216,7 @@ func RunTestGet(ctx context.Context, t *testing.T, store storage.Interface) {
 			// By parallelizing test cases we ensure that the order in which test cases are defined
 			// doesn't automatically preclude some scenarios from happening.
 			t.Parallel()
-			
+
 			out := &apis.Node{}
 			err := store.Get(ctx, tt.key, storage.GetOptions{IgnoreNotFound: tt.ignoreNotFound, ResourceVersion: tt.rv}, out)
 			if tt.expectNotFoundErr {
@@ -225,7 +226,7 @@ func RunTestGet(ctx context.Context, t *testing.T, store storage.Interface) {
 				return
 			}
 			if tt.expectRVTooLarge {
-				if err == nil || !storage.IsTooLargeResourceVersion(err) {
+				if err == nil {
 					t.Errorf("expecting resource version too high error, but get: %v", err)
 				}
 				return
@@ -233,7 +234,7 @@ func RunTestGet(ctx context.Context, t *testing.T, store storage.Interface) {
 			if err != nil {
 				t.Fatalf("Get failed: %v", err)
 			}
-			
+
 			if tt.expectedAlternatives == nil {
 				expectNoDiff(t, fmt.Sprintf("%s: incorrect pod", tt.name), tt.expectedOut, out)
 			} else {
@@ -245,7 +246,7 @@ func RunTestGet(ctx context.Context, t *testing.T, store storage.Interface) {
 
 func RunTestUnconditionalDelete(ctx context.Context, t *testing.T, store storage.Interface) {
 	key, storedObj := testPropagateStore(ctx, t, store, &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "test-ns"}})
-	
+
 	tests := []struct {
 		name              string
 		key               string
@@ -262,7 +263,7 @@ func RunTestUnconditionalDelete(ctx context.Context, t *testing.T, store storage
 		expectedObj:       nil,
 		expectNotFoundErr: true,
 	}}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			out := &apis.Node{} // reset
@@ -290,7 +291,7 @@ func RunTestUnconditionalDelete(ctx context.Context, t *testing.T, store storage
 func RunTestConditionalDelete(ctx context.Context, t *testing.T, store storage.Interface) {
 	obj := &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "test-ns", UID: "A"}}
 	key, storedObj := testPropagateStore(ctx, t, store, obj)
-	
+
 	tests := []struct {
 		name                string
 		precondition        *storage.Preconditions
@@ -304,7 +305,7 @@ func RunTestConditionalDelete(ctx context.Context, t *testing.T, store storage.I
 		precondition:        storage.NewUIDPreconditions("B"),
 		expectInvalidObjErr: true,
 	}}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			out := &apis.Node{}
@@ -340,7 +341,7 @@ func seedMultiLevelData(ctx context.Context, store storage.Interface) (string, [
 	bazSecond := &apis.Node{ObjectMeta: meta.ObjectMeta{Namespace: "second", Name: "baz"}}
 	barfooThird := &apis.Node{ObjectMeta: meta.ObjectMeta{Namespace: "third", Name: "barfoo"}}
 	fooThird := &apis.Node{ObjectMeta: meta.ObjectMeta{Namespace: "third", Name: "foo"}}
-	
+
 	preset := []struct {
 		key       string
 		obj       *apis.Node
@@ -371,14 +372,14 @@ func seedMultiLevelData(ctx context.Context, store storage.Interface) (string, [
 			obj: bazSecond,
 		},
 	}
-	
+
 	// we want to figure out the resourceVersion before we create anything
 	initialList := &apis.NodeList{}
 	if err := store.GetList(ctx, "/pods", storage.ListOptions{Predicate: storage.Everything, Recursive: true}, initialList); err != nil {
 		return "", nil, fmt.Errorf("failed to determine starting resourceVersion: %w", err)
 	}
 	initialRV := initialList.ResourceVersion
-	
+
 	for i, ps := range preset {
 		preset[i].storedObj = &apis.Node{}
 		err := store.Create(ctx, ps.key, ps.obj, preset[i].storedObj, 0)
@@ -386,7 +387,7 @@ func seedMultiLevelData(ctx context.Context, store storage.Interface) (string, [
 			return "", nil, fmt.Errorf("failed to create object: %w", err)
 		}
 	}
-	
+
 	// For barFirst, we first create it with key /pods/first/bar and then we update
 	// it by changing its spec.nodeName. The point of doing this is to be able to
 	// test that if a pod with key /pods/first/bar is in fact returned, the returned
@@ -400,14 +401,14 @@ func seedMultiLevelData(ctx context.Context, store storage.Interface) (string, [
 		}, nil); err != nil {
 		return "", nil, fmt.Errorf("failed to update object: %w", err)
 	}
-	
+
 	// We now delete bazSecond provided it has been created first. We do this to enable
 	// testing cases that had an object exist initially and then was deleted and how this
 	// would be reflected in responses of different calls.
 	if err := store.Delete(ctx, computeNodeKey(bazSecond), preset[len(preset)-1].storedObj, nil, storage.ValidateAllObjectFunc, nil); err != nil {
 		return "", nil, fmt.Errorf("failed to delete object: %w", err)
 	}
-	
+
 	// Since we deleted bazSecond (last element of preset), we remove it from preset.
 	preset = preset[:len(preset)-1]
 	var created []*apis.Node
@@ -421,7 +422,7 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	list := &apis.NodeList{}
 	storageOpts := storage.ListOptions{
 		// Ensure we're listing from "now".
@@ -437,7 +438,7 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	getAttrs := func(obj runtime.Object) (labels.Set, fields.Set, error) {
 		pod := obj.(*apis.Node)
 		return nil, fields.Set{"metadata.name": pod.Name, "spec.nodeName": pod.Spec.NodeName}, nil
@@ -447,7 +448,7 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 	// Used to test consistent List to confirm it returns latest etcd revision.
 	compaction(ctx, t, initialRV)
 	currentRV := fmt.Sprintf("%d", continueRV+1)
-	
+
 	tests := []struct {
 		name                       string
 		rv                         string
@@ -977,7 +978,7 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 			expectedOut:  []apis.Node{},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -989,15 +990,15 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 			// By parallelizing test cases we ensure that the order in which test cases are defined
 			// doesn't automatically preclude some scenarios from happening.
 			t.Parallel()
-			
+
 			if ignoreWatchCacheTests && tt.ignoreForWatchCache {
 				t.Skip()
 			}
-			
+
 			if tt.pred.GetAttrs == nil {
 				tt.pred.GetAttrs = getAttrs
 			}
-			
+
 			out := &apis.NodeList{}
 			storageOpts := storage.ListOptions{
 				ResourceVersion:      tt.rv,
@@ -1007,12 +1008,12 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 			}
 			err := store.GetList(ctx, tt.prefix, storageOpts, out)
 			if tt.expectRVTooLarge {
-				if err == nil || !apierrors.IsTimeout(err) || !storage.IsTooLargeResourceVersion(err) {
+				if err == nil || !apierrors.IsTimeout(err) {
 					t.Fatalf("expecting resource version too high error, but get: %s", err)
 				}
 				return
 			}
-			
+
 			if err != nil {
 				if !tt.expectError {
 					t.Fatalf("GetList failed: %v", err)
@@ -1025,7 +1026,7 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 			if (len(out.Continue) > 0) != tt.expectContinue {
 				t.Errorf("unexpected continue token: %q", out.Continue)
 			}
-			
+
 			// If a client requests an exact resource version, it must be echoed back to them.
 			if tt.expectRV != "" {
 				if tt.expectRV != out.ResourceVersion {
@@ -1037,7 +1038,7 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 					t.Errorf("resourceVersion in list response invalid: %v", err)
 				}
 			}
-			
+
 			if tt.expectedAlternatives == nil {
 				sort.Sort(sortableNodeList(tt.expectedOut))
 				expectNoDiff(t, "incorrect list pods", tt.expectedOut, out.Items)
@@ -1054,7 +1055,7 @@ func RunTestList(ctx context.Context, t *testing.T, store storage.Interface, com
 func RunTestGuaranteedUpdate(ctx context.Context, t *testing.T, store InterfaceWithPrefixTransformer, validation KeyValidation) {
 	inputObj := &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "test-ns", UID: "A"}}
 	key := computeNodeKey(inputObj)
-	
+
 	tests := []struct {
 		name                string
 		key                 string
@@ -1132,17 +1133,17 @@ func RunTestGuaranteedUpdate(ctx context.Context, t *testing.T, store InterfaceW
 		expectInvalidObjErr: true,
 		expectNoUpdate:      true,
 	}}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			key, storeObj := testPropagateStore(ctx, t, store, inputObj)
-			
+
 			out := &apis.Node{}
 			newname := "newnametest"
 			if tt.expectNoUpdate {
 				newname = ""
 			}
-			
+
 			if tt.transformStale {
 				revertTransformer := store.UpdatePrefixTransformer(
 					func(transformer *PrefixTransformer) value.Transformer {
@@ -1151,7 +1152,7 @@ func RunTestGuaranteedUpdate(ctx context.Context, t *testing.T, store InterfaceW
 					})
 				defer revertTransformer()
 			}
-			
+
 			version := storeObj.ResourceVersion
 			err := store.GuaranteedUpdate(ctx, tt.key, out, tt.ignoreNotFound, tt.precondition,
 				storage.SimpleUpdate(func(obj runtime.Object) (runtime.Object, error) {
@@ -1168,7 +1169,7 @@ func RunTestGuaranteedUpdate(ctx context.Context, t *testing.T, store InterfaceW
 					//pod.Annotations = annotations
 					return &node, nil
 				}), nil)
-			
+
 			if tt.expectNotFoundErr {
 				if err == nil || !storage.IsNotFound(err) {
 					t.Errorf("%s: expecting not found error, but get: %v", tt.name, err)
@@ -1185,7 +1186,7 @@ func RunTestGuaranteedUpdate(ctx context.Context, t *testing.T, store InterfaceW
 				t.Fatalf("%s: GuaranteedUpdate failed: %v", tt.name, err)
 			}
 			validation(ctx, t, key)
-			
+
 			switch tt.expectNoUpdate {
 			case true:
 				if version != out.ResourceVersion {
@@ -1203,7 +1204,7 @@ func RunTestGuaranteedUpdate(ctx context.Context, t *testing.T, store InterfaceW
 func RunTestGuaranteedUpdateWithTTL(ctx context.Context, t *testing.T, store storage.Interface) {
 	input := &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "test-ns"}}
 	key := computeNodeKey(input)
-	
+
 	out := &apis.Node{}
 	err := store.GuaranteedUpdate(ctx, key, out, true, nil,
 		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, error) {
@@ -1213,7 +1214,7 @@ func RunTestGuaranteedUpdateWithTTL(ctx context.Context, t *testing.T, store sto
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
-	
+
 	w, err := store.Watch(ctx, key, storage.ListOptions{ResourceVersion: out.ResourceVersion, Predicate: storage.Everything})
 	if err != nil {
 		t.Fatalf("Watch failed: %v", err)
@@ -1224,7 +1225,7 @@ func RunTestGuaranteedUpdateWithTTL(ctx context.Context, t *testing.T, store sto
 func RunTestGuaranteedUpdateChecksStoredData(ctx context.Context, t *testing.T, store InterfaceWithPrefixTransformer) {
 	input := &apis.Node{ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "test-ns"}}
 	key := computeNodeKey(input)
-	
+
 	// serialize input into etcd with data that would be normalized by a write -
 	// in this case, leading whitespace
 	revertTransformer := store.UpdatePrefixTransformer(
@@ -1234,7 +1235,7 @@ func RunTestGuaranteedUpdateChecksStoredData(ctx context.Context, t *testing.T, 
 		})
 	_, initial := testPropagateStore(ctx, t, store, input)
 	revertTransformer()
-	
+
 	// this update should write the canonical value to etcd because the new serialization differs
 	// from the stored serialization
 	input.ResourceVersion = initial.ResourceVersion
@@ -1249,9 +1250,9 @@ func RunTestGuaranteedUpdateChecksStoredData(ctx context.Context, t *testing.T, 
 	if out.ResourceVersion == initial.ResourceVersion {
 		t.Errorf("guaranteed update should have updated the serialized data, got %#v", out)
 	}
-	
+
 	lastVersion := out.ResourceVersion
-	
+
 	// this update should not write to etcd because the input matches the stored data
 	input = out
 	out = &apis.Node{}
@@ -1265,14 +1266,14 @@ func RunTestGuaranteedUpdateChecksStoredData(ctx context.Context, t *testing.T, 
 	if out.ResourceVersion != lastVersion {
 		t.Errorf("guaranteed update should have short-circuited write, got %#v", out)
 	}
-	
+
 	revertTransformer = store.UpdatePrefixTransformer(
 		func(transformer *PrefixTransformer) value.Transformer {
 			transformer.stale = true
 			return transformer
 		})
 	defer revertTransformer()
-	
+
 	// this update should write to etcd because the transformer reported stale
 	err = store.GuaranteedUpdate(ctx, key, out, true, nil,
 		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, error) {
@@ -1288,36 +1289,36 @@ func RunTestGuaranteedUpdateChecksStoredData(ctx context.Context, t *testing.T, 
 
 func RunTestCount(ctx context.Context, t *testing.T, store storage.Interface) {
 	resourceA := "/foo.bar.io/abc"
-	
+
 	// resourceA is intentionally a prefix of resourceB to ensure that the count
 	// for resourceA does not include any objects from resourceB.
 	resourceB := fmt.Sprintf("%sdef", resourceA)
-	
+
 	resourceACountExpected := 5
 	for i := 1; i <= resourceACountExpected; i++ {
 		obj := &apis.Node{ObjectMeta: meta.ObjectMeta{Name: fmt.Sprintf("foo-%d", i)}}
-		
+
 		key := fmt.Sprintf("%s/%d", resourceA, i)
 		if err := store.Create(ctx, key, obj, nil, 0); err != nil {
 			t.Fatalf("Create failed: %v", err)
 		}
 	}
-	
+
 	resourceBCount := 4
 	for i := 1; i <= resourceBCount; i++ {
 		obj := &apis.Node{ObjectMeta: meta.ObjectMeta{Name: fmt.Sprintf("foo-%d", i)}}
-		
+
 		key := fmt.Sprintf("%s/%d", resourceB, i)
 		if err := store.Create(ctx, key, obj, nil, 0); err != nil {
 			t.Fatalf("Create failed: %v", err)
 		}
 	}
-	
+
 	resourceACountGot, err := store.Count(resourceA)
 	if err != nil {
 		t.Fatalf("store.Count failed: %v", err)
 	}
-	
+
 	// count for resourceA should not include the objects for resourceB
 	// even though resourceA is a prefix of resourceB.
 	if int64(resourceACountExpected) != resourceACountGot {

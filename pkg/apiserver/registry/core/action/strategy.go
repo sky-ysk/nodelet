@@ -2,9 +2,10 @@ package action
 
 import (
 	"context"
+
 	"hit.edu/framework/pkg/apis/legacyscheme"
 	"hit.edu/framework/pkg/apiserver/registry/storage/field"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 )
 
@@ -23,3 +24,7 @@ func (t Strategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) f
 	return nil
 }
 func (t Strategy) Canonicalize(obj runtime.Object) {}
+
+func (t Strategy) NamespaceScoped() bool {
+	return true
+}

@@ -3,11 +3,11 @@ package rest
 import (
 	"context"
 	"hit.edu/framework/pkg/apimachinery/watch"
-	
+
 	//metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apis/meta/internalversion"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 )
 
@@ -145,7 +145,7 @@ type StandardStorage interface {
 	GracefulDeleter
 	CollectionDeleter
 	Watcher
-	
+
 	// Destroy 在系统关闭时清理相关的资源，必须是线程安全的，并且能够处理被多次调用的情况
 	Destroy()
 }

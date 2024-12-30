@@ -8,6 +8,7 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"hit.edu/framework/pkg/component-base/logs"
 )
 
 const (
@@ -24,10 +25,6 @@ func init() {
 	endpointsMap = make(map[string]struct{})
 }
 
-// StartCompactor starts a compactor in the background to compact old version of keys that's not needed.
-// By default, we save the most recent 5 minutes data and compact versions > 5minutes ago.
-// It should be enough for slow watchers and to tolerate burst.
-// TODO: We might keep a longer history (12h) in the future once storage API can take advantage of past version of keys.
 func StartCompactor(ctx context.Context, client *clientv3.Client, compactInterval time.Duration) {
 	endpointsMapMu.Lock()
 	defer endpointsMapMu.Unlock()
@@ -36,6 +33,7 @@ func StartCompactor(ctx context.Context, client *clientv3.Client, compactInterva
 	// Currently we rely on endpoints to differentiate clusters.
 	for _, ep := range client.Endpoints() {
 		if _, ok := endpointsMap[ep]; ok {
+			logs.Info("compactore already exist")
 			return
 		}
 	}
@@ -48,51 +46,8 @@ func StartCompactor(ctx context.Context, client *clientv3.Client, compactInterva
 	}
 }
 
-// compactor periodically compacts historical versions of keys in etcd.
-// It will compact keys with versions older than given interval.
-// In other words, after compaction, it will only contain keys set during last interval.
-// Any API call for the older versions of keys will return error.
-// Interval is the time interval between each compaction. The first compaction happens after "interval".
+// compactor 定期压缩历史版本的功能，用于清理etcd中的旧版本键值对，只保留最新的键值对
 func compactor(ctx context.Context, client *clientv3.Client, interval time.Duration) {
-	// Technical definitions:
-	// We have a special key in etcd defined as *compactRevKey*.
-	// compactRevKey's value will be set to the string of last compacted revision.
-	// compactRevKey's version will be used as logical time for comparison. THe version is referred as compact time.
-	// Initially, because the key doesn't exist, the compact time (version) is 0.
-	//
-	// Algorithm:
-	// - Compare to see if (local compact_time) = (remote compact_time).
-	// - If yes, increment both local and remote compact_time, and do a compaction.
-	// - If not, set local to remote compact_time.
-	//
-	// Technical details/insights:
-	//
-	// The protocol here is lease based. If one compactor CAS successfully, the others would know it when they fail in
-	// CAS later and would try again in 5 minutes. If an APIServer crashed, another one would "take over" the lease.
-	//
-	// For example, in the following diagram, we have a compactor C1 doing compaction in t1, t2. Another compactor C2
-	// at t1' (t1 < t1' < t2) would CAS fail, set its known oldRev to rev at t1', and try again in t2' (t2' > t2).
-	// If C1 crashed and wouldn't compact at t2, C2 would CAS successfully at t2'.
-	//
-	//                 oldRev(t2)     curRev(t2)
-	//                                  +
-	//   oldRev        curRev           |
-	//     +             +              |
-	//     |             |              |
-	//     |             |    t1'       |     t2'
-	// +---v-------------v----^---------v------^---->
-	//     t0           t1             t2
-	//
-	// We have the guarantees:
-	// - in normal cases, the interval is 5 minutes.
-	// - in failover, the interval is >5m and <10m
-	//
-	// FAQ:
-	// - What if time is not accurate? We don't care as long as someone did the compaction. Atomicity is ensured using
-	//   etcd API.
-	// - What happened under heavy load scenarios? Initially, each apiserver will do only one compaction
-	//   every 5 minutes. This is very unlikely affecting or affected w.r.t. server load.
-
 	var compactTime int64
 	var rev int64
 	var err error
@@ -105,14 +60,13 @@ func compactor(ctx context.Context, client *clientv3.Client, interval time.Durat
 
 		compactTime, rev, err = compact(ctx, client, compactTime, rev)
 		if err != nil {
+			logs.Error("compact failed")
 			continue
 		}
 	}
 }
 
-// compact compacts etcd store and returns current rev.
-// It will return the current compact time and global revision if no error occurred.
-// Note that CAS fail will not incur any error.
+// compact 完成对etcd的压缩，并返回当前的版本
 func compact(ctx context.Context, client *clientv3.Client, t, rev int64) (int64, int64, error) {
 	resp, err := client.KV.Txn(ctx).If(
 		clientv3.Compare(clientv3.Version(compactRevKey), "=", t),
@@ -140,5 +94,6 @@ func compact(ctx context.Context, client *clientv3.Client, t, rev int64) (int64,
 	if _, err = client.Compact(ctx, rev); err != nil {
 		return curTime, curRev, err
 	}
+	logs.Info("etcd compact rev" + strconv.FormatInt(rev, 10))
 	return curTime, curRev, nil
 }

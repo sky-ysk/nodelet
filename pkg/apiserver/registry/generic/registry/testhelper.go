@@ -3,20 +3,21 @@ package registry
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"testing"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
-	"reflect"
-	"testing"
-	
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apiserver/registry/storage/field"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 var scheme = runtime.NewScheme()
@@ -38,7 +39,10 @@ func denyUpdateValidation(ctx context.Context, obj, old runtime.Object) error {
 
 type testRESTStrategy struct {
 	runtime.ObjectTyper
+	namespaceScoped bool
 }
+
+func (t *testRESTStrategy) NamespaceScoped() bool { return t.namespaceScoped }
 
 func (t *testRESTStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	metaObj, err := meta.Accessor(obj)
@@ -136,12 +140,12 @@ func compareValues(v1, v2 reflect.Value, visited map[uintptr]bool) bool {
 		// One is invalid and the other is not
 		return false
 	}
-	
+
 	if v1.Type() != v2.Type() {
 		// Types do not match
 		return false
 	}
-	
+
 	// Handle pointer values and prevent cyclic references
 	if v1.Kind() == reflect.Ptr {
 		if v1.IsNil() || v2.IsNil() {
@@ -155,7 +159,7 @@ func compareValues(v1, v2 reflect.Value, visited map[uintptr]bool) bool {
 		defer delete(visited, ptr)
 		return compareValues(v1.Elem(), v2.Elem(), visited)
 	}
-	
+
 	switch v1.Kind() {
 	case reflect.Struct:
 		// Compare struct fields
@@ -165,7 +169,7 @@ func compareValues(v1, v2 reflect.Value, visited map[uintptr]bool) bool {
 			}
 		}
 		return true
-	
+
 	case reflect.Slice, reflect.Array:
 		// Compare slices/arrays element by element
 		if v1.Len() != v2.Len() {
@@ -177,7 +181,7 @@ func compareValues(v1, v2 reflect.Value, visited map[uintptr]bool) bool {
 			}
 		}
 		return true
-	
+
 	case reflect.Map:
 		// Compare maps key by key
 		if v1.Len() != v2.Len() {
@@ -189,14 +193,14 @@ func compareValues(v1, v2 reflect.Value, visited map[uintptr]bool) bool {
 			}
 		}
 		return true
-	
+
 	case reflect.Interface:
 		// Compare interface values
 		if v1.IsNil() || v2.IsNil() {
 			return v1.IsNil() == v2.IsNil()
 		}
 		return compareValues(v1.Elem(), v2.Elem(), visited)
-	
+
 	default:
 		// Compare primitive types and others
 		return reflect.DeepEqual(v1.Interface(), v2.Interface())

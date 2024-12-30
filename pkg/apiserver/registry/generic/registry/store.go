@@ -3,30 +3,34 @@ package registry
 import (
 	"context"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
 	"hit.edu/framework/pkg/apimachinery/util/wait"
 	"hit.edu/framework/pkg/apimachinery/watch"
-	"k8s.io/apimachinery/pkg/api/validation/path"
-	"strings"
-	"sync"
-	"time"
-	
+
+	//"k8s.io/apimachinery/pkg/api/validation"
+	"hit.edu/framework/pkg/apimachinery/util/validation"
 	"hit.edu/framework/pkg/apiserver/registry/generic"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
-	
+	"hit.edu/framework/pkg/component-base/logs"
+	"k8s.io/apimachinery/pkg/api/validation/path"
+
 	apierrors "hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apis/meta/internalversion"
+	genericapirequest "hit.edu/framework/pkg/apiserver/endpoints/request"
 	storeerr "hit.edu/framework/pkg/apiserver/registry/storage/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/etcd3/metrics"
 	flowcontrolrequest "k8s.io/apiserver/pkg/util/flowcontrol/request"
-	"k8s.io/klog/v2"
+	//"k8s.io/klog/v2"
 )
 
 // FinishFunc is a function returned by Begin hooks to complete an operation.
@@ -54,6 +58,8 @@ type GenericStore interface {
 	GetDeleteStrategy() rest.RESTDeleteStrategy
 }
 
+func init() { logs.Init("etcd") }
+
 // Store 实现了hit.edu/framework/pkg/apiserver/registry/rest.StandardStorage接口，为REST存储提供基础操作
 // Store 用于嵌入到RESTStorage中，为RESTStorage实现与底层存储相关的细节
 type Store struct {
@@ -65,7 +71,7 @@ type Store struct {
 	DefaultQualifiedResource schema.GroupResource
 	// SingularQualifiedResource 是资源的单数名称
 	SingularQualifiedResource schema.GroupResource
-	
+
 	// KeyRootFunc 返回资源在etcd中的根键
 	KeyRootFunc func(ctx context.Context) string
 	// KeyFunc 返回对象具体的键，用于更新、删除等操作
@@ -76,16 +82,16 @@ type Store struct {
 	// TTLFunc 返回对象的TTL
 	// existing表示当前TTL或操作的默认值，update表示是否操作现有对象
 	TTLFunc func(obj runtime.Object, existing uint64, update bool) (uint64, error)
-	
+
 	// PredicateFunc 根据label和field返回筛选函数，用于与对象进行匹配
 	PredicateFunc func(label labels.Selector, field fields.Selector) storage.SelectionPredicate
-	
+
 	// EnableGarbageCollection 决定是否启用垃圾回收机制，允许通过finalizers对象在删除前进行清理工作
 	EnableGarbageCollection bool
-	
+
 	// DeleteCollectionWorkers 是集合删除调用时最大的并发工作线程数
 	DeleteCollectionWorkers int
-	
+
 	// CreateStrategy 是资源创建时的特定行为
 	CreateStrategy rest.RESTCreateStrategy
 	// UpdateStrategy 实现更新时的特定行为，如数据一致性验证等
@@ -95,12 +101,12 @@ type Store struct {
 	// TableConvertor 是可选接口，用于将对象转换成表格输出
 	// 若未设置，则使用默认实现
 	//TableConvertor rest.TableConvertor
-	
+
 	// Storage 是与etcd具体交互的接口
 	Storage storage.Interface
 	// StorageVersioner 输出对象在存储到 etcd 前被转换为的 <group/version/kind>
 	StorageVersioner runtime.GroupVersioner
-	
+
 	// ReadinessCheckFunc 用于检查存储是否可以接受请求
 	ReadinessCheckFunc func() error
 	// DestroyFunc 用于清理底层存储使用的客户端，用于资源释放
@@ -157,6 +163,17 @@ func (e *Store) NewList() runtime.Object {
 	return e.NewListFunc()
 }
 
+// NamespaceScoped 判断资源是否支持namespace
+func (e *Store) NamespaceScoped() bool {
+	if e.CreateStrategy != nil {
+		return e.CreateStrategy.NamespaceScoped()
+	}
+	if e.UpdateStrategy != nil {
+		return e.UpdateStrategy.NamespaceScoped()
+	}
+	logs.Error("no Strategy for resource")
+	return false
+}
 func (e *Store) GetCreateStrategy() rest.RESTCreateStrategy {
 	return e.CreateStrategy
 }
@@ -179,6 +196,7 @@ func (e *Store) List(ctx context.Context, options *internalversion.ListOptions) 
 	}
 	out, err := e.ListPredicate(ctx, e.PredicateFunc(label, field), options)
 	if err != nil {
+		logs.Error("error occur when list", err.Error())
 		return nil, err
 	}
 	return out, nil
@@ -201,6 +219,15 @@ func (e *Store) ListPredicate(ctx context.Context, p storage.SelectionPredicate,
 		Predicate:            p,
 		Recursive:            true,
 	}
+
+	if requestNamespace, _ := genericapirequest.NamespaceFrom(ctx); len(requestNamespace) == 0 {
+		if selectorNamespace, ok := p.MatchesSingleNamespace(); ok {
+			if len(ValidateNamespaceName(selectorNamespace, false)) == 0 {
+				ctx = genericapirequest.WithNamespace(ctx, selectorNamespace)
+			}
+		}
+	}
+
 	// 获取单个资源
 	if name, ok := p.MatchesSingle(); ok {
 		if key, err := e.KeyFunc(ctx, name); err == nil {
@@ -214,6 +241,19 @@ func (e *Store) ListPredicate(ctx context.Context, p storage.SelectionPredicate,
 	return list, storeerr.InterpretListError(err, qualifiedResource)
 }
 
+func ValidateNamespaceName(name string, prefix bool) []string {
+	if prefix {
+		name = maskTrailingDash(name)
+	}
+	return validation.IsDNS1035Label(name)
+}
+func maskTrailingDash(name string) string {
+	if len(name) > 1 && strings.HasSuffix(name, "-") {
+		return name[:len(name)-2] + "a"
+	}
+	return name
+}
+
 // finishNothing 是什么也不做的 FinishFunc，用于占位
 func finishNothing(context.Context, bool) {}
 
@@ -224,6 +264,7 @@ func (e *Store) Create(ctx context.Context, obj runtime.Object, createValidation
 
 // create完成创建操作
 func (e *Store) create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc) (runtime.Object, error) {
+	//logs.Info("now in create")
 	var finishCreate FinishFunc = finishNothing
 	if objectMeta, err := meta.Accessor(obj); err != nil {
 		return nil, err
@@ -231,26 +272,31 @@ func (e *Store) create(ctx context.Context, obj runtime.Object, createValidation
 		rest.FillObjectMetaSystemFields1(objectMeta)
 	}
 	if err := rest.BeforeCreate(e.CreateStrategy, ctx, obj); err != nil {
+		logs.Error("error occur before create", err.Error())
 		return nil, err
 	}
 	// 根据提供的函数验证对象的合法性
 	if createValidation != nil {
 		if err := createValidation(ctx, obj.DeepCopyObject()); err != nil {
+			logs.Error("error occur before create", err.Error())
 			return nil, err
 		}
 	}
 	name, err := e.ObjectNameFunc(obj)
 	if err != nil {
+		logs.Error("error occur before create", err.Error())
 		return nil, err
 	}
 	key, err := e.KeyFunc(ctx, name)
 	if err != nil {
+		logs.Error("error occur before create", err.Error())
 		return nil, err
 	}
 	// 创建对象的TTL
 	qualifiedResource := e.DefaultQualifiedResource
 	ttl, err := e.calculateTTL(obj, 0, false)
 	if err != nil {
+		logs.Error("error occur before create", err.Error())
 		return nil, err
 	}
 	out := e.NewFunc()
@@ -258,9 +304,11 @@ func (e *Store) create(ctx context.Context, obj runtime.Object, createValidation
 		err = storeerr.InterpretCreateError(err, qualifiedResource, name)
 		err = rest.CheckGeneratedNameError(ctx, e.CreateStrategy, err, obj)
 		if !apierrors.IsAlreadyExists(err) {
+			logs.Error("error occur while create", err.Error())
 			return nil, err
 		}
 		if errGet := e.Storage.Get(ctx, key, storage.GetOptions{}, out); errGet != nil {
+			logs.Error("error occur while Get", errGet.Error())
 			return nil, err
 		}
 		accessor, errGetAcc := meta.Accessor(out)
@@ -271,6 +319,7 @@ func (e *Store) create(ctx context.Context, obj runtime.Object, createValidation
 			msg := &err.(*apierrors.StatusError).ErrStatus.Message
 			*msg = fmt.Sprintf("object is being deleted: %s", *msg)
 		}
+		logs.Error("error occur while create", err.Error())
 		return nil, err
 	}
 	fn := finishCreate
@@ -284,6 +333,7 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 	// 生成存储键
 	key, err := e.KeyFunc(ctx, name)
 	if err != nil {
+		logs.Error("error occur before update", err.Error())
 		return nil, false, err
 	}
 	// 预先条件检查，确保更新符合用户期望
@@ -294,24 +344,28 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 		storagePreconditions.UID = &uid
 		storagePreconditions.ResourceVersion = preconditions.ResourceVersion
 	}
-	
+
 	out := e.NewFunc()
 	err = e.Storage.GuaranteedUpdate(ctx, key, out, true, storagePreconditions, func(existing runtime.Object, res storage.ResponseMeta) (runtime.Object, *uint64, error) {
 		// 获取已有对象的版本信息
 		existingResourceVersion, err := e.Storage.Versioner().ObjectResourceVersion(existing)
 		if err != nil {
+			logs.Error("error occur while update", err.Error())
 			return nil, nil, err
 		}
 		if existingResourceVersion == 0 {
+			logs.Error("error occur while update")
 			return nil, nil, apierrors.NewNotFound(qualifiedResource, name)
 		}
 		// 获取更新后的对象
 		obj, err := objInfo.UpdatedObject(ctx, existing)
 		if err != nil {
+			logs.Error("error occur while update", err.Error())
 			return nil, nil, err
 		}
 		newResourceVersion, err := e.Storage.Versioner().ObjectResourceVersion(obj)
 		if err != nil {
+			logs.Error("error occur while update", err.Error())
 			return nil, nil, err
 		}
 		doUnconditionalUpdate := newResourceVersion == 0
@@ -319,16 +373,19 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 			// 更新最新的资源版本
 			err = e.Storage.Versioner().UpdateObject(obj, res.ResourceVersion)
 			if err != nil {
+				logs.Error("error occur while update", err.Error())
 				return nil, nil, err
 			}
 		} else {
 			if newResourceVersion != existingResourceVersion {
+				logs.Error("error occur while update", OptimisticLockErrorMsg)
 				return nil, nil, apierrors.NewConflict(qualifiedResource, name, fmt.Errorf(OptimisticLockErrorMsg))
 			}
 		}
 		var finishUpdate FinishFunc = finishNothing
-		
+
 		if err := rest.BeforeUpdate(e.UpdateStrategy, ctx, obj, existing); err != nil {
+			logs.Error("error occur before update", err.Error())
 			return nil, nil, err
 		}
 		// 对更新后的对象执行验证
@@ -339,23 +396,25 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 		}
 		ttl, err := e.calculateTTL(obj, res.TTL, true)
 		if err != nil {
+			logs.Error("error occur while update", err.Error())
 			return nil, nil, err
 		}
 		fn := finishUpdate
 		finishUpdate = finishNothing
 		fn(ctx, true)
-		
+
 		if int64(ttl) != res.TTL {
 			return obj, &ttl, nil
 		}
 		return obj, nil, nil
 	}, nil)
-	
+
 	if err != nil {
+		logs.Error("error occur while update", err.Error())
 		err = storeerr.InterpretUpdateError(err, qualifiedResource, name)
 		return nil, false, err
 	}
-	
+
 	return out, false, nil
 }
 
@@ -364,9 +423,11 @@ func (e *Store) Get(ctx context.Context, name string, options *meta.GetOptions) 
 	obj := e.NewFunc()
 	key, err := e.KeyFunc(ctx, name)
 	if err != nil {
+		logs.Error("error occur before get", err.Error())
 		return nil, err
 	}
 	if err := e.Storage.Get(ctx, key, storage.GetOptions{ResourceVersion: options.ResourceVersion}, obj); err != nil {
+		logs.Error("error occur while get", err.Error())
 		return nil, storeerr.InterpretGetError(err, e.DefaultQualifiedResource, name)
 	}
 	return obj, nil
@@ -376,11 +437,13 @@ func (e *Store) Get(ctx context.Context, name string, options *meta.GetOptions) 
 func (e *Store) Delete(ctx context.Context, name string, deleteValidation rest.ValidateObjectFunc, options *meta.DeleteOptions) (runtime.Object, bool, error) {
 	key, err := e.KeyFunc(ctx, name)
 	if err != nil {
+		logs.Error("error occur before delete", err.Error())
 		return nil, false, err
 	}
 	obj := e.NewFunc()
 	qualifiedResource := e.DefaultQualifiedResource
 	if err = e.Storage.Get(ctx, key, storage.GetOptions{}, obj); err != nil {
+		logs.Error("error occur before delete", err.Error())
 		return nil, false, storeerr.InterpretDeleteError(err, qualifiedResource, name)
 	}
 	if options == nil {
@@ -396,6 +459,7 @@ func (e *Store) Delete(ctx context.Context, name string, deleteValidation rest.V
 	}
 	_, pendingGraceful, err := rest.BeforeDelete(e.DeleteStrategy, ctx, obj, options)
 	if err != nil {
+		logs.Error("error occur before delete", err.Error())
 		return nil, false, err
 	}
 	// 删除已在进行中
@@ -405,9 +469,9 @@ func (e *Store) Delete(ctx context.Context, name string, deleteValidation rest.V
 	}
 	var ignoreNotFound bool
 	var lastExisting, out runtime.Object
-	klog.V(6).InfoS("Going to delete object from registry", "object", klog.KRef(genericapirequest.NamespaceValue(ctx), name))
 	out = e.NewFunc()
 	if err := e.Storage.Delete(ctx, key, out, &preconditions, storage.ValidateObjectFunc(deleteValidation), nil); err != nil {
+		logs.Error("error occur while delete", err.Error())
 		if storage.IsNotFound(err) && ignoreNotFound && lastExisting != nil {
 			out, err := e.finalizeDelete(ctx, lastExisting, true, options)
 			return out, true, err
@@ -428,9 +492,9 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 	} else {
 		listOptions = listOptions.DeepCopy()
 	}
-	
+
 	var items []runtime.Object
-	
+
 	// 初始化并发工作线程
 	workersNumber := e.DeleteCollectionWorkers
 	if workersNumber < 1 {
@@ -445,7 +509,7 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 	toProcess := make(chan runtime.Object, chanSize)
 	errs := make(chan error, workersNumber+1)
 	workersExited := make(chan struct{})
-	
+
 	wg.Add(workersNumber)
 	for i := 0; i < workersNumber; i++ {
 		go func() {
@@ -454,7 +518,7 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 				errs <- fmt.Errorf("DeleteCollection goroutine panicked: %v", panicReason)
 			})
 			defer wg.Done()
-			
+
 			for item := range toProcess {
 				accessor, err := meta.Accessor(item)
 				if err != nil {
@@ -462,7 +526,7 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 					return
 				}
 				if _, _, err := e.Delete(ctx, accessor.GetName(), deleteValidation, options.DeepCopy()); err != nil && !apierrors.IsNotFound(err) {
-					klog.V(4).InfoS("Delete object in DeleteCollection failed", "object", klog.KObj(accessor), "err", err)
+					logs.Error("error occur in deletecollection", err.Error())
 					errs <- err
 					return
 				}
@@ -478,16 +542,16 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 		// 完成后关闭此通道，主进程继续执行
 		close(workersExited)
 	}()
-	
+
 	hasLimit := listOptions.Limit > 0
 	if listOptions.Limit == 0 {
 		listOptions.Limit = deleteCollectionPageSize
 	}
-	
+
 	// 分页列出对象并完成分发
 	listObj, err := func() (runtime.Object, error) {
 		defer close(toProcess)
-		
+
 		processedItems := 0
 		var originalList runtime.Object
 		for {
@@ -496,23 +560,24 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 				return nil, ctx.Err()
 			default:
 			}
-			
+
 			listObj, err := e.List(ctx, listOptions)
 			if err != nil {
+				logs.Error("error occur while list", err.Error())
 				return nil, err
 			}
-			
+
 			newItems, err := meta.ExtractList(listObj)
 			if err != nil {
+				logs.Error("error occur while list", err.Error())
 				return nil, err
 			}
 			items = append(items, newItems...)
-			
+
 			for i := 0; i < len(newItems); i++ {
 				select {
 				case toProcess <- newItems[i]:
 				case <-workersExited:
-					klog.V(4).InfoS("workers already exited, and there are some items waiting to be processed", "queued/finished", i, "total", processedItems+len(newItems))
 					select {
 					case err := <-errs:
 						return nil, err
@@ -522,26 +587,27 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 				}
 			}
 			processedItems += len(newItems)
-			
+
 			if hasLimit {
 				return listObj, nil
 			}
-			
+
 			if originalList == nil {
 				originalList = listObj
 				meta.SetList(originalList, nil)
 			}
-			
+
 			// If there are no more items, return the list.
 			m, err := meta.ListAccessor(listObj)
 			if err != nil {
+				logs.Error("error occur while list", err.Error())
 				return nil, err
 			}
 			if len(m.GetContinue()) == 0 {
 				meta.SetList(originalList, items)
 				return originalList, nil
 			}
-			
+
 			// Set up the next loop.
 			listOptions.Continue = m.GetContinue()
 			listOptions.ResourceVersion = ""
@@ -551,10 +617,10 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 等待所有线程完成
 	<-workersExited
-	
+
 	select {
 	case err := <-errs:
 		return nil, err
@@ -567,10 +633,11 @@ func (e *Store) DeleteCollection(ctx context.Context, deleteValidation rest.Vali
 func (e *Store) finalizeDelete(ctx context.Context, obj runtime.Object, runHooks bool, options *meta.DeleteOptions) (runtime.Object, error) {
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
+		logs.Error("error occur before delete", err.Error())
 		return nil, err
 	}
 	qualifiedResource := e.DefaultQualifiedResource
-	
+
 	uid := meta.UID(string(accessor.GetUID())) // 转换为 meta.UID 类型的值
 	details := &meta.StatusDetails{
 		Name:  accessor.GetName(),
@@ -593,7 +660,7 @@ func (e *Store) Watch(ctx context.Context, options *internalversion.ListOptions)
 		field = options.FieldSelector
 	}
 	predicate := e.PredicateFunc(label, field)
-	
+
 	resourceVersion := ""
 	if options != nil {
 		resourceVersion = options.ResourceVersion
@@ -605,6 +672,13 @@ func (e *Store) Watch(ctx context.Context, options *internalversion.ListOptions)
 // WatchPredicate 基于给定的筛选条件启动对资源的监听
 func (e *Store) WatchPredicate(ctx context.Context, p storage.SelectionPredicate, resourceVersion string, sendInitialEvents *bool, progressNotify bool) (watch.Interface, error) {
 	storageOpts := storage.ListOptions{ResourceVersion: resourceVersion, Predicate: p, Recursive: true, SendInitialEvents: sendInitialEvents, ProgressNotify: progressNotify}
+	if requestNamespace, _ := genericapirequest.NamespaceFrom(ctx); len(requestNamespace) == 0 {
+		if selectorNamespace, ok := p.MatchesSingleNamespace(); ok {
+			if len(ValidateNamespaceName(selectorNamespace, false)) == 0 {
+				ctx = genericapirequest.WithNamespace(ctx, selectorNamespace)
+			}
+		}
+	}
 	key := e.KeyRootFunc(ctx)
 	if name, ok := p.MatchesSingle(); ok {
 		if k, err := e.KeyFunc(ctx, name); err == nil {
@@ -612,9 +686,10 @@ func (e *Store) WatchPredicate(ctx context.Context, p storage.SelectionPredicate
 			storageOpts.Recursive = false
 		}
 	}
-	
+
 	w, err := e.Storage.Watch(ctx, key, storageOpts)
 	if err != nil {
+		logs.Error("error occur while watch", err.Error())
 		return nil, err
 	}
 	return w, nil
@@ -652,21 +727,35 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 	if (e.KeyRootFunc == nil) != (e.KeyFunc == nil) {
 		return fmt.Errorf("store for %s must set both KeyRootFunc and KeyFunc or neither", e.DefaultQualifiedResource.String())
 	}
-	
+
 	// if e.TableConvertor == nil {
 	// 	return fmt.Errorf("store for %s must set TableConvertor; rest.NewDefaultTableConvertor(e.DefaultQualifiedResource) can be used to output just name/creation time", e.DefaultQualifiedResource.String())
 	// }
+	var isNamespaced bool
+	switch {
+	case e.CreateStrategy != nil:
+		isNamespaced = e.CreateStrategy.NamespaceScoped()
+	case e.UpdateStrategy != nil:
+		isNamespaced = e.UpdateStrategy.NamespaceScoped()
+	default:
+		return fmt.Errorf("store for %s must have CreateStrategy or UpdateStrategy set", e.DefaultQualifiedResource.String())
+	}
+
 	if e.DeleteStrategy == nil {
 		return fmt.Errorf("store for %s must have DeleteStrategy set", e.DefaultQualifiedResource.String())
 	}
-	
+
 	if options.RESTOptions == nil {
 		return fmt.Errorf("options for %s must have RESTOptions set", e.DefaultQualifiedResource.String())
 	}
-	
+
 	attrFunc := options.AttrFunc
 	if attrFunc == nil {
-		attrFunc = storage.DefaultClusterScopedAttr
+		if isNamespaced {
+			attrFunc = storage.DefaultNamespaceScopedAttr
+		} else {
+			attrFunc = storage.DefaultClusterScopedAttr
+		}
 	}
 	if e.PredicateFunc == nil {
 		e.PredicateFunc = func(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
@@ -677,12 +766,12 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 			}
 		}
 	}
-	
+
 	opts, err := options.RESTOptions.GetRESTOptions(e.DefaultQualifiedResource, e.NewFunc())
 	if err != nil {
 		return err
 	}
-	
+
 	prefix := opts.ResourcePrefix
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
@@ -691,30 +780,41 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 		return fmt.Errorf("store for %s has an invalid prefix %q", e.DefaultQualifiedResource.String(), opts.ResourcePrefix)
 	}
 	if e.KeyRootFunc == nil && e.KeyFunc == nil {
-		e.KeyRootFunc = func(ctx context.Context) string {
-			return prefix
+		if isNamespaced {
+			e.KeyRootFunc = func(ctx context.Context) string {
+				return NamespaceKeyRootFunc(ctx, prefix)
+			}
+			e.KeyFunc = func(ctx context.Context, name string) (string, error) {
+				return NamespaceKeyFunc(ctx, prefix, name)
+			}
+		} else {
+			e.KeyRootFunc = func(ctx context.Context) string {
+				return prefix
+			}
+			e.KeyFunc = func(ctx context.Context, name string) (string, error) {
+				return NoNamespaceKeyFunc(ctx, prefix, name)
+			}
 		}
-		e.KeyFunc = func(ctx context.Context, name string) (string, error) {
-			return defaultKeyFunc(ctx, prefix, name)
-		}
-		
 	}
-	
+
 	// 封装Store的keyFunc，使其适配Storage的keyFunc
 	keyFunc := func(obj runtime.Object) (string, error) {
 		accessor, err := meta.Accessor(obj)
 		if err != nil {
 			return "", err
 		}
+		if isNamespaced {
+			return e.KeyFunc(genericapirequest.WithNamespace(genericapirequest.NewContext(), accessor.GetNamespace()), accessor.GetName())
+		}
 		return e.KeyFunc(genericapirequest.NewContext(), accessor.GetName())
 	}
-	
+
 	if e.DeleteCollectionWorkers == 0 {
 		e.DeleteCollectionWorkers = opts.DeleteCollectionWorkers
 	}
-	
+
 	e.EnableGarbageCollection = opts.EnableGarbageCollection
-	
+
 	if e.ObjectNameFunc == nil {
 		e.ObjectNameFunc = func(obj runtime.Object) (string, error) {
 			accessor, err := meta.Accessor(obj)
@@ -724,7 +824,7 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 			return accessor.GetName(), nil
 		}
 	}
-	
+
 	if e.Storage == nil {
 		var err error
 		e.Storage, e.DestroyFunc, err = opts.Decorator(
@@ -739,7 +839,7 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 			return err
 		}
 		e.StorageVersioner = opts.StorageConfig.EncodeVersioner
-		
+
 		if opts.CountMetricPollPeriod > 0 {
 			stopFunc := e.startObservingCount(opts.CountMetricPollPeriod, opts.StorageObjectCountTracker)
 			previousDestroy := e.DestroyFunc
@@ -757,23 +857,61 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 	if e.Storage != nil {
 		e.ReadinessCheckFunc = e.Storage.ReadinessCheck
 	}
-	
+
 	return nil
+}
+
+// 生成带命名空间的键前缀
+func NamespaceKeyRootFunc(ctx context.Context, prefix string) string {
+	key := prefix
+	ns, ok := genericapirequest.NamespaceFrom(ctx)
+	if ok && len(ns) > 0 {
+		key = key + "/" + ns
+	}
+	return key
+}
+
+// 生成带命名空间的键
+func NamespaceKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
+	key := NamespaceKeyRootFunc(ctx, prefix)
+	ns, ok := genericapirequest.NamespaceFrom(ctx)
+	if !ok || len(ns) == 0 {
+		return "", apierrors.NewBadRequest("Namespace parameter required.")
+	}
+	if len(name) == 0 {
+		return "", apierrors.NewBadRequest("Name parameter required.")
+	}
+	if msgs := path.IsValidPathSegmentName(name); len(msgs) != 0 {
+		return "", apierrors.NewBadRequest(fmt.Sprintf("Name parameter invalid: %q: %s", name, strings.Join(msgs, ";")))
+	}
+	key = key + "/" + name
+	return key, nil
+}
+
+// 生成不带命名空间的键
+func NoNamespaceKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
+	if len(name) == 0 {
+		return "", apierrors.NewBadRequest("Name parameter required.")
+	}
+	if msgs := path.IsValidPathSegmentName(name); len(msgs) != 0 {
+		return "", apierrors.NewBadRequest(fmt.Sprintf("Name parameter invalid: %q: %s", name, strings.Join(msgs, ";")))
+	}
+	key := prefix + "/" + name
+	return key, nil
 }
 
 // startObservingCount 用于定期监控某资源的对象数量，更新数量并返回停止监控的函数
 func (e *Store) startObservingCount(period time.Duration, objectCountTracker flowcontrolrequest.StorageObjectCountTracker) func() {
 	prefix := e.KeyRootFunc(genericapirequest.NewContext())
 	resourceName := e.DefaultQualifiedResource.String()
-	klog.V(2).InfoS("Monitoring resource count at path", "resource", resourceName, "path", "<storage-prefix>/"+prefix)
 	stopCh := make(chan struct{})
 	go wait.JitterUntil(func() {
 		count, err := e.Storage.Count(prefix)
 		if err != nil {
-			klog.V(5).InfoS("Failed to update storage count metric", "err", err)
+			logs.Error("error occur while count", err.Error())
 			count = -1
 		}
-		
+
 		metrics.UpdateObjectCount(resourceName, count)
 		if objectCountTracker != nil {
 			objectCountTracker.Set(resourceName, count)

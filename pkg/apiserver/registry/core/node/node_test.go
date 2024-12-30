@@ -4,24 +4,28 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	
+
 	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/component-base/logs"
+
 	//coretesting "hit.edu/framework/pkg/apiserver/registry/core/pod/testing"
 	registryrest "hit.edu/framework/pkg/apiserver/registry/rest"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	//"hit.edu/framework/pkg/apiserver/registry/core/rest"
-	"hit.edu/framework/pkg/apiserver/registry/generic"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apiserver/registry/generic"
+
 	//"k8s.io/apimachinery/pkg/api/meta"
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
 	"hit.edu/framework/pkg/apiserver/registry/storage/storagebackend"
-	"k8s.io/apimachinery/pkg/api/apitesting"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+
+	//"k8s.io/apimachinery/pkg/api/apitesting"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
+	genericapirequest "hit.edu/framework/pkg/apiserver/endpoints/request"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	//genericregistrytest "hit.edu/framework/pkg/apiserver/registry/generic/registry/testing"
 )
 
@@ -33,6 +37,8 @@ const GroupName = "etcd3test"
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1"}
 
 func init() {
+	logs.Init("etcd")
+	logs.Info("this is a test in node")
 	//meta.AddToGroupVersion(scheme, meta.SchemeGroupVersion)
 	NodeObject := []runtime.Object{
 		&apis.Node{},
@@ -40,25 +46,25 @@ func init() {
 	}
 	addKnownTypes := func(scheme *runtime.Scheme) error {
 		scheme.AddKnownTypes(SchemeGroupVersion, NodeObject...)
-		
+
 		if err := meta.RegisterConversions(scheme); err != nil {
 			panic(err)
 		}
 		return nil
 	}
-	
+
 	addUnversionedTypes := func(scheme *runtime.Scheme) error {
 		scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
 		return nil
 	}
-	
+
 	SchemeBuilder := runtime.NewSchemeBuilder(addKnownTypes, addUnversionedTypes)
 	AddToScheme := SchemeBuilder.AddToScheme
 	utilruntime.Must(AddToScheme(scheme))
-	
+
 	// scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
 	// meta.AddToScheme(scheme)
-	thisStrategy = Strategy{scheme}
+	thisStrategy = &Strategy{scheme}
 }
 
 func NewEtcdStorage(t *testing.T, group string) (*storagebackend.ConfigForResource, *EtcdTestServer) {
@@ -68,7 +74,8 @@ func NewEtcdStorage(t *testing.T, group string) (*storagebackend.ConfigForResour
 func NewEtcdStorageForResource(t *testing.T, resource schema.GroupResource) (*storagebackend.ConfigForResource, *EtcdTestServer) {
 	t.Helper()
 	server, config := NewUnsecuredEtcd3TestClientServer(t)
-	testcodec := apitesting.TestStorageCodec(codecs, SchemeGroupVersion)
+	testcodec := serializer.NewCodecFactory(scheme).LegacyCodec()
+	//testcodec := apitesting.TestStorageCodec(codecs, SchemeGroupVersion)
 	config.Codec = testcodec
 	resourceConfig := &storagebackend.ConfigForResource{
 		Config:        *config,
@@ -93,29 +100,29 @@ func newStorage(t *testing.T) (*NodeStorage, *EtcdTestServer) {
 		t.Fatalf("unexpected error from REST storage: %v", err)
 	}
 	return &storage, server
-	
+
 }
 func TestCreate(t *testing.T) {
 	nodestorage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer nodestorage.Node.Store.DestroyFunc()
 	nodeA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 		Spec:       apis.NodeSpec{NodeName: "test", HostName: "testhost", Unschedulable: false},
 		Status:     apis.NodeStatus{},
 	}
 	nodeA1 := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
 		Spec:       apis.NodeSpec{NodeName: "test1", HostName: "testhost1", Unschedulable: false},
 		Status:     apis.NodeStatus{},
 	}
-	testContext := genericapirequest.NewContext()
-	
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
+
 	_, err := nodestorage.Node.Create(testContext, nodeA, registryrest.ValidateAllObjectFunc)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	
+
 	_, _, err = nodestorage.Node.Update(testContext, nodeA.Name, rest.DefaultUpdatedObjectInfo(nodeA1), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &meta.UpdateOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -124,7 +131,7 @@ func TestCreate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	
+
 	accessor, _ := meta.Accessor(obj)
 	//resourceVersion := accessor.GetResourceVersion()
 	Name := accessor.GetName()

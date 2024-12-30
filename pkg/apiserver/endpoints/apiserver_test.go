@@ -1709,15 +1709,15 @@ func TestNamespacedPatch(t *testing.T) {
 
 	//测试Patch
 	jsonPatchBytes := []byte(`[
-		{ "op": "replace", "path": "/Spec/Name", "value": "boo" },
-		{ "op": "remove", "path": "/Status/WorkflowID" }
+		{ "op": "replace", "path": "/spec/name", "value": "boo" },
+		{ "op": "remove", "path": "/status/workflow_id" }
 	]`)
 	mergePatchBytes := []byte(`{
- 		"Spec": {
-   		"Name": "boo"
+ 		"spec": {
+   		"name": "boo"
 		},
- 		"Status": {
-   		"WorkflowID": ""
+ 		"status": {
+   		"workflow_id": ""
  		}
 	}`)
 

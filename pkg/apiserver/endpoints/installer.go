@@ -119,27 +119,24 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	var apiResource meta.APIResource
 	// 如果存在子资源，则命名空间范围由父资源定义
 	var namespaceScoped bool
-	namespaceScoped = true
 
-	//TODO:RESTStorage实现rest.Scoper，在此调用判断是否支持命名空间
-	//if isSubresource {
-
-	//parentStorage, ok := a.group.Storage[resource]
-	//if !ok {
-	//	return nil, fmt.Errorf("missing parent storage: %q", resource)
-	//}
-	//scoper, ok := parentStorage.(rest.Scoper)
-	//if !ok {
-	//	return nil,  fmt.Errorf("%q must implement scoper", resource)
-	//}
-	//namespaceScoped = scoper.NamespaceScoped()
-	//} else {
-	//scoper, ok := storage.(rest.Scoper)
-	//if !ok {
-	//	return nil,  fmt.Errorf("%q must implement scoper", resource)
-	//}
-	//namespaceScoped = scoper.NamespaceScoped()
-	//}
+	if isSubresource {
+		parentStorage, ok := a.group.Storage[resource]
+		if !ok {
+			return nil, fmt.Errorf("missing parent storage: %q", resource)
+		}
+		scoper, ok := parentStorage.(rest.NamespaceScopedStrategy)
+		if !ok {
+			return nil, fmt.Errorf("%q must implement scoper", resource)
+		}
+		namespaceScoped = scoper.NamespaceScoped()
+	} else {
+		scoper, ok := storage.(rest.NamespaceScopedStrategy)
+		if !ok {
+			return nil, fmt.Errorf("%q must implement scoper", resource)
+		}
+		namespaceScoped = scoper.NamespaceScoped()
+	}
 
 	//判断资源Storage实现了哪些操作接口，用来判断path路径支持哪些动词
 	creater, isCreater := storage.(rest.Creater)
