@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	jsonpatch "gopkg.in/evanphx/json-patch.v4"
 	"hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apis/meta"
@@ -10,7 +11,9 @@ import (
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/types"
+	"hit.edu/framework/pkg/apiserver/endpoints/request"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -40,10 +43,13 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 			scope.err(negotiation.NewUnsupportedMediaTypeError(patchTypes), w, req)
 		}
 
-		name, err := scope.Namer.Name(req)
+		namespace, name, err := scope.Namer.Name(req)
 		if err != nil {
 			scope.err(err, w, req)
+			return
 		}
+		ctx = request.WithNamespace(ctx, namespace)
+
 		ctx, cancel := context.WithTimeout(ctx, requestTimeoutUpperBound)
 		defer cancel()
 
@@ -52,12 +58,14 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 			scope.err(err, w, req)
 			return
 		}
+		logs.Info("limitedReadBody succeed", zap.String("len(Body)", string(len(body))))
 
 		options := &meta.PatchOptions{}
 		if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), meta.SchemeGroupVersion, options); err != nil {
 			scope.err(err, w, req)
 			return
 		}
+		logs.Info("decode PatchOptions succeed,about to patch object in database")
 		//TODO:Options验证
 		options.TypeMeta.SetGroupVersionKind(meta.SchemeGroupVersion.WithKind("PatchOptions"))
 
@@ -97,7 +105,7 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 		if err != nil {
 			scope.err(err, w, req)
 		}
-
+		logs.Info("patch object in database done", zap.String("kind", result.GetObjectKind().GroupVersionKind().Kind))
 		status := http.StatusOK
 		if wasCreated {
 			status = http.StatusCreated
@@ -129,6 +137,7 @@ type patcher struct {
 	patchType   types.PatchType
 	patchBytes  []byte
 
+	namespace         string
 	updatedObjectInfo rest.UpdatedObjectInfo
 	mechanism         patchMechanism
 	forceAllowCreate  bool
@@ -140,6 +149,7 @@ type patchMechanism interface {
 }
 
 func (p *patcher) patchResource(ctx context.Context, scope *RequestScope) (runtime.Object, bool, error) {
+	p.namespace = request.NamespaceValue(ctx)
 	switch p.patchType {
 	case types.JSONPatchType, types.MergePatchType:
 		p.mechanism = &jsonPatcher{
@@ -190,7 +200,14 @@ func (p *patcher) applyPatch(ctx context.Context, _, currentObject runtime.Objec
 		return nil, errors.NewConflict(p.resource.GroupResource(), p.name, fmt.Errorf("uid mismatch: the provided object specified uid %s, and no existing object was found", accessor.GetUID()))
 	}
 
-	if err := checkName(objToUpdate, p.name, p.namer); err != nil {
+	if objectMeta, err := meta.Accessor(objToUpdate); err == nil {
+		// ensure namespace on the object is correct, or error if a conflicting namespace was set in the object
+		if err := EnsureObjectNamespaceMatchesRequestNamespace(ExpectedNamespaceForResource(p.namespace, p.resource), objectMeta); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := checkName(objToUpdate, p.name, p.namespace, p.namer); err != nil {
 		return nil, err
 	}
 	return objToUpdate, nil

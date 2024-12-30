@@ -7,6 +7,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer/streaming"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
+	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"time"
 )
@@ -112,9 +113,10 @@ func (s *WatchServer) HandleHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		case watchEvent, ok := <-ch:
 			if !ok {
+				logs.Info("resultChan has been Closed")
 				return
 			}
-			fmt.Printf("发送Watch Event")
+			logs.Info("sending a Watch Event")
 			if err := watchEncoder.Encode(watchEvent); err != nil {
 				return
 			}

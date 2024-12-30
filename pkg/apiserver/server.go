@@ -8,14 +8,16 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/apiserver/endpoints/handler/filters"
 	corerest "hit.edu/framework/pkg/apiserver/registry/core/rest"
 	genericregistry "hit.edu/framework/pkg/apiserver/registry/generic"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"log"
+	"net/http"
 	"sync"
-	
+
 	"hit.edu/framework/pkg/apiserver/endpoints"
 	"hit.edu/framework/pkg/apiserver/server"
 	"strings"
@@ -32,38 +34,38 @@ const (
 type APIServerInterface interface {
 	//
 	PrepareRun() PreparedAPIServer
-	
+
 	//
 	Destroy()
 }
 
 type APIServer struct {
 	APIServerInterface
-	
+
 	// 处理Server HTTP请求
 	Handler *server.APIServerHandler
-	
+
 	// 服务相关信息
 	ServingInfo *server.ServingInfo
-	
+
 	// 服务器配置信息
-	
+
 	//给定资源的RESTOptions
 	RESTOptionsGetter genericregistry.RESTOptionsGetter
-	
+
 	// PostStart、PreShutDown钩子函数配置
 	postStartHookLock      sync.Mutex
 	postStartHooks         map[string]postStartHookEntry
 	postStartHooksCalled   bool
 	disabledPostStartHooks sets.String
-	
+
 	preShutdownHookLock    sync.Mutex
 	preShutdownHooks       map[string]preShutdownHookEntry
 	preShutdownHooksCalled bool
-	
+
 	// 关闭延时
 	ShutdownTimeout time.Duration
-	
+
 	// minRequestTimeout is how short the request timeout can be.  This is used to build the RESTHandler
 	minRequestTimeout time.Duration
 }
@@ -79,8 +81,11 @@ func NewAPIServer(cfg *Config) *APIServer {
 	// TODO: 创建Serving
 	// TODO: 参数配置
 	// 创建Serving
-	apiServerHandler := server.NewAPIServerHandler(APIServerName)
-	
+	apiServerHandler := server.NewAPIServerHandler(APIServerName, cfg.Serializer)
+
+	//构建handler链
+	apiServerHandler.FullHandlerChain = HandlerWithFilters(apiServerHandler.FullHandlerChain, cfg)
+
 	s := &APIServer{
 		ServingInfo:            cfg.ServingInfo,
 		Handler:                apiServerHandler,
@@ -95,46 +100,25 @@ func NewAPIServer(cfg *Config) *APIServer {
 	return s
 }
 
+// HandlerWithFilters 过滤http请求
+// TODO:访问控制
+func HandlerWithFilters(apiHandler http.Handler, c *Config) http.Handler {
+	//注入requestInfo到请求上下文
+	apiHandler = filters.WithRequestInfo(apiHandler, c.RequestInfoResolver)
+	return apiHandler
+}
+
 func (s *APIServer) PrepareRun() PreparedAPIServer {
 	// TODO: 在这里实现PreRun相关逻辑
-	// TODO: 安装Rest相关逻辑
-	
-	// From K8s
-	// TODO: 替换
-	//Scheme := legacyscheme.Scheme
-	//Codecs := legacyscheme.Codecs
-	
-	// 配置API Group,安装相关Handlers
-	//apiGroupInfo := server.NewDefaultAPIGroupInfo(Scheme, meta.ParameterCodec, Codecs)
-	
-	////TODO:RESTOptions应该从启动时Options获取
-	//config := &storagebackend.Config{
-	//	Type:   "etcd3",
-	//	Prefix: "registry/",
-	//	Transport: storagebackend.TransportConfig{
-	//		ServerList: []string{"39.105.18.152:2379"},
-	//	},
-	//}
-	//config.Codec = Codecs.CodecForVersions(Codecs.SupportedMediaTypes()[0].Serializer, Codecs.SupportedMediaTypes()[0].Serializer, apis.SchemeGroupVersion, apis.SchemeGroupVersion)
-	//resourceConfig := &storagebackend.ConfigForResource{
-	//	Config:        *config,
-	//	GroupResource: schema.GroupResource{Group: "resources", Resource: "nodes"},
-	//}
-	//restOptions := genericregistry.RESTOptions{
-	//	StorageConfig:           resourceConfig,
-	//	Decorator:               genericregistry.UndecoratedStorage,
-	//	DeleteCollectionWorkers: 3,
-	//	ResourcePrefix:          "nodes",
-	//}
 	apiGroupInfo, err := corerest.NewRESTStorage(s.RESTOptionsGetter)
 	if err != nil {
 		logs.Error("get coreStorage failed", zap.Error(err))
 	}
-	
+
 	if err := s.InstallAPIGroup(&apiGroupInfo); err != nil {
 		return PreparedAPIServer{}
 	}
-	
+
 	return PreparedAPIServer{s}
 }
 
@@ -147,22 +131,22 @@ func (s *PreparedAPIServer) RunWithContext(ctx context.Context) error {
 	logs.Info("Running API Server")
 	// TODO: 实现运行逻辑
 	// TODO: channel配置
-	
+
 	shutdownTimeout := s.ShutdownTimeout
-	
+
 	stopHTTPServerCtx, stopHTTPServer := context.WithCancelCause(context.WithoutCancel(ctx))
 	go func() {
 		defer stopHTTPServer(errors.New("time to stop HTTP server"))
 	}()
-	
+
 	stoppedCh, listenerStoppedCh, err := s.NonBlockingRunWithContext(stopHTTPServerCtx, shutdownTimeout)
 	if err != nil {
 		return err
 	}
-	
+
 	<-listenerStoppedCh
 	<-stoppedCh
-	
+
 	//TODO:资源清理，优雅推出
 	func() {
 		defer func() {
@@ -173,7 +157,7 @@ func (s *PreparedAPIServer) RunWithContext(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	
+
 	//logs.Info("Stopping API Server")
 	logs.Info("Stopping API Server")
 	return nil
@@ -183,9 +167,9 @@ func (s PreparedAPIServer) NonBlockingRunWithContext(ctx context.Context, shutdo
 	internalStopCh := make(chan struct{})
 	var stoppedCh <-chan struct{}
 	var listenerStoppedCh <-chan struct{}
-	
+
 	// TODO: 安全认证相关
-	
+
 	// 开启HTTP Server
 	if s.ServingInfo != nil && s.Handler != nil {
 		var err error
@@ -195,15 +179,15 @@ func (s PreparedAPIServer) NonBlockingRunWithContext(ctx context.Context, shutdo
 			return nil, nil, err
 		}
 	}
-	
+
 	go func() {
 		<-ctx.Done()
 		close(internalStopCh)
 	}()
-	
+
 	// 运行PostStartHooks
 	s.RunPostStartHooks(ctx)
-	
+
 	return stoppedCh, listenerStoppedCh, nil
 }
 
@@ -218,12 +202,12 @@ func (s *APIServer) InstallAPIGroup(apiGroupInfo *server.APIGroupInfo) error {
 	if err != nil {
 		return err
 	}
-	
+
 	err = apiGroupVersion.InstallREST(s.Handler.GoRestfulContainer)
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -244,7 +228,7 @@ func (s *APIServer) getAPIGroupVersion(apiGroupInfo *server.APIGroupInfo, groupV
 
 // From K8s
 func (s *APIServer) newAPIGroupVersion(apiGroupInfo *server.APIGroupInfo, groupVersion schema.GroupVersion) *endpoints.APIGroupVersion {
-	
+
 	allServedVersionsByResource := map[string][]string{}
 	for version, resourcesInVersion := range apiGroupInfo.VersionedResourcesStorageMap {
 		for resource := range resourcesInVersion {
@@ -255,7 +239,7 @@ func (s *APIServer) newAPIGroupVersion(apiGroupInfo *server.APIGroupInfo, groupV
 			}
 		}
 	}
-	
+
 	return &endpoints.APIGroupVersion{
 		GroupVersion:      groupVersion,
 		MetaGroupVersion:  apiGroupInfo.MetaGroupVersion,
