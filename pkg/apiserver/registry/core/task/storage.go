@@ -3,12 +3,13 @@ package task
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
-	
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	//"hit.edu/framework/pkg/apiserver/registry/core/rest"
 	"hit.edu/framework/pkg/apiserver/registry/generic"
@@ -72,7 +73,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("not a Task")
 	}
-	return labels.Set(Task.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Task.ObjectMeta), nil
+	return labels.Set(Task.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Task.ObjectMeta, true), nil
 }
 func Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
@@ -83,14 +84,14 @@ func Match(label labels.Selector, field fields.Selector) storage.SelectionPredic
 }
 
 func NewTaskStorage(optsGetter generic.RESTOptionsGetter) (TaskStorage, error) {
-	
+
 	store := &genericregistry.Store{
 		NewFunc:                   NewFunc,
 		NewListFunc:               NewListFunc,
 		PredicateFunc:             Match,
 		DefaultQualifiedResource:  apis.Resource("tasks"),
 		SingularQualifiedResource: apis.Resource("task"),
-		
+
 		CreateStrategy: thisStrategy,
 		UpdateStrategy: thisStrategy,
 		DeleteStrategy: thisStrategy,
@@ -109,7 +110,7 @@ func NewTaskStorage(optsGetter generic.RESTOptionsGetter) (TaskStorage, error) {
 	specStore.UpdateStrategy = thisStrategy
 	TaskREST := &REST{Store: store}
 	statusREST := &StatusREST{Store: &statusStore}
-	
+
 	specREST := &SpecREST{Store: &specStore}
 	return TaskStorage{
 		Task:   TaskREST,

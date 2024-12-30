@@ -13,6 +13,7 @@ import (
 	taskstore "hit.edu/framework/pkg/apiserver/registry/core/task"
 	workflowstore "hit.edu/framework/pkg/apiserver/registry/core/workflow"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 )
 
 // func NewRESTStorage(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (server.APIGroupInfo, error) {
@@ -24,24 +25,30 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		ParameterCodec:               legacyscheme.ParameterCodec,
 		NegotiatedSerializer:         legacyscheme.Codecs,
 	}
+	logs.Init("etcd")
 	nodeStorage, err := nodestore.NewNodeStorage(restOptionsGetter)
 	if err != nil {
+		logs.Error("error occur while create NodeStorage", err)
 		return server.APIGroupInfo{}, err
 	}
 	workflowStorage, err := workflowstore.NewWorkflowStorage(restOptionsGetter)
 	if err != nil {
+		logs.Error("error occur while create WorkflowStorage", err)
 		return server.APIGroupInfo{}, err
 	}
 	taskStorage, err := taskstore.NewTaskStorage(restOptionsGetter)
 	if err != nil {
+		logs.Error("error occur while create TaskStorage", err)
 		return server.APIGroupInfo{}, err
 	}
 	groupStorage, err := groupstore.NewGroupStorage(restOptionsGetter)
 	if err != nil {
+		logs.Error("error occur while create GroupStorage", err)
 		return server.APIGroupInfo{}, err
 	}
 	actionStorage, err := actionstore.NewActionStorage(restOptionsGetter)
 	if err != nil {
+		logs.Error("error occur while create ActionStorage", err)
 		return server.APIGroupInfo{}, err
 	}
 	storage := map[string]rest.Storage{}
@@ -74,5 +81,6 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 	if len(storage) > 0 {
 		apiGroupInfo.VersionedResourcesStorageMap["v1"] = storage
 	}
+	logs.Info("RESTStorage create successfully")
 	return apiGroupInfo, nil
 }

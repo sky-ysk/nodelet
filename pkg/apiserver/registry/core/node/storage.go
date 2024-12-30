@@ -3,11 +3,12 @@ package node
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	//"hit.edu/framework/pkg/apiserver/registry/core/rest"
 	"hit.edu/framework/pkg/apiserver/registry/generic"
@@ -69,7 +70,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("not a node")
 	}
-	return labels.Set(node.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&node.ObjectMeta), nil
+	return labels.Set(node.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&node.ObjectMeta, true), nil
 }
 func Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
@@ -80,14 +81,14 @@ func Match(label labels.Selector, field fields.Selector) storage.SelectionPredic
 }
 
 func NewNodeStorage(optsGetter generic.RESTOptionsGetter) (NodeStorage, error) {
-	
+
 	store := &genericregistry.Store{
 		NewFunc:                   NewFunc,
 		NewListFunc:               NewListFunc,
 		PredicateFunc:             Match,
 		DefaultQualifiedResource:  apis.Resource("nodes"),
 		SingularQualifiedResource: apis.Resource("node"),
-		
+
 		CreateStrategy: thisStrategy,
 		UpdateStrategy: thisStrategy,
 		DeleteStrategy: thisStrategy,
@@ -102,14 +103,14 @@ func NewNodeStorage(optsGetter generic.RESTOptionsGetter) (NodeStorage, error) {
 	}
 	statusStore := *store
 	statusStore.UpdateStrategy = thisStrategy
-	
+
 	specStore := *store
 	specStore.UpdateStrategy = thisStrategy
-	
+
 	nodeREST := &REST{Store: store}
 	statusREST := &StatusREST{Store: &statusStore}
 	specREST := &SpecREST{Store: &specStore}
-	
+
 	return NodeStorage{
 		Node:   nodeREST,
 		Status: statusREST,
