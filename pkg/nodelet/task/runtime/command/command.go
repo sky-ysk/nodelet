@@ -138,11 +138,11 @@ func (cr *CommandRuntime) monitorCMD(group *apis.Group, action *apis.Action, run
 		// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
 		cr.notifyRuntimeEndPhase(group, action, runtime, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		cr.processManager.RemoveProcess(runtime.Name)
+		return
 	}
 	logs.Infof("command %s completed", runtime.Name)
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
-	cr.processManager.MoveProcessToSucess(runtime.Name)
-	cr.processManager.RemoveProcess(runtime.Name)
+	cr.processManager.MoveProcessToSucess(runtime.Name) //移入successProcess，同时移出process
 	// 修改RuntimeStatus的Phase为Successed，ActionStatus的Phase也为Successed
 	cr.notifyRuntimeEndPhase(group, action, runtime, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 }
@@ -166,7 +166,7 @@ func (cr *CommandRuntime) stopCMD(taskName string) error {
 		logs.Infof("Task '%s' is already stopped.", taskName)
 		return fmt.Errorf("task '%s' process is nil", taskName)
 	}
-	cr.processManager.RemoveProcess(taskName)
+	//cr.processManager.RemoveProcess(taskName)  //这条语句不用了，直接在monitorCMD方法当中会执行
 	return nil
 
 }

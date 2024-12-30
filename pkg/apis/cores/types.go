@@ -49,6 +49,8 @@ type NodeSpec struct {
 
 	// 不能被调度的节点
 	Unschedulable bool `json:"unschedulable,omitempty" yaml:"unschedulable"`
+	// 设备固有资源
+	Resource map[string][]Item `json:"resource,omitempty" yaml:"resource"`
 	// TODO: 节点Label
 }
 
@@ -72,6 +74,8 @@ type NodeStatus struct {
 	// 节点上当前可以分配的资源
 	Allocatable ResourceList `json:"allocatable,omitempty" yaml:"allocatable"`
 
+	// 节点上的资源的动态资源
+	Usage map[string][]Item `json:"usage,omitempty" yaml:"usage"`
 	// 这里只表示连接关系，对硬件的调用放到能力中
 	// TODO: 节点上的硬件资源
 
@@ -90,6 +94,12 @@ type NodeStatus struct {
 
 	// 节点系统信息
 	NodeInfo NodeSystemInfo `json:"info,omitempty" yaml:"info"`
+}
+type Item struct {
+	Name   string            `json:"name,omitempty" yaml:"name"`
+	Desc   string            `json:"desc,omitempty" yaml:"desc"`
+	Labels []string          `json:"labels,omitempty" yaml:"labels"`
+	Values map[string]string `json:"values,omitempty" yaml:"values"`
 }
 
 // From K8s
@@ -453,6 +463,9 @@ type GroupSpec struct {
 	SkipFilterPlugins []string `json:"skip_filter_plugins,omitempty" yaml:"skip_filter_plugins"`
 	//添加-hzy
 	Replicas int32 `json:"replicas,omitempty" yaml:"replicas"`
+
+	//-临时添加-k8s运行时相关，还未重构，后期会重构
+	Labels map[string]string // 添加 Labels 字段，用于选择器
 }
 
 type GroupStatus struct {
@@ -543,6 +556,8 @@ const (
 	ByService    RuntimeType = "service"
 	ByDeployment RuntimeType = "deployment"
 	ByPod        RuntimeType = "pod"
+	//添加-hzy ---这个要讨论是否有该选项，被删除了？
+	ByWasm RuntimeType = "wasm"
 )
 
 // 环境变量
@@ -646,6 +661,14 @@ type Runtime struct {
 	//添加-hzy
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
 	Waiting bool     `json:"waiting,omitempty" yaml:"waiting"`
+
+	//-hzy暂时添加
+	Labels      map[string]string // 用于模板的 labels 配置
+	Selector    map[string]string // Deployment/Service 选择器
+	Ports       []Port            // 容器/服务端口
+	ServiceType string            // 服务类型，例如 ClusterIP
+	TargetPorts []int             // 目标端口映射
+	Replicas    int32             // 用于 Deployment 副本数量
 }
 
 //	 输入的数据有以下几类

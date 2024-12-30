@@ -27,7 +27,7 @@ func yoloTrainTaskGroup() []*apis.Group {
 								Image:   "",
 								Type:    apis.ByCommand,
 								Command: []string{"D:\\Programming\\Anaconda\\envs\\yolo\\python.exe"},
-								Args:    []string{"D:\\Programming\\GoLand\\goProject\\new2-task\\resourcelet\\test\\nodelet\\task_exporter\\cmd_yolo\\yolo_task\\train.py"},
+								Args:    []string{"D:\\Programming\\GoLand\\goProject\\all\\adaptive-scheduling-framework\\test\\nodelet\\task_exporter\\cmd_yolo\\yolo_task\\train.py"},
 							},
 						},
 					},
@@ -63,6 +63,77 @@ func yoloTrainTaskGroup() []*apis.Group {
 	groups := []*apis.Group{&newGroup}
 	return groups
 }
+
+func yoloPredictAndTrainTaskGroup() []*apis.Group {
+	newGroup := apis.Group{
+		ObjectMeta: meta.ObjectMeta{Name: "cmd_yolo_train"},
+		Spec: apis.GroupSpec{
+			Name:    "TestGroup",
+			Parents: make([]string, 0),
+			Actions: []apis.Action{
+				apis.Action{
+					ObjectMeta: meta.ObjectMeta{Name: "cmd_yolo_train_action"},
+					Spec: apis.ActionSpec{
+						Name: "TestAction",
+						Runtimes: []apis.Runtime{
+							apis.Runtime{
+								Name:    "CMD",
+								Image:   "",
+								Type:    apis.ByCommand,
+								Command: []string{"D:\\Programming\\Anaconda\\envs\\yolo\\python.exe"},
+								Args:    []string{"D:\\Programming\\GoLand\\goProject\\all\\adaptive-scheduling-framework\\test\\nodelet\\task_exporter\\cmd_yolo\\yolo_task\\predict.py"},
+							},
+							apis.Runtime{
+								Name:    "ABC",
+								Image:   "",
+								Type:    apis.ByCommand,
+								Command: []string{"D:\\Programming\\Anaconda\\envs\\yolo\\python.exe"},
+								Args:    []string{"D:\\Programming\\GoLand\\goProject\\all\\adaptive-scheduling-framework\\test\\nodelet\\task_exporter\\cmd_yolo\\yolo_task\\train.py"},
+								Parents: []string{"CMD"},
+							},
+						},
+					},
+					Status: apis.ActionStatus{
+						ActionID: "cmd_yolo_train_action:test-group",
+						Phase:    apis.Unknown,
+						RuntimeStatus: []apis.RuntimeStatus{
+							apis.RuntimeStatus{
+								RuntimeID: "CMD:cmd_yolo_train_action:test-group", //RuntimeName +":"+ ActionID
+								Phase:     apis.Unknown,
+							},
+							apis.RuntimeStatus{
+								RuntimeID: "ABC:cmd_yolo_train_action:test-group", //RuntimeName +":"+ ActionID
+								Phase:     apis.Unknown,
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: apis.GroupStatus{
+			GroupID: "test-group",
+			ActionStatus: []apis.ActionStatus{
+				apis.ActionStatus{
+					ActionID: "cmd_yolo_train_action:test-group",
+					RuntimeStatus: []apis.RuntimeStatus{
+						apis.RuntimeStatus{
+							RuntimeID: "CMD:cmd_yolo_train_action:test-group",
+							Phase:     apis.Unknown,
+						},
+						apis.RuntimeStatus{
+							RuntimeID: "ABC:cmd_yolo_train_action:test-group", //RuntimeName +":"+ ActionID
+							Phase:     apis.Unknown,
+						},
+					},
+					Phase: apis.Unknown,
+				},
+			},
+		},
+	}
+	groups := []*apis.Group{&newGroup}
+	return groups
+}
+
 func yoloTrainTaskGroupInlinux() []*apis.Group {
 	newGroup := apis.Group{
 		ObjectMeta: meta.ObjectMeta{Name: "cmd_yolo_train"},
@@ -187,6 +258,8 @@ func simpleTaskGroup() []*apis.Group {
 }
 
 func TestTaskExporter(t *testing.T) {
+	moduleName := "testModule"
+	logs.Init(moduleName)
 	ctx, _ := context.WithCancel(context.Background())
 	// 构造Task Exporter
 	tc := NewConfig("test-node")
@@ -210,9 +283,9 @@ func TestTaskExporter(t *testing.T) {
 		}
 	}()
 	time.Sleep(2 * time.Second)
-	Groups := yoloTrainTaskGroup()
+	Groups := yoloPredictAndTrainTaskGroup()
 	ReceiveGroupInfo(Groups, "create")
-	time.Sleep(10 * time.Second)
+	time.Sleep(60 * time.Second)
 	ReceiveGroupInfo(Groups, "kill")
 	select {}
 	// 部署多个任务

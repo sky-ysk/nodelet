@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/group"
@@ -21,7 +22,7 @@ var (
 
 type TaskExporter struct {
 	// TODO: 增加Client-Go配置  --这块有点不太清楚,应该是为了方便将任务状态存到etcd当中
-
+	nodesClient core.NodeInterface
 	// TODO: 增加Event Recorder
 
 	// TODO: 增加Group Lister
@@ -41,6 +42,37 @@ type TaskExporter struct {
 }
 
 var _ Exporter = &TaskExporter{}
+
+//func NewTaskExporter(cfg *Config, client core.NodeInterface) (*TaskExporter, error) {
+//	// Task Exporter配置 config
+//	//事件配置
+//	eb := eventbus.NewEventBus()
+//	// Manager配置 group
+//	groupManager := group.NewGroupManager()
+//	// lister
+//	lister := groupManager.GetGroups(nil)
+//	// runtimeManager的配置
+//	runtimeManager := runtime.NewRuntimeManager(eb)
+//	// queue_manager
+//	groupQueues := group.NewGroupQueues(groupManager)
+//	// workers
+//	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager)
+//
+//	taskExporter := &TaskExporter{
+//		// Monitor配置
+//		groupManager: groupManager,
+//		groupLister:  lister,
+//		groupWorkers: workers,
+//		groupMonitor: monitor.NewGroupMonitor(groupManager, groupQueues, eb, runtimeManager),
+//		groupHandler: monitor.NewGroupHandler(groupManager, workers, groupQueues),
+//		nodesClient:  client,
+//	}
+//	// Client-Go配置
+//
+//	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
+//	logs.Info("init task exporter")
+//	return taskExporter, nil
+//}
 
 func NewTaskExporter(cfg *Config) (*TaskExporter, error) {
 	// Task Exporter配置 config
@@ -65,8 +97,8 @@ func NewTaskExporter(cfg *Config) (*TaskExporter, error) {
 		groupMonitor: monitor.NewGroupMonitor(groupManager, groupQueues, eb, runtimeManager),
 		groupHandler: monitor.NewGroupHandler(groupManager, workers, groupQueues),
 	}
-
 	// Client-Go配置
+
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
 	logs.Info("init task exporter")
 	return taskExporter, nil

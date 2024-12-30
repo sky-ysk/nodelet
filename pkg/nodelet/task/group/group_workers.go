@@ -184,6 +184,10 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 		action := &group.Spec.Actions[i]
 		for j := range action.Spec.Runtimes {
 			ru := &action.Spec.Runtimes[j]
+			if action.Status.RuntimeStatus[j].Phase == apis.Successed {
+				// runtime已经执行完成，不用再kill了
+				continue
+			}
 			err := g.runtimeManager.Kill(group, action, ru)
 			if err != nil {
 				logs.Error("kill task err:", err.Error())

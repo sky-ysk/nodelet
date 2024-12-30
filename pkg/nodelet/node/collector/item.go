@@ -59,6 +59,12 @@ func (i *Item) toString() string {
 func (i *Item) GetName() string {
 	return i.name
 }
-func (i *Item) GetLbels() []string {
+func (i *Item) GetLabels() []string {
 	return i.labels
+}
+func (i *Item) GetDesc() string {
+	return i.desc
+}
+func (i *Item) GetValues() map[string]string {
+	return i.values
 }

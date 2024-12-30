@@ -82,7 +82,7 @@ func contains(slice []string, item string) bool {
 }
 
 // 收集静态信息数据
-func (n *NodeCollector) GatherStaticData(processFunc func(metric Metric)) error {
+func (n *NodeCollector) GatherStaticData(processFunc func(types string, metric Metric)) error {
 
 	var metricChan = make(chan Metric, capMetricChan)
 	var wg sync.WaitGroup
@@ -109,11 +109,11 @@ func (n *NodeCollector) GatherStaticData(processFunc func(metric Metric)) error 
 
 	// 在主线程中调用 processMetric方法从metricChan管道中读取Metric格式的数据
 	for metric := range metricChan { //循环会阻塞，直到有数据进入 metricChan
-		processFunc(metric)
+		processFunc("static", metric)
 	}
 	return nil // 处理成功完成
 }
-func (n *NodeCollector) GatherDynamicData(processFunc func(metric Metric)) error {
+func (n *NodeCollector) GatherDynamicData(processFunc func(types string, metric Metric)) error {
 
 	var metricChan = make(chan Metric, capMetricChan)
 	var wg sync.WaitGroup
@@ -136,7 +136,7 @@ func (n *NodeCollector) GatherDynamicData(processFunc func(metric Metric)) error
 
 	// 在主线程中接收 metricChan 中的数据
 	for metric := range metricChan { //循环会阻塞，直到有数据进入 metricChan
-		processFunc(metric)
+		processFunc("dynamic", metric)
 	}
 	return nil // 处理成功完成
 }
