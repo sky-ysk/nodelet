@@ -26,5 +26,5 @@ func (t Strategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) f
 func (t Strategy) Canonicalize(obj runtime.Object) {}
 
 func (t Strategy) NamespaceScoped() bool {
-	return true
+	return false
 }
