@@ -17,7 +17,7 @@ import (
 type SchedulingQueue interface {
 	// TODO: 将Ready状态的任务迁移到Scheduling Queue中的组件
 
-	//Add(group *workflow.Group)
+	Add(ctx context.Context, group *apis.Group)
 
 	//Activate(groups *workflow.Group)
 
@@ -65,6 +65,10 @@ func NewPriorityQueue() *PriorityQueue {
 
 func (p *PriorityQueue) Pop(ctx context.Context) (*config.QueuedGroupInfo, error) {
 	return p.readyQ.pop(ctx)
+}
+
+func (p *PriorityQueue) Add(ctx context.Context, group *apis.Group) {
+	p.AddToPending(ctx, group)
 }
 
 // newQueuedPodInfo builds a QueuedPodInfo object.
@@ -117,7 +121,7 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	defer p.lock.Unlock()
 	removeGroupss := make([]*config.QueuedGroupInfo, 0)
 	logs.Info("now run the flush method")
-	fmt.Println("now run the flush method")
+	//fmt.Println("now run the flush method")
 	for k, v := range p.pendingQueue.groupInfoMap {
 		if checkGroupReady(v) {
 			removeGroupss = append(removeGroupss, v)

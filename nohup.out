@@ -1,0 +1,32 @@
+[90m2024-12-31 18:28:19[0m [31mERR[0m [36mmodule=[0mcmd/scheduler/app/server.go:89 [36mmsg=[0m"Failed to start scheduler"
+[90m2024-12-31 18:28:19[0m [31mERR[0m [36mmodule=[0mcmd/scheduler/app/server.go:89 [36mmsg=[0m"Failed to start scheduler"
+Error: 
+Error: 
+[90m2024-12-31 18:28:19[0m [31mERR[0m [36mmodule=[0mcmd/scheduler/app/server.go:89 [36mmsg=[0m"Failed to start scheduler"
+Error: 
+&{map[{ v1 APIResourceList}:0x9f42a0 { v1 Status}:0xa20020 {resources __internal WatchEvent}:0x9e4140 {resources v1 Action}:0xa094a0 {resources v1 ActionList}:0x9f33a0 {resources v1 CreateOptions}:0xa09f20 {resources v1 DeleteOptions}:0xa1b060 {resources v1 GetOptions}:0x9e4000 {resources v1 Group}:0xa09560 {resources v1 GroupList}:0x9f3460 {resources v1 ListOptions}:0xa2e260 {resources v1 Node}:0xa11640 {resources v1 NodeList}:0xa05120 {resources v1 PatchOptions}:0x9f4060 {resources v1 Status}:0xa20020 {resources v1 Task}:0xa09620 {resources v1 TaskList}:0x9f3520 {resources v1 UpdateOptions}:0xa09fe0 {resources v1 WatchEvent}:0x9e41e0 {resources v1 Workflow}:0xa096e0 {resources v1 WorkflowList}:0x9f36a0] map[0x9e4000:[{resources v1 GetOptions}] 0x9e4140:[{resources __internal WatchEvent}] 0x9e41e0:[{resources v1 WatchEvent}] 0x9f33a0:[{resources v1 ActionList}] 0x9f3460:[{resources v1 GroupList}] 0x9f3520:[{resources v1 TaskList}] 0x9f36a0:[{resources v1 WorkflowList}] 0x9f4060:[{resources v1 PatchOptions}] 0x9f42a0:[{ v1 APIResourceList}] 0xa05120:[{resources v1 NodeList}] 0xa094a0:[{resources v1 Action}] 0xa09560:[{resources v1 Group}] 0xa09620:[{resources v1 Task}] 0xa096e0:[{resources v1 Workflow}] 0xa09f20:[{resources v1 CreateOptions}] 0xa09fe0:[{resources v1 UpdateOptions}] 0xa11640:[{resources v1 Node}] 0xa1b060:[{resources v1 DeleteOptions}] 0xa20020:[{resources v1 Status} { v1 Status}] 0xa2e260:[{resources v1 ListOptions}]] map[0x9f42a0:{ v1 APIResourceList} 0xa20020:{ v1 Status}] map[APIResourceList:0x9f42a0 Status:0xa20020] map[] map[] 0xc000138000 map[] [{resources v1} { v1}] pkg/apimachinery/runtime/scheme.go:67}
+watching
+&{map[{ v1 APIResourceList}:0x9f42a0 { v1 Status}:0xa20020 {resources __internal WatchEvent}:0x9e4140 {resources v1 Action}:0xa094a0 {resources v1 ActionList}:0x9f33a0 {resources v1 CreateOptions}:0xa09f20 {resources v1 DeleteOptions}:0xa1b060 {resources v1 GetOptions}:0x9e4000 {resources v1 Group}:0xa09560 {resources v1 GroupList}:0x9f3460 {resources v1 ListOptions}:0xa2e260 {resources v1 Node}:0xa11640 {resources v1 NodeList}:0xa05120 {resources v1 PatchOptions}:0x9f4060 {resources v1 Status}:0xa20020 {resources v1 Task}:0xa09620 {resources v1 TaskList}:0x9f3520 {resources v1 UpdateOptions}:0xa09fe0 {resources v1 WatchEvent}:0x9e41e0 {resources v1 Workflow}:0xa096e0 {resources v1 WorkflowList}:0x9f36a0] map[0x9e4000:[{resources v1 GetOptions}] 0x9e4140:[{resources __internal WatchEvent}] 0x9e41e0:[{resources v1 WatchEvent}] 0x9f33a0:[{resources v1 ActionList}] 0x9f3460:[{resources v1 GroupList}] 0x9f3520:[{resources v1 TaskList}] 0x9f36a0:[{resources v1 WorkflowList}] 0x9f4060:[{resources v1 PatchOptions}] 0x9f42a0:[{ v1 APIResourceList}] 0xa05120:[{resources v1 NodeList}] 0xa094a0:[{resources v1 Action}] 0xa09560:[{resources v1 Group}] 0xa09620:[{resources v1 Task}] 0xa096e0:[{resources v1 Workflow}] 0xa09f20:[{resources v1 CreateOptions}] 0xa09fe0:[{resources v1 UpdateOptions}] 0xa11640:[{resources v1 Node}] 0xa1b060:[{resources v1 DeleteOptions}] 0xa20020:[{resources v1 Status} { v1 Status}] 0xa2e260:[{resources v1 ListOptions}]] map[0x9f42a0:{ v1 APIResourceList} 0xa20020:{ v1 Status}] map[APIResourceList:0x9f42a0 Status:0xa20020] map[] map[] 0xc000290000 map[] [{resources v1} { v1}] pkg/apimachinery/runtime/scheme.go:67}
+watching
+Usage:
+  scheduler [flags]
+
+Flags:
+  -h, --help   help for scheduler
+
+Usage:
+  scheduler [flags]
+
+Flags:
+  -h, --help   help for scheduler
+
+Usage:
+  scheduler [flags]
+
+Flags:
+  -h, --help   help for scheduler
+
+[90m2024-12-31 18:28:19[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"
+[90m2024-12-31 18:29:30[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"
+[90m2024-12-31 18:29:39[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"
+[90m2024-12-31 18:29:45[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"

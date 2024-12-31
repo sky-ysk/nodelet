@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"errors"
+	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
@@ -38,7 +39,10 @@ const (
 
 func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
+	fmt.Println("now schedule one running")
 	groupInfo, err := sched.ReadyGroup(ctx)
+	fmt.Println("new get the group ")
+	fmt.Println(groupInfo.Group.Spec.Name)
 
 	//groupInfo := groupInfos[0]
 	if err != nil {
