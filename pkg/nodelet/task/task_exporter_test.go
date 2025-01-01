@@ -307,13 +307,6 @@ func TestTaskExporter(t *testing.T) {
 		panic(err)
 	}
 
-	//updateCh := make(chan types.GroupUpdate)
-	//groupToUpdate := types.GroupUpdate{
-	//	Groups: []*apis.Group{&newGroup},
-	//	Op:     types.ADD,
-	//}
-	//go te.groupHandler.Loop(ctx, updateCh)
-
 	// 部署一个任务
 	go func() {
 		err2 := te.Run(ctx)
@@ -321,7 +314,8 @@ func TestTaskExporter(t *testing.T) {
 			logs.Error("fail to run task exporter")
 		}
 	}()
-	time.Sleep(2 * time.Second)
+	//time.Sleep(2 * time.Second)
+	te.ReceiveGroupInfo("create")
 	//Groups := yoloPredictAndTrainTaskGroup()
 	//ReceiveGroupInfo(Groups, "create")
 	//time.Sleep(60 * time.Second)

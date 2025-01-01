@@ -73,10 +73,10 @@ func (gmo *GroupMonitor) Start() {
 			select {
 			case event := <-chRuntimeStart:
 				RuntimeEvent := event.(events.RuntimeStartPhaseEvent)
-				gmo.handleRuntimeStartUpdate(RuntimeEvent)
+				gmo.handleRuntimeStartUpdate1(RuntimeEvent)
 			case event := <-chRuntimeEnd:
 				RuntimeEvent := event.(events.RuntimeEndPhaseEvent)
-				gmo.handleRuntimeEndUpdate(RuntimeEvent)
+				gmo.handleRuntimeEndUpdate1(RuntimeEvent)
 			}
 		}
 	}()

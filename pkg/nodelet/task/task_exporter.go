@@ -36,6 +36,8 @@ type TaskExporter struct {
 
 	// 管理所有所有的Group
 	groupManager group.Manager
+	// 管理所有的Task
+	taskManager task.Manager
 
 	// Group的实际执行单元
 	groupWorkers group.GroupWorkers
@@ -77,6 +79,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		tasksClient:  taskClient,
 		gropsClient:  groupClient,
 		groupManager: groupManager,
+		taskManager:  taskManager,
 		groupLister:  lister,
 		groupWorkers: workers,
 		groupMonitor: monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
@@ -120,25 +123,30 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 	task := te.GetTask()
 	for i := range task.Spec.Groups {
-		g := &task.Spec.Groups[i]
-		if updateType == "create" {
-			groupUpdate := types.GroupUpdate{
-				Groups: []*apis.Group{g},
-				Op:     types.ADD,
+		//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
+		if task.Status.Phase == apis.Unknown {
+			logs.Info("receive task info")
+			te.taskManager.AddTask(task)
+			g := &task.Spec.Groups[i]
+			if updateType == "create" {
+				groupUpdate := types.GroupUpdate{
+					Groups: []*apis.Group{g},
+					Op:     types.ADD,
+				}
+				updateCh <- groupUpdate
+			} else if updateType == "kill" {
+				//TODO
+				groupUpdate := types.GroupUpdate{
+					Groups: []*apis.Group{g},
+					Op:     types.KILL,
+				}
+				updateCh <- groupUpdate
 			}
-			updateCh <- groupUpdate
-		} else if updateType == "kill" {
-			//TODO
-			groupUpdate := types.GroupUpdate{
-				Groups: []*apis.Group{g},
-				Op:     types.KILL,
-			}
-			updateCh <- groupUpdate
 		}
 	}
-	logs.Info("receive group info")
 }
 
+// 从client-go中读取task信息
 func (te *TaskExporter) GetTask() *apis.Task {
 	result, getErr := te.tasksClient.Get(context.TODO(), "demo-tasks", metav1.GetOptions{})
 	if getErr != nil {
