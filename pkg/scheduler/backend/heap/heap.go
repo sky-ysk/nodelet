@@ -121,6 +121,7 @@ type Heap[T any] struct {
 // already exists.
 func (h *Heap[T]) AddOrUpdate(obj T) {
 	key := h.data.keyFunc(obj)
+	fmt.Println("the key is ", key)
 	if _, exists := h.data.items[key]; exists {
 		h.data.items[key].obj = obj
 		heap.Fix(h.data, h.data.items[key].index)

@@ -90,7 +90,7 @@ func (p *PriorityQueue) AddToActive(ctx context.Context, group *apis.Group) {
 	defer p.lock.Unlock()
 	gInfo := p.newQueuedGroupInfo(group)
 	if added := p.moveToActiveQ(ctx, gInfo); added {
-		msg := fmt.Sprintf("group %s now in active queue", gInfo.Group.Spec.Name)
+		msg := fmt.Sprintf("group %s now in active queue", gInfo.Group.ObjectMeta.Name)
 		logs.Info(msg)
 		p.readyQ.broadcast()
 	}
@@ -103,9 +103,8 @@ func (p *PriorityQueue) AddToPending(ctx context.Context, group *apis.Group) {
 	defer p.lock.Unlock()
 	gInfo := p.newQueuedGroupInfo(group)
 	if added := p.moveToPendingQ(ctx, gInfo); added {
-		msg := fmt.Sprintf("group %s now in pending queue", gInfo.Group.Spec.Name)
+		msg := fmt.Sprintf("group %s now in pending queue", gInfo.Group.ObjectMeta.Name)
 		logs.Info(msg)
-		fmt.Println(msg)
 		p.readyQ.broadcast()
 	}
 }
@@ -186,5 +185,11 @@ type PodNominator interface {
 }
 
 func groupInfoKeyFunc(gInfo *config.QueuedGroupInfo) string {
-	return gInfo.GroupInfo.Group.Name
+	key := fmt.Sprintf("%s-%s", gInfo.GroupInfo.Group.Name, gInfo.GroupInfo.Group.ObjectMeta.Name)
+	return key
+}
+
+func groupKeyFunc(g *apis.Group) string {
+	key := fmt.Sprintf("%s-%s", g.Name, g.ObjectMeta.Name)
+	return key
 }

@@ -5,10 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	"math/rand"
+	"net/http"
 	"time"
 
 	"hit.edu/framework/pkg/scheduler/framework"
@@ -39,8 +46,11 @@ const (
 
 func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
-	fmt.Println("now schedule one running")
+	//fmt.Println("now schedule one running")
+	logs.Info("now schedule one running")
 	groupInfo, err := sched.ReadyGroup(ctx)
+	msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
+	logs.Info(msg)
 	//groupInfo := groupInfos[0]
 	if err != nil {
 		logs.Error(err.Error())
@@ -69,7 +79,8 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	state := framework.NewCycleState(group)
 
 	scheduleResult, _, _ := sched.schedulingCycle(ctx, fwk, start, state, *groupInfo)
-
+	msg = fmt.Sprintf("schedule result : group %s on node %s", scheduleResult.Group.ObjectMeta.Name, scheduleResult.SuggestedHost)
+	logs.Info(msg)
 	//Unched
 
 	//sched
@@ -354,6 +365,7 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
 	return ScheduleResult{
 		SuggestedHost: host,
+		Group:         group,
 		//TODO 后面需要了再做
 		//EvaluatedNodes: len(feasibleNodes) + diagnosis.NodeToStatus.Len(),
 		FeasibleNodes: len(feasibleNodes),
@@ -374,6 +386,8 @@ func (sched *Scheduler) findNodesThatFitGroup(ctx context.Context, fwk framework
 	if err != nil {
 		return nil, err
 	}
+	msg := fmt.Sprintf("found %d nodes", len(allNodes))
+	logs.Info(msg)
 
 	//TODO Run "prefilter" plugins. 这个先不做
 	//preRes, s, unscheduledPlugins := fwk.RunPreFilterPlugins(ctx, state, pod)
@@ -486,20 +500,68 @@ func (sched *Scheduler) findNodesThatPassFilters(
 }
 
 func (sched *Scheduler) getAllNodes() ([]*config.NodeInfo, error) {
-	return mockGetAllNodes(), nil
+	return getNodeFromApiServer(), nil
 }
 
-func mockGetAllNodes() []*config.NodeInfo {
+func getNodeFromApiServer() []*config.NodeInfo {
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	//创建ClientSet
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+	// 资源定义在 pkg/apis/xxx/type.go 下
+	// 这里以访问资源Node为例，
+	// 获取访问Node的客户端
+	// 默认访问的Namespace是 ""
+
+	nodesClient := clientSet.Core().Nodes("")
+	lstOpts := metav1.ListOptions{}
+	list, err := nodesClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		panic(err)
+	}
 	nodes := make([]*config.NodeInfo, 0)
-	node1 := &config.Node{}
-	node2 := &config.Node{}
-	info1 := &config.NodeInfo{}
-	info2 := &config.NodeInfo{}
-	info1.SetNode(node1)
-	info2.SetNode(node2)
-	nodes = append(nodes, info1, info2)
+	for _, n := range list.Items {
+		info := config.NewNodeInfo(&n)
+		nodes = append(nodes, info)
+	}
 	return nodes
 }
+
+//func mockGetAllNodes() []*config.NodeInfo {
+//	nodes := make([]*config.NodeInfo, 0)
+//	node1 := &config.Node{}
+//	node2 := &config.Node{}
+//	info1 := &config.NodeInfo{}
+//	info2 := &config.NodeInfo{}
+//	info1.SetNode(node1)
+//	info2.SetNode(node2)
+//	nodes = append(nodes, info1, info2)
+//	return nodes
+//}
 
 func prioritizeNodes(
 	ctx context.Context,

@@ -32,7 +32,7 @@ type PendingGroups struct {
 func newPendingQueue() *PendingGroups {
 	pg := &PendingGroups{
 		groupInfoMap: make(map[string]*config.QueuedGroupInfo),
-		keyFunc:      func(group *apis.Group) string { return group.Spec.Name },
+		keyFunc:      groupKeyFunc,
 	}
 	return pg
 }

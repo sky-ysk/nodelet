@@ -130,7 +130,7 @@ func NewGroupInfo(group *apis.Group) (*GroupInfo, error) {
 // NodeInfo is node level aggregated information.
 type NodeInfo struct {
 	// Overall node information.
-	node *Node
+	node *apis.Node
 
 	// Pods running on the node.
 	Groups []*GroupInfo
@@ -170,21 +170,23 @@ type NodeInfo struct {
 	Generation int64
 }
 
+func NewNodeInfo(n *apis.Node) *NodeInfo {
+	ret := &NodeInfo{
+		node: n,
+	}
+	return ret
+}
+
 // Node returns overall information about this node.
-func (n *NodeInfo) Node() *Node {
+func (n *NodeInfo) Node() *apis.Node {
 	if n == nil {
 		return nil
 	}
 	return n.node
 }
 
-func (n *NodeInfo) SetNode(node *Node) {
+func (n *NodeInfo) SetNode(node *apis.Node) {
 	n.node = node
 	//n.Allocatable = NewResource(node.Status.Allocatable)
 	//n.Generation = nextGeneration()
-}
-
-type Node struct {
-	Host string
-	Name string
 }
