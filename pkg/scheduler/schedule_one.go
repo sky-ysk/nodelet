@@ -93,7 +93,7 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 		//metrics.Goroutines.WithLabelValues(metrics.Binding).Inc()
 		//defer metrics.Goroutines.WithLabelValues(metrics.Binding).Dec()
 
-		status := sched.bindingCycle(bindingCycleCtx, fwk, scheduleResult, start)
+		status := sched.bindingCycle(bindingCycleCtx, fwk, state, scheduleResult, start)
 		//TODO 错误处理
 		if !status.IsSuccess() {
 			//sched.handleBindingCycleError(bindingCycleCtx, state, fwk, assumedPodInfo, start, scheduleResult, status)
@@ -272,17 +272,19 @@ func (sched *Scheduler) schedulingCycle(
 func (sched *Scheduler) bindingCycle(
 	ctx context.Context,
 	fwk framework.Framework,
+	state *framework.CycleState,
 	scheduleResult ScheduleResult,
 	start time.Time,
 	// TODO: 待部署的Group
 ) *framework.Status {
 	// start := time.Now()
+	//TODO @linbohai 资源预留
 
-	// if status := fwk.RunPostSchedulePlugins(ctx,group)
+	status := fwk.RunBindPlugins(ctx, state, scheduleResult.Group, scheduleResult.SuggestedHost)
 	// {
 	// 	return status
 	// }
-	return nil
+	return status
 
 	//TODO: 将Group标记为调度完成
 	//TODO: 将Group迁移到待部署队列

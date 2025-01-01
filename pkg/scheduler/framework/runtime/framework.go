@@ -36,9 +36,34 @@ type frameworkImpl struct {
 	scorePluginWeight map[string]int
 }
 
-func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.CycleState, group apis.Group, nodeName string) *framework.Status {
-	//TODO implement me
-	panic("implement me")
+func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) (status *framework.Status) {
+	if len(f.bindPlugins) == 0 {
+		return framework.NewStatus(framework.Skip, "no bind plugins")
+	}
+	for _, pl := range f.bindPlugins {
+		ctx := ctx
+		status = f.runBindPlugin(ctx, pl, state, group, nodeName)
+		if status.IsSkip() {
+			continue
+		}
+		if !status.IsSuccess() {
+			if status.IsRejected() {
+				logs.Info("Group rejected by Bind plugin", "Group", group.Name, "node", nodeName, "plugin", pl.Name(), "status", status.Message())
+				status.SetPlugin(pl.Name())
+				return status
+			}
+			err := status.AsError()
+			logs.Error(err, "Plugin Failed", "plugin", pl.Name(), "Group", group.Name, "node", nodeName)
+			return framework.AsStatus(fmt.Errorf("running Bind plugin %q: %w", pl.Name(), err))
+		}
+		return status
+	}
+	return status
+}
+
+func (f *frameworkImpl) runBindPlugin(ctx context.Context, bp framework.BindPlugin, state *framework.CycleState, group *apis.Group, nodeName string) *framework.Status {
+	status := bp.Bind(ctx, state, group, nodeName)
+	return status
 }
 
 func (f *frameworkImpl) RunReservePluginsReserve(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) *framework.Status {

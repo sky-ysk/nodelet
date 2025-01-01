@@ -12,6 +12,7 @@ func NewInTreeRegistry() runtime.Registry {
 		"DefaultFilter":      NewDefaultFilterPlugin,
 		"DefaultScorePlugin": NewDefaultScorePlugin,
 		//"ScorePluginForDBY":  NewScorePluginDBY,
+		"DefaultBindPlugin": NewDefaultBindPlugin,
 	}
 	return registry
 }

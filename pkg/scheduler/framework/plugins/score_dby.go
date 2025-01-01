@@ -17,7 +17,7 @@ func (sp *ScorePluginDBY) Name() string {
 }
 
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
-	//TODO 处理顺序ID等信息
+	//TODO 没测过
 	request := transport.ScoreRequest{
 		Group:  group,
 		NodeID: nodeName,

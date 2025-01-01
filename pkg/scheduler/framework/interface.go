@@ -199,7 +199,7 @@ type Framework interface {
 	// configured Reserve plugins.
 	RunReservePluginsUnreserve(ctx context.Context, state *CycleState, group *apis.Group, nodeName string)
 	//TODO 资源检查
-	RunBindPlugins(ctx context.Context, state *CycleState, group apis.Group, nodeName string) *Status
+	RunBindPlugins(ctx context.Context, state *CycleState, group *apis.Group, nodeName string) *Status
 }
 
 type Handle interface {
