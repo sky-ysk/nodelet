@@ -175,6 +175,11 @@ type ScorePlugin interface {
 	Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *Status)
 }
 
+type BindPlugin interface {
+	Plugin
+	Bind(ctx context.Context, state *CycleState, group *apis.Group, nodeName string) *Status
+}
+
 //TODO: 定义插件的运行结果
 
 type Framework interface {

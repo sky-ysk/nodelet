@@ -24,6 +24,7 @@ type frameworkImpl struct {
 	filterPlugins    []framework.FilterPlugin
 	generatorPlugins []framework.GeneratorPlugin
 	scorePlugins     []framework.ScorePlugin
+	bindPlugins      []framework.BindPlugin
 
 	// 所有的插件
 	pluginsMap map[string]framework.Plugin
@@ -41,13 +42,12 @@ func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.Cyc
 }
 
 func (f *frameworkImpl) RunReservePluginsReserve(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) *framework.Status {
-	//TODO implement me
-	panic("implement me")
+	ret := framework.NewStatus(framework.Success, "")
+	return ret
 }
 
 func (f *frameworkImpl) RunReservePluginsUnreserve(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) {
-	//TODO implement me
-	panic("implement me")
+	return
 }
 
 func (f *frameworkImpl) PercentageOfNodesToScore() *int32 {
@@ -194,24 +194,25 @@ func defaultFrameworkOptions() frameworkOptions {
 
 var _ framework.Framework = &frameworkImpl{}
 
-func NewFramework(ctx context.Context, r Registry, profile *config.SchedulerProfile, opts ...Option) (framework.Framework, error) {
-	options := defaultFrameworkOptions()
-	for _, opt := range opts {
-		opt(&options)
-	}
+func NewDefaultFramework(ctx context.Context, r Registry, name string) (framework.Framework, error) {
+	//options := defaultFrameworkOptions()
+	//for _, opt := range opts {
+	//	opt(&options)
+	//}
 
 	f := &frameworkImpl{
-		registry: r,
+		registry:     r,
+		parallelizer: utils.NewParallelizer(5),
 	}
 
-	if profile == nil {
-		return f, nil
-	}
+	//if profile == nil {
+	//	return f, nil
+	//}
 
-	f.profileName = profile.SchedulerName
-	if profile.Plugins == nil {
-		return f, nil
-	}
+	f.profileName = name
+	//if profile.Plugins == nil {
+	//	return f, nil
+	//}
 
 	// outputProfile := config.SchedulerProfile{
 	// 	SchedulerName: f.profileName,
@@ -220,18 +221,39 @@ func NewFramework(ctx context.Context, r Registry, profile *config.SchedulerProf
 
 	// 配置需要的插件
 	f.pluginsMap = make(map[string]framework.Plugin)
+	f.bindPlugins = make([]framework.BindPlugin, 0)
+	f.scorePlugins = make([]framework.ScorePlugin, 0)
+	f.filterPlugins = make([]framework.FilterPlugin, 0)
 	for name, factory := range r {
 		p, err := factory(ctx, f)
-
 		if err != nil {
 			return nil, fmt.Errorf("initializing plugin %q: %w", name, err)
 		}
 		f.pluginsMap[name] = p
+		//在这里加入不同插件队列
+		if bp, ok := p.(framework.BindPlugin); ok {
+			f.bindPlugins = append(f.bindPlugins, bp)
+		} else if fp, ok := p.(framework.FilterPlugin); ok {
+			f.filterPlugins = append(f.filterPlugins, fp)
+		} else if sp, ok := p.(framework.ScorePlugin); ok {
+			f.scorePlugins = append(f.scorePlugins, sp)
+		} else {
+			fmt.Println("add plugins fail!!")
+		}
 	}
 
 	// 配置需要的挂载点
 
-	logs.Info("the scheduler starts to work with those plugins", "Plugins") //TODO: 列出所有的插件
+	logs.Info("the scheduler starts to work with those plugins") //TODO: 列出所有的插件
+	msg := fmt.Sprintf("score plugins num %d", len(f.scorePlugins))
+	logs.Info(msg)
+	msg1 := fmt.Sprintf("filter plugins num %d", len(f.filterPlugins))
+	logs.Info(msg1)
+	msg2 := fmt.Sprintf("bind plugins num %d", len(f.bindPlugins))
+	logs.Info(msg2)
+	fmt.Println(msg1)
+	fmt.Println(msg2)
+	fmt.Println(msg)
 	return f, nil
 }
 

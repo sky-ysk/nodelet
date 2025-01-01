@@ -143,14 +143,14 @@ func logPanic(ctx context.Context, r interface{}) {
 	// panic handler is between us and the code where the panic occurred.
 	// If it's one function (as in Go 1.21), then skipping four levels
 	// gets us to the function which called the `defer HandleCrashWithontext(...)`.
-	logger := logs
+	//logger := logs
 
 	// For backwards compatibility, conversion to string
 	// is handled here instead of defering to the logging
 	// backend.
 	if _, ok := r.(string); ok {
-		logger.Error(nil, "Observed a panic", "panic", r, "stacktrace", string(stacktrace))
+		logs.Error(nil, "Observed a panic", "panic", r, "stacktrace", string(stacktrace))
 	} else {
-		logger.Error(nil, "Observed a panic", "panic", fmt.Sprintf("%v", r), "panicGoValue", fmt.Sprintf("%#v", r), "stacktrace", string(stacktrace))
+		logs.Error(nil, "Observed a panic", "panic", fmt.Sprintf("%v", r), "panicGoValue", fmt.Sprintf("%#v", r), "stacktrace", string(stacktrace))
 	}
 }

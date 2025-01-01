@@ -35,6 +35,7 @@ import (
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	"hit.edu/framework/pkg/scheduler/backend/queue"
 	"hit.edu/framework/pkg/scheduler/framework"
+	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/internal"
 	"time"
 
@@ -45,6 +46,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/watch"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/rest"
+	schedRuntime "hit.edu/framework/pkg/scheduler/framework/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"net/http"
 )
@@ -137,7 +139,7 @@ func init() {
 
 // 创建新的Scheduler对象
 func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
-
+	logs.Info("init scheduler... ")
 	stopEverything := ctx.Done()
 
 	// 配置调度器启动选项，在这里需要定义所需的模块，插件
@@ -149,7 +151,7 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 	// 配置调度器参数
 
 	// 配置插件模块
-	// registry := frameworkplugins.NewInTreeRegistry()
+	registry := plugins.NewInTreeRegistry()
 
 	// 配置任务队列
 
@@ -158,11 +160,15 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 	//queue := internal.NewSchedulingQueue()
 	schedQueue := queue.NewPriorityQueue()
 	schedQueue.Run(ctx)
-
+	defaultFramework, err := schedRuntime.NewDefaultFramework(ctx, registry, "DefaultScheduler")
+	if err != nil {
+		return nil, err
+	}
 	sched := &Scheduler{
-		StopEverything:  stopEverything,
-		ScheduleSigChan: scheduleChan,
-		SchedulingQueue: schedQueue,
+		StopEverything:   stopEverything,
+		ScheduleSigChan:  scheduleChan,
+		SchedulingQueue:  schedQueue,
+		DefaultFramework: defaultFramework,
 	}
 
 	sched.applyDefaultHandlers()
@@ -246,7 +252,6 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 
 	groupClient := clientSet.Core().Groups("")
 	logs.Info("scheduler start watching groups")
-	fmt.Println("watching groups")
 	//设置监听通道一小时关闭
 	var watchTimeout int64 = 3600
 	watchOptions := metav1.ListOptions{
@@ -266,15 +271,17 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 		select {
 		case event, ok := <-watchChan:
 			if !ok {
-				fmt.Println("watchChan closed")
+				logs.Info("watchChan closed")
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			fmt.Printf("scheduler接收到事件类型: %v\n", event.Type)
+			msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
+			fmt.Printf(msg)
 			switch event.Type {
 			case watch.Added:
 				{
-					fmt.Println("资源被添加: ", event.Object)
+					addMsg := fmt.Sprintf("资源被添加: %s", event.Object)
+					fmt.Println(addMsg)
 					sched.handleGroupAdd(ctx, event)
 				}
 			case watch.Modified:
@@ -292,10 +299,9 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
-		fmt.Println("can convert")
 		sched.SchedulingQueue.Add(ctx, g)
 	} else {
-		fmt.Println("cannot convert")
+		logs.Error("cannot convert to group")
 	}
 
 }

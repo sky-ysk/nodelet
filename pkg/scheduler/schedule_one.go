@@ -41,9 +41,6 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
 	fmt.Println("now schedule one running")
 	groupInfo, err := sched.ReadyGroup(ctx)
-	fmt.Println("new get the group ")
-	fmt.Println(groupInfo.Group.Spec.Name)
-
 	//groupInfo := groupInfos[0]
 	if err != nil {
 		logs.Error(err.Error())

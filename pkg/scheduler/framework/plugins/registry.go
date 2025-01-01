@@ -11,7 +11,7 @@ func NewInTreeRegistry() runtime.Registry {
 		//将实现的插件放入这个位置
 		"DefaultFilter":      NewDefaultFilterPlugin,
 		"DefaultScorePlugin": NewDefaultScorePlugin,
-		"ScorePluginForDBY":  NewScorePluginDBY,
+		//"ScorePluginForDBY":  NewScorePluginDBY,
 	}
 	return registry
 }
