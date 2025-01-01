@@ -1,6 +1,10 @@
 package group
 
 import (
+	"context"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/nodelet/task/task"
 	"strings"
 	"sync"
 	"time"
@@ -47,20 +51,31 @@ type groupWorkers struct {
 	//管理所有Group
 	groupManager Manager
 
+	//管理所有的Task
+	taskManager task.Manager
+
 	//以队列的形式管理监控group，实时反馈给aip-server各个group的状态
 	queueManager *GroupQueues
+
+	//group-client
+	groupsClient core.GroupInterface
+	//task-client
+	taskClient core.TaskInterface
 
 	// 管理运行所需的Runtime
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
 }
 
-func NewGroupWorkers(groupManager Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager) GroupWorkers {
+func NewGroupWorkers(groupManager Manager, taskManager task.Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface) GroupWorkers {
 	//TODO:
 	return &groupWorkers{
 		runtimeManager: runtimeManager,
 		groupManager:   groupManager,
+		taskManager:    taskManager,
 		queueManager:   groupQueues,
+		groupsClient:   groupclient,
+		taskClient:     taskclient,
 		groupUpdates:   make(map[string]chan *UpdateGroupOptions),
 	}
 }
@@ -101,9 +116,9 @@ func (g *groupWorkers) startGroup(group *apis.Group) {
 		return
 	}
 	//修改Pennding队列当中改group的信息（同时也同步到group_manager当中），状态都改为penning
-	g.handleGroupPenndingUpdate(group) //-----有问题
+	g.handleGroupPenndingUpdate(group) //12.31新增：除了修改group的状态，还需要修改上层Task的状态为Pennding
 	//检查依赖，如果满足，则放入running队列，开始执行actions
-	if !g.checkGroupDepencies(group) {
+	if !g.checkGroupDepencies(group) { //12.31：增加检查是否有父亲group
 		logs.Infof("The group %s execution dependency is not satisfied", group.Name)
 		//继续放在Pennding队列当中，Pennding队列会持续检查依赖，直到依赖满足后，才开始执行，重新将任务group交给group_workers去执行
 		return
@@ -199,6 +214,22 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 // 检查Group的依赖是否满足
 func (g *groupWorkers) checkGroupDepencies(group *apis.Group) bool {
 	//TODO：实现依赖检查逻辑
+	if len(group.Spec.Parents) == 0 {
+		return true
+	} else {
+		//检查父亲group是否执行完成
+		for i := range group.Spec.Parents {
+			parentName := group.Spec.Parents[i]
+			// 去client-go当中查group
+			result, err := g.groupsClient.Get(context.TODO(), parentName, metav1.GetOptions{})
+			if err != nil {
+				logs.Errorf("Failed to get group: %s", parentName)
+			}
+			if result.Status.Phase != apis.Successed {
+				return false //说明当前group的付钱group还没完成，直接返回false即可
+			}
+		}
+	}
 	return true
 }
 
@@ -228,7 +259,11 @@ func (g *groupWorkers) checkRuntimeDepencies(runtime *apis.Runtime, action *apis
 	return true
 }
 
+// 修改group下面的所有状态为Pennding  +增加：修改group上层的Task状态为Pennding
 func (g *groupWorkers) handleGroupPenndingUpdate(group *apis.Group) {
+	// 修改Group上层的Task 的Status状态为penning
+	g.handleTaskPenndingUpdate(group)
+	// 修改Group层以及Group下面的Action、Runtime的Phase为penning
 	groupSpec := &group.Spec
 	groupStatus := &group.Status
 	//首先标记GroupStatus的Phase为Pennding
@@ -255,6 +290,32 @@ func (g *groupWorkers) handleGroupPenndingUpdate(group *apis.Group) {
 	err := g.queueManager.UpdateGroup(group.Status.GroupID, group)
 	if err != nil {
 		logs.Error("update group-runtiem-start info error")
+	}
+}
+
+// 将TaskStatus的phase设置为Pennding， TODO 后续可能还需要修改时间
+func (g *groupWorkers) handleTaskPenndingUpdate(group *apis.Group) {
+	// 查找该group所属的Task
+	taskID := group.Status.Belongs.TaskID
+	// client-go 查看task-list
+	lstOpts := metav1.ListOptions{}
+	list, err := g.taskClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		logs.Error("list task err:", err.Error())
+	}
+	for _, t := range list.Items { //遍历etcd当中的所有task
+		if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Pennding
+			// 得到该Task的引用
+			task, err := g.taskManager.GetTaskByID(taskID)
+			if err != nil {
+				logs.Error("get task err:", err.Error())
+			}
+			task.Status.Phase = apis.Pending         //设置Task的状态为penning
+			for i := range task.Status.GroupStatus { //同时设置TaskStatus下的GroupStatus的phase为penning
+				gs := &task.Status.GroupStatus[i]
+				gs.Phase = apis.Pending
+			}
+		}
 	}
 }
 

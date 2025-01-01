@@ -66,6 +66,155 @@ func main() {
 
 	tasksClient := clientSet.Core().Tasks("")
 
+	//task := &apis.Task{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "demo-tasks",
+	//		Namespace: "",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Task",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.TaskSpec{
+	//		Name: "demo-task",
+	//		Groups: []apis.Group{
+	//			apis.Group{
+	//				ObjectMeta: metav1.ObjectMeta{Name: "TestGroup1", Namespace: ""},
+	//				TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
+	//				Spec: apis.GroupSpec{
+	//					Name:    "TestGroup1",
+	//					Parents: make([]string, 0),
+	//					Actions: []apis.Action{
+	//						apis.Action{
+	//							ObjectMeta: metav1.ObjectMeta{Name: "cmd_yolo_predict_action"},
+	//							Spec: apis.ActionSpec{
+	//								Name: "cmd_yolo_predict_action",
+	//								Runtimes: []apis.Runtime{
+	//									apis.Runtime{
+	//										Name:    "CMD",
+	//										Type:    apis.ByCommand,
+	//										Command: []string{"D:\\Programming\\Anaconda\\envs\\yolo\\python.exe"},
+	//										Args:    []string{"D:\\Programming\\GoLand\\goProject\\all\\adaptive-scheduling-framework\\test\\nodelet\\task_exporter\\cmd_yolo\\yolo_task\\predict.py"},
+	//									},
+	//								},
+	//							},
+	//							Status: apis.ActionStatus{
+	//								ActionID: "cmd_yolo_predict_action:TestGroup1:test-task", // ActionID =ActionName + GroupID
+	//								Phase:    apis.Unknown,
+	//								RuntimeStatus: []apis.RuntimeStatus{
+	//									apis.RuntimeStatus{
+	//										RuntimeID: "CMD:cmd_yolo_predict_action:TestGroup1:test-task", // RuntimeID = RuntimeName + ActionID
+	//										Phase:     apis.Unknown,
+	//									},
+	//								},
+	//							},
+	//						},
+	//					},
+	//				},
+	//				Status: apis.GroupStatus{
+	//					GroupID: "TestGroup1:test-task",
+	//					ActionStatus: []apis.ActionStatus{
+	//						apis.ActionStatus{
+	//							ActionID: "cmd_yolo_predict_action:TestGroup1:test-task",
+	//							RuntimeStatus: []apis.RuntimeStatus{
+	//								apis.RuntimeStatus{
+	//									RuntimeID: "CMD:cmd_yolo_predict_action:TestGroup1:test-task",
+	//									Phase:     apis.Unknown,
+	//								},
+	//							},
+	//							Phase: apis.Unknown,
+	//						},
+	//					},
+	//				},
+	//			},
+	//			apis.Group{
+	//				ObjectMeta: metav1.ObjectMeta{Name: "TestGroup2", Namespace: ""},
+	//				TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
+	//				Spec: apis.GroupSpec{
+	//					Name:    "TestGroup2",
+	//					Parents: []string{"TestGroup1"}, // 加入Parents
+	//					Actions: []apis.Action{
+	//						apis.Action{
+	//							ObjectMeta: metav1.ObjectMeta{Name: "cmd_yolo_train_action"},
+	//							Spec: apis.ActionSpec{
+	//								Name: "cmd_yolo_train_action",
+	//								Runtimes: []apis.Runtime{
+	//									apis.Runtime{
+	//										Name:    "ABC",
+	//										Type:    apis.ByCommand,
+	//										Command: []string{"D:\\Programming\\Anaconda\\envs\\yolo\\python.exe"},
+	//										Args:    []string{"D:\\Programming\\GoLand\\goProject\\all\\adaptive-scheduling-framework\\test\\nodelet\\task_exporter\\cmd_yolo\\yolo_task\\train.py"},
+	//									},
+	//								},
+	//							},
+	//							Status: apis.ActionStatus{
+	//								ActionID: "cmd_yolo_train_action:TestGroup2:test-task",
+	//								Phase:    apis.Unknown,
+	//								RuntimeStatus: []apis.RuntimeStatus{
+	//									apis.RuntimeStatus{
+	//										RuntimeID: "ABC:cmd_yolo_train_action:TestGroup2:test-task",
+	//										Phase:     apis.Unknown,
+	//									},
+	//								},
+	//							},
+	//						},
+	//					},
+	//				},
+	//				Status: apis.GroupStatus{
+	//					GroupID: "TestGroup2:test-task",
+	//					ActionStatus: []apis.ActionStatus{
+	//						apis.ActionStatus{
+	//							ActionID: "cmd_yolo_train_action:TestGroup2:test-task",
+	//							RuntimeStatus: []apis.RuntimeStatus{
+	//								apis.RuntimeStatus{
+	//									RuntimeID: "ABC:cmd_yolo_train_action:TestGroup2:test-task",
+	//									Phase:     apis.Unknown,
+	//								},
+	//							},
+	//							Phase: apis.Unknown,
+	//						},
+	//					},
+	//				},
+	//			},
+	//		},
+	//	},
+	//	Status: apis.TaskStatus{
+	//		TaskID: "test-task",
+	//		Phase:  apis.Unknown,
+	//		GroupStatus: []apis.GroupStatus{
+	//			apis.GroupStatus{
+	//				GroupID: "TestGroup1:test-task",
+	//				ActionStatus: []apis.ActionStatus{
+	//					apis.ActionStatus{
+	//						ActionID: "cmd_yolo_predict_action:TestGroup1:test-task",
+	//						RuntimeStatus: []apis.RuntimeStatus{
+	//							apis.RuntimeStatus{
+	//								RuntimeID: "CMD:cmd_yolo_predict_action:TestGroup1:test-task",
+	//								Phase:     apis.Unknown,
+	//							},
+	//						},
+	//						Phase: apis.Unknown,
+	//					},
+	//				},
+	//			},
+	//			apis.GroupStatus{
+	//				GroupID: "TestGroup2:test-task",
+	//				ActionStatus: []apis.ActionStatus{
+	//					apis.ActionStatus{
+	//						ActionID: "cmd_yolo_train_action:TestGroup2:test-task",
+	//						RuntimeStatus: []apis.RuntimeStatus{
+	//							apis.RuntimeStatus{
+	//								RuntimeID: "ABC:cmd_yolo_train_action:TestGroup2:test-task",
+	//								Phase:     apis.Unknown,
+	//							},
+	//						},
+	//						Phase: apis.Unknown,
+	//					},
+	//				},
+	//			},
+	//		},
+	//	},
+	//}
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-tasks",
@@ -76,10 +225,28 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.TaskSpec{
-			Name: "demo-task",
+			Name:       "demo-tasks",
+			Desc:       apis.Description{},
+			Conditions: apis.Conditions{},
+			Groups: []apis.Group{
+				apis.Group{
+					Spec: apis.GroupSpec{
+						Name: "demo-groups",
+					},
+					Status: apis.GroupStatus{},
+				},
+				apis.Group{
+					Spec: apis.GroupSpec{
+						Name: "demo-groups2",
+					},
+					Status: apis.GroupStatus{},
+				},
+			},
+		},
+		Status: apis.TaskStatus{
+			Belongs: apis.IDRef{},
 		},
 	}
-
 	//task2 := &apis.Task{
 	//	ObjectMeta: metav1.ObjectMeta{
 	//		Name: "demo-task2",
@@ -106,8 +273,7 @@ func main() {
 	//}
 	patchTask, err := json.Marshal(map[string]interface{}{
 		"Spec": map[string]interface{}{
-			"TaskName": "patch-task-name",
-			"HostName": "master",
+			"Name": "patch-task-name",
 		},
 	})
 
@@ -180,7 +346,7 @@ func main() {
 	}
 
 	logs.Infof("get result", result)
-	logs.Infof("修改前的result.Spec.TaskName：", result.Spec.Name)
+	logs.Infof("修改前的result.Spec.Name：", result.Spec.Name)
 
 	result.Spec.Name = "updatedTaskName"
 	_, updateErr := tasksClient.Update(context.TODO(), result, metav1.UpdateOptions{})
@@ -188,7 +354,7 @@ func main() {
 		panic(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	logs.Infof("修改后的result.Spec.TaskName：", result.Spec.Name)
+	logs.Infof("修改后的result.Spec.Name：", result.Spec.Name)
 	logs.Info("Updated task...")
 	prompt()
 

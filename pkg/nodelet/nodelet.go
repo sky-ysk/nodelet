@@ -8,7 +8,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/nodelet/node/collector"
 	"hit.edu/framework/pkg/nodelet/task"
@@ -31,20 +30,20 @@ type Nodelet struct {
 	cfg   *Config //全局config，包含下级的exporter config
 	cache map[string]collector.Metric
 	// Close this to shut down the resourcelet.
-	nodesClient    core.NodeInterface
+	clientSet      *clients.ClientSet
 	StopEverything <-chan struct{}
 }
 
 func New(ctx context.Context) (*Nodelet, error) {
 	cfg := NewConfig()
 	stopEverything := ctx.Done()
-	nodesClient, err := InitClient()
+	clientSet, err := InitClient()
 	if err != nil {
 		log.Fatalf("init client failed: %v", err)
 	}
 	nl := &Nodelet{
 		cfg:            cfg,
-		nodesClient:    nodesClient,
+		clientSet:      clientSet,
 		StopEverything: stopEverything,
 	}
 
@@ -52,7 +51,7 @@ func New(ctx context.Context) (*Nodelet, error) {
 	return nl, nil
 }
 
-func InitClient() (core.NodeInterface, error) {
+func InitClient() (*clients.ClientSet, error) {
 	//初始化ClientSet客户端
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
@@ -80,8 +79,7 @@ func InitClient() (core.NodeInterface, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
 	}
-	nodesClient := clientSet.Core().Nodes("Test")
-	return nodesClient, nil
+	return clientSet, nil
 }
 
 func (nl *Nodelet) Run(ctx context.Context) {
@@ -94,7 +92,7 @@ func (nl *Nodelet) Run(ctx context.Context) {
 
 	//构造Task Exporter
 	//te, err := task.NewTaskExporter(nl.cfg.tc, nl.nodesClient)
-	te, err := task.NewTaskExporter(nl.cfg.tc)
+	te, err := task.NewTaskExporter(nl.cfg.tc, nl.clientSet)
 	if err != nil {
 		panic(err)
 	}

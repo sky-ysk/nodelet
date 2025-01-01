@@ -2,6 +2,13 @@ package task
 
 import (
 	"context"
+	"fmt"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
+	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/rest"
+	"net/http"
 	"testing"
 	"time"
 
@@ -257,13 +264,45 @@ func simpleTaskGroup() []*apis.Group {
 	return groups
 }
 
+func InitClient() (*clients.ClientSet, error) {
+	//初始化ClientSet客户端
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 10 * time.Second,
+	}
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
+	}
+	return clientSet, nil
+}
+
 func TestTaskExporter(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	ctx, _ := context.WithCancel(context.Background())
 	// 构造Task Exporter
 	tc := NewConfig("test-node")
-	te, err := NewTaskExporter(tc)
+	clientSet, err := InitClient()
+	te, err := NewTaskExporter(tc, clientSet)
 	if err != nil {
 		panic(err)
 	}
@@ -283,10 +322,10 @@ func TestTaskExporter(t *testing.T) {
 		}
 	}()
 	time.Sleep(2 * time.Second)
-	Groups := yoloPredictAndTrainTaskGroup()
-	ReceiveGroupInfo(Groups, "create")
-	time.Sleep(60 * time.Second)
-	ReceiveGroupInfo(Groups, "kill")
+	//Groups := yoloPredictAndTrainTaskGroup()
+	//ReceiveGroupInfo(Groups, "create")
+	//time.Sleep(60 * time.Second)
+	//ReceiveGroupInfo(Groups, "kill")
 	select {}
 	// 部署多个任务
 	//Groups[0].Spec.Name = "Test-Group2"

@@ -2,13 +2,17 @@ package task
 
 import (
 	"context"
+	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/monitor"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
+	"hit.edu/framework/pkg/nodelet/task/task"
 	"hit.edu/framework/pkg/nodelet/task/types"
 )
 
@@ -23,6 +27,8 @@ var (
 type TaskExporter struct {
 	// TODO: 增加Client-Go配置  --这块有点不太清楚,应该是为了方便将任务状态存到etcd当中
 	nodesClient core.NodeInterface
+	gropsClient core.GroupInterface
+	tasksClient core.TaskInterface
 	// TODO: 增加Event Recorder
 
 	// TODO: 增加Group Lister
@@ -43,43 +49,19 @@ type TaskExporter struct {
 
 var _ Exporter = &TaskExporter{}
 
-//func NewTaskExporter(cfg *Config, client core.NodeInterface) (*TaskExporter, error) {
-//	// Task Exporter配置 config
-//	//事件配置
-//	eb := eventbus.NewEventBus()
-//	// Manager配置 group
-//	groupManager := group.NewGroupManager()
-//	// lister
-//	lister := groupManager.GetGroups(nil)
-//	// runtimeManager的配置
-//	runtimeManager := runtime.NewRuntimeManager(eb)
-//	// queue_manager
-//	groupQueues := group.NewGroupQueues(groupManager)
-//	// workers
-//	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager)
-//
-//	taskExporter := &TaskExporter{
-//		// Monitor配置
-//		groupManager: groupManager,
-//		groupLister:  lister,
-//		groupWorkers: workers,
-//		groupMonitor: monitor.NewGroupMonitor(groupManager, groupQueues, eb, runtimeManager),
-//		groupHandler: monitor.NewGroupHandler(groupManager, workers, groupQueues),
-//		nodesClient:  client,
-//	}
-//	// Client-Go配置
-//
-//	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
-//	logs.Info("init task exporter")
-//	return taskExporter, nil
-//}
-
-func NewTaskExporter(cfg *Config) (*TaskExporter, error) {
+func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
 	// Task Exporter配置 config
+
+	//client配置
+	nodeClient := clientset.Core().Nodes("")
+	taskClient := clientset.Core().Tasks("")
+	groupClient := clientset.Core().Groups("")
 	//事件配置
 	eb := eventbus.NewEventBus()
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
+	// Manager 配置Task
+	taskManager := task.NewTaskManager()
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
@@ -87,14 +69,17 @@ func NewTaskExporter(cfg *Config) (*TaskExporter, error) {
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
-	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager)
+	workers := group.NewGroupWorkers(groupManager, taskManager, groupQueues, runtimeManager, groupClient, taskClient)
 
 	taskExporter := &TaskExporter{
 		// Monitor配置
+		nodesClient:  nodeClient,
+		tasksClient:  taskClient,
+		gropsClient:  groupClient,
 		groupManager: groupManager,
 		groupLister:  lister,
 		groupWorkers: workers,
-		groupMonitor: monitor.NewGroupMonitor(groupManager, groupQueues, eb, runtimeManager),
+		groupMonitor: monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
 		groupHandler: monitor.NewGroupHandler(groupManager, workers, groupQueues),
 	}
 	// Client-Go配置
@@ -132,20 +117,32 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 }
 
 // 模拟上层组件发送任务信息给Taskexporter，该方法主要是接受任务信息，并放入管道当中，触发Loop监听
-func ReceiveGroupInfo(groups []*apis.Group, updateType string) {
-	logs.Info("receive group info")
-	if updateType == "create" {
-		groupUpdate := types.GroupUpdate{
-			Groups: groups,
-			Op:     types.ADD,
+func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
+	task := te.GetTask()
+	for i := range task.Spec.Groups {
+		g := &task.Spec.Groups[i]
+		if updateType == "create" {
+			groupUpdate := types.GroupUpdate{
+				Groups: []*apis.Group{g},
+				Op:     types.ADD,
+			}
+			updateCh <- groupUpdate
+		} else if updateType == "kill" {
+			//TODO
+			groupUpdate := types.GroupUpdate{
+				Groups: []*apis.Group{g},
+				Op:     types.KILL,
+			}
+			updateCh <- groupUpdate
 		}
-		updateCh <- groupUpdate
-	} else if updateType == "kill" {
-		//TODO
-		groupUpdate := types.GroupUpdate{
-			Groups: groups,
-			Op:     types.KILL,
-		}
-		updateCh <- groupUpdate
 	}
+	logs.Info("receive group info")
+}
+
+func (te *TaskExporter) GetTask() *apis.Task {
+	result, getErr := te.tasksClient.Get(context.TODO(), "demo-tasks", metav1.GetOptions{})
+	if getErr != nil {
+		panic(fmt.Errorf("Failed to get : %v", getErr))
+	}
+	return result
 }
