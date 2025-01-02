@@ -47,7 +47,7 @@ const (
 func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
 	//fmt.Println("now schedule one running")
-	logs.Info("now schedule one running")
+	logs.Info("now schedule one running..test")
 	groupInfo, err := sched.ReadyGroup(ctx)
 	msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
 	logs.Info(msg)
@@ -79,12 +79,15 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	state := framework.NewCycleState(group)
 
 	scheduleResult, _, _ := sched.schedulingCycle(ctx, fwk, start, state, *groupInfo)
+	//logs.Info("sched result is")
+	//jsonData, err := json.Marshal(scheduleResult)
+	//if err != nil {
+	//	logs.Error(err.Error())
+	//}
+	//logs.Info(string(jsonData))
 	msg = fmt.Sprintf("schedule result : group %s on node %s", scheduleResult.Group.ObjectMeta.Name, scheduleResult.SuggestedHost)
 	logs.Info(msg)
-	//Unched
 
-	//sched
-	//sched //
 	//TODO: 部署任务/Bind相关接口
 	go func() {
 		bindingCycleCtx, cancel := context.WithCancel(ctx)
@@ -135,10 +138,9 @@ func (sched *Scheduler) schedulingCycle(
 	scheduleResult, err := sched.ScheduleGroup(ctx, fwk, state, group)
 	//TODO 错误处理，目前先fail fast
 	if err != nil {
+		logs.Error(err.Error())
 		//TODO 算法时间监控模块，后面再做
-		//defer func() {
-		//	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
-		//}()
+
 		// 没有可调度的节点，后续放入Unschedulable队列
 		//TODO 这部分队列转移？
 		if errors.Is(err, ErrNoNodesAvailable) {
@@ -146,124 +148,22 @@ func (sched *Scheduler) schedulingCycle(
 			return scheduleResult, nil, status
 		}
 		//TODO 执行后续插件，细化错误信息，后续再做
-		//fitError, ok := err.(*framework.FitError)
-		//if !ok {
-		//	//logger.Error(err, "Error selecting node for pod", "pod", klog.KObj(pod))
-		//	return ScheduleResult{nominatingInfo: clearNominatedNode}, groupInfo, framework.AsStatus(err)
-		//}
-
-		// SchedulePod() may have failed because the pod would not fit on any host, so we try to
-		// preempt, with the expectation that the next time the pod is tried for scheduling it
-		// will fit due to the preemption. It is also possible that a different pod will schedule
-		// into the resources that were preempted, but this is harmless.
-
-		//if !fwk.HasPostFilterPlugins() {
-		//	logger.V(3).Info("No PostFilter plugins are registered, so no preemption will be performed")
-		//	return ScheduleResult{}, podInfo, framework.NewStatus(framework.Unschedulable).WithError(err)
-		//}
-		//
-		//// Run PostFilter plugins to attempt to make the pod schedulable in a future scheduling cycle.
-		//result, status := fwk.RunPostFilterPlugins(ctx, state, pod, fitError.Diagnosis.NodeToStatus)
-		//msg := status.Message()
-		//fitError.Diagnosis.PostFilterMsg = msg
-		//if status.Code() == framework.Error {
-		//	logger.Error(nil, "Status after running PostFilter plugins for pod", "pod", klog.KObj(pod), "status", msg)
-		//} else {
-		//	logger.V(5).Info("Status after running PostFilter plugins for pod", "pod", klog.KObj(pod), "status", msg)
-		//}
-		//
-		//var nominatingInfo *framework.NominatingInfo
-		//if result != nil {
-		//	nominatingInfo = result.NominatingInfo
-		//}
 		return scheduleResult, nil, framework.NewStatus(framework.Unschedulable).WithError(err)
 	}
 	//TODO 记录时间指标
-	//metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
-
-	// Tell the cache to assume that a pod now is running on a given node, even though it hasn't been bound yet.
-	// This allows us to keep scheduling without waiting on binding to occur.
 	//TODO 做一些字段级别的资源预留？？ 目前是浅复制
-	//assumedGroupInfo := groupInfo.DeepCopy()
-	//assumedGroup := assumedGroupInfo.Group
-	//// assume modifies `assumedPod` by setting NodeName=scheduleResult.SuggestedHost
-	//err = sched.assume(assumedGroup, scheduleResult.SuggestedHost)
-	//if err != nil {
-	//	// This is most probably result of a BUG in retrying logic.
-	//	// We report an error here so that pod scheduling can be retried.
-	//	// This relies on the fact that Error will check if the pod has been bound
-	//	// to a node and if so will not add it back to the unscheduled pods queue
-	//	// (otherwise this would cause an infinite loop).
-	//	return scheduleResults, nil, framework.AsStatus(err)
-	//}
 	//TODO 填写results
 	if sts := fwk.RunReservePluginsReserve(ctx, state, scheduleResult.Group, scheduleResult.SuggestedHost); !sts.IsSuccess() {
 		// trigger un-reserve to clean up state associated with the reserved Pod
 		fwk.RunReservePluginsUnreserve(ctx, state, scheduleResult.Group, scheduleResult.SuggestedHost)
-
 		if sts.IsRejected() {
-			//return ScheduleResult{nominatingInfo: clearNominatedNode}, assumedPodInfo, framework.NewStatus(sts.Code()).WithError(fitErr)
 		}
-		//return ScheduleResult{nominatingInfo: clearNominatedNode}, assumedPodInfo, sts
 	}
 
-	// Run the Reserve method of reserve plugins.
 	//TODO 后续结合下层框架看看
-	//if sts := fwk.RunReservePluginsReserve(ctx, state, assumedPod, scheduleResult.SuggestedHost); !sts.IsSuccess() {
-	//	// trigger un-reserve to clean up state associated with the reserved Pod
-	//	fwk.RunReservePluginsUnreserve(ctx, state, assumedPod, scheduleResult.SuggestedHost)
-	//	if forgetErr := sched.Cache.ForgetPod(logger, assumedPod); forgetErr != nil {
-	//		logger.Error(forgetErr, "Scheduler cache ForgetPod failed")
-	//	}
-	//
-	//	if sts.IsRejected() {
-	//		fitErr := &framework.FitError{
-	//			NumAllNodes: 1,
-	//			Pod:         pod,
-	//			Diagnosis: framework.Diagnosis{
-	//				NodeToStatus: framework.NewDefaultNodeToStatus(),
-	//			},
-	//		}
-	//		fitErr.Diagnosis.NodeToStatus.Set(scheduleResult.SuggestedHost, sts)
-	//		fitErr.Diagnosis.AddPluginStatus(sts)
-	//		return ScheduleResult{nominatingInfo: clearNominatedNode}, assumedPodInfo, framework.NewStatus(sts.Code()).WithError(fitErr)
-	//	}
-	//	return ScheduleResult{nominatingInfo: clearNominatedNode}, assumedPodInfo, sts
-	//}
 
 	//TODO Run "permit" plugins.
-	//runPermitStatus := fwk.RunPermitPlugins(ctx, state, assumedPod, scheduleResult.SuggestedHost)
-	//if !runPermitStatus.IsWait() && !runPermitStatus.IsSuccess() {
-	//	// trigger un-reserve to clean up state associated with the reserved Pod
-	//	fwk.RunReservePluginsUnreserve(ctx, state, assumedPod, scheduleResult.SuggestedHost)
-	//	if forgetErr := sched.Cache.ForgetPod(logger, assumedPod); forgetErr != nil {
-	//		logger.Error(forgetErr, "Scheduler cache ForgetPod failed")
-	//	}
-	//
-	//	if runPermitStatus.IsRejected() {
-	//		fitErr := &framework.FitError{
-	//			NumAllNodes: 1,
-	//			Pod:         pod,
-	//			Diagnosis: framework.Diagnosis{
-	//				NodeToStatus: framework.NewDefaultNodeToStatus(),
-	//			},
-	//		}
-	//		fitErr.Diagnosis.NodeToStatus.Set(scheduleResult.SuggestedHost, runPermitStatus)
-	//		fitErr.Diagnosis.AddPluginStatus(runPermitStatus)
-	//		return ScheduleResult{nominatingInfo: clearNominatedNode}, assumedPodInfo, framework.NewStatus(runPermitStatus.Code()).WithError(fitErr)
-	//	}
 
-	//	return ScheduleResult{nominatingInfo: clearNominatedNode}, assumedGroupInfo, nil
-	//}
-
-	// At the end of a successful scheduling cycle, pop and move up Pods if needed.
-	//if len(podsToActivate.Map) != 0 {
-	//	sched.SchedulingQueue.Activate(logger, podsToActivate.Map)
-	//	// Clear the entries after activation.
-	//	podsToActivate.Map = make(map[string]*v1.Pod)
-	//}
-
-	//return scheduleResult, assumedPodInfo, nil
 	return scheduleResult, &groupInfo, nil
 }
 
@@ -355,6 +255,7 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 			SuggestedHost: feasibleNodes[0].Node().Name,
 			//EvaluatedNodes: 1 + diagnosis.NodeToStatus.Len(),
 			FeasibleNodes: 1,
+			Group:         group,
 		}, nil
 	}
 	// 排序

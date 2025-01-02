@@ -4,6 +4,7 @@
 BIN_DIR="./_output/local/go/bin"
 APISERVER_PATH="$BIN_DIR/apiserver"
 SCHEDULER_PATH="$BIN_DIR/scheduler"
+NODELET_PATH="$BIN_DIR/nodelet"
 
 # 函数用于检查进程是否存在
 check_process_running() {
@@ -48,3 +49,18 @@ else
 fi
 
 echo "The apiserver output is redirected to apiserver_log.log, and the scheduler output is shown in the foreground."
+
+# 休眠2秒
+sleep 2
+
+# 判断 scheduler 文件是否存在
+if [ -f "NODELET_PATH" ]; then
+  if check_process_running "NODELET_PATH"; then
+      echo "The scheduler is already running. restart scheduler ..."
+      killall scheduler
+  fi
+    "NODELET_PATH"
+else
+    echo "The scheduler file at NODELET_PATH does not exist."
+    exit 1
+fi
