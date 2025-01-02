@@ -267,23 +267,23 @@ func (g *groupWorkers) handleGroupPenndingUpdate(group *apis.Group) {
 	groupSpec := &group.Spec
 	groupStatus := &group.Status
 	//首先标记GroupStatus的Phase为Pennding
-	group.Status.Phase = apis.Pending
+	group.Status.Phase = apis.ReadyToDeploy
 
 	// GroupSpec当中的Actions，标记ActionStatus中状态为Pennding
 	for i := range groupSpec.Actions { //Actions
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
-		groupSpec.Actions[i].Status.Phase = apis.Pending
+		groupSpec.Actions[i].Status.Phase = apis.ReadyToDeploy
 		for j := range actionStatus.RuntimeStatus { // RuntimeStatus
-			actionStatus.RuntimeStatus[j].Phase = apis.Pending
+			actionStatus.RuntimeStatus[j].Phase = apis.ReadyToDeploy
 		}
 	}
 	//GroupStatus当中的ActionStatus
 	for i := range groupStatus.ActionStatus { //ActionStatus
 		as := &groupStatus.ActionStatus[i]
-		as.Phase = apis.Pending
+		as.Phase = apis.ReadyToDeploy
 		for j := range as.RuntimeStatus { //RuntimeStatus
 			rs := &as.RuntimeStatus[j]
-			rs.Phase = apis.Pending
+			rs.Phase = apis.ReadyToDeploy
 		}
 	}
 	//将queue_manager和group_manager的group信息进行更新 ----------有问题
@@ -304,17 +304,18 @@ func (g *groupWorkers) handleTaskPenndingUpdate(group *apis.Group) {
 		logs.Error("list task err:", err.Error())
 	}
 	for _, t := range list.Items { //遍历etcd当中的所有task
+		logs.Infof("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%task Pointer address: %p", t)
 		if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Pennding
 			// 得到该Task的引用
 			task, err := g.taskManager.GetTaskByID(taskID)
 			if err != nil {
 				logs.Error("get task err:", err.Error())
 			}
-			task.Status.Phase = apis.Pending //设置Task的状态为penning
+			task.Status.Phase = apis.ReadyToDeploy //设置Task的状态为penning
 			task.Status.LastTime = apis.Time{time.Now()}
 			for i := range task.Status.GroupStatus { //同时设置TaskStatus下的GroupStatus的phase为penning
 				gs := &task.Status.GroupStatus[i]
-				gs.Phase = apis.Pending
+				gs.Phase = apis.ReadyToDeploy
 				gs.LastTime = apis.Time{time.Now()}
 			}
 		}

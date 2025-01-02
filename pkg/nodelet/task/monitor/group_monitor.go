@@ -197,7 +197,7 @@ func (gmo *GroupMonitor) RunningCheck() {
 						gmo.groupQueues.AddToError(task.Status.GroupID, task)
 						break
 					}
-					if action.Status.Phase == apis.Pending && action.Status.Waiting {
+					if action.Status.Phase == apis.ReadyToDeploy && action.Status.Waiting {
 						if !gmo.checkActionDependencies(&action, task) {
 							logs.Infof("Action %s depends on parent action, parent not finish ", action.Name)
 							continue
@@ -379,7 +379,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate1(event events.RuntimeStartPhas
 	if err2 != nil {
 		logs.Error("Get task by taskID error：", err2)
 	}
-	logs.Info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%task Pointer address: %p", task)
+	logs.Infof("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%task Pointer address: %p", task)
 	// 修改Task下面的TaskStatus下面的状态  从Task开始遍历的好处是可以修改Task下面的状态
 	for i := range task.Spec.Groups {
 		if task.Spec.Groups[i].Name != groupSpec.Name {
@@ -415,7 +415,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate1(event events.RuntimeStartPhas
 				rs.LastTime = lastTime
 			}
 		}
-		if actionStart { //为true说明要action还未设置状态为Running  TODO 后期可以改为k=0 并且rs.Phase == apis.Pending 进行下述操作
+		if actionStart { //为true说明要action还未设置状态为Running  TODO 后期可以改为k=0 并且rs.Phase == apis.ReadyToDeploy 进行下述操作
 			actionStatus.Phase = apis.Running
 			actionStatus.StartAt = startTime
 			actionStatus.LastTime = lastTime
@@ -486,7 +486,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	for i := range groupSpec.Actions { //Action
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
 		if actionStatus.ActionID != actionID {       //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
-			if actionStatus.Phase == apis.Pending { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
+			if actionStatus.Phase == apis.ReadyToDeploy { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
 				otherActionCompleted = false
 			}
 			continue
@@ -498,7 +498,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				rs.FinishAt = finshTime
 				rs.LastTime = lastTime
 			}
-			if rs.Phase == apis.Pending { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
+			if rs.Phase == apis.ReadyToDeploy { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
 				allRuntiemCompleted = false
 			}
 		}
@@ -584,7 +584,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	for i := range groupSpec.Actions { //Action
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
 		if actionStatus.ActionID != actionID {       //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
-			if actionStatus.Phase == apis.Pending { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
+			if actionStatus.Phase == apis.ReadyToDeploy { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
 				otherActionCompleted = false
 			}
 			continue
@@ -596,7 +596,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				rs.FinishAt = finshTime
 				rs.LastTime = lastTime
 			}
-			if rs.Phase == apis.Pending { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
+			if rs.Phase == apis.ReadyToDeploy { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
 				allRuntiemCompleted = false
 			}
 		}
@@ -683,11 +683,12 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 	if err2 != nil {
 		logs.Error("Get task by taskID error：", err2)
 	}
+	logs.Infof("task point address:%p", task)
 	// 检查其他的group是否完成
 	for i := range task.Spec.Groups {
 		grStatus := &task.Spec.Groups[i].Status
 		if grStatus.GroupID != groupID {
-			if grStatus.Phase == apis.Pending {
+			if grStatus.Phase == apis.ReadyToDeploy {
 				otherGroupCompleted = false
 			}
 			continue
@@ -697,7 +698,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 	for i := range groupSpec.Actions { //Action
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
 		if actionStatus.ActionID != actionID {       //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
-			if actionStatus.Phase == apis.Pending { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
+			if actionStatus.Phase == apis.ReadyToDeploy { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
 				otherActionCompleted = false
 			}
 			continue
@@ -711,7 +712,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 				rs.FinishAt = finshTime
 				rs.LastTime = lastTime
 			}
-			if rs.Phase == apis.Pending { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
+			if rs.Phase == apis.ReadyToDeploy { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
 				allRuntiemCompleted = false
 			}
 		}
