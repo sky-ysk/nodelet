@@ -209,7 +209,7 @@ func (gmo *GroupMonitor) RunningCheck() {
 								continue
 							}
 							//说明runtime可以执行
-							logs.Infof("************************************************************************************************************************")
+							//logs.Infof("************************************************************************************************************************")
 							err := gmo.runtimeManager.Run(task, &action, r)
 							if err != nil {
 								logs.Error("run task err", err.Error())
@@ -375,21 +375,42 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate1(event events.RuntimeStartPhas
 	groupStatus := &g.Status
 	var actionStart = true //action是否需要标记启动（下面的runtime如果都没启动，则说明action要标记Running）
 	taskID := g.Status.Belongs.TaskID
-	task, err2 := gmo.taskManager.GetTaskByID(taskID) //从etcd当中得到引用
-	if err2 != nil {
-		logs.Error("Get task by taskID error：", err2)
+	groupID := g.Name + ":" + taskID
+	//task, err2 := gmo.taskManager.GetTaskByID(taskID) //从etcd当中得到引用
+	//if err2 != nil {
+	//	logs.Error("Get task by taskID error：", err2)
+	//}
+	//logs.Infof("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%task Pointer address: %p", task)
+	list, err := gmo.taskClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		logs.Error("list task err:", err.Error())
 	}
-	logs.Infof("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%task Pointer address: %p", task)
+	var task1 *apis.Task
+	var err2 error
+	for _, t := range list.Items { //遍历etcd当中的所有task
+		if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Pennding
+			task1, err2 = gmo.taskClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
+			if err2 != nil {
+				logs.Error("Get task by taskID error from etcd：", err2)
+			}
+		}
+	}
+
+	//if task == task1 {
+	//	logs.Infof("task and task2 point to the same memory location.")
+	//} else {
+	//	logs.Infof("task and task2 point to different memory locations.")
+	//}
 	// 修改Task下面的TaskStatus下面的状态  从Task开始遍历的好处是可以修改Task下面的状态
-	for i := range task.Spec.Groups {
-		if task.Spec.Groups[i].Name != groupSpec.Name {
+	for i := range task1.Spec.Groups {
+		if task1.Spec.Groups[i].Name != groupSpec.Name {
 			continue
 		}
-		if i == 0 && task.Status.Phase != apis.Running {
+		if i == 0 && task1.Status.Phase != apis.Running {
 			// 说明是Task中的第一个Group启动，那直接标记Task的状态也为Pennding
-			task.Status.Phase = apis.Running
-			task.Status.StartAt = startTime
-			task.Status.LastTime = lastTime
+			task1.Status.Phase = apis.Running
+			task1.Status.StartAt = startTime
+			task1.Status.LastTime = lastTime
 		}
 		// TODO
 	}
@@ -403,6 +424,12 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate1(event events.RuntimeStartPhas
 			groupStatus.Phase = apis.Running //说明Group的Phase也得设置为running
 			groupStatus.StartAt = startTime
 			groupStatus.LastTime = lastTime
+			//遍历task，同时标记TaskStatus下GroupStatus状态也为running
+			for i := range task1.Status.GroupStatus {
+				if task1.Status.GroupStatus[i].GroupID == groupID {
+					task1.Status.GroupStatus[i].Phase = phase
+				}
+			}
 		}
 		for k := range actionStatus.RuntimeStatus { //RuntimeStatus
 			rs := &actionStatus.RuntimeStatus[k]
@@ -443,18 +470,18 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate1(event events.RuntimeStartPhas
 		}
 	}
 	// 通过client-go，将信息提交到api-server当中
-	gmo.taskClient.Update(context.TODO(), task, metav1.UpdateOptions{})
+	gmo.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 	gmo.groupClient.Update(context.TODO(), g, metav1.UpdateOptions{})
 
 	//将queue_manager和group_manager的group信息进行更新 ----------有问题
-	err := gmo.groupQueues.UpdateGroup(g.Status.GroupID, g)
+	err = gmo.groupQueues.UpdateGroup(g.Status.GroupID, g)
 	if err != nil {
 		logs.Error("update group-runtiem-start info error")
 	}
 	// 修改task的信息
-	gmo.taskManager.UpdateTask(task)
+	gmo.taskManager.UpdateTask(task1)
 	//测试
-	taskPhase := task.Status.Phase
+	taskPhase := task1.Status.Phase
 	p := g.Status.Phase
 	actionStatus := g.Status.ActionStatus[0].Phase
 	runtimeStatus := g.Status.ActionStatus[0].RuntimeStatus[0].Phase
@@ -679,22 +706,42 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 	var otherGroupCompleted = true
 	var nowGroupCompleted = false
 
-	task, err2 := gmo.taskManager.GetTaskByID(taskID) //从etcd当中得到引用
-	if err2 != nil {
-		logs.Error("Get task by taskID error：", err2)
+	//task, err2 := gmo.taskManager.GetTaskByID(taskID) //从etcd当中得到引用
+	//if err2 != nil {
+	//	logs.Error("Get task by taskID error：", err2)
+	//}
+	list, err := gmo.taskClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		logs.Error("list task err:", err.Error())
 	}
-	logs.Infof("task point address:%p", task)
+	var task1 *apis.Task
+	var err2 error
+	for _, t := range list.Items { //遍历etcd当中的所有task
+		if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Pennding
+			task1, err2 = gmo.taskClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
+			if err2 != nil {
+				logs.Error("Get task by taskID error from etcd：", err2)
+			}
+		}
+	}
+	//if task == task1 {
+	//	logs.Infof("task and task2 point to the same memory location.")
+	//} else {
+	//	logs.Infof("task and task2 point to different memory locations.")
+	//}
+	//logs.Infof("task point address:%p", task)
 	// 检查其他的group是否完成
-	for i := range task.Spec.Groups {
-		grStatus := &task.Spec.Groups[i].Status
+	for i := range task1.Spec.Groups {
+		//grStatus := &task1.Spec.Groups[i].Status
+		grStatus := &task1.Status.GroupStatus[i]
 		if grStatus.GroupID != groupID {
-			if grStatus.Phase == apis.ReadyToDeploy {
+			//logs.Infof("***********************grStatus.Phase:%v", grStatus.Phase)
+			if grStatus.Phase == apis.ReadyToDeploy { //if grStatus.Phase == apis.ReadyToDeploy {
 				otherGroupCompleted = false
 			}
 			continue
 		}
 	}
-
 	for i := range groupSpec.Actions { //Action
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
 		if actionStatus.ActionID != actionID {       //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
@@ -705,8 +752,8 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 		}
 		for j := range actionStatus.RuntimeStatus { //RuntimeStatus
 			rs := &actionStatus.RuntimeStatus[j]
-			logs.Infof("rs.RuntimeID:%v", rs.RuntimeID)
-			logs.Infof("runtimeID:%v", runtimeID)
+			//logs.Infof("rs.RuntimeID:%v", rs.RuntimeID)
+			//logs.Infof("runtimeID:%v", runtimeID)
 			if rs.RuntimeID == runtimeID { //遍历到当前的RUntime，设置RUntime的属性
 				rs.Phase = phase
 				rs.FinishAt = finshTime
@@ -725,14 +772,20 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 			nowActionCompleted = true //当前Action已经完成
 		}
 	}
-	logs.Infof("oteherActionCompleted:%v", otherActionCompleted)
-	logs.Infof("nowActionCompleted:%v", nowActionCompleted)
+	//logs.Infof("oteherActionCompleted:%v", otherActionCompleted)
+	//logs.Infof("nowActionCompleted:%v", nowActionCompleted)
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
 	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
 		groupStatus.Phase = phase //Group的状态等于当前Action执行完成的状态：Failed  or  Succeed
 		groupStatus.FinishAt = finshTime
 		groupStatus.LastTime = lastTime
 		nowGroupCompleted = true
+		//遍历task，同时标记TaskStatus下GroupStatus状态也为phase
+		for i := range task1.Status.GroupStatus {
+			if task1.Status.GroupStatus[i].GroupID == groupID {
+				task1.Status.GroupStatus[i].Phase = phase
+			}
+		}
 	}
 	//修改group下面的groupStatus下面的ActionStatus，ActionStatus下面的RuntimeStatus
 	for i := range groupStatus.ActionStatus { //ActionStatus
@@ -754,25 +807,27 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 			as.LastTime = lastTime
 		}
 	}
+	//logs.Infof("===================otherGroupCompleted:%v", otherGroupCompleted)
+	//logs.Infof("==================nowGroupCompleted:%v", nowGroupCompleted)
 	//如果说TaskStatus下面的Group都被执行了，还得修改TaskStatus的phase的状态
 	if otherGroupCompleted && nowGroupCompleted {
-		task.Status.Phase = phase
-		task.Status.FinishAt = finshTime
-		task.Status.LastTime = lastTime
+		task1.Status.Phase = phase
+		task1.Status.FinishAt = finshTime
+		task1.Status.LastTime = lastTime
 	}
 	//将queue_manager和group_manager的group信息进行更新 ----------有问题
-	err := gmo.groupQueues.UpdateGroup(g.Status.GroupID, g)
+	err = gmo.groupQueues.UpdateGroup(g.Status.GroupID, g)
 	if err != nil {
 		logs.Error("update group-runtiem-end info error")
 	}
 	logs.Infof("group:%v", g.Status.Phase)
 	// 通过client-go，将信息提交到api-server当中
-	gmo.taskClient.Update(context.TODO(), task, metav1.UpdateOptions{})
+	gmo.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 	gmo.groupClient.Update(context.TODO(), g, metav1.UpdateOptions{})
 	// 修改task的信息
-	gmo.taskManager.UpdateTask(task)
+	gmo.taskManager.UpdateTask(task1)
 	//测试：
-	taskPhase := task.Status.Phase
+	taskPhase := task1.Status.Phase
 	p := g.Status.Phase
 	actionStatus := g.Status.ActionStatus[0].Phase
 	runStatus1 := g.Status.ActionStatus[0].RuntimeStatus[0].Phase

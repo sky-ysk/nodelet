@@ -304,20 +304,33 @@ func (g *groupWorkers) handleTaskPenndingUpdate(group *apis.Group) {
 		logs.Error("list task err:", err.Error())
 	}
 	for _, t := range list.Items { //遍历etcd当中的所有task
-		logs.Infof("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%task Pointer address: %p", t)
+		//logs.Infof("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%task Pointer address: %p", t)
+
 		if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Pennding
 			// 得到该Task的引用
-			task, err := g.taskManager.GetTaskByID(taskID)
+			//task, err := g.taskManager.GetTaskByID(taskID)
+			//if err != nil {
+			//	logs.Error("get task err:", err.Error())
+			//}
+			// ceshi
+			task1, err := g.taskClient.Get(context.TODO(), "TestTasks", metav1.GetOptions{})
 			if err != nil {
 				logs.Error("get task err:", err.Error())
 			}
-			task.Status.Phase = apis.ReadyToDeploy //设置Task的状态为penning
-			task.Status.LastTime = apis.Time{time.Now()}
-			for i := range task.Status.GroupStatus { //同时设置TaskStatus下的GroupStatus的phase为penning
-				gs := &task.Status.GroupStatus[i]
+			//if task == task1 {
+			//	logs.Infof("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!task and task2 point to the same memory location.")
+			//} else {
+			//	logs.Infof("！！！！！！！！！！！！！！！！！！！！！！！！！！task and task2 point to different memory locations.")
+			//}
+			task1.Status.Phase = apis.ReadyToDeploy //设置Task的状态为penning
+			task1.Status.LastTime = apis.Time{time.Now()}
+			for i := range task1.Status.GroupStatus { //同时设置TaskStatus下的GroupStatus的phase为penning
+				gs := &task1.Status.GroupStatus[i]
 				gs.Phase = apis.ReadyToDeploy
 				gs.LastTime = apis.Time{time.Now()}
 			}
+			// 通过client-go，将信息提交到api-server当中
+			g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 		}
 	}
 }

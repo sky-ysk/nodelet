@@ -123,7 +123,16 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 	task := te.GetTask()
 	logs.Info("receive task info")
-	te.taskManager.AddTask(task)
+	te.taskManager.AddTask(task) //将Task放入到TaskManager当中
+	//task1, err := te.taskManager.GetTaskByID(task.Status.TaskID)
+	//if err != nil {
+	//	logs.Error("Get task by taskID error from etcd：", err)
+	//}
+	//if task == task1 {
+	//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to the same memory location.")
+	//} else {
+	//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to different memory locations.")
+	//}
 	for i := range task.Spec.Groups {
 		//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
 		if task.Status.Phase == apis.Unknown {
