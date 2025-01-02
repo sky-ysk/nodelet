@@ -1,43 +1,46 @@
 package node
 
 import (
+	"context"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 )
 
-type NodesHandler struct{}
+type NodesHandler struct {
+	client core.NodeInterface
+}
 
 var _ Handler = &NodesHandler{}
 
-func NewNodesHandler() *NodesHandler {
-	return &NodesHandler{}
+func NewNodesHandler(clientSet *clients.ClientSet) *NodesHandler {
+	c := clientSet.Core().Nodes(apis.NamespaceAll)
+	return &NodesHandler{
+		client: c,
+	}
 }
 
-func GetNodes(request *restful.Request, response *restful.Response) {
-	// TODO: 使用client-go实现查询
-	node1 := apis.Node{
-		Spec: apis.NodeSpec{
-			NodeName: "TestNode",
-		},
+func (h *NodesHandler) GetNodes(request *restful.Request, response *restful.Response) {
+	// 使用client-go实现查询
+	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		logs.Errorf("Get nodes failed: %v", err)
+		response.WriteError(http.StatusInternalServerError, err)
 	}
 
-	node2 := apis.Node{
-		Spec: apis.NodeSpec{
-			NodeName: "TestNode",
-		},
-	}
-
-	nodes := []apis.Node{node1, node2}
-
-	err := response.WriteEntity(nodes)
+	err = response.WriteEntity(results)
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("get nodes")
+	logs.Debugf("Get nodes")
 }
+
+// TODO: DeleteAll
 
 func (h *NodesHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
@@ -49,8 +52,8 @@ func (h *NodesHandler) NewGetWebService() *restful.WebService {
 		//Docs
 		Doc("Get all nodes").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		To(GetNodes).
-		Operation("getNodes").
+		To(h.GetNodes).
+		Operation("Get nodes").
 		Returns(200, "OK", []apis.Node{}).
 		Returns(400, "Not Found", nil),
 	)

@@ -1,4 +1,4 @@
-package workflow
+package group
 
 import (
 	"context"
@@ -13,65 +13,66 @@ import (
 	"net/http"
 )
 
-type WorkflowHandler struct {
-	client core.WorkflowInterface
+type GroupHandler struct {
+	client core.GroupInterface
 }
 
-var _ Handler = &WorkflowHandler{}
+var _ Handler = &GroupHandler{}
 
-func NewWorkflowHandler(clientSet *clients.ClientSet) *WorkflowHandler {
-	c := clientSet.Core().Workflows(apis.NamespaceAll)
-	return &WorkflowHandler{
+func NewGroupHandler(clientSet *clients.ClientSet) *GroupHandler {
+	c := clientSet.Core().Groups(apis.NamespaceAll)
+	return &GroupHandler{
 		client: c,
 	}
 }
 
-func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restful.Response) {
-	name := request.PathParameter(WorkflowName)
+func (h *GroupHandler) GetGroup(request *restful.Request, response *restful.Response) {
+	// TODO: 使用client-go实现查询
+	name := request.PathParameter(GROUP_NAME)
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get workflow %s error: %v", name, err)
+		logs.Errorf("Get group %s error: %v", name, err)
 		response.WriteError(http.StatusInternalServerError, err)
 	}
 	err = response.WriteEntity(result)
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("Get workflow")
+	logs.Debugf("Get group")
 }
 
-func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *restful.Response) {
+func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.Response) {
 	// 先查询Workflow是否存在
-	name := request.PathParameter(WorkflowName)
+	name := request.PathParameter(GROUP_NAME)
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get workflow %s error: %v", name, err)
+		logs.Errorf("Get group %s error: %v", name, err)
 		//response.WriteError(http.StatusInternalServerError, err)
 	}
 	if result.Name == name {
-		logs.Errorf("Create workflow %s error, workflow existed: %v", name, result)
-		err = fmt.Errorf("Create workflow %s error, workflow existed: %v", name, result)
+		logs.Errorf("Create group %s error, group existed: %v", name, result)
+		err = fmt.Errorf("Create group %s error, group existed: %v", name, result)
 		response.WriteError(http.StatusInternalServerError, err)
 		return
 	}
 
 	// 解析用户的输入
-	ew := &apis.Workflow{}
+	ew := &apis.Group{}
 	err = request.ReadEntity(ew)
 	if err != nil {
-		logs.Errorf("Failed to create workflow %s, error: %v", name, err)
+		logs.Errorf("Failed to create group %s, error: %v", name, err)
 		response.WriteError(http.StatusInternalServerError, err)
 		return
 	}
 	// TODO: 格式校验
 	// TODO: 为Workflow分配ID
-	logs.Debugf("Create workflow %s", name)
+	logs.Debugf("Create group %s", name)
 
 	// 将Workflow写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
-		logs.Errorf("Create workflow %s error: %v", name, err)
+		logs.Errorf("Create group %s error: %v", name, err)
 		return
 	}
 	// 返回结果
@@ -79,34 +80,30 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("Create workflow %v", result)
+	logs.Debugf("Create group %v", result)
 }
 
-// TODO: Update Workflow
-// TODO: Patch Workflow
-// TODO: Delete Workflow
-
-func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
+func (h *GroupHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path(WorkflowPath).
+	ws.Path(GROUP_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET(fmt.Sprintf("/{%s}", WorkflowName)).
-		To(h.GetWorkflow).
-		Doc("Get a workflow with name").
+	ws.Route(ws.GET(fmt.Sprintf("/{%s}", GROUP_NAME)).
+		To(h.GetGroup).
+		Doc("Get a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Operation("Get workflow").
-		Returns(200, "OK", apis.Workflow{}).
+		Operation("Get group").
+		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.POST(fmt.Sprintf("/{%s}", WorkflowName)).
-		To(h.CreateWorkflow).
-		Doc("Create a workflow with name").
+	ws.Route(ws.POST(fmt.Sprintf("/{%s}", GROUP_NAME)).
+		To(h.CreateGroup).
+		Doc("Create a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Operation("Create workflow").
-		Returns(200, "OK", apis.Workflow{}).
+		Operation("Create group").
+		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil),
 	)
 	return ws

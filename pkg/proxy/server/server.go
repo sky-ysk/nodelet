@@ -12,7 +12,7 @@ import (
 type Server struct {
 	//Handlers
 	handlers *handlers.Handlers
-	
+
 	container *restful.Container
 }
 
@@ -25,14 +25,27 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 
 func NewServer(clientSet *clients.ClientSet) Server {
 	hs := handlers.NewHandlers(clientSet)
-	
+
 	server := Server{
 		handlers:  hs,
 		container: restful.NewContainer(),
 	}
-	
+
 	// 安装各类Handlers
 	server.InstallDefaultHandlers()
+
+	cors := restful.CrossOriginResourceSharing{
+		ExposeHeaders:  []string{"*"},
+		AllowedDomains: []string{"localhost", "wangwanu.com"},
+		AllowedHeaders: []string{"Content-Type", "Accept"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
+		CookiesAllowed: false,
+		Container:      server.container}
+	server.container.Filter(cors.Filter)
+
+	// Add container filter to respond to OPTIONS
+	server.container.Filter(server.container.OPTIONSFilter)
+
 	return server
 }
 
@@ -40,20 +53,22 @@ func (s *Server) InstallDefaultHandlers() {
 	// Workflow相关
 	s.handlers.InstallWorkflowHandlers(s.container)
 	// Task相关
-	handlers.InstallTaskHandlers(s.container)
-	
+	s.handlers.InstallTaskHandlers(s.container)
+	// Group相关
+	s.handlers.InstallGroupHandlers(s.container)
+
 	// Resource相关
 	// Node
-	handlers.InstallNodeHandlers(s.container)
-	
+	s.handlers.InstallNodeHandlers(s.container)
+
 	// Logs相关
-	
+
 	// Openapi相关
 	s.InstallOpenapiHandlers()
-	
+
 	// +Optional SwaggerUI
 	s.InstallSwaggerUI()
-	
+
 }
 
 func (s *Server) InstallOpenapiHandlers() {

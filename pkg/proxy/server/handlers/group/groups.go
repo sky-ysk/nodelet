@@ -1,4 +1,4 @@
-package task
+package group
 
 import (
 	"context"
@@ -12,24 +12,24 @@ import (
 	"net/http"
 )
 
-type TasksHandler struct {
-	client core.TaskInterface
+type GroupsHandler struct {
+	client core.GroupInterface
 }
 
-var _ Handler = &TasksHandler{}
+var _ Handler = &GroupsHandler{}
 
-func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
-	c := clientSet.Core().Tasks(apis.NamespaceAll)
-	return &TasksHandler{
+func NewGroupsHandler(clientSet *clients.ClientSet) *GroupsHandler {
+	c := clientSet.Core().Groups(apis.NamespaceAll)
+	return &GroupsHandler{
 		client: c,
 	}
 }
 
-func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Response) {
+func (h *GroupsHandler) GetGroups(request *restful.Request, response *restful.Response) {
 	// 使用client-go实现查询
 	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Get tasks failed: %v", err)
+		logs.Errorf("Get groups failed: %v", err)
 		response.WriteError(http.StatusInternalServerError, err)
 	}
 
@@ -37,22 +37,22 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
-	logs.Debugf("Get tasks")
+	logs.Debugf("Get groups")
 }
 
-func (h *TasksHandler) NewGetWebService() *restful.WebService {
+func (h *GroupsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path(TASKS_PATH).
+	ws.Path(GROUPS_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("").
 		//Docs
-		Doc("Get all tasks").
+		Doc("Get all groups").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		To(h.GetTasks).
-		Operation("Get tasks").
-		Returns(200, "OK", []apis.Task{}).
+		To(h.GetGroups).
+		Operation("Get groups").
+		Returns(200, "OK", []apis.Group{}).
 		Returns(400, "Not Found", nil),
 	)
 	return ws

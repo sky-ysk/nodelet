@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/emicklei/go-restful/v3"
 	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/proxy/server/handlers/group"
 	"hit.edu/framework/pkg/proxy/server/handlers/node"
 	"hit.edu/framework/pkg/proxy/server/handlers/task"
 	"hit.edu/framework/pkg/proxy/server/handlers/workflow"
@@ -31,26 +32,38 @@ func (h *Handlers) InstallWorkflowHandlers(container *restful.Container) {
 	container.Add(wh.NewGetWebService())
 }
 
-func InstallTaskHandlers(container *restful.Container) {
+func (h *Handlers) InstallTaskHandlers(container *restful.Container) {
 	// Tasks相关
-	tsh := task.NewTasksHandler()
+	tsh := task.NewTasksHandler(h.ClientSet)
 	// 查询Tasks
 	container.Add(tsh.NewGetWebService())
 
 	// Task相关
 	// 查询单个Task
-	th := task.NewTaskHandler()
+	th := task.NewTaskHandler(h.ClientSet)
 	container.Add(th.NewGetWebService())
 }
 
-func InstallNodeHandlers(container *restful.Container) {
+func (h *Handlers) InstallNodeHandlers(container *restful.Container) {
 	// Nodes相关
-	nsh := node.NewNodesHandler()
+	nsh := node.NewNodesHandler(h.ClientSet)
 	// 查询Nodes
 	container.Add(nsh.NewGetWebService())
 
 	// Node相关
 	// 查询单个Node
-	nh := node.NewNodeHandler()
+	nh := node.NewNodeHandler(h.ClientSet)
 	container.Add(nh.NewGetWebService())
+}
+
+func (h *Handlers) InstallGroupHandlers(container *restful.Container) {
+	// Groups相关
+	gsh := group.NewGroupsHandler(h.ClientSet)
+	// 查询Groups
+	container.Add(gsh.NewGetWebService())
+
+	// Group相关
+	// 查询单个Group
+	gh := group.NewGroupHandler(h.ClientSet)
+	container.Add(gh.NewGetWebService())
 }
