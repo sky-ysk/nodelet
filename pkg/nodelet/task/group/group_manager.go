@@ -61,6 +61,7 @@ func (gm *groupManager) GetGroups(Map map[string]*apis.Group) []*apis.Group {
 	}
 	return groups
 }
+
 func (gm *groupManager) GetGroupByName(groupName string) (*apis.Group, error) {
 	gm.lock.RLock()
 	defer gm.lock.RUnlock()

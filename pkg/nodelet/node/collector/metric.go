@@ -8,12 +8,12 @@ package collector
 //	}
 type Metric struct {
 	//
-	Item *Item
+	Item []*Item
 }
 
 // TODO: 定义Metric格式，可以兼容各类资源监控的需求
 // TODO: Metrc的定义函数
-func NewMetric(item *Item) Metric {
+func NewMetric(item []*Item) Metric {
 	// TODO:
 	return Metric{
 		item,
@@ -21,5 +21,5 @@ func NewMetric(item *Item) Metric {
 }
 
 func (m Metric) ToString() string {
-	return m.Item.toString()
+	return m.Item[0].toString()
 }

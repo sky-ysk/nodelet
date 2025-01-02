@@ -10,7 +10,7 @@ import (
 
 // TODO: 根据Config配置该选项 ，是否启用CPUCollector
 var enableCPUInfo = true //改成冲配置文件当中读取
-const cpuCollectorName = "CPU"
+const CpuCollectorName = "CPU"
 
 // 收集CPU数据  扩展Item有什么用，是为了统一XXCollector中的数据收集的指标，如果说每个Collector中的静态和动态属性都使用的是各自的结构体，不做统一，那么上传数据给上层的话，会有很多类的数据，这里都统一成Item上传给上层，更加简洁
 type CpuCollector struct {
@@ -25,7 +25,7 @@ type CpuCollector struct {
 
 func init() { //它在包级别的变量初始化之后，自动调用，不需要显式调用 ---也就是说main入口函数导入了collector包，他就会被调用
 	// 向NodeCollector注册自身  ---这个enableCPUInfo参数可以不要，目前的代码逻辑：在collector.go当中的NodeCollector拿到配置文件当中需要注册XXCollector的New函数，并执行New方法调用  对于cpu.go\memory.go\storage.go都有init方法，都会自动将New方法注册到NodeColector当中，但是调不调用还是看NodeCollector
-	RegisterCollector(cpuCollectorName, enableCPUInfo, NewCPUCollector)
+	RegisterCollector(CpuCollectorName, enableCPUInfo, NewCPUCollector)
 	logs.Info("Registe CPUCollector==========")
 }
 
@@ -43,7 +43,7 @@ func NewCPUCollector() (Collector, error) {
 	// TODO: 适配不同架构，针对 x86 和 ARM 做相应处理 --好像针对不同的架构，暂无区别，故目前先不区分
 	c := &CpuCollector{ //初始化CpuCollector
 		cpuFreq: NewItem( //1、首先初始化CPU的动态Item信息
-			NewName(namespace, cpuCollectorName, "Percent"),
+			NewName(namespace, CpuCollectorName, "Percent"),
 			"CPU dynamic utilization",
 			// TODO: 设置Labels
 			[]string{"AveUtil"},
@@ -56,7 +56,7 @@ func NewCPUCollector() (Collector, error) {
 	}
 	for i, _ := range cpuInfos {
 		c.cpuInfos = append(c.cpuInfos, NewItem( // 3、接着初始化每个 CPU 核心的静态信息 Item
-			NewName(namespace, cpuCollectorName, "Info"), //名称
+			NewName(namespace, CpuCollectorName, "Info"), //名称
 			fmt.Sprintf("CPU-%v-Info", i),                //描述信息
 			[]string{"ModelName", "Core", "BaseFreq"},    //Labels
 		))
@@ -72,9 +72,10 @@ func (c *CpuCollector) UpdateStaticInfo(ch chan<- Metric) error {
 	// TODO: 收集到数据之后，通过Channel发到主线程
 	//ch <- NewMetric(nil, 0.0, "a")
 	// 将静态 CPU 信息逐个发送到通道
-	for _, info := range c.cpuInfos {
-		ch <- NewMetric(info) //将Item格式的数据转换成Metric格式，并传入到管道中
-	}
+	//for _, info := range c.cpuInfos {
+	//	ch <- NewMetric(info) //将Item格式的数据转换成Metric格式，并传入到管道中
+	//}
+	ch <- NewMetric(c.cpuInfos) //将Item格式的数据转换成Metric格式，并传入到管道中
 	return nil
 
 }
@@ -85,7 +86,9 @@ func (c *CpuCollector) UpdateDynamicInfo(ch chan<- Metric) error {
 	}
 
 	// TODO: 收集到数据之后，通过Channel发到主线程
-	ch <- NewMetric(c.cpuFreq) //将Item格式的数据转换成Metric格式，并传入到管道中
+	var cpuFreq []*Item
+	cpuFreq = append(cpuFreq, c.cpuFreq)
+	ch <- NewMetric(cpuFreq) //将Item格式的数据转换成Metric格式，并传入到管道中
 	return nil
 
 }

@@ -164,7 +164,7 @@ func (gq *GroupQueues) DeleteGroup(group *apis.Group) {
 		case "completed":
 			gq.DeleteFromCompleted(groupID)
 		default:
-			err = fmt.Errorf("Unfind group named %s", groupID)
+			err = fmt.Errorf("Unfind group ID %s in queue_manager", groupID)
 		}
 	}
 	if err == nil {
@@ -194,6 +194,7 @@ func (gq *GroupQueues) UpdateGroup(groupID string, group *apis.Group) error {
 			err = fmt.Errorf("Unfind group named %s", groupID)
 		}
 	}
+	//这一步好像不用了，因为是指针，修改一处即可 TODO 后期优化，groupManager当中不用引入queue_manager
 	if err == nil {
 		gq.groupManager.UpdateGroup(group)
 	}
