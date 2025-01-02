@@ -33,6 +33,19 @@ func NewServer(clientSet *clients.ClientSet) Server {
 
 	// 安装各类Handlers
 	server.InstallDefaultHandlers()
+
+	cors := restful.CrossOriginResourceSharing{
+		ExposeHeaders:  []string{"*"},
+		AllowedDomains: []string{"localhost", "wangwanu.com"},
+		AllowedHeaders: []string{"Content-Type", "Accept"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
+		CookiesAllowed: false,
+		Container:      server.container}
+	server.container.Filter(cors.Filter)
+
+	// Add container filter to respond to OPTIONS
+	server.container.Filter(server.container.OPTIONSFilter)
+
 	return server
 }
 
