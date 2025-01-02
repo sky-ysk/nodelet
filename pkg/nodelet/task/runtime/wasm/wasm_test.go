@@ -45,7 +45,7 @@ func TestForWasm(t *testing.T) {
 		},
 	}
 
-	logs.V1().Info("---TestForWasm---")
+	logs.Info("---TestForWasm---")
 	wasm_runtime := NewWasmRuntime()
 	// 运行时会跑在独立的进程,所以程序结束一定要kill进程,不然始终在运行
 	defer wasm_runtime.StopCMD()
@@ -91,7 +91,7 @@ func TestForAIWasm(t *testing.T) {
 		},
 	}
 
-	logs.V1().Info("---TestForAIWasm---")
+	logs.Info("---TestForAIWasm---")
 	wasm_runtime := NewWasmRuntime()
 	// 运行时会跑在独立的进程,所以程序结束一定要kill进程,不然始终在运行
 	defer wasm_runtime.StopCMD()

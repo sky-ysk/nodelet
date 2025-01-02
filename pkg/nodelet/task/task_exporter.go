@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
@@ -158,7 +159,9 @@ func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 
 // 从client-go中读取task信息
 func (te *TaskExporter) GetTask() *apis.Task {
-	result, getErr := te.tasksClient.Get(context.TODO(), "TestTasks", metav1.GetOptions{})
+	// cmd_yolo:="TestTasks"
+	wasm_inference := "TestTask-wasm"
+	result, getErr := te.tasksClient.Get(context.TODO(), wasm_inference, metav1.GetOptions{})
 	if getErr != nil {
 		panic(fmt.Errorf("Failed to get : %v", getErr))
 	}

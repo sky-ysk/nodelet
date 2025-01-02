@@ -30,11 +30,11 @@ func NewClient(ctx context.Context, serverIPAndPort string) *WasmClient {
 func (c *WasmClient) Connect() error {
 	conn, err := grpc.Dial(c.serverIPAndPort, grpc.WithInsecure())
 	if err != nil {
-		logs.V2().Error("wasm client:与任务建立连接失败")
+		logs.Error("wasm client:与任务建立连接失败")
 		return err
 	}
 	grpcClient := wasm_interface.NewWasmInterfaceClient(conn)
-	logs.V1().Info("wasm client created")
+	logs.Info("wasm client created")
 	c.client = grpcClient
 	// c.conn = conn
 	return nil
@@ -48,7 +48,7 @@ func (c *WasmClient) Deploy(wasm_file string) (*wasm_interface.Result, error) {
 	wasm_file_1 := wasm_file
 	f, err := os.ReadFile(wasm_file_1)
 	if err != nil {
-		logs.V2().Error("read fail", err)
+		logs.Error("read fail", err)
 		return nil, err
 	}
 	// fmt.Println(f)
@@ -65,10 +65,10 @@ func (c *WasmClient) Deploy(wasm_file string) (*wasm_interface.Result, error) {
 	defer cancel()
 	result, err := c.client.Deploy(ctx, deploy_intent)
 	if err != nil {
-		logs.V2().Error(c.app+" : deploy fail,", err)
+		logs.Error(c.app+" : deploy fail,", err)
 	}
 	out := fmt.Sprintf("deploy result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
-	logs.V1().Info(out)
+	logs.Info(out)
 	return result, err
 }
 
@@ -81,10 +81,10 @@ func (c *WasmClient) Init() (*wasm_interface.Result, error) {
 	defer cancel()
 	result, err := c.client.Init(ctx, init_intent)
 	if err != nil {
-		logs.V2().Error(c.app+" : init fail", err)
+		logs.Error(c.app+" : init fail", err)
 	}
 	out := fmt.Sprintf("init result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
-	logs.V1().Info(out)
+	logs.Info(out)
 	return result, err
 }
 
@@ -97,10 +97,10 @@ func (c *WasmClient) Start() (*wasm_interface.Result, error) {
 	defer cancel()
 	result, err := c.client.Start(ctx, start_intent)
 	if err != nil {
-		logs.V2().Error(c.app+" : start fail", err)
+		logs.Error(c.app+" : start fail", err)
 	}
 	out := fmt.Sprintf("start result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
-	logs.V1().Info(out)
+	logs.Info(out)
 	return result, err
 }
 
@@ -113,9 +113,9 @@ func (c *WasmClient) Destory() (*wasm_interface.Result, error) {
 	defer cancel()
 	result, err := c.client.Destroy(ctx, destroy_intent)
 	if err != nil {
-		logs.V2().Error(c.app+" : destroy fail", err)
+		logs.Error(c.app+" : destroy fail", err)
 	}
 	out := fmt.Sprintf("destroy result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
-	logs.V1().Info(out)
+	logs.Info(out)
 	return result, err
 }

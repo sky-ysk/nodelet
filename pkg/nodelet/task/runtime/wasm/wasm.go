@@ -39,10 +39,10 @@ func NewWasmRuntime() *WasmRuntime {
 	wr := &WasmRuntime{config: config}
 	// wr.rpcAddr = config.rpcAddr
 	// 拉起运行时
-	logs.V1().Info("pull wasm runtime")
+	logs.Info("pull wasm runtime")
 	err := wr.startCMD(config.runtimeExecfile, []string{})
 	if err != nil {
-		logs.V2().Errorf("Failed to run cmd: %v", err)
+		logs.Errorf("Failed to run cmd: %v", err)
 		return nil
 	}
 	return wr
@@ -53,14 +53,14 @@ func ensureFile() error {
 
 // 启动任务
 func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
-	logs.V2().Infof("wasm runtime for task:%s", group.Name)
+	logs.Infof("wasm runtime for task:%s", group.Name)
 	wasm_file := runtime.Image
 	wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcAddr)
 
 	time.Sleep(1 * time.Second)
 	err := wr.wasmClient.Connect()
 	if err != nil {
-		logs.V2().Error("wasm client 连接失败:", err)
+		logs.Error("wasm client 连接失败:", err)
 		return err
 	}
 	_, err = wr.wasmClient.Deploy(wasm_file)
@@ -81,13 +81,13 @@ func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis
 
 // 关闭任务
 func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
-	logs.V2().Infof("wasm runtime kill task:%s", group.Name)
+	logs.Infof("wasm runtime kill task:%s", group.Name)
 	return nil
 }
 
 // 销毁运行时
 func (wr *WasmRuntime) Destory() error {
-	logs.V2().Infof("wasm runtime destory for task: wasm-test")
+	logs.Infof("wasm runtime destory for task: wasm-test")
 	_, err := wr.wasmClient.Destory()
 	if err != nil {
 		return err
@@ -106,15 +106,15 @@ func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
 	llvm := fmt.Sprintf("WASM_LLVM=%s", wr.config.wasmLLVM)
 	fixtures := fmt.Sprintf("FIXTURES_DIR=/tmp/wasm/fixtures")
 	wr.cmd.Env = append(os.Environ(), llvm, "RUST_LOG=info", fixtures)
-	logs.V1().Info(llvm)
+	logs.Info(llvm)
 
 	err := wr.cmd.Start()
 	if err != nil {
-		logs.V2().Errorf("Failed to run cmd: %v", err)
+		logs.Errorf("Failed to run cmd: %v", err)
 		return err
 	}
 	info := fmt.Sprintf("可执行文件已启动,PID:%d", wr.cmd.Process.Pid)
-	logs.V1().Info(info)
+	logs.Info(info)
 
 	// // 等待命令完成
 	// if err := wr.cmd.Wait(); err != nil {
@@ -128,11 +128,11 @@ func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
 // 停止进程，主要是关闭wasm运行时这个进程
 func (wr *WasmRuntime) StopCMD() {
 	info := fmt.Sprintf("stop cmd process pid : %d", wr.cmd.Process.Pid)
-	logs.V1().Info(info)
+	logs.Info(info)
 	if err := wr.cmd.Process.Kill(); err != nil {
-		logs.V2().Errorf("停止进程失败: %v\n", err)
+		logs.Error("停止进程失败: %v\n", err)
 	} else {
-		logs.V1().Info("进程已停止")
+		logs.Info("进程已停止")
 	}
 }
 func (wr WasmRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
