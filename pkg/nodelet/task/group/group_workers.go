@@ -310,10 +310,12 @@ func (g *groupWorkers) handleTaskPenndingUpdate(group *apis.Group) {
 			if err != nil {
 				logs.Error("get task err:", err.Error())
 			}
-			task.Status.Phase = apis.Pending         //设置Task的状态为penning
+			task.Status.Phase = apis.Pending //设置Task的状态为penning
+			task.Status.LastTime = apis.Time{time.Now()}
 			for i := range task.Status.GroupStatus { //同时设置TaskStatus下的GroupStatus的phase为penning
 				gs := &task.Status.GroupStatus[i]
 				gs.Phase = apis.Pending
+				gs.LastTime = apis.Time{time.Now()}
 			}
 		}
 	}

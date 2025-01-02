@@ -122,12 +122,13 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 // 模拟上层组件发送任务信息给Taskexporter，该方法主要是接受任务信息，并放入管道当中，触发Loop监听
 func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 	task := te.GetTask()
+	logs.Info("receive task info")
+	te.taskManager.AddTask(task)
 	for i := range task.Spec.Groups {
 		//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
 		if task.Status.Phase == apis.Unknown {
-			logs.Info("receive task info")
-			te.taskManager.AddTask(task)
 			g := &task.Spec.Groups[i]
+			// 这里可以改为从client-go中读取group信息
 			if updateType == "create" {
 				groupUpdate := types.GroupUpdate{
 					Groups: []*apis.Group{g},
@@ -148,7 +149,7 @@ func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 
 // 从client-go中读取task信息
 func (te *TaskExporter) GetTask() *apis.Task {
-	result, getErr := te.tasksClient.Get(context.TODO(), "demo-tasks", metav1.GetOptions{})
+	result, getErr := te.tasksClient.Get(context.TODO(), "TestTasks", metav1.GetOptions{})
 	if getErr != nil {
 		panic(fmt.Errorf("Failed to get : %v", getErr))
 	}

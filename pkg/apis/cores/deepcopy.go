@@ -330,7 +330,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Data != nil {
 		in, out := &in.Data, &out.Data
 		*out = make([]DataStatus, len(*in))
@@ -338,7 +338,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Scenes != nil {
 		in, out := &in.Scenes, &out.Scenes
 		*out = make([]SceneStatus, len(*in))
@@ -346,7 +346,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.RuntimeStatus != nil {
 		in, out := &in.RuntimeStatus, &out.RuntimeStatus
 		*out = make([]RuntimeStatus, len(*in))
@@ -354,7 +354,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Results != nil {
 		in, out := &in.Results, &out.Results
 		*out = make([]Result, len(*in))
@@ -393,7 +393,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Devices != nil {
 		in, out := &in.Devices, &out.Devices
 		*out = make([]DeviceSpec, len(*in))
@@ -401,7 +401,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Data != nil {
 		in, out := &in.Data, &out.Data
 		*out = make([]DataSpec, len(*in))
@@ -409,7 +409,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Scenes != nil {
 		in, out := &in.Scenes, &out.Scenes
 		*out = make([]SceneSpec, len(*in))
@@ -417,7 +417,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Command != nil {
 		in, out := &in.Command, &out.Command
 		*out = make([]string, len(*in))
