@@ -175,11 +175,12 @@ type Phase string
 
 const (
 	// 任务相关状态
-	Pending   Phase = "Pending"
-	Running   Phase = "Running"
-	Successed Phase = "Succeeded"
-	Failed    Phase = "Failed"
-	Unknown   Phase = "Unknown"
+	Pending       Phase = "Pending"
+	Running       Phase = "Running"
+	Successed     Phase = "Succeeded"
+	Failed        Phase = "Failed"
+	Unknown       Phase = "Unknown"
+	ReadyToDeploy Phase = "ReadyToDeploy"
 	// 迁移相关状态
 	Migrating Phase = "Migrating"
 	Migrated  Phase = "Migrated"
@@ -469,6 +470,9 @@ type GroupStatus struct {
 	// TODO: 整体资源使用情况
 
 	// TODO: Events定义
+
+	//部署在哪个节点
+	Node string `json:"node,omitempty" yaml:"node"`
 
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`

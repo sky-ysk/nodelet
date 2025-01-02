@@ -38,6 +38,7 @@ type frameworkImpl struct {
 
 func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) (status *framework.Status) {
 	if len(f.bindPlugins) == 0 {
+		logs.Error("no bind plugins")
 		return framework.NewStatus(framework.Skip, "no bind plugins")
 	}
 	for _, pl := range f.bindPlugins {

@@ -2,14 +2,17 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
+	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"math/rand"
@@ -72,11 +75,22 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 	//from hezhangyi
 	//bindMethod(nodeName, group)
 	//check feedback
-	_, updateErr := bp.groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
-	if updateErr != nil {
-		return nil
+	logs.Info("binding", group.ObjectMeta.Name, nodeName)
+	patchGroup, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase": apis.ReadyToDeploy,
+			"node":  nodeName,
+		},
+	})
+	if err != nil {
+		logs.Error(err.Error())
 	}
-
+	patchResult, err := bp.groupClient.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+	}
+	logs.Info(patchResult)
+	status = framework.NewStatus(framework.Success, "bind success")
 	return status
 }
 

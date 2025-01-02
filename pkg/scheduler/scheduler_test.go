@@ -205,3 +205,58 @@ func TestCreateNode(t *testing.T) {
 		panic(err)
 	}
 }
+
+func TestListGroup(t *testing.T) {
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	//fmt.Println(scheme)
+	//参数配置
+	// TODO: 填写参数
+	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
+
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	//创建ClientSet
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+	// 资源定义在 pkg/apis/xxx/type.go 下
+	// 这里以访问资源Group为例，
+	// 获取访问Group的客户端
+	// 默认访问的Namespace是 ""
+
+	groupsClient := clientSet.Core().Groups("")
+
+	lstOpts := metav1.ListOptions{
+		//FieldSelector: "ObjectMeta.Name=demo-groups",
+	}
+	list, err := groupsClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		panic(err)
+	}
+	for _, d := range list.Items {
+		fmt.Println(d.ObjectMeta.Name)
+		fmt.Println(d.Status.Phase)
+		fmt.Println(d.Status.Node)
+	}
+}
