@@ -67,10 +67,7 @@ func main() {
 		}
 	}()
 	//time.Sleep(2 * time.Second)
+	// 模拟收到指令
 	te.ReceiveGroupInfo("create")
-	//Groups := yoloPredictAndTrainTaskGroup()
-	//ReceiveGroupInfo(Groups, "create")
-	//time.Sleep(60 * time.Second)
-	//ReceiveGroupInfo(Groups, "kill")
 	select {}
 }

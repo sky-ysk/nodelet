@@ -160,7 +160,7 @@ func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 // 从client-go中读取task信息
 func (te *TaskExporter) GetTask() *apis.Task {
 	// cmd_yolo:="TestTasks"
-	wasm_inference := "TestTask-wasm"
+	wasm_inference := "TestTask-wasm" // 对应test/nodelet/task_exporter/wasm/create-wasm-task下的测试样例
 	result, getErr := te.tasksClient.Get(context.TODO(), wasm_inference, metav1.GetOptions{})
 	if getErr != nil {
 		panic(fmt.Errorf("Failed to get : %v", getErr))

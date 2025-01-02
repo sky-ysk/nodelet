@@ -132,20 +132,20 @@ func DownloadFile(url string, filepath string) error {
 	return nil
 }
 
-func TestForDownload(t *testing.T) {
-	ip := "127.0.0.1"
-	projectName := "/tmp/wasm/toolchain"
-	fileName := "server"
-	// filepath := "wasm-llvm"
+// func TestForDownload(t *testing.T) {
+// 	ip := "127.0.0.1"
+// 	projectName := "/tmp/wasm/toolchain"
+// 	fileName := "server"
+// 	// filepath := "wasm-llvm"
 
-	url := fmt.Sprintf("http://%s/get?projectname=%s&filename=%s", ip, projectName, fileName)
-	filepath := "downloaded_file.txt" // 指定下载后保存的文件路径
+// 	url := fmt.Sprintf("http://%s/get?projectname=%s&filename=%s", ip, projectName, fileName)
+// 	filepath := "downloaded_file.txt" // 指定下载后保存的文件路径
 
-	// 下载文件
-	if err := DownloadFile(url, filepath); err != nil {
-		fmt.Println("下载错误:", err)
-		return
-	}
+// 	// 下载文件
+// 	if err := DownloadFile(url, filepath); err != nil {
+// 		fmt.Println("下载错误:", err)
+// 		return
+// 	}
 
-	fmt.Println("文件下载成功:", filepath)
-}
+// 	fmt.Println("文件下载成功:", filepath)
+// }

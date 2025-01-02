@@ -25,6 +25,7 @@ import (
 
 func main() {
 	//---临时参数:以cmd任务形式运行wasm任务
+	// 目前需保证/tmp/wasm的前缀不可改变
 	cmd := []string{"/tmp/wasm/toolchain/wa2x-wasi-nn"}
 	arg := []string{"/tmp/wasm/onnx.so"}
 	//---
@@ -265,129 +266,9 @@ func main() {
 		logs.Errorf("Failed to create task: %v", err)
 		panic(err)
 	}
-	//_, _ = tasksClient.Create(context.TODO(), task2, metav1.CreateOptions{})
-	//_, _ = tasksClient.Create(context.TODO(), task3, metav1.CreateOptions{})
 	logs.Infof("Created task ", results)
 	logs.Infof("Created group1 ", results2)
 	prompt()
-
-	//Update一个Task
-
-	//logs.Info("updating")
-	//// 部分更改一个参数
-	//// 先Get一个Task ,更改Task的参数, UpdateTask
-	//
-	//result, getErr := tasksClient.Get(context.TODO(), "TestTask-wasm", metav1.GetOptions{})
-	//if getErr != nil {
-	//	panic(fmt.Errorf("Failed to get : %v", getErr))
-	//}
-	//
-	//logs.Infof("get result", result)
-	//logs.Infof("修改前的result.Spec.Name：", result.Spec.Name)
-	//
-	//result.Spec.Name = "updatedTaskName"
-	//_, updateErr := tasksClient.Update(context.TODO(), result, metav1.UpdateOptions{})
-	//if updateErr != nil {
-	//	panic(fmt.Errorf("Update failed: %v", updateErr))
-	//}
-	//
-	//logs.Infof("修改后的result.Spec.Name：", result.Spec.Name)
-	//logs.Info("Updated task...")
-	//prompt()
-
-	// List 所有Task
-	logs.Info("listing")
-	lstOpts := metav1.ListOptions{}
-	list, err := tasksClient.List(context.TODO(), lstOpts)
-	list1, err1 := groupsClient.List(context.TODO(), lstOpts)
-	if err != nil {
-		panic(err)
-	}
-	if err1 != nil {
-		panic(err)
-	}
-	for _, d := range list.Items {
-		logs.Info(d)
-	}
-	for _, d := range list1.Items {
-		logs.Info(d)
-	}
-	logs.Infof("listing done")
-	prompt()
-
-	////Patch 一个Task
-	//logs.Infof("patching")
-	//patchResult, err := tasksClient.Patch(context.TODO(), "TestTask-wasm", types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
-	//logs.Infof("patchResult: ", patchResult)
-	//logs.Infof("patch Done")
-	//
-	//// List 所有Task
-	//logs.Info("listing")
-	//lstOpts = metav1.ListOptions{}
-	//list, err = tasksClient.List(context.TODO(), lstOpts)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//for _, d := range list.Items {
-	//	logs.Info(d)
-	//}
-	//
-	//logs.Infof("listing done")
-	//prompt()
-
-	// Delete一个Task 和两个Group
-	logs.Info("deleting")
-	err = tasksClient.Delete(context.TODO(), "TestTask-wasm", metav1.DeleteOptions{})
-	err1 = groupsClient.Delete(context.TODO(), "demo-group1", metav1.DeleteOptions{})
-	if err != nil {
-		panic(err)
-	}
-	if err1 != nil {
-		panic(err)
-	}
-
-	logs.Info("Deleted task...")
-	logs.Info("Deleted group1、group2...")
-	prompt()
-
-	// Delete 之后再次 List所有Task
-	logs.Info("listing")
-	lstOpts = metav1.ListOptions{}
-	list, err = tasksClient.List(context.TODO(), lstOpts)
-	if err != nil {
-		panic(err)
-	}
-	for _, d := range list.Items {
-		logs.Info(d)
-	}
-
-	logs.Infof("listing done")
-
-	select {}
-
-	////DeleteCollection 删除所有Spec.TaskName=demo-task的Task
-	//logs.Infof("deleting collection")
-	//lstOpts = metav1.ListOptions{
-	//	FieldSelector: "Spec.TaskName=demo-task",
-	//}
-	//err = tasksClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//logs.Infof("Deleted collection...")
-	//prompt()
-	//
-	//// DeleteCollection 之后再次 List所有Task
-	//logs.Infof("listing")
-	//lstOpts = metav1.ListOptions{}
-	//list, err = tasksClient.List(context.TODO(), lstOpts)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//for _, d := range list.Items {
-	//	logs.Infof(d)
-	//}
-	//logs.Infof("listing done")
 }
 
 // From K8s
