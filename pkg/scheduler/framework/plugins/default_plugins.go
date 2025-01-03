@@ -135,7 +135,7 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 	if err != nil {
 		logs.Error(err.Error())
 		return framework.NewStatus(framework.Error, err.Error())
-	}git
+	}
 	logs.Info(patchTaskGroupsResult)
 	status = framework.NewStatus(framework.Success, "bind success")
 	return status
