@@ -120,8 +120,45 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	}
 }
 
-// 模拟上层组件发送任务信息给Taskexporter，该方法主要是接受任务信息，并放入管道当中，触发Loop监听
 func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
+	for {
+		//读取 etcd当中的group列表
+		list, err := te.gropsClient.List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			logs.Error("list task err:", err.Error())
+		}
+		// 遍历group
+		for _, group := range list.Items {
+			//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
+			groupName := group.Name
+			// 从etcd当中读group的信息
+			gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
+			if err != nil {
+				logs.Error("get group %s failed", groupName)
+			}
+			if gr.Status.Node == "EdgeNode1" && gr.Status.Phase == apis.ReadyToDeploy {
+				if updateType == "create" {
+					groupUpdate := types.GroupUpdate{
+						Groups: []*apis.Group{gr},
+						Op:     types.ADD,
+					}
+					updateCh <- groupUpdate
+				} else if updateType == "kill" {
+					//TODO
+					groupUpdate := types.GroupUpdate{
+						Groups: []*apis.Group{gr},
+						Op:     types.KILL,
+					}
+					updateCh <- groupUpdate
+				}
+			}
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+// 模拟上层组件发送任务信息给Taskexporter，该方法主要是接受任务信息，并放入管道当中，触发Loop监听
+func (te *TaskExporter) ReceiveGroupInfo1(updateType string) {
 	for {
 		tasks := te.GetTask()
 		for i := range tasks {
@@ -185,5 +222,6 @@ func (te *TaskExporter) GetTask() []*apis.Task {
 			tasks = append(tasks, task)
 		}
 	}
+
 	return tasks
 }

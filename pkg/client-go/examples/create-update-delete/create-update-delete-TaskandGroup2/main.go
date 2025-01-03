@@ -65,10 +65,10 @@ func main() {
 	tasksClient := clientSet.Core().Tasks("")
 	groupsClient := clientSet.Core().Groups("")
 	g1 := apis.Group{
-		ObjectMeta: metav1.ObjectMeta{Name: "TrainTask", Namespace: ""},
+		ObjectMeta: metav1.ObjectMeta{Name: "TrainGroup", Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
-			Name:    "TrainTask",
+			Name:    "TrainGroup",
 			Parents: make([]string, 0),
 			Actions: []apis.Action{
 				apis.Action{
@@ -85,11 +85,11 @@ func main() {
 						},
 					},
 					Status: apis.ActionStatus{
-						ActionID: "cmd_yolo_train_action:TrainTask:test-task", // ActionID =ActionName + GroupID
+						ActionID: "cmd_yolo_train_action:TrainGroup:test-task", // ActionID =ActionName + GroupID
 						Phase:    apis.Unknown,
 						RuntimeStatus: []apis.RuntimeStatus{
 							apis.RuntimeStatus{
-								RuntimeID: "CMD:cmd_yolo_train_action:TrainTask:test-task", // RuntimeID = RuntimeName + ActionID
+								RuntimeID: "CMD:cmd_yolo_train_action:TrainGroup:test-task", // RuntimeID = RuntimeName + ActionID
 								Phase:     apis.Unknown,
 							},
 						},
@@ -98,13 +98,13 @@ func main() {
 			},
 		},
 		Status: apis.GroupStatus{
-			GroupID: "TrainTask:test-task",
+			GroupID: "TrainGroup:test-task",
 			ActionStatus: []apis.ActionStatus{
 				apis.ActionStatus{
-					ActionID: "cmd_yolo_train_action:TrainTask:test-task",
+					ActionID: "cmd_yolo_train_action:TrainGroup:test-task",
 					RuntimeStatus: []apis.RuntimeStatus{
 						apis.RuntimeStatus{
-							RuntimeID: "CMD:cmd_yolo_train_action:TrainTask:test-task",
+							RuntimeID: "CMD:cmd_yolo_train_action:TrainGroup:test-task",
 							Phase:     apis.Unknown,
 						},
 					},
@@ -116,11 +116,11 @@ func main() {
 	}
 	group1 := &g1
 	g2 := apis.Group{
-		ObjectMeta: metav1.ObjectMeta{Name: "ReasonTask", Namespace: ""},
+		ObjectMeta: metav1.ObjectMeta{Name: "ReasonGroup", Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
-			Name:    "ReasonTask",
-			Parents: []string{"TrainTask"}, // 加入Parents
+			Name:    "ReasonGroup",
+			Parents: []string{"TrainGroup"}, // 加入Parents
 			Actions: []apis.Action{
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: "cmd_yolo_predict_action"},
@@ -136,11 +136,11 @@ func main() {
 						},
 					},
 					Status: apis.ActionStatus{
-						ActionID: "cmd_yolo_predict_action:ReasonTask:test-task",
+						ActionID: "cmd_yolo_predict_action:ReasonGroup:test-task",
 						Phase:    apis.Unknown,
 						RuntimeStatus: []apis.RuntimeStatus{
 							apis.RuntimeStatus{
-								RuntimeID: "ABC:cmd_yolo_predict_action:ReasonTask:test-task",
+								RuntimeID: "ABC:cmd_yolo_predict_action:ReasonGroup:test-task",
 								Phase:     apis.Unknown,
 							},
 						},
@@ -149,13 +149,13 @@ func main() {
 			},
 		},
 		Status: apis.GroupStatus{
-			GroupID: "ReasonTask:test-task",
+			GroupID: "ReasonGroup:test-task",
 			ActionStatus: []apis.ActionStatus{
 				apis.ActionStatus{
-					ActionID: "cmd_yolo_predict_action:ReasonTask:test-task",
+					ActionID: "cmd_yolo_predict_action:ReasonGroup:test-task",
 					RuntimeStatus: []apis.RuntimeStatus{
 						apis.RuntimeStatus{
-							RuntimeID: "ABC:cmd_yolo_predict_action:ReasonTask:test-task",
+							RuntimeID: "ABC:cmd_yolo_predict_action:ReasonGroup:test-task",
 							Phase:     apis.Unknown,
 						},
 					},
@@ -168,7 +168,7 @@ func main() {
 	group2 := &g2
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "TestTasks",
+			Name:      "TrainInferTask",
 			Namespace: "",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -186,13 +186,13 @@ func main() {
 			Phase:  apis.Unknown,
 			GroupStatus: []apis.GroupStatus{
 				apis.GroupStatus{
-					GroupID: "TrainTask:test-task",
+					GroupID: "TrainGroup:test-task",
 					ActionStatus: []apis.ActionStatus{
 						apis.ActionStatus{
-							ActionID: "cmd_yolo_train_action:TrainTask:test-task",
+							ActionID: "cmd_yolo_train_action:TrainGroup:test-task",
 							RuntimeStatus: []apis.RuntimeStatus{
 								apis.RuntimeStatus{
-									RuntimeID: "CMD:cmd_yolo_train_action:TrainTask:test-task",
+									RuntimeID: "CMD:cmd_yolo_train_action:TrainGroup:test-task",
 									Phase:     apis.Unknown,
 								},
 							},
@@ -202,13 +202,13 @@ func main() {
 					Belongs: apis.IDRef{TaskID: "test-task"},
 				},
 				apis.GroupStatus{
-					GroupID: "ReasonTask:test-task",
+					GroupID: "ReasonGroup:test-task",
 					ActionStatus: []apis.ActionStatus{
 						apis.ActionStatus{
-							ActionID: "cmd_yolo_predict_action:ReasonTask:test-task",
+							ActionID: "cmd_yolo_predict_action:ReasonGroup:test-task",
 							RuntimeStatus: []apis.RuntimeStatus{
 								apis.RuntimeStatus{
-									RuntimeID: "ABC:cmd_yolo_predict_action:ReasonTask:test-task",
+									RuntimeID: "ABC:cmd_yolo_predict_action:ReasonGroup:test-task",
 									Phase:     apis.Unknown,
 								},
 							},
@@ -222,7 +222,7 @@ func main() {
 	}
 	//task := &apis.Task{
 	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      "TestTasks",
+	//		Name:      "TrainInferTask",
 	//		Namespace: "",
 	//	},
 	//	TypeMeta: metav1.TypeMeta{
@@ -230,7 +230,7 @@ func main() {
 	//		APIVersion: "resources/v1",
 	//	},
 	//	Spec: apis.TaskSpec{
-	//		Name:       "TestTasks",
+	//		Name:       "TrainInferTask",
 	//		Desc:       apis.Description{},
 	//		Conditions: apis.Conditions{},
 	//		Groups: []apis.Group{
@@ -326,11 +326,11 @@ func main() {
 	}()
 
 	//如果已经存在，先删掉
-	////err = tasksClient.Delete(context.TODO(), "TestTasks", metav1.DeleteOptions{})
+	////err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
 
-	err = tasksClient.Delete(context.TODO(), "TestTasks", metav1.DeleteOptions{})
-	err1 := groupsClient.Delete(context.TODO(), "TrainTask", metav1.DeleteOptions{})
-	err2 := groupsClient.Delete(context.TODO(), "ReasonTask", metav1.DeleteOptions{})
+	err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
+	err1 := groupsClient.Delete(context.TODO(), "TrainGroup", metav1.DeleteOptions{})
+	err2 := groupsClient.Delete(context.TODO(), "ReasonGroup", metav1.DeleteOptions{})
 	// Create一个Task
 	logs.Infof("creating")
 	results, err := tasksClient.Create(context.TODO(), task, metav1.CreateOptions{})
@@ -362,7 +362,7 @@ func main() {
 	//// 部分更改一个参数
 	//// 先Get一个Task ,更改Task的参数, UpdateTask
 	//
-	//result, getErr := tasksClient.Get(context.TODO(), "TestTasks", metav1.GetOptions{})
+	//result, getErr := tasksClient.Get(context.TODO(), "TrainInferTask", metav1.GetOptions{})
 	//if getErr != nil {
 	//	panic(fmt.Errorf("Failed to get : %v", getErr))
 	//}
@@ -402,7 +402,7 @@ func main() {
 
 	////Patch 一个Task
 	//logs.Infof("patching")
-	//patchResult, err := tasksClient.Patch(context.TODO(), "TestTasks", types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
+	//patchResult, err := tasksClient.Patch(context.TODO(), "TrainInferTask", types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
 	//logs.Infof("patchResult: ", patchResult)
 	//logs.Infof("patch Done")
 	//
@@ -422,7 +422,7 @@ func main() {
 
 	// Delete一个Task 和两个Group
 	//logs.Info("deleting")
-	//err = tasksClient.Delete(context.TODO(), "TestTasks", metav1.DeleteOptions{})
+	//err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
 	//err1 = groupsClient.Delete(context.TODO(), "demo-group1", metav1.DeleteOptions{})
 	//err2 = groupsClient.Delete(context.TODO(), "demo-group2", metav1.DeleteOptions{})
 	//if err != nil {
