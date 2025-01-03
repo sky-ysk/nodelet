@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -63,6 +64,7 @@ func NewDefaultScorePlugin(ctx context.Context, f framework.Handle) (framework.P
 type DefaultBindPlugin struct {
 	//TODO 需要资源层对象
 	groupClient core.GroupInterface
+	taskClient  core.TaskInterface
 }
 
 func (bp *DefaultBindPlugin) Name() string {
@@ -70,12 +72,8 @@ func (bp *DefaultBindPlugin) Name() string {
 }
 
 func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) (status *framework.Status) {
-	//group.Spec.Phase = binding..
-
-	//from hezhangyi
-	//bindMethod(nodeName, group)
-	//check feedback
 	logs.Info("binding", group.ObjectMeta.Name, nodeName)
+	//patch group
 	patchGroup, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
 			"phase": apis.ReadyToDeploy,
@@ -84,16 +82,80 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 	})
 	if err != nil {
 		logs.Error(err.Error())
+		return framework.NewStatus(framework.Error, err.Error())
 	}
 	patchResult, err := bp.groupClient.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 	if err != nil {
 		logs.Error(err.Error())
 	}
 	logs.Info(patchResult)
+
+	//get belonged task
+	belongedTaskID := group.Status.Belongs.TaskID
+	task, err := bp.getTaskByID(ctx, belongedTaskID)
+	if err != nil {
+		return framework.NewStatus(framework.Error, err.Error())
+	}
+	logs.Info("get belonged task ", task)
+
+	//patch task phase
+	patchTaskStatus, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase": apis.ReadyToDeploy,
+		},
+	})
+	patchTaskResult, err := bp.taskClient.Patch(context.TODO(), task.ObjectMeta.Name, types.StrategicMergePatchType,
+		patchTaskStatus, metav1.PatchOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+		return framework.NewStatus(framework.Error, err.Error())
+	}
+	logs.Info(patchTaskResult)
+	//patch task groups
+	for i := range task.Spec.Groups {
+		if task.Spec.Groups[i].ObjectMeta.Name == group.ObjectMeta.Name {
+			if task.Spec.Groups[i].Status.Phase == apis.Pending {
+				task.Spec.Groups[i].Status.Phase = apis.ReadyToDeploy
+				task.Spec.Groups[i].Status.Node = nodeName
+			}
+		}
+	}
+	groupsJson, err := json.Marshal(task.Spec.Groups)
+	if err != nil {
+		logs.Error(err.Error())
+		return framework.NewStatus(framework.Error, err.Error())
+	}
+	patchTaskGroups, err := json.Marshal(map[string]interface{}{
+		"spec": map[string]interface{}{
+			"groups": groupsJson,
+		},
+	})
+	patchTaskGroupsResult, err := bp.taskClient.Patch(context.TODO(), task.ObjectMeta.Name, types.StrategicMergePatchType,
+		patchTaskGroups, metav1.PatchOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+		return framework.NewStatus(framework.Error, err.Error())
+	}git
+	logs.Info(patchTaskGroupsResult)
 	status = framework.NewStatus(framework.Success, "bind success")
 	return status
 }
 
+func (bp *DefaultBindPlugin) getTaskByID(ctx context.Context, taskID string) (*apis.Task, error) {
+	selector := fmt.Sprintf("Status.TaskID=%s", taskID)
+	lstOpts := metav1.ListOptions{
+		FieldSelector: selector,
+	}
+	list, err := bp.taskClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		logs.Error(err.Error())
+		return nil, err
+	}
+	if len(list.Items) != 0 {
+		logs.Error("list the specific task fail", taskID)
+	}
+	return &list.Items[0], nil
+}
 func NewDefaultBindPlugin(ctx context.Context, f framework.Handle) (framework.Plugin, error) {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
@@ -129,7 +191,9 @@ func NewDefaultBindPlugin(ctx context.Context, f framework.Handle) (framework.Pl
 		panic(err)
 	}
 	groupsClient := clientSet.Core().Groups("")
+	tasksClient := clientSet.Core().Tasks("")
 	return &DefaultBindPlugin{
 		groupClient: groupsClient,
+		taskClient:  tasksClient,
 	}, nil
 }
