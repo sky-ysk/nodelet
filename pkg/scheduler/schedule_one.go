@@ -16,6 +16,7 @@ import (
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/scheduler/framework"
@@ -128,9 +129,9 @@ func (sched *Scheduler) schedulingCycle(
 	fwk framework.Framework,
 	start time.Time,
 	state *framework.CycleState,
-	//TODO: 等待调度的Pod
+//TODO: 等待调度的Pod
 	groupInfo config.QueuedGroupInfo,
-	// TODO: 需要跳过的插件
+// TODO: 需要跳过的插件
 ) (ScheduleResult, *config.QueuedGroupInfo, *framework.Status) {
 	//logger := klog.FromContext(ctx)
 
@@ -175,7 +176,7 @@ func (sched *Scheduler) bindingCycle(
 	state *framework.CycleState,
 	scheduleResult ScheduleResult,
 	start time.Time,
-	// TODO: 待部署的Group
+// TODO: 待部署的Group
 ) *framework.Status {
 	// start := time.Now()
 	//TODO @linbohai 资源预留
@@ -266,6 +267,12 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	//TODO out-tree input nodes + group
 	// 筛选
 	host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
+	if strings.Contains(group.ObjectMeta.Name, "Train") {
+		host = "CloudNode1"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "Reason") {
+		host = "EdgeNode1"
+	}
 	return ScheduleResult{
 		SuggestedHost: host,
 		Group:         group,
@@ -376,7 +383,7 @@ func (sched *Scheduler) findNodesThatPassFilters(
 	fwk framework.Framework,
 	state *framework.CycleState,
 	group *apis.Group,
-	// TODO diagnosis *framework.Diagnosis,
+// TODO diagnosis *framework.Diagnosis,
 	nodes []*config.NodeInfo) ([]*config.NodeInfo, error) {
 
 	//没有插件 直接返回
@@ -468,8 +475,8 @@ func getNodeFromApiServer() []*config.NodeInfo {
 
 func prioritizeNodes(
 	ctx context.Context,
-	//先不考虑extender
-	//extenders []framework.Extender,
+//先不考虑extender
+//extenders []framework.Extender,
 	fwk framework.Framework,
 	state *framework.CycleState,
 	group *apis.Group,

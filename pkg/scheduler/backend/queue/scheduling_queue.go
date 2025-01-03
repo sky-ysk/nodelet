@@ -119,7 +119,7 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	removeGroupss := make([]*config.QueuedGroupInfo, 0)
-	logs.Info("now run the flush method")
+	//logs.Debug("now run the flush method")
 	//fmt.Println("now run the flush method")
 	for k, v := range p.pendingQueue.groupInfoMap {
 		if checkGroupReady(v) {
