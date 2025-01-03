@@ -56,7 +56,7 @@ func InitClient() (*clients.ClientSet, error) {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    "http://localhost:10000", //http://suda801.wangwanu.com:10000
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
@@ -14,6 +13,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/runtime"
 	"hit.edu/framework/pkg/nodelet/task/task"
 	"hit.edu/framework/pkg/nodelet/task/types"
+	"time"
 )
 
 type Exporter interface {
@@ -113,6 +113,7 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	updateCh = make(chan types.GroupUpdate)
 	go te.groupHandler.Loop(ctx, updateCh) //主要监控上层发来的消息，主要是启动、停止任务
 	go te.groupMonitor.Start()             //主要监控正在启动的任务，获取任务状态信息
+	go te.ReceiveGroupInfo("create")
 	select {
 	case <-ctx.Done():
 		return ctx.Err() //退出是返回错误
@@ -121,46 +122,64 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 
 // 模拟上层组件发送任务信息给Taskexporter，该方法主要是接受任务信息，并放入管道当中，触发Loop监听
 func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
-	task := te.GetTask()
-	logs.Info("receive task info")
-	te.taskManager.AddTask(task) //将Task放入到TaskManager当中
-	//task1, err := te.taskManager.GetTaskByID(task.Status.TaskID)
-	//if err != nil {
-	//	logs.Error("Get task by taskID error from etcd：", err)
-	//}
-	//if task == task1 {
-	//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to the same memory location.")
-	//} else {
-	//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to different memory locations.")
-	//}
-	for i := range task.Spec.Groups {
-		//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
-		if task.Status.Phase == apis.Unknown {
-			g := &task.Spec.Groups[i]
-			// 这里可以改为从client-go中读取group信息
-			if updateType == "create" {
-				groupUpdate := types.GroupUpdate{
-					Groups: []*apis.Group{g},
-					Op:     types.ADD,
+	for {
+		tasks := te.GetTask()
+		for i := range tasks {
+			task := tasks[i]
+			logs.Info("receive task info, readey to check whether the deployment has been submitted")
+			te.taskManager.AddTask(task) //将Task放入到TaskManager当中
+			//task1, err := te.taskManager.GetTaskByID(task.Status.TaskID)
+			//if err != nil {
+			//	logs.Error("Get task by taskID error from etcd：", err)
+			//}
+			//if task == task1 {
+			//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to the same memory location.")
+			//} else {
+			//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to different memory locations.")
+			//}
+			for i := range task.Spec.Groups {
+				//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
+				if task.Status.Phase == apis.Unknown {
+					g := &task.Spec.Groups[i]
+					// 这里可以改为从client-go中读取group信息
+					if updateType == "create" {
+						groupUpdate := types.GroupUpdate{
+							Groups: []*apis.Group{g},
+							Op:     types.ADD,
+						}
+						updateCh <- groupUpdate
+					} else if updateType == "kill" {
+						//TODO
+						groupUpdate := types.GroupUpdate{
+							Groups: []*apis.Group{g},
+							Op:     types.KILL,
+						}
+						updateCh <- groupUpdate
+					}
 				}
-				updateCh <- groupUpdate
-			} else if updateType == "kill" {
-				//TODO
-				groupUpdate := types.GroupUpdate{
-					Groups: []*apis.Group{g},
-					Op:     types.KILL,
-				}
-				updateCh <- groupUpdate
 			}
 		}
+		time.Sleep(1 * time.Second)
 	}
 }
 
 // 从client-go中读取task信息
-func (te *TaskExporter) GetTask() *apis.Task {
-	result, getErr := te.tasksClient.Get(context.TODO(), "TestTasks", metav1.GetOptions{})
-	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
+func (te *TaskExporter) GetTask() []*apis.Task {
+
+	//读取 etcd当中的任务列表
+	list, err := te.tasksClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		logs.Error("list task err:", err.Error())
 	}
-	return result
+	var tasks []*apis.Task
+	for _, t := range list.Items { //遍历etcd当中的所有task
+		if t.Status.Phase == apis.Pending { // 如果taskStatus的phase为Pennding，也就是调度完之后的状态
+			task, err2 := te.tasksClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
+			if err2 != nil {
+				logs.Error("Get task by taskID error from etcd：", err2)
+			}
+			tasks = append(tasks, task)
+		}
+	}
+	return tasks
 }
