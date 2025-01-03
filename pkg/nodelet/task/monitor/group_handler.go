@@ -105,7 +105,7 @@ func (gh *GroupHandler) HandleGroupAdds(groups []*apis.Group) {
 		if err == nil { //err等于nil说明在group_manager当中能找到group信息
 			// 1、说明group已经存在，且副本数小于0，则拒绝部署，并记录日志
 			if g.Spec.Replicas <= 0 {
-				logs.Errorf("Group %s is already deployed")
+				logs.Errorf("Group %s is already put into Deployer")
 				continue
 			}
 			//这里可能还得检查，当前任务的部署数量是否小于期望数量，如果数量大于期望的副本数，也不再部署

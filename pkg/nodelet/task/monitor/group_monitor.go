@@ -125,7 +125,7 @@ func (gmo *GroupMonitor) PendingCheck() {
 			for i := range penndingGroups {
 				gr := penndingGroups[i]
 				if !gmo.checkGroupDepencies(gr) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
-					logs.Infof("The group %s execution dependency is not satisfied again", gr.Name)
+					logs.Debug("The group %s execution dependency is not satisfied again", gr.Name)
 					//继续放在Pennding队列当中，Pennding队列会持续检查依赖，直到依赖满足后，才开始执行，重新将任务group交给group_workers去执行
 					gr.Status.CheckDependencyCount++
 					if gr.Status.CheckDependencyCount > 10000 { // 当检查依赖的次数大于3次的话，说明依赖还是满足不了，迁移至Error队列
@@ -135,6 +135,10 @@ func (gmo *GroupMonitor) PendingCheck() {
 						// TODO 修改queue_manager、group_manager当中的group信息
 						gmo.handleStatusUpdate(gr, apis.Failed)
 						gmo.groupQueues.UpdateGroup(gr.Status.GroupID, gr)
+						_, err := gmo.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
+						if err != nil {
+							logs.Errorf("Failed to update group %s: %v", gr.Name, err)
+						}
 						break
 					}
 					continue
@@ -182,10 +186,10 @@ func (gmo *GroupMonitor) RunningCheck() {
 		case <-time.After(time.Second * 1):
 			runningGroups := gmo.groupQueues.GetAllRunning()
 			for i := range runningGroups {
-				task := runningGroups[i] //不用再加&&
+				gro := runningGroups[i] //不用再加&&
 				var isSuccess bool
-				for j := range task.Spec.Actions { //这里改成task.Status下面的Actions
-					action := task.Spec.Actions[j]
+				for j := range gro.Spec.Actions { //这里改成task.Status下面的Actions
+					action := gro.Spec.Actions[j]
 					isSuccess = false
 					if action.Status.Phase == apis.Successed {
 						isSuccess = true
@@ -193,12 +197,13 @@ func (gmo *GroupMonitor) RunningCheck() {
 					}
 					if action.Status.Phase == apis.Failed { //注意:runtime执行失败的时候除了标记Runtime状态为失败，也需要标记Runtime所属的Action状态为失败
 						//将任务迁移到Error队列当中
-						gmo.groupQueues.DeleteFromRunning(task.Status.GroupID)
-						gmo.groupQueues.AddToError(task.Status.GroupID, task)
+						gmo.groupQueues.DeleteFromRunning(gro.Status.GroupID)
+						gmo.groupQueues.AddToError(gro.Status.GroupID, gro)
+						gmo.groupManager.DeleteGroup(gro) //groupManager就删除group的信息，此时group的信息就只存在于etcd当中
 						break
 					}
-					if action.Status.Phase == apis.ReadyToDeploy && action.Status.Waiting {
-						if !gmo.checkActionDependencies(&action, task) {
+					if action.Status.Phase == apis.DeployCheck && action.Status.Waiting {
+						if !gmo.checkActionDependencies(&action, gro) {
 							logs.Infof("Action %s depends on parent action, parent not finish ", action.Name)
 							continue
 						}
@@ -210,7 +215,7 @@ func (gmo *GroupMonitor) RunningCheck() {
 							}
 							//说明runtime可以执行
 							//logs.Infof("************************************************************************************************************************")
-							err := gmo.runtimeManager.Run(task, &action, r)
+							err := gmo.runtimeManager.Run(gro, &action, r)
 							if err != nil {
 								logs.Error("run task err", err.Error())
 							}
@@ -228,7 +233,7 @@ func (gmo *GroupMonitor) RunningCheck() {
 								//说明runtime可以执行
 								logs.Infof("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 								r.Waiting = false
-								err := gmo.runtimeManager.Run(task, &action, r)
+								err := gmo.runtimeManager.Run(gro, &action, r)
 								if err != nil {
 									logs.Error("run task err", err.Error())
 								}
@@ -240,8 +245,9 @@ func (gmo *GroupMonitor) RunningCheck() {
 				if isSuccess {
 					//将任务迁移到Completed队列当中
 					logs.Infof("move to completed queue")
-					gmo.groupQueues.DeleteFromRunning(task.Status.GroupID)
-					gmo.groupQueues.AddToCompleted(task.Status.GroupID, task)
+					gmo.groupQueues.DeleteFromRunning(gro.Status.GroupID)
+					gmo.groupQueues.AddToCompleted(gro.Status.GroupID, gro)
+					gmo.groupManager.DeleteGroup(gro) //groupManager就删除group的信息，此时group的信息就只存在于etcd当中
 					continue
 				}
 			}
@@ -427,7 +433,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate1(event events.RuntimeStartPhas
 			//遍历task，同时标记TaskStatus下GroupStatus状态也为running
 			for i := range task1.Status.GroupStatus {
 				if task1.Status.GroupStatus[i].GroupID == groupID {
-					task1.Status.GroupStatus[i].Phase = phase
+					task1.Status.GroupStatus[i].Phase = apis.Running
 				}
 			}
 		}
@@ -442,7 +448,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate1(event events.RuntimeStartPhas
 				rs.LastTime = lastTime
 			}
 		}
-		if actionStart { //为true说明要action还未设置状态为Running  TODO 后期可以改为k=0 并且rs.Phase == apis.ReadyToDeploy 进行下述操作
+		if actionStart { //为true说明要action还未设置状态为Running  TODO 后期可以改为k=0 并且rs.Phase == apis.DeployCheck 进行下述操作
 			actionStatus.Phase = apis.Running
 			actionStatus.StartAt = startTime
 			actionStatus.LastTime = lastTime
@@ -513,7 +519,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	for i := range groupSpec.Actions { //Action
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
 		if actionStatus.ActionID != actionID {       //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
-			if actionStatus.Phase == apis.ReadyToDeploy { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
+			if actionStatus.Phase == apis.DeployCheck { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
 				otherActionCompleted = false
 			}
 			continue
@@ -525,7 +531,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				rs.FinishAt = finshTime
 				rs.LastTime = lastTime
 			}
-			if rs.Phase == apis.ReadyToDeploy { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
+			if rs.Phase == apis.DeployCheck { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
 				allRuntiemCompleted = false
 			}
 		}
@@ -611,7 +617,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	for i := range groupSpec.Actions { //Action
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
 		if actionStatus.ActionID != actionID {       //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
-			if actionStatus.Phase == apis.ReadyToDeploy { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
+			if actionStatus.Phase == apis.DeployCheck { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
 				otherActionCompleted = false
 			}
 			continue
@@ -623,7 +629,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				rs.FinishAt = finshTime
 				rs.LastTime = lastTime
 			}
-			if rs.Phase == apis.ReadyToDeploy { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
+			if rs.Phase == apis.DeployCheck { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
 				allRuntiemCompleted = false
 			}
 		}
@@ -736,7 +742,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 		grStatus := &task1.Status.GroupStatus[i]
 		if grStatus.GroupID != groupID {
 			//logs.Infof("***********************grStatus.Phase:%v", grStatus.Phase)
-			if grStatus.Phase == apis.ReadyToDeploy { //if grStatus.Phase == apis.ReadyToDeploy {
+			if grStatus.Phase == apis.DeployCheck { //if grStatus.Phase == apis.DeployCheck {
 				otherGroupCompleted = false
 			}
 			continue
@@ -745,7 +751,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 	for i := range groupSpec.Actions { //Action
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
 		if actionStatus.ActionID != actionID {       //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
-			if actionStatus.Phase == apis.ReadyToDeploy { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
+			if actionStatus.Phase == apis.DeployCheck { //其他Action为Pennding状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
 				otherActionCompleted = false
 			}
 			continue
@@ -759,7 +765,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate1(event events.RuntimeEndPhaseEve
 				rs.FinishAt = finshTime
 				rs.LastTime = lastTime
 			}
-			if rs.Phase == apis.ReadyToDeploy { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
+			if rs.Phase == apis.DeployCheck { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
 				allRuntiemCompleted = false
 			}
 		}

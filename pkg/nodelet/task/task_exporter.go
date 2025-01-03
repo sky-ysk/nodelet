@@ -126,7 +126,7 @@ func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 		tasks := te.GetTask()
 		for i := range tasks {
 			task := tasks[i]
-			logs.Info("receive task info, readey to check whether the deployment has been submitted")
+			logs.Debug("receive task info, readey to check whether the deployment has been submitted")
 			te.taskManager.AddTask(task) //将Task放入到TaskManager当中
 			//task1, err := te.taskManager.GetTaskByID(task.Status.TaskID)
 			//if err != nil {
@@ -137,21 +137,25 @@ func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 			//} else {
 			//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to different memory locations.")
 			//}
-			for i := range task.Spec.Groups {
+			for j := range task.Spec.Groups {
 				//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
-				if task.Status.Phase == apis.Unknown {
-					g := &task.Spec.Groups[i]
-					// 这里可以改为从client-go中读取group信息
+				groupName := task.Spec.Groups[j].Name
+				// 从etcd当中读group的信息
+				gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
+				if err != nil {
+					logs.Error("get group %s failed", groupName)
+				}
+				if gr.Status.Node == "EdgeNode1" && gr.Status.Phase == apis.ReadyToDeploy {
 					if updateType == "create" {
 						groupUpdate := types.GroupUpdate{
-							Groups: []*apis.Group{g},
+							Groups: []*apis.Group{gr},
 							Op:     types.ADD,
 						}
 						updateCh <- groupUpdate
 					} else if updateType == "kill" {
 						//TODO
 						groupUpdate := types.GroupUpdate{
-							Groups: []*apis.Group{g},
+							Groups: []*apis.Group{gr},
 							Op:     types.KILL,
 						}
 						updateCh <- groupUpdate
@@ -173,7 +177,7 @@ func (te *TaskExporter) GetTask() []*apis.Task {
 	}
 	var tasks []*apis.Task
 	for _, t := range list.Items { //遍历etcd当中的所有task
-		if t.Status.Phase == apis.Pending { // 如果taskStatus的phase为Pennding，也就是调度完之后的状态
+		if t.Status.Phase == apis.ReadyToDeploy { // 如果taskStatus的phase为ReadyToDeploy
 			task, err2 := te.tasksClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
 			if err2 != nil {
 				logs.Error("Get task by taskID error from etcd：", err2)

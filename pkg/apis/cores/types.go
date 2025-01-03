@@ -191,6 +191,7 @@ const (
 	Failed        Phase = "Failed"
 	Unknown       Phase = "Unknown"
 	ReadyToDeploy Phase = "ReadyToDeploy"
+	DeployCheck   Phase = "DeployCheck"
 	// 迁移相关状态
 	Migrating Phase = "Migrating"
 	Migrated  Phase = "Migrated"

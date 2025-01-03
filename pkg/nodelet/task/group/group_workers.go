@@ -109,14 +109,14 @@ func (g *groupWorkers) groupWorkerLoop(groupUpdates <-chan *UpdateGroupOptions) 
 func (g *groupWorkers) startGroup(group *apis.Group) {
 	// TODO: 检查Group是否可以运行
 	// TODO: 检查依赖
-	// 首先先将任务放入到pending队列当中
+	// 首先先将任务放入到pending队列当中  ---也就是对应的
 	success := g.queueManager.AddToPending(group.Status.GroupID, group)
 	if !success {
 		logs.Error("move group into pending queue failed, because groupID has been in pending queue")
 		return
 	}
 	//修改Pennding队列当中改group的信息（同时也同步到group_manager当中），状态都改为penning
-	g.handleGroupPenndingUpdate(group) //12.31新增：除了修改group的状态，还需要修改上层Task的状态为Pennding
+	g.handleGroupPenndingUpdate(group) //12.31新增：除了修改group的状态，还需要修改上层Task的状态为CheckDeploy
 	//检查依赖，如果满足，则放入running队列，开始执行actions
 	if !g.checkGroupDepencies(group) { //12.31：增加检查是否有父亲group
 		logs.Infof("The group %s execution dependency is not satisfied", group.Name)
@@ -267,23 +267,23 @@ func (g *groupWorkers) handleGroupPenndingUpdate(group *apis.Group) {
 	groupSpec := &group.Spec
 	groupStatus := &group.Status
 	//首先标记GroupStatus的Phase为Pennding
-	group.Status.Phase = apis.ReadyToDeploy
+	group.Status.Phase = apis.DeployCheck
 
 	// GroupSpec当中的Actions，标记ActionStatus中状态为Pennding
 	for i := range groupSpec.Actions { //Actions
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
-		groupSpec.Actions[i].Status.Phase = apis.ReadyToDeploy
+		groupSpec.Actions[i].Status.Phase = apis.DeployCheck
 		for j := range actionStatus.RuntimeStatus { // RuntimeStatus
-			actionStatus.RuntimeStatus[j].Phase = apis.ReadyToDeploy
+			actionStatus.RuntimeStatus[j].Phase = apis.DeployCheck
 		}
 	}
 	//GroupStatus当中的ActionStatus
 	for i := range groupStatus.ActionStatus { //ActionStatus
 		as := &groupStatus.ActionStatus[i]
-		as.Phase = apis.ReadyToDeploy
+		as.Phase = apis.DeployCheck
 		for j := range as.RuntimeStatus { //RuntimeStatus
 			rs := &as.RuntimeStatus[j]
-			rs.Phase = apis.ReadyToDeploy
+			rs.Phase = apis.DeployCheck
 		}
 	}
 	//将queue_manager和group_manager的group信息进行更新 ----------有问题
@@ -291,9 +291,14 @@ func (g *groupWorkers) handleGroupPenndingUpdate(group *apis.Group) {
 	if err != nil {
 		logs.Error("update group-runtiem-start info error")
 	}
+	//将group信息提交到etcd上去
+	_, err = g.groupsClient.Update(context.TODO(), group, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Error("update group-runtiem-start info error")
+	}
 }
 
-// 将TaskStatus的phase设置为Pennding， TODO 后续可能还需要修改时间
+// 将TaskStatus的phase设置为Pennding，这里需要注意，group在多处执行，如果说有一处将task的状态改为了DeployCheck，就不用再改了 TODO 后续可能还需要修改时间
 func (g *groupWorkers) handleTaskPenndingUpdate(group *apis.Group) {
 	// 查找该group所属的Task
 	taskID := group.Status.Belongs.TaskID
@@ -313,7 +318,8 @@ func (g *groupWorkers) handleTaskPenndingUpdate(group *apis.Group) {
 			//	logs.Error("get task err:", err.Error())
 			//}
 			// ceshi
-			task1, err := g.taskClient.Get(context.TODO(), "TestTasks", metav1.GetOptions{})
+			taskName := t.Name
+			task1, err := g.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
 			if err != nil {
 				logs.Error("get task err:", err.Error())
 			}
@@ -322,15 +328,17 @@ func (g *groupWorkers) handleTaskPenndingUpdate(group *apis.Group) {
 			//} else {
 			//	logs.Infof("！！！！！！！！！！！！！！！！！！！！！！！！！！task and task2 point to different memory locations.")
 			//}
-			task1.Status.Phase = apis.ReadyToDeploy //设置Task的状态为penning
-			task1.Status.LastTime = apis.Time{time.Now()}
-			for i := range task1.Status.GroupStatus { //同时设置TaskStatus下的GroupStatus的phase为penning
-				gs := &task1.Status.GroupStatus[i]
-				gs.Phase = apis.ReadyToDeploy
-				gs.LastTime = apis.Time{time.Now()}
+			if task1.Status.Phase != apis.DeployCheck {
+				task1.Status.Phase = apis.DeployCheck //设置Task的状态为penning
+				task1.Status.LastTime = apis.Time{time.Now()}
+				for i := range task1.Status.GroupStatus { //同时设置TaskStatus下的GroupStatus的phase为penning
+					gs := &task1.Status.GroupStatus[i]
+					gs.Phase = apis.DeployCheck
+					gs.LastTime = apis.Time{time.Now()}
+				}
+				// 通过client-go，将信息提交到api-server当中
+				g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 			}
-			// 通过client-go，将信息提交到api-server当中
-			g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 		}
 	}
 }
