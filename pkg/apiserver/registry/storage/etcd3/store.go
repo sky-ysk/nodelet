@@ -6,18 +6,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hit.edu/framework/pkg/apimachinery/watch"
 	"path"
 	"reflect"
 	"strings"
-	
+
+	"hit.edu/framework/pkg/apimachinery/watch"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
-	//"hit.edu/framework/pkg/apiserver/registry/storage/databus"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
 	"hit.edu/framework/pkg/apiserver/registry/storage/value"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/component-base/logs"
 )
 
 const (
@@ -70,12 +71,14 @@ func New(c *clientv3.Client, codec runtime.Codec, newFunc, newListFunc func() ru
 }
 
 func newStore(c *clientv3.Client, codec runtime.Codec, newFunc, newListFunc func() runtime.Object, prefix, resourcePrefix string, groupResource schema.GroupResource, transformer value.Transformer, leaseManagerConfig LeaseManagerConfig) *store {
+	logs.Init("etcd")
+	logs.Info("Initializing store with groupResource: " + groupResource.String())
 	versioner := storage.APIObjectVersioner{}
 	pathPrefix := path.Join("/", prefix)
 	if !strings.HasSuffix(pathPrefix, "/") {
 		pathPrefix += "/"
 	}
-	
+
 	w := &watcher{
 		client:        c,
 		codec:         codec,
@@ -89,6 +92,7 @@ func newStore(c *clientv3.Client, codec runtime.Codec, newFunc, newListFunc func
 	} else {
 		w.objectType = reflect.TypeOf(newFunc()).String()
 	}
+	logs.Info("Watcher initialized with objectType:  " + w.objectType)
 	s := &store{
 		client:              c,
 		codec:               codec,
@@ -100,7 +104,6 @@ func newStore(c *clientv3.Client, codec runtime.Codec, newFunc, newListFunc func
 		watcher:             w,
 		leaseManager:        newDefaultLeaseManager(c, leaseManagerConfig),
 	}
-	
 	w.getCurrentStorageRV = func(ctx context.Context) (uint64, error) {
 		return storage.GetCurrentResourceVersionFromStorage(ctx, s, newListFunc, resourcePrefix, w.objectType)
 	}
@@ -121,12 +124,13 @@ func (s *store) Get(ctx context.Context, key string, opts storage.GetOptions, ou
 	}
 	getResp, err := s.client.KV.Get(ctx, preparedKey)
 	if err != nil {
+		logs.Error("err when Get:", err.Error())
 		return err
 	}
 	if err = s.validateMinimumResourceVersion(opts.ResourceVersion, uint64(getResp.Header.Revision)); err != nil {
 		return err
 	}
-	
+
 	if len(getResp.Kvs) == 0 {
 		if opts.IgnoreNotFound {
 			return runtime.SetZeroValue(out)
@@ -134,12 +138,12 @@ func (s *store) Get(ctx context.Context, key string, opts storage.GetOptions, ou
 		return storage.NewKeyNotFoundError(preparedKey, 0)
 	}
 	kv := getResp.Kvs[0]
-	
+
 	data, _, err := s.transformer.TransformFromStorage(ctx, kv.Value, authenticatedDataString(preparedKey))
 	if err != nil {
-		return storage.NewInternalError(err.Error())
+		return err
 	}
-	
+
 	err = decode(s.codec, s.versioner, data, out, kv.ModRevision)
 	if err != nil {
 		recordDecodeError(s.groupResourceString, preparedKey)
@@ -150,6 +154,7 @@ func (s *store) Get(ctx context.Context, key string, opts storage.GetOptions, ou
 
 // Create 实现了 storage.Interface.Create接口
 func (s *store) Create(ctx context.Context, key string, obj, out runtime.Object, ttl uint64) error {
+	//logs.Info("this is also a test")
 	preparedKey, err := s.prepareKey(key)
 	if err != nil {
 		return err
@@ -168,7 +173,7 @@ func (s *store) Create(ctx context.Context, key string, obj, out runtime.Object,
 	if err != nil {
 		return err
 	}
-	
+
 	newData, err := s.transformer.TransformToStorage(ctx, data, authenticatedDataString(preparedKey))
 	if err != nil {
 		return storage.NewInternalError(err.Error())
@@ -181,11 +186,11 @@ func (s *store) Create(ctx context.Context, key string, obj, out runtime.Object,
 	if err != nil {
 		return err
 	}
-	
+
 	if !txnResp.Succeeded {
 		return storage.NewKeyExistsError(preparedKey, 0)
 	}
-	
+
 	if out != nil {
 		putResp := txnResp.Responses[0].GetResponsePut()
 		err = decode(s.codec, s.versioner, data, out, putResp.Header.Revision)
@@ -216,7 +221,7 @@ func (s *store) conditionalDelete(
 	ctx context.Context, key string, out runtime.Object, v reflect.Value, preconditions *storage.Preconditions,
 	validateDeletion storage.ValidateObjectFunc, cachedExistingObject runtime.Object) error {
 	getCurrentState := s.getCurrentState(ctx, key, v, false)
-	
+
 	var origState *objState
 	var err error
 	var origStateIsCurrent bool
@@ -229,7 +234,7 @@ func (s *store) conditionalDelete(
 	if err != nil {
 		return err
 	}
-	
+
 	for {
 		if preconditions != nil {
 			if err := preconditions.Check(key, origState.obj); err != nil {
@@ -239,7 +244,7 @@ func (s *store) conditionalDelete(
 				// 记录当前数据的版本
 				cachedRev := origState.rev
 				cachedUpdateErr := err
-				
+
 				// 获取当前状态
 				origState, err = getCurrentState()
 				if err != nil {
@@ -269,7 +274,7 @@ func (s *store) conditionalDelete(
 			}
 			continue
 		}
-		
+
 		txnResp, err := s.client.KV.Txn(ctx).If(
 			clientv3.Compare(clientv3.ModRevision(key), "=", origState.rev),
 		).Then(
@@ -281,6 +286,7 @@ func (s *store) conditionalDelete(
 			return err
 		}
 		if !txnResp.Succeeded {
+			logs.Info("delete" + key + "failed,retry")
 			getResp := (*clientv3.GetResponse)(txnResp.Responses[0].GetResponseRange())
 			origState, err = s.getState(ctx, getResp, key, v, false)
 			if err != nil {
@@ -289,7 +295,7 @@ func (s *store) conditionalDelete(
 			origStateIsCurrent = true
 			continue
 		}
-		
+
 		if len(txnResp.Responses) == 0 || txnResp.Responses[0].GetResponseDeleteRange() == nil {
 			return errors.New(fmt.Sprintf("invalid DeleteRange response: %v", txnResp.Responses))
 		}
@@ -314,14 +320,14 @@ func (s *store) GuaranteedUpdate(
 	if err != nil {
 		return err
 	}
-	
+
 	v, err := EnforcePtr(destination)
 	if err != nil {
 		return fmt.Errorf("unable to convert output object to pointer: %v", err)
 	}
-	
+
 	getCurrentState := s.getCurrentState(ctx, preparedKey, v, ignoreNotFound)
-	
+
 	var origState *objState
 	var origStateIsCurrent bool
 	if cachedExistingObject != nil {
@@ -333,7 +339,7 @@ func (s *store) GuaranteedUpdate(
 	if err != nil {
 		return err
 	}
-	
+
 	transformContext := authenticatedDataString(preparedKey)
 	for {
 		if err := preconditions.Check(preparedKey, origState.obj); err != nil {
@@ -348,7 +354,7 @@ func (s *store) GuaranteedUpdate(
 			origStateIsCurrent = true
 			continue
 		}
-		
+
 		ret, ttl, err := s.updateState(origState, tryUpdate)
 		if err != nil {
 			if origStateIsCurrent {
@@ -366,7 +372,7 @@ func (s *store) GuaranteedUpdate(
 			}
 			continue
 		}
-		
+
 		data, err := runtime.Encode(s.codec, ret)
 		if err != nil {
 			return err
@@ -394,7 +400,7 @@ func (s *store) GuaranteedUpdate(
 				return nil
 			}
 		}
-		
+
 		newData, err := s.transformer.TransformToStorage(ctx, data, transformContext)
 		if err != nil {
 			return storage.NewInternalError(err.Error())
@@ -403,7 +409,7 @@ func (s *store) GuaranteedUpdate(
 		if err != nil {
 			return err
 		}
-		
+
 		txnResp, err := s.client.KV.Txn(ctx).If(
 			clientv3.Compare(clientv3.ModRevision(preparedKey), "=", origState.rev),
 		).Then(
@@ -411,13 +417,14 @@ func (s *store) GuaranteedUpdate(
 		).Else(
 			clientv3.OpGet(preparedKey),
 		).Commit()
-		
+
 		if err != nil {
 			return err
 		}
 		if !txnResp.Succeeded {
 			getResp := (*clientv3.GetResponse)(txnResp.Responses[0].GetResponseRange())
 			origState, err = s.getState(ctx, getResp, preparedKey, v, ignoreNotFound)
+			logs.Info("update" + key + "failed,retry")
 			if err != nil {
 				return err
 			}
@@ -425,7 +432,7 @@ func (s *store) GuaranteedUpdate(
 			continue
 		}
 		putResp := txnResp.Responses[0].GetResponsePut()
-		
+
 		err = decode(s.codec, s.versioner, data, destination, putResp.Header.Revision)
 		if err != nil {
 			recordDecodeError(s.groupResourceString, preparedKey)
@@ -454,7 +461,7 @@ func (s *store) Count(key string) (int64, error) {
 	if !strings.HasSuffix(preparedKey, "/") {
 		preparedKey += "/"
 	}
-	
+
 	getResp, err := s.client.KV.Get(context.Background(), preparedKey, clientv3.WithRange(clientv3.GetPrefixRangeEnd(preparedKey)), clientv3.WithCountOnly())
 	if err != nil {
 		return 0, err
@@ -491,7 +498,7 @@ func (s *store) resolveGetListRev(continueKey string, continueRV int64, opts sto
 	if err != nil {
 		return withRev, NewBadRequest(fmt.Sprintf("invalid resource version: %v", err))
 	}
-	
+
 	switch string(opts.ResourceVersionMatch) {
 	case "NotOlderThan":
 		// The not older than constraint is checked after we get a response from etcd,
@@ -535,14 +542,14 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 		options = append(options, clientv3.WithLimit(limit))
 		limitOption = &options[len(options)-1]
 	}
-	
+
 	if opts.Recursive {
 		rangeEnd := clientv3.GetPrefixRangeEnd(keyPrefix)
 		options = append(options, clientv3.WithRange(rangeEnd))
 	}
-	
+
 	newItemFunc := getNewItemFunc(listObj, v)
-	
+
 	var continueRV, withRev int64
 	var continueKey string
 	if opts.Recursive && len(opts.Predicate.Continue) > 0 {
@@ -555,17 +562,17 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 	if withRev, err = s.resolveGetListRev(continueKey, continueRV, opts); err != nil {
 		return err
 	}
-	
+
 	if withRev != 0 {
 		options = append(options, clientv3.WithRev(withRev))
 	}
-	
+
 	var lastKey []byte
 	var hasMore bool
 	var getResp *clientv3.GetResponse
 	var numFetched int
 	var numEvald int
-	
+
 	for {
 		getResp, err = s.client.KV.Get(ctx, preparedKey, options...)
 		if err != nil {
@@ -576,7 +583,7 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 			return err
 		}
 		hasMore = getResp.More
-		
+
 		if len(getResp.Kvs) == 0 && getResp.More {
 			return fmt.Errorf("no results were found, but etcd indicated there were more values remaining")
 		}
@@ -585,7 +592,7 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 			withRev = getResp.Header.Revision
 			options = append(options, clientv3.WithRev(withRev))
 		}
-		
+
 		// avoid small allocations for the result slice, since this can be called in many
 		// different contexts and we don't know how significantly the result will be filtered
 		if opts.Predicate.Empty() {
@@ -593,7 +600,7 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 		} else {
 			growSlice(v, 2048, len(getResp.Kvs))
 		}
-		
+
 		// take items from the response until the bucket is full, filtering as we go
 		for i, kv := range getResp.Kvs {
 			if paging && int64(v.Len()) >= opts.Predicate.Limit {
@@ -601,12 +608,12 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 				break
 			}
 			lastKey = kv.Key
-			
+
 			data, _, err := s.transformer.TransformFromStorage(ctx, kv.Value, authenticatedDataString(kv.Key))
 			if err != nil {
 				return storage.NewInternalErrorf("unable to transform key %q: %v", kv.Key, err)
 			}
-			
+
 			// Check if the request has already timed out before decode object
 			select {
 			case <-ctx.Done():
@@ -614,24 +621,24 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 				return storage.NewTimeoutError(string(kv.Key), "request did not complete within requested timeout")
 			default:
 			}
-			
+
 			obj, err := decodeListItem(ctx, data, uint64(kv.ModRevision), s.codec, s.versioner, newItemFunc)
 			if err != nil {
 				recordDecodeError(s.groupResourceString, string(kv.Key))
 				return err
 			}
-			
+
 			// being unable to set the version does not prevent the object from being extracted
 			if matched, err := opts.Predicate.Matches(obj); err == nil && matched {
 				v.Set(reflect.Append(v, reflect.ValueOf(obj).Elem()))
 			}
-			
+
 			numEvald++
-			
+
 			// free kv early. Long lists can take O(seconds) to decode.
 			getResp.Kvs[i] = nil
 		}
-		
+
 		// no more results remain or we didn't request paging
 		if !hasMore || !paging {
 			break
@@ -640,7 +647,7 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 		if int64(v.Len()) >= opts.Predicate.Limit {
 			break
 		}
-		
+
 		if limit < maxLimit {
 			// We got incomplete result due to field/label selector dropping the object.
 			// Double page size to reduce total number of calls to etcd.
@@ -652,12 +659,12 @@ func (s *store) GetList(ctx context.Context, key string, opts storage.ListOption
 		}
 		preparedKey = string(lastKey) + "\x00"
 	}
-	
+
 	if v.IsNil() {
 		// Ensure that we never return a nil Items pointer in the result for consistency.
 		v.Set(reflect.MakeSlice(v.Type(), 0, 0))
 	}
-	
+
 	continueValue, remainingItemCount, err := storage.PrepareContinueToken(string(lastKey), keyPrefix, withRev, getResp.Count, hasMore, opts)
 	if err != nil {
 		return err
@@ -723,13 +730,13 @@ func (s *store) getState(ctx context.Context, getResp *clientv3.GetResponse, key
 	state := &objState{
 		meta: &storage.ResponseMeta{},
 	}
-	
+
 	if u, ok := v.Addr().Interface().(runtime.Unstructured); ok {
 		state.obj = u.NewEmptyInstance()
 	} else {
 		state.obj = reflect.New(v.Type()).Interface().(runtime.Object)
 	}
-	
+
 	if len(getResp.Kvs) == 0 {
 		if !ignoreNotFound {
 			return nil, storage.NewKeyNotFoundError(key, 0)
@@ -759,14 +766,14 @@ func (s *store) getStateFromObject(obj runtime.Object) (*objState, error) {
 		obj:  obj,
 		meta: &storage.ResponseMeta{},
 	}
-	
+
 	rv, err := s.versioner.ObjectResourceVersion(obj)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get resource version: %v", err)
 	}
 	state.rev = int64(rv)
 	state.meta.ResourceVersion = uint64(state.rev)
-	
+
 	// Compute the serialized form - for that we need to temporarily clean
 	// its resource version field (those are not stored in etcd).
 	if err := s.versioner.PrepareObjectForStorage(obj); err != nil {
@@ -777,6 +784,7 @@ func (s *store) getStateFromObject(obj runtime.Object) (*objState, error) {
 		return nil, err
 	}
 	if err := s.versioner.UpdateObject(state.obj, uint64(rv)); err != nil {
+		logs.Error("err when update version:", err.Error())
 	}
 	return state, nil
 }
@@ -787,7 +795,7 @@ func (s *store) updateState(st *objState, userUpdate storage.UpdateFunc) (runtim
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	if err := s.versioner.PrepareObjectForStorage(ret); err != nil {
 		return nil, 0, fmt.Errorf("PrepareObjectForStorage failed: %v", err)
 	}
@@ -858,6 +866,7 @@ func decode(codec runtime.Codec, versioner storage.Versioner, value []byte, objP
 		return err
 	}
 	if err := versioner.UpdateObject(objPtr, uint64(rev)); err != nil {
+		logs.Error("err when update version:", err.Error())
 	}
 	return nil
 }
@@ -867,17 +876,16 @@ func decodeListItem(ctx context.Context, data []byte, rev uint64, codec runtime.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if err := versioner.UpdateObject(obj, rev); err != nil {
-	
+		logs.Error("err when update version:", err.Error())
 	}
-	
+
 	return obj, nil
 }
 
-// TODO：出错处理和日志记录
 func recordDecodeError(resource string, key string) {
-
+	logs.Error("Decoding " + resource + "," + key + "failed")
 }
 
 func notFound(key string) clientv3.Cmp {

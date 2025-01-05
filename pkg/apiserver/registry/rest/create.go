@@ -3,18 +3,21 @@ package rest
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apiserver/registry/storage/field"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apis/meta"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+	genericapirequest "hit.edu/framework/pkg/apiserver/endpoints/request"
 )
 
 // RESTCreateStrategy 定义了创建策略的最小验证
 type RESTCreateStrategy interface {
 	runtime.ObjectTyper
+	// NamespaceScoped判断资源是否支持NameSpace
+	NamespaceScoped() bool
 	// PrepareForCreate 在创建之前调用，以实现标准化
 	PrepareForCreate(ctx context.Context, obj runtime.Object)
 	// Validate 在默认字段填充好，还未持久化前调用，返回验证错误
@@ -29,7 +32,7 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx context.Context, obj runtime.
 	if kerr != nil {
 		return kerr
 	}
-	
+
 	// 确保关键元数据已填充
 	// if !metav1.HasObjectMetaSystemFieldValues(objectMeta) {
 	// 	return errors.NewInternalError(fmt.Errorf("system metadata was not initialized"))
@@ -37,9 +40,16 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx context.Context, obj runtime.
 	if len(objectMeta.GetName()) == 0 {
 		return errors.NewInternalError(fmt.Errorf("metadata.name was not generated"))
 	}
-	
+
+	requestNamespace, _ := genericapirequest.NamespaceFrom(ctx)
+	//if !ok {
+	//	return errors.NewInternalError(fmt.Errorf("no namespace information found in request context"))
+	//}
+	if err := EnsureObjectNamespaceMatchesRequestNamespace(ExpectedNamespaceForScope(requestNamespace, strategy.NamespaceScoped()), objectMeta); err != nil {
+		return err
+	}
 	strategy.PrepareForCreate(ctx, obj)
-	
+
 	if errs := strategy.Validate(ctx, obj); len(errs) > 0 {
 		return errors.NewInvalid(kind.GroupKind(), objectMeta.GetName(), errs)
 	}
@@ -49,7 +59,7 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx context.Context, obj runtime.
 	// }
 	//执行标准化
 	strategy.Canonicalize(obj)
-	
+
 	return nil
 }
 
@@ -58,7 +68,7 @@ func CheckGeneratedNameError(ctx context.Context, strategy RESTCreateStrategy, e
 	if !errors.IsAlreadyExists(err) {
 		return err
 	}
-	
+
 	objectMeta, gvk, kerr := objectMetaAndKind(strategy, obj)
 	if kerr != nil {
 		return kerr
@@ -82,4 +92,9 @@ func objectMetaAndKind(typer runtime.ObjectTyper, obj runtime.Object) (meta.Obje
 		return nil, schema.GroupVersionKind{}, errors.NewInternalError(err)
 	}
 	return objectMeta, kinds[0], nil
+}
+
+// NamespaceScopedStrategy 指示对象是否必须在某个namespace下
+type NamespaceScopedStrategy interface {
+	NamespaceScoped() bool
 }

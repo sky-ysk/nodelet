@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	_ "hit.edu/framework/pkg/apis/cores/install"
 	"hit.edu/framework/pkg/apis/legacyscheme"
@@ -26,7 +27,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/watch"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -1121,6 +1121,922 @@ func TestWatchSingleResource(t *testing.T) {
 	}
 	if itemOut.Spec.NodeName != "watchTestNode" {
 		t.Errorf("Unexpected Spec NodeName:%s,Expected:%s", itemOut.Spec.NodeName, "watchTestNode")
+	}
+
+	resp.Body.Close()
+	server.Close()
+}
+
+func TestNamespacedCreate(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	client := http.Client{}
+
+	namespace := "my-namespace"
+
+	simple := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, simple)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	request, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(request)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	var itemOut apis.Workflow
+	_, err = extractBody(response, &itemOut)
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+}
+
+func TestNamespacedDelete(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	ID := "foo"
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	client := http.Client{}
+
+	//创建一个Workflow资源
+	namespace := "my-namespace"
+	simple := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, simple)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	var itemOut apis.Workflow
+	_, err = extractBody(response, &itemOut)
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	//测试删除
+	request, err := http.NewRequest("DELETE", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows/"+ID, nil)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	res, err := client.Do(request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("unexpected response: %#v", res)
+	}
+}
+
+func TestNamespacedGet(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	ID := "foo"
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	client := http.Client{}
+
+	//创建一个Workflow资源
+	namespace := "my-namespace"
+	simple := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, simple)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	//测试查询
+	resp, err := http.Get(server.URL + "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/" + namespace + "/workflows/" + ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected response: %#v", resp)
+	}
+	var itemOut apis.Workflow
+	body, err := extractBody(resp, &itemOut)
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, resp)
+	}
+	if itemOut.Name != simple.Name {
+		t.Errorf("Unexpected data: %#v, expected %#v (%s)", itemOut, simple, string(body))
+	}
+}
+
+func TestNamespacedUpdate(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	ID := "foo"
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	client := http.Client{}
+
+	//创建一个Workflow资源
+	namespace := "my-namespace"
+	simple := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, simple)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+	//测试更新
+	updateObj := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "updated",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "updated",
+		},
+	}
+	data, err = runtime.Encode(codec, updateObj)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	request, err := http.NewRequest("PUT", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows/"+ID, bytes.NewBuffer(data))
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg = sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		response, err = client.Do(request)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	var itemOut apis.Workflow
+	_, err = extractBody(response, &itemOut)
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusOK, response)
+	}
+	if itemOut.Spec.Name != updateObj.Spec.Name || itemOut.Status.WorkflowID != updateObj.Status.WorkflowID {
+		t.Errorf("Unexpected SpecName:%s,StatusWorkflowID:%s,Expected SpecName:%s,StatusWorkflowID:%s,", itemOut.Spec.Name, itemOut.Spec.Name, updateObj.Status.WorkflowID, updateObj.Status.WorkflowID)
+	}
+}
+
+func TestNamespacedDeleteCollection(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	client := http.Client{}
+
+	//创建两个Workflow资源
+	namespace := "my-namespace"
+	workflow1 := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, workflow1)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	workflow2 := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo1",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err = runtime.Encode(codec, workflow2)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer = bytes.NewBuffer(data)
+	req, err = http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg = sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	//测试批量删除
+	request, err := http.NewRequest("DELETE", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", nil)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	res, err := client.Do(request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("unexpected response: %#v", res)
+	}
+}
+
+func TestNamespacedList(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	client := http.Client{}
+
+	//创建两个Workflow资源
+	namespace := "my-namespace"
+	workflow1 := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, workflow1)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	workflow2 := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo1",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err = runtime.Encode(codec, workflow2)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer = bytes.NewBuffer(data)
+	req, err = http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg = sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	//测试List
+	url := server.URL + "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/nodes"
+
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("unexpected status: %d from url: %s, Expected: %d, %#v", resp.StatusCode, url, http.StatusOK, resp)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		t.Logf("body: %s", string(body))
+	}
+
+	var nodeList apis.NodeList
+	_, err = extractBody(resp, &nodeList)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	for _, item := range nodeList.Items {
+		if item.Name != "foo" && item.Name != "foo1" {
+			t.Errorf("get unexpected item :%s", item.Name)
+		}
+	}
+
+}
+
+func TestNamespacedPatch(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	client := http.Client{}
+	//创建一个Workflow资源
+	namespace := "my-namespace"
+	simple := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+			Desc: apis.Description{
+				Docs: "docs",
+			},
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, simple)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Errorf("unexpected error: %v %#v", err, response)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	//测试Patch
+	jsonPatchBytes := []byte(`[
+		{ "op": "replace", "path": "/spec/name", "value": "boo" },
+		{ "op": "remove", "path": "/status/workflow_id" }
+	]`)
+	mergePatchBytes := []byte(`{
+ 		"spec": {
+   		"name": "boo"
+		},
+ 		"status": {
+   		"workflow_id": ""
+ 		}
+	}`)
+
+	testCases := []struct {
+		ID         string
+		patchType  string
+		patchBytes []byte
+	}{
+		{
+			ID:         "foo",
+			patchType:  "application/json-patch+json",
+			patchBytes: jsonPatchBytes,
+		},
+		{
+			ID:         "foo",
+			patchType:  "application/merge-patch+json",
+			patchBytes: mergePatchBytes,
+		},
+	}
+
+	for _, tc := range testCases {
+		client := http.Client{}
+		request, err := http.NewRequest("PATCH", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows/"+tc.ID, bytes.NewReader(tc.patchBytes))
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		request.Header.Set("Content-Type", tc.patchType)
+		response, err := client.Do(request)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if response.StatusCode != http.StatusOK {
+			t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusOK, response)
+		}
+		var itemOut apis.Workflow
+		_, err = extractBody(response, &itemOut)
+		if err != nil {
+			t.Errorf("unexpected error: %v %#v", err, response)
+		}
+		if itemOut.Spec.Name != "boo" || itemOut.Status.WorkflowID != "" {
+			t.Errorf("Unexpected SpecName,StatusWorkflowID:%s,%s  Expected:\"boo\",\"\"", itemOut.Spec.Name, itemOut.Status.WorkflowID)
+		}
+		if itemOut.Spec.Desc.Docs != simple.Spec.Desc.Docs {
+			t.Errorf("Unexpected modified field: Spec.Desc.Docs")
+		}
+	}
+}
+
+func TestNamespacedWatchList(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	server := httptest.NewServer(handler)
+
+	//查询WorkflowList最新的ResourceVersion
+	namespace := "my-namespace"
+	client := http.Client{}
+	dest, _ := url.Parse(server.URL)
+	dest.Path = "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/" + namespace + "/workflows"
+	reqList, _ := http.NewRequest("GET", dest.String(), nil)
+	responseList, err := client.Do(reqList)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if responseList.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", responseList.StatusCode, http.StatusOK, responseList)
+	}
+	var workflowList apis.WorkflowList
+	_, err = extractBody(responseList, &workflowList)
+	resourceVersion := workflowList.ResourceVersion
+
+	//发送Watch请求
+	dest, _ = url.Parse(server.URL)
+	dest.Path = "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/" + namespace + "/workflows"
+	dest.RawQuery = "watch=true&sendInitialEvents=false&resourceVersionMatch=NotOlderThan&resourceVersion=" + resourceVersion
+	req, _ := http.NewRequest("GET", dest.String(), nil)
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", resp.StatusCode, http.StatusOK, resp)
+	}
+
+	//创建一个Workflow资源
+	simple := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "watchTestWorkflow",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, simple)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err = http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+	response.Body.Close()
+
+	var dataWatch []byte
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Scan()
+	dataWatch = scanner.Bytes()
+
+	//检查watchEvent
+	var got watchJSON
+	err = json.Unmarshal(dataWatch, &got)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if got.Type != watch.Added {
+		t.Errorf("Unexpected event type: %s, Expected: %s", got.Type, watch.Added)
+	}
+	var itemOut apis.Workflow
+	err = json.Unmarshal(got.Object, &itemOut)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if itemOut.Name != "watchTestWorkflow" {
+		t.Errorf("Unexpected event Node name:%s,Expected:%s", itemOut.Name, "watchTestWorkflow")
+	}
+	resp.Body.Close()
+	server.Close()
+}
+
+func TestNamespacedWatchSingleResource(t *testing.T) {
+	restStorage, embedEtcdServer := getTestRESTStorage(t)
+	defer embedEtcdServer.Terminate(t)
+	handler := handle(restStorage)
+	server := httptest.NewServer(handler)
+
+	client := http.Client{}
+
+	//创建一个Workflow资源
+	namespace := "my-namespace"
+	simple := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "watchTestWorkflow",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err := runtime.Encode(codec, simple)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer := bytes.NewBuffer(data)
+	req, err := http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var response *http.Response
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+
+	//查询WorkflowList最新的ResourceVersion
+	dest, _ := url.Parse(server.URL)
+	dest.Path = "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/" + namespace + "/workflows"
+	reqList, _ := http.NewRequest("GET", dest.String(), nil)
+	responseList, err := client.Do(reqList)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if responseList.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", responseList.StatusCode, http.StatusOK, responseList)
+	}
+	var workflowList apis.WorkflowList
+	_, err = extractBody(responseList, &workflowList)
+	resourceVersion := workflowList.ResourceVersion
+
+	//发送Watch请求
+	dest, _ = url.Parse(server.URL)
+	dest.Path = "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/" + namespace + "/workflows"
+	dest.RawQuery = "watch=true&fieldSelector=metadata.name=watchTestWorkflow&sendInitialEvents=false&resourceVersionMatch=NotOlderThan&resourceVersion=" + resourceVersion
+	req, _ = http.NewRequest("GET", dest.String(), nil)
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", resp.StatusCode, http.StatusOK, resp)
+	}
+
+	//新增一个TestWorkflow，测试是否只监听单个资源
+	simple1 := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "watchTestWorkflow1",
+		},
+		Spec: apis.WorkflowSpec{
+			Name: "workflow-foo",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "123",
+		},
+	}
+	data, err = runtime.Encode(codec, simple1)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer = bytes.NewBuffer(data)
+	req, err = http.NewRequest("POST", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows", bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	wg = sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		response, err = client.Do(req)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if response.StatusCode != http.StatusCreated {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+	}
+	//更新TestWorkflow
+	simple2 := &apis.Workflow{
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: meta.ObjectMeta{
+			Name: "watchTestWorkflow",
+		},
+		Status: apis.WorkflowStatus{
+			WorkflowID: "456",
+		},
+	}
+	data, err = runtime.Encode(codec, simple2)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	bytesBuffer = bytes.NewBuffer(data)
+	req, err = http.NewRequest("PUT", server.URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/"+namespace+"/workflows/"+simple.Name, bytesBuffer)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	response, err = client.Do(req)
+	if response.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusOK, response)
+	}
+	response.Body.Close()
+
+	var dataWatch []byte
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Scan()
+	dataWatch = scanner.Bytes()
+
+	//检查watchEvent
+	var got watchJSON
+	err = json.Unmarshal(dataWatch, &got)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if got.Type != watch.Modified {
+		t.Errorf("Unexpected event type: %s, Expected: %s", got.Type, watch.Modified)
+	}
+	var itemOut apis.Workflow
+	err = json.Unmarshal(got.Object, &itemOut)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if itemOut.Status.WorkflowID != "456" {
+		t.Errorf("Unexpected Spec StatusWorkflowID:%s,Expected:%s", itemOut.Status.WorkflowID, "456")
 	}
 
 	resp.Body.Close()
