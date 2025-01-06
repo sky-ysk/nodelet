@@ -26,6 +26,26 @@ type ActionList struct {
 	Items []Action
 }
 
+// todo device, data, scen,resource 需要list吗？
+type DeviceList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Device
+}
+
+//todo：ResourceList 和types中的ResourceList撞了
+
+type DataList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Data
+}
+type SceneList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Scene
+}
+
 func (in *Time) DeepCopyInto(out *Time) {
 	*out = *in
 }
@@ -330,7 +350,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Data != nil {
 		in, out := &in.Data, &out.Data
 		*out = make([]DataStatus, len(*in))
@@ -338,7 +358,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Scenes != nil {
 		in, out := &in.Scenes, &out.Scenes
 		*out = make([]SceneStatus, len(*in))
@@ -346,7 +366,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.RuntimeStatus != nil {
 		in, out := &in.RuntimeStatus, &out.RuntimeStatus
 		*out = make([]RuntimeStatus, len(*in))
@@ -354,7 +374,7 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Results != nil {
 		in, out := &in.Results, &out.Results
 		*out = make([]Result, len(*in))
@@ -365,6 +385,161 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 	in.StartAt.DeepCopyInto(&out.StartAt)
 	in.FinishAt.DeepCopyInto(&out.FinishAt)
 	in.LastTime.DeepCopyInto(&out.LastTime)
+}
+
+func (in *Device) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+func (in *Device) DeepCopy() *Device {
+	if in == nil {
+		return nil
+	}
+	out := new(Device)
+	in.DeepCopyInto(out)
+	return out
+}
+func (in *Device) DeepCopyInto(out *Device) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
+	in.Status.DeepCopyInto(&out.Status)
+}
+
+func (in *DeviceList) DeepCopyInto(out *DeviceList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]Device, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *DeviceList) DeepCopy() *DeviceList {
+	if in == nil {
+		return nil
+	}
+	out := new(DeviceList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *DeviceList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+//todo: ResourceList的deepcopy
+
+func (in *Data) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+func (in *Data) DeepCopy() *Data {
+	if in == nil {
+		return nil
+	}
+	out := new(Data)
+	in.DeepCopyInto(out)
+	return out
+}
+func (in *Data) DeepCopyInto(out *Data) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
+	in.Status.DeepCopyInto(&out.Status)
+}
+
+func (in *DataList) DeepCopyInto(out *DataList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]Data, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *DataList) DeepCopy() *DataList {
+	if in == nil {
+		return nil
+	}
+	out := new(DataList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *DataList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *Scene) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+func (in *Scene) DeepCopy() *Scene {
+	if in == nil {
+		return nil
+	}
+	out := new(Scene)
+	in.DeepCopyInto(out)
+	return out
+}
+func (in *Scene) DeepCopyInto(out *Scene) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
+	in.Status.DeepCopyInto(&out.Status)
+}
+
+func (in *SceneList) DeepCopyInto(out *SceneList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]Scene, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *SceneList) DeepCopy() *SceneList {
+	if in == nil {
+		return nil
+	}
+	out := new(SceneList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *SceneList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
 }
 
 func (in *DataStatus) DeepCopyInto(out *DataStatus) {
@@ -393,7 +568,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Devices != nil {
 		in, out := &in.Devices, &out.Devices
 		*out = make([]DeviceSpec, len(*in))
@@ -401,7 +576,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Data != nil {
 		in, out := &in.Data, &out.Data
 		*out = make([]DataSpec, len(*in))
@@ -409,7 +584,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Scenes != nil {
 		in, out := &in.Scenes, &out.Scenes
 		*out = make([]SceneSpec, len(*in))
@@ -417,7 +592,7 @@ func (in *Runtime) DeepCopyInto(out *Runtime) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	if in.Command != nil {
 		in, out := &in.Command, &out.Command
 		*out = make([]string, len(*in))

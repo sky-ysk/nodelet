@@ -64,7 +64,7 @@ func (in *NodeSpec) DeepCopyInto(out *NodeSpec) {
 }
 func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 	*out = *in // 基础类型直接赋值
-	
+
 	// 深拷贝 Capacity 和 Allocatable
 	if in.Capacity != nil {
 		in, out := &in.Capacity, &out.Capacity
@@ -73,7 +73,7 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 			(*out)[key] = val
 		}
 	}
-	
+
 	if in.Allocatable != nil {
 		in, out := &in.Allocatable, &out.Allocatable
 		*out = make(map[string]Quantity, len(*in))
@@ -81,7 +81,7 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 			(*out)[key] = val
 		}
 	}
-	
+
 	// 深拷贝 Images 切片
 	if in.Images != nil {
 		in, out := &in.Images, &out.Images
@@ -90,7 +90,7 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	
+
 	// 深拷贝 Wasms 切片
 	if in.Wasms != nil {
 		out.Wasms = make([]WasmImage, len(in.Wasms))
@@ -98,10 +98,10 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 			out.Wasms[i] = in.Wasms[i] // WasmImage 是值类型，直接赋值
 		}
 	}
-	
+
 	// 深拷贝 Addresses
 	out.Addresses = in.Addresses // NodeAddress 是值类型，直接赋值
-	
+
 	// 深拷贝 NodeInfo
 	out.NodeInfo = in.NodeInfo // NodeSystemInfo 是值类型，直接赋值
 }

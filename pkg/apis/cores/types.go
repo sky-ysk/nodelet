@@ -553,6 +553,46 @@ type EnvVar struct {
 	// TODO: 动态获取相关字段
 }
 
+//type Resource struct {
+//	meta.TypeMeta
+//
+//	meta.ObjectMeta
+//
+//	Spec ResourceSpec `json:"spec,omitempty" yaml:"spec"`
+//
+//	Status ResourceStatus `json:"status,omitempty" yaml:"status"`
+//}
+
+type Device struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec DeviceSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status DeviceStatus `json:"status,omitempty" yaml:"status"`
+}
+
+type Data struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec DataSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status DataStatus `json:"status,omitempty" yaml:"status"`
+}
+
+type Scene struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec SceneSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status SceneStatus `json:"status,omitempty" yaml:"status"`
+}
+
 // TODO: 后续补充完整
 type ResourceSpec struct{}
 type ResourceStatus struct{}

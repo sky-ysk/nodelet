@@ -11,6 +11,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/watch"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	restclientwatch "hit.edu/framework/pkg/client-go/rest/watch"
+	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"k8s.io/utils/clock"
 	"mime"
@@ -231,7 +232,7 @@ func (r *Request) watchInternal(ctx context.Context) (watch.Interface, runtime.D
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Println("client watch req.URL:", req.URL.String())
+	logs.Trace("client watch req.URL:", req.URL.String())
 	// 执行请求
 	resp, err := client.Do(req)
 	if err != nil {
@@ -338,6 +339,7 @@ func (r *Request) request(ctx context.Context, fn func(*http.Request, *http.Resp
 	if err != nil {
 		return err
 	}
+	logs.Trace(req.URL.String())
 
 	// 发送请求
 	resp, err := client.Do(req)
@@ -439,14 +441,15 @@ func (r Request) finalURLTemplate() url.URL {
 // that the returned URL is valid.
 func (r *Request) URL() *url.URL {
 	p := r.pathPrefix
-
 	//todo: 这里可以使用命名空间作为url的一部分,可以设置namespace 与 resource
+	p = path.Join(p, "namespaces/")
 	if r.namespaceSet && len(r.namespace) > 0 {
 		p = path.Join(p, r.namespace)
 	}
 	if len(r.resource) != 0 {
 		p = path.Join(p, strings.ToLower(r.resource))
 	}
+
 	// Join trims trailing slashes, so preserve r.pathPrefix's trailing slash for backwards compatibility if nothing was changed
 	if len(r.resourceName) != 0 || len(r.subresource) != 0 {
 		p = path.Join(p, r.resourceName)
