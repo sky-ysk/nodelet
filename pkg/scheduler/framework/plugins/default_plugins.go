@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -101,6 +102,7 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 	//patch task phase
 	patchTaskStatus, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
+			//TODO 后续修改状态
 			"phase": apis.ReadyToDeploy,
 		},
 	})
@@ -151,8 +153,9 @@ func (bp *DefaultBindPlugin) getTaskByID(ctx context.Context, taskID string) (*a
 		logs.Error(err.Error())
 		return nil, err
 	}
-	if len(list.Items) != 0 {
+	if len(list.Items) != 1 {
 		logs.Error("list the specific task fail", taskID)
+		return nil, errors.New("list the specific task fail")
 	}
 	return &list.Items[0], nil
 }
