@@ -11,7 +11,7 @@ type NetRuntime struct {
 func NewNetRuntime() NetRuntime {
 	return NetRuntime{}
 }
-func (nr NetRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (nr NetRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("net runtime for task:%s", group.Name)
 	return nil
 }

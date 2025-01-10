@@ -52,7 +52,7 @@ func ensureFile() error {
 }
 
 // 启动任务
-func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("wasm runtime for task:%s", group.Name)
 	wasm_file := runtime.Image
 	wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcAddr)

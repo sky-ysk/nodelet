@@ -42,7 +42,7 @@ func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.
 }
 
 // 目前我把pod、Deployment、Service的name和namespace当成放在action的meta.ObjectMeta当中
-func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	logs.Infof("k8s runtime for task: %s", group.Name)
 	//先执行共同的操作
 	//再各自调用代码

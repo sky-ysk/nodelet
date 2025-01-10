@@ -17,6 +17,6 @@ const (
 // 从API Server处获取的Group更新信息
 // FIXME: Group可能有多个写入者，如何保证资源的一致性？引入Patch机制? 字段部分更新
 type GroupUpdate struct {
-	Groups []*apis.Group
-	Op     Operation
+	Group *apis.Group
+	Op    Operation
 }

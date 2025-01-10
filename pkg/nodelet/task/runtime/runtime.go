@@ -17,7 +17,7 @@ import (
 )
 
 type Runtime interface {
-	Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error
+	Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
 	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error
 	CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error)
 }
@@ -77,8 +77,8 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 	return runtime
 }
 
-func (rm *RuntimeManager) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
-	return rm.GetRuntime(runtime.Type).Run(group, action, runtime)
+func (rm *RuntimeManager) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+	return rm.GetRuntime(runtime.Type).Run(group, action, runtime, actionIndex, runtimeIndex)
 }
 func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
 	if rm == nil {

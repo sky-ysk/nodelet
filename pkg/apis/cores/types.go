@@ -192,6 +192,7 @@ const (
 	Unknown       Phase = "Unknown"
 	ReadyToDeploy Phase = "ReadyToDeploy"
 	DeployCheck   Phase = "DeployCheck"
+	ReadyToKill   Phase = "ReadyToKill"
 	// 迁移相关状态
 	Migrating Phase = "Migrating"
 	Migrated  Phase = "Migrated"

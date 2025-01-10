@@ -12,7 +12,7 @@ func NewContainerRuntime() ContainerRuntime {
 	return ContainerRuntime{}
 }
 
-func (dr ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (dr ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("docker runtime for task:%s", group.Name)
 	return nil
 }

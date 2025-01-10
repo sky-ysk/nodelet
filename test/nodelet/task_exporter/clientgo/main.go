@@ -66,7 +66,7 @@ func main() {
 		}
 	}()
 	//time.Sleep(2 * time.Second)
-	te.ReceiveGroupInfo("create")
+	te.ReceiveGroupInfo()
 	//Groups := yoloPredictAndTrainTaskGroup()
 	//ReceiveGroupInfo(Groups, "create")
 	//time.Sleep(60 * time.Second)

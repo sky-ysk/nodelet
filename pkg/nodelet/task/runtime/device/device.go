@@ -11,7 +11,7 @@ type DeviceRuntime struct {
 func NewDeviceRuntime() DeviceRuntime {
 	return DeviceRuntime{}
 }
-func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("device runtime for task: %s", group.Name)
 	return nil
 }

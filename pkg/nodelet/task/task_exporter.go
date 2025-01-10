@@ -20,10 +20,6 @@ type Exporter interface {
 	Run(ctx context.Context) error
 }
 
-var (
-	updateCh chan types.GroupUpdate
-)
-
 type TaskExporter struct {
 	// TODO: 增加Client-Go配置  --这块有点不太清楚,应该是为了方便将任务状态存到etcd当中
 	nodesClient core.NodeInterface
@@ -47,6 +43,8 @@ type TaskExporter struct {
 
 	// 处理从上游（API-Server）中的Group的更新事件
 	groupHandler *monitor.GroupHandler
+
+	updateCh chan types.GroupUpdate
 }
 
 var _ Exporter = &TaskExporter{}
@@ -54,7 +52,7 @@ var _ Exporter = &TaskExporter{}
 func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
 	// Task Exporter配置 config
 
-	//client配置
+	// Client-Go配置
 	nodeClient := clientset.Core().Nodes("")
 	taskClient := clientset.Core().Tasks("")
 	groupClient := clientset.Core().Groups("")
@@ -84,8 +82,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupWorkers: workers,
 		groupMonitor: monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
 		groupHandler: monitor.NewGroupHandler(groupManager, workers, groupQueues),
+		updateCh:     make(chan types.GroupUpdate),
 	}
-	// Client-Go配置
 
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
 	logs.Info("init task exporter")
@@ -93,63 +91,50 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 }
 
 func (te *TaskExporter) Run(ctx context.Context) error {
-	// 部署Client-Go服务(TODO 了解client-go服务的配置)
 
-	//监听Group资源  ***  question: ====监听group任务所需资源还是group任务资源===
-
-	// 当Group bind到当前节点时，开始部署当前Group
-	// Group中包含多个Action,Action支持串行和并行执行
-	// 任务部署前，需要检查任务的依赖，需要检查的内容包括
-	//   资源依赖，任务所需计算、网络、存储或者硬件资源是否就绪
-	//   顺序依赖，前序节点是否满足
-	//   数据依赖，任务执行所需数据是否准备好
-	//   条件依赖，任务执行是否满足条件
-
-	// 任务部署完成后，需要监控任务的执行情况，并通过Client-Go定期更新
+	//监听Group资源
 	// 任务监控中会产生各类事件，事件也通过Client-Go更新
-
 	// +optional,如果任务开启动态资源调整的需求
 	// 任务执行过程中需要动态调整任务进程的资源, 根据当前任务执行的Spec和Status, 通过cGroup动态调整任务执行资源使用情况
-	updateCh = make(chan types.GroupUpdate)
-	go te.groupHandler.Loop(ctx, updateCh) //主要监控上层发来的消息，主要是启动、停止任务
-	go te.groupMonitor.Start()             //主要监控正在启动的任务，获取任务状态信息
-	go te.ReceiveGroupInfo("create")
+
+	go te.groupHandler.Loop(ctx, te.updateCh) //主要监控上层发来的消息，主要是启动、停止任务
+	// 任务部署完成后，需要监控任务的执行情况，并通过Client-Go定期更新
+	go te.groupMonitor.Start() //主要监控正在启动的任务，获取任务状态信息
+	go te.ReceiveGroupInfo()
 	select {
 	case <-ctx.Done():
 		return ctx.Err() //退出是返回错误
 	}
 }
 
-func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
+func (te *TaskExporter) ReceiveGroupInfo() {
 	for {
 		//读取 etcd当中的group列表
-		list, err := te.gropsClient.List(context.TODO(), metav1.ListOptions{})
+		groupList, err := te.gropsClient.List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			logs.Error("list task err:", err.Error())
 		}
 		// 遍历group
-		for _, group := range list.Items {
-			//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
+		for _, group := range groupList.Items {
 			groupName := group.Name
 			// 从etcd当中读group的信息
 			gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 			if err != nil {
 				logs.Error("get group %s failed", groupName)
 			}
-			if gr.Status.Node == "EdgeNode1" && gr.Status.Phase == apis.ReadyToDeploy {
-				if updateType == "create" {
+			if gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1" { //gr.Status.Node == "CloudNode1"
+				if gr.Status.Phase == apis.ReadyToDeploy {
 					groupUpdate := types.GroupUpdate{
-						Groups: []*apis.Group{gr},
-						Op:     types.ADD,
+						Group: gr,
+						Op:    types.ADD,
 					}
-					updateCh <- groupUpdate
-				} else if updateType == "kill" {
-					//TODO
+					te.updateCh <- groupUpdate
+				} else if gr.Status.Phase == apis.ReadyToKill {
 					groupUpdate := types.GroupUpdate{
-						Groups: []*apis.Group{gr},
-						Op:     types.KILL,
+						Group: gr,
+						Op:    types.KILL,
 					}
-					updateCh <- groupUpdate
+					te.updateCh <- groupUpdate
 				}
 			}
 		}
@@ -157,45 +142,36 @@ func (te *TaskExporter) ReceiveGroupInfo(updateType string) {
 	}
 }
 
-// 模拟上层组件发送任务信息给Taskexporter，该方法主要是接受任务信息，并放入管道当中，触发Loop监听
-func (te *TaskExporter) ReceiveGroupInfo1(updateType string) {
+// 读取Task
+func (te *TaskExporter) ReceiveTaskInfo() {
 	for {
-		tasks := te.GetTask()
+		tasks := te.GetTask() //读取etcd但中的Task列表
 		for i := range tasks {
 			task := tasks[i]
-			logs.Debug("receive task info, readey to check whether the deployment has been submitted")
+			logs.Debugf("receive task：%v, readey to check whether task has been submitted", task.Name)
 			te.taskManager.AddTask(task) //将Task放入到TaskManager当中
-			//task1, err := te.taskManager.GetTaskByID(task.Status.TaskID)
-			//if err != nil {
-			//	logs.Error("Get task by taskID error from etcd：", err)
-			//}
-			//if task == task1 {
-			//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to the same memory location.")
-			//} else {
-			//	logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&task and task2 point to different memory locations.")
-			//}
 			for j := range task.Spec.Groups {
 				//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
 				groupName := task.Spec.Groups[j].Name
 				// 从etcd当中读group的信息
 				gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 				if err != nil {
-					logs.Error("get group %s failed", groupName)
+					logs.Errorf("get group %s failed", groupName)
 				}
-				if gr.Status.Node == "EdgeNode1" && gr.Status.Phase == apis.ReadyToDeploy {
-					if updateType == "create" {
+				if gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1" {
+					if gr.Status.Phase == apis.ReadyToDeploy {
 						groupUpdate := types.GroupUpdate{
-							Groups: []*apis.Group{gr},
-							Op:     types.ADD,
+							Group: gr,
+							Op:    types.ADD,
 						}
-						updateCh <- groupUpdate
-					} else if updateType == "kill" {
+						te.updateCh <- groupUpdate
+					} else if gr.Status.Phase == apis.ReadyToKill {
 						//TODO
 						groupUpdate := types.GroupUpdate{
-							Groups: []*apis.Group{gr},
-							Op:     types.KILL,
+							Group: gr,
+							Op:    types.KILL,
 						}
-						updateCh <- groupUpdate
+						te.updateCh <- groupUpdate
 					}
 				}
 			}
@@ -206,11 +182,10 @@ func (te *TaskExporter) ReceiveGroupInfo1(updateType string) {
 
 // 从client-go中读取task信息
 func (te *TaskExporter) GetTask() []*apis.Task {
-
-	//读取 etcd当中的任务列表
+	//读取 etcd当中的Task列表
 	list, err := te.tasksClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Error("list task err:", err.Error())
+		logs.Errorf("get task list err:%v", err)
 	}
 	var tasks []*apis.Task
 	for _, t := range list.Items { //遍历etcd当中的所有task

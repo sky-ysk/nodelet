@@ -11,7 +11,7 @@ type BinaryRuntime struct {
 func NewBinaryRuntime() BinaryRuntime {
 	return BinaryRuntime{}
 }
-func (br BinaryRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (br BinaryRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("binary runtime for task:%s", group.Name)
 	return nil
 }

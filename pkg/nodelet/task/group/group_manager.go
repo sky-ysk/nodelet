@@ -27,7 +27,7 @@ type Manager interface {
 	DeleteGroup(*apis.Group)
 
 	// 获取Group通过Name
-	GetGroupByName(groupName string) (*apis.Group, error) // 添加这个方法
+	GetGroupByID(groupName string) (*apis.Group, error) // 添加这个方法
 }
 
 type groupManager struct {
@@ -62,13 +62,13 @@ func (gm *groupManager) GetGroups(Map map[string]*apis.Group) []*apis.Group {
 	return groups
 }
 
-func (gm *groupManager) GetGroupByName(groupName string) (*apis.Group, error) {
+func (gm *groupManager) GetGroupByID(groupID string) (*apis.Group, error) {
 	gm.lock.RLock()
 	defer gm.lock.RUnlock()
 
-	group, exists := gm.groupsByName[groupName]
+	group, exists := gm.groupsByID[groupID]
 	if !exists {
-		return nil, fmt.Errorf("group with name %s not found", groupName)
+		return nil, fmt.Errorf("group with ID： %s not found", groupID)
 	}
 	return group, nil
 }

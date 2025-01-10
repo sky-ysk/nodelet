@@ -44,23 +44,44 @@ type ActionResourceEvent struct {
 	LastTime  apis.Time // 可选字段，表示最后更新时间
 }
 
+//// RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
+//type RuntimeStartPhaseEvent struct {
+//	Group     *apis.Group
+//	Action    *apis.Action
+//	Runtime   *apis.Runtime
+//	ProcessId string
+//	Phase     apis.Phase
+//	StartAt   apis.Time
+//	LastTime  apis.Time // 可选字段，表示最后更新时间
+//}
+//
+//// RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
+//type RuntimeEndPhaseEvent struct {
+//	Group    *apis.Group
+//	Action   *apis.Action
+//	Runtime  *apis.Runtime
+//	Phase    apis.Phase
+//	FinishAt apis.Time
+//	LastTime apis.Time // 可选字段，表示最后更新时间
+//}
+
 // RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
-type RuntimeStartPhaseEvent struct {
-	Group     *apis.Group
-	Action    *apis.Action
-	Runtime   *apis.Runtime
-	ProcessId string
-	Phase     apis.Phase
-	StartAt   apis.Time
-	LastTime  apis.Time // 可选字段，表示最后更新时间
+type RuntimeStartPhaseEvent1 struct {
+	GroupName    string
+	ActionIndex  int
+	RuntimeIndex int
+	ProcessId    string
+	Phase        apis.Phase
+	StartAt      apis.Time
+	LastTime     apis.Time // 可选字段，表示最后更新时间
 }
 
 // RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
-type RuntimeEndPhaseEvent struct {
-	Group    *apis.Group
-	Action   *apis.Action
-	Runtime  *apis.Runtime
-	Phase    apis.Phase
-	FinishAt apis.Time
-	LastTime apis.Time // 可选字段，表示最后更新时间
+type RuntimeEndPhaseEvent1 struct {
+	GroupName    string
+	ActionIndex  int
+	RuntimeIndex int
+	Phase        apis.Phase
+	FinishAt     apis.Time
+	LastTime     apis.Time // 可选字段，表示最后更新时间
 }

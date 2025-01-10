@@ -35,7 +35,7 @@ func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *
 	}
 	return nil
 }
-func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("command runtime for runtime task:%s", runtime.Name)
 	// 执行时所需命令
 	cmd := runtime.Command
@@ -43,7 +43,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	args := runtime.Args
 
 	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group, action, runtime, cmd[0], args)
+	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args)
 	if err != nil {
 
 		logs.Error("Failed to start action:\t", action.Spec.Name)
@@ -57,7 +57,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 
 // 可能需要区分输出output的指定位置, 后续需要改成使用cmd package里的build cmd等
 // 需要保存进程的pid，检查进程是否是正常执行完成
-func (cr *CommandRuntime) startCMD(group *apis.Group, action *apis.Action, runtime *apis.Runtime, cmd string, args []string) error {
+func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, cmd string, args []string) error {
 	// exec.Command可以接受的命令
 	// name表示可执行二进制的name
 	// ...args表示命令所需的参数
@@ -109,16 +109,16 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, action *apis.Action, runti
 
 	if err := CMD.Start(); err != nil {
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
-		cr.notifyRuntimeStartPhase(group, action, runtime, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
-	cr.notifyRuntimeStartPhase(group, action, runtime, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+	cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 	cr.processManager.AddProcess(runtime.Name, CMD)
 	logs.Infof("process id:\t %d is Running", CMD.Process.Pid)
 
 	// return nil
-	go cr.monitorCMD(group, action, runtime, CMD)
+	go cr.monitorCMD(groupName, actionIndex, runtimeIndex, runtime, CMD)
 
 	// TODO: 使用进程启动CMD, 异步操作
 	// TODO: 返回进程对应的ProcessID
@@ -132,11 +132,11 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, action *apis.Action, runti
 }
 
 // 监控任务的执行状态，并修改Runtime信息并上传（这里是使用事件上传，后续可能要对比传入group_manager，来修改任务信息）
-func (cr *CommandRuntime) monitorCMD(group *apis.Group, action *apis.Action, runtime *apis.Runtime, CMD *exec.Cmd) {
+func (cr *CommandRuntime) monitorCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, CMD *exec.Cmd) {
 	if err := CMD.Wait(); err != nil {
 		logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
 		// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
-		cr.notifyRuntimeEndPhase(group, action, runtime, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		cr.processManager.RemoveProcess(runtime.Name)
 		return
 	}
@@ -144,7 +144,7 @@ func (cr *CommandRuntime) monitorCMD(group *apis.Group, action *apis.Action, run
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
 	cr.processManager.MoveProcessToSucess(runtime.Name) //移入successProcess，同时移出process
 	// 修改RuntimeStatus的Phase为Successed，ActionStatus的Phase也为Successed
-	cr.notifyRuntimeEndPhase(group, action, runtime, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+	cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 }
 
 // 停止某个CMD对应的进程
@@ -172,26 +172,26 @@ func (cr *CommandRuntime) stopCMD(taskName string) error {
 }
 
 // 通过 EventBus 通知 Runtime 状态更新
-func (cr *CommandRuntime) notifyRuntimeStartPhase(group *apis.Group, action *apis.Action, runtime *apis.Runtime, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
-	event := events.RuntimeStartPhaseEvent{
-		Group:     group,
-		Action:    action,
-		Runtime:   runtime,
-		ProcessId: processId,
-		Phase:     phase,
-		StartAt:   startAt,
-		LastTime:  lastTime,
+func (cr *CommandRuntime) notifyRuntimeStartPhase(groupName string, actionIndex, runtimeIndex int, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
+	event := events.RuntimeStartPhaseEvent1{
+		GroupName:    groupName,
+		ActionIndex:  actionIndex,
+		RuntimeIndex: runtimeIndex,
+		ProcessId:    processId,
+		Phase:        phase,
+		StartAt:      startAt,
+		LastTime:     lastTime,
 	}
 	cr.eventBus.Publish(event)
 }
-func (cr *CommandRuntime) notifyRuntimeEndPhase(group *apis.Group, action *apis.Action, runtime *apis.Runtime, phase apis.Phase, finishTime, lastTime apis.Time) {
-	event := events.RuntimeEndPhaseEvent{
-		Group:    group,
-		Action:   action,
-		Runtime:  runtime,
-		Phase:    phase,
-		FinishAt: finishTime,
-		LastTime: lastTime,
+func (cr *CommandRuntime) notifyRuntimeEndPhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
+	event := events.RuntimeEndPhaseEvent1{
+		GroupName:    groupName,
+		ActionIndex:  actionIndex,
+		RuntimeIndex: runtimeIndex,
+		Phase:        phase,
+		FinishAt:     finishTime,
+		LastTime:     lastTime,
 	}
 	cr.eventBus.Publish(event)
 }

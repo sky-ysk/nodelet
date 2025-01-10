@@ -68,6 +68,6 @@ func main() {
 	}()
 	//time.Sleep(2 * time.Second)
 	// 模拟收到指令
-	te.ReceiveGroupInfo("create")
+	te.ReceiveGroupInfo()
 	select {}
 }
