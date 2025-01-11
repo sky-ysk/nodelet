@@ -70,12 +70,12 @@ func main() {
 	task1ID := "TrainInferTaskID-1" // 第一个Task的ID
 
 	// group
-	group1_1Name := "TrainGroup-1" // 第一个Task下的第一个GroupName
-	group1_2Name := "TrainGroup-2" // 第一个Task下的第二个GroupName
-	group1_3Name := "TrainGroup-3" // 第一个Task下的第三个GroupName  "RobotDestinationGroup"
-	group1_1ID := "GroupID-1"      // 第一个Task下的第一个GroupID
-	group1_2ID := "GroupID-2"      // 第一个Task下的第二个GroupID
-	group1_3ID := "GroupID-3"      // 第一个Task下的第三个GroupID
+	group1_1Name := "TrainGroup-1"            // 第一个Task下的第一个GroupName
+	group1_2Name := "ReasonGroup-2"           // 第一个Task下的第二个GroupName
+	group1_3Name := "RobotDestinationGroup-3" // 第一个Task下的第三个GroupName  "RobotDestinationGroup"
+	group1_1ID := "GroupID-1"                 // 第一个Task下的第一个GroupID
+	group1_2ID := "GroupID-2"                 // 第一个Task下的第二个GroupID
+	group1_3ID := "GroupID-3"                 // 第一个Task下的第三个GroupID
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -86,19 +86,19 @@ func main() {
 	action1_3_1ID := "ActionID3-1" // 第一个Task下的第三个Group下的第一个ActionID
 
 	// runtime
-	runtime1_1_1_1Name := "Runtime1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_1_1_2Name := "Runtime1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_2_1_1Name := "Runtime1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_2_1_2Name := "Runtime1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_3_1_1Name := "Runtime1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_3_1_2Name := "Runtime1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_1_1_1Name := "Runtime1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	//runtime1_1_1_2Name := "Runtime1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_2_1_1Name := "Runtime2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
+	//runtime1_2_1_2Name := "Runtime2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_3_1_1Name := "Runtime3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
+	//runtime1_3_1_2Name := "Runtime3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
 
-	runtime1_1_1_1ID := "RuntimeID1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
-	//runtime1_1_1_2ID := "RuntimeID1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_2_1_1ID := "RuntimeID1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
-	//runtime1_2_1_2ID := "RuntimeID1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_3_1_1ID := "RuntimeID1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeID
-	//runtime1_3_1_2ID := "RuntimeID1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_1_1_1ID := "RuntimeID1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
+	//runtime1_1_1_2ID := "RuntimeID1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_2_1_1ID := "RuntimeID2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
+	//runtime1_2_1_2ID := "RuntimeID2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_3_1_1ID := "RuntimeID3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeID
+	//runtime1_3_1_2ID := "RuntimeID3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
 
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧
@@ -445,22 +445,22 @@ func main() {
 	//如果已经存在，先删掉
 	////err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
 
-	//err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
-	//err1 := groupsClient.Delete(context.TODO(), "TrainGroup", metav1.DeleteOptions{})
-	//err2 := groupsClient.Delete(context.TODO(), "ReasonGroup", metav1.DeleteOptions{})
-	//err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup", metav1.DeleteOptions{})
-	//if err != nil {
-	//	logs.Errorf("task delete error: %v", err1)
-	//}
-	//if err1 != nil {
-	//	logs.Errorf("group1 delete error: %v", err2)
-	//}
-	//if err2 != nil {
-	//	logs.Errorf("group2 delete error: %v", err2)
-	//}
-	//if err3 != nil {
-	//	logs.Errorf("group3 delete error: %v", err3)
-	//}
+	err = tasksClient.Delete(context.TODO(), "TrainInferTask-1", metav1.DeleteOptions{})
+	err1 := groupsClient.Delete(context.TODO(), "TrainGroup-1", metav1.DeleteOptions{})
+	err2 := groupsClient.Delete(context.TODO(), "ReasonGroup-2", metav1.DeleteOptions{})
+	err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup-3", metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("task delete error: %v", err1)
+	}
+	if err1 != nil {
+		logs.Errorf("group1 delete error: %v", err2)
+	}
+	if err2 != nil {
+		logs.Errorf("group2 delete error: %v", err2)
+	}
+	if err3 != nil {
+		logs.Errorf("group3 delete error: %v", err3)
+	}
 	// Create一个Task
 	logs.Infof("creating")
 	results, err := tasksClient.Create(context.TODO(), task, metav1.CreateOptions{})

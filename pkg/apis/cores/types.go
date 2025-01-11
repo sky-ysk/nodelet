@@ -498,7 +498,7 @@ type GroupStatus struct {
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//添加-hzy
-	CheckDependencyCount int32 `json:"check_dependency_count,omitempty" yaml:"check_dependency_count"`
+	CheckDependencyCount int32 `json:"check_dependency_count" yaml:"check_dependency_count"`
 }
 
 // ---------- Action

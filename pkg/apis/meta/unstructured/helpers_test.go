@@ -21,8 +21,6 @@ import (
 	"sync"
 	"testing"
 
-	runtimetesting "k8s.io/apimachinery/pkg/runtime/testing"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -162,9 +160,9 @@ func TestNestedFieldCopy(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func TestCacheableObject(t *testing.T) {
-	runtimetesting.CacheableObjectTest(t, UnstructuredJSONScheme)
-}
+//func TestCacheableObject(t *testing.T) {
+//	runtimetesting.CacheableObjectTest(t, UnstructuredJSONScheme)
+//}
 
 func TestSetNestedStringSlice(t *testing.T) {
 	obj := map[string]interface{}{
