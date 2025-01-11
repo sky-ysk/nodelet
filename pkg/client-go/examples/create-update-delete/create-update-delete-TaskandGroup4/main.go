@@ -87,18 +87,18 @@ func main() {
 
 	// runtime
 	runtime1_1_1_1Name := "Runtime1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_1_1_2Name := "Runtime1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
+	//runtime1_1_1_2Name := "Runtime1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
 	runtime1_2_1_1Name := "Runtime1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_2_1_2Name := "Runtime1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
+	//runtime1_2_1_2Name := "Runtime1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
 	runtime1_3_1_1Name := "Runtime1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_3_1_2Name := "Runtime1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
+	//runtime1_3_1_2Name := "Runtime1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
 
 	runtime1_1_1_1ID := "RuntimeID1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_1_1_2ID := "RuntimeID1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
+	//runtime1_1_1_2ID := "RuntimeID1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
 	runtime1_2_1_1ID := "RuntimeID1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_2_1_2ID := "RuntimeID1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
+	//runtime1_2_1_2ID := "RuntimeID1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
 	runtime1_3_1_1ID := "RuntimeID1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_3_1_2ID := "RuntimeID1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
+	//runtime1_3_1_2ID := "RuntimeID1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
 
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧
@@ -120,13 +120,19 @@ func main() {
 								Type:    apis.ByCommand,
 								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
 								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Parents: make([]string, 0), // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
-							apis.Runtime{
-								Name:    runtime1_1_1_2Name,
-								Type:    apis.ByCommand,
-								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
-							},
+							//apis.Runtime{
+							//	Name:    runtime1_1_1_2Name,
+							//	Type:    apis.ByCommand,
+							//	Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+							//	Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+							//Parents: []string{runtime1_1_1_1ID}, // 加入Parents
+							//Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
+							//EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							//},
 						},
 					},
 					Status: apis.ActionStatus{
@@ -137,10 +143,10 @@ func main() {
 								RuntimeID: runtime1_1_1_1ID, // RuntimeID = RuntimeName + ActionID
 								Phase:     apis.Unknown,
 							},
-							apis.RuntimeStatus{
-								RuntimeID: runtime1_1_1_2ID, // RuntimeID = RuntimeName + ActionID
-								Phase:     apis.Unknown,
-							},
+							//apis.RuntimeStatus{
+							//	RuntimeID: runtime1_1_1_2ID, // RuntimeID = RuntimeName + ActionID
+							//	Phase:     apis.Unknown,
+							//},
 						},
 					},
 				},
@@ -156,10 +162,10 @@ func main() {
 							RuntimeID: runtime1_1_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						apis.RuntimeStatus{
-							RuntimeID: runtime1_1_1_2ID,
-							Phase:     apis.Unknown,
-						},
+						//apis.RuntimeStatus{
+						//	RuntimeID: runtime1_1_1_2ID,
+						//	Phase:     apis.Unknown,
+						//},
 					},
 					Phase: apis.Unknown,
 				},
@@ -186,13 +192,19 @@ func main() {
 								Type:    apis.ByCommand,
 								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
 								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Parents: make([]string, 0), // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
-							apis.Runtime{
-								Name:    runtime1_2_1_2Name,
-								Type:    apis.ByCommand,
-								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
-							},
+							//apis.Runtime{
+							//	Name:    runtime1_2_1_2Name,
+							//	Type:    apis.ByCommand,
+							//	Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+							//	Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+							//	Parents: []string{runtime1_2_1_1ID}, // 加入Parents
+							//	Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
+							//	EnvVar: []apis.EnvVar{apis.EnvVar{Name: "",Value: ""}},
+							//},
 						},
 					},
 					Status: apis.ActionStatus{
@@ -203,10 +215,10 @@ func main() {
 								RuntimeID: runtime1_2_1_1ID,
 								Phase:     apis.Unknown,
 							},
-							apis.RuntimeStatus{
-								RuntimeID: runtime1_2_1_2ID,
-								Phase:     apis.Unknown,
-							},
+							//apis.RuntimeStatus{
+							//	RuntimeID: runtime1_2_1_2ID,
+							//	Phase:     apis.Unknown,
+							//},
 						},
 					},
 				},
@@ -222,10 +234,10 @@ func main() {
 							RuntimeID: runtime1_2_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						apis.RuntimeStatus{
-							RuntimeID: runtime1_2_1_2ID,
-							Phase:     apis.Unknown,
-						},
+						//apis.RuntimeStatus{
+						//	RuntimeID: runtime1_2_1_2ID,
+						//	Phase:     apis.Unknown,
+						//},
 					},
 					Phase: apis.Unknown,
 				},
@@ -252,13 +264,19 @@ func main() {
 								Type:    apis.ByCommand,
 								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
 								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
+								Parents: make([]string, 0), // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
-							apis.Runtime{
-								Name:    runtime1_3_1_2Name,
-								Type:    apis.ByCommand,
-								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
-							},
+							//apis.Runtime{
+							//	Name:    runtime1_3_1_2Name,
+							//	Type:    apis.ByCommand,
+							//	Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+							//	Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
+							//Parents: []string{runtime1_3_1_1ID}, // 加入Parents
+							//Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
+							//EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							//},
 						},
 					},
 					Status: apis.ActionStatus{
@@ -269,10 +287,10 @@ func main() {
 								RuntimeID: runtime1_3_1_1ID, // RuntimeID = RuntimeName + ActionID
 								Phase:     apis.Unknown,
 							},
-							apis.RuntimeStatus{
-								RuntimeID: runtime1_3_1_2ID, // RuntimeID = RuntimeName + ActionID
-								Phase:     apis.Unknown,
-							},
+							//apis.RuntimeStatus{
+							//	RuntimeID: runtime1_3_1_2ID, // RuntimeID = RuntimeName + ActionID
+							//	Phase:     apis.Unknown,
+							//},
 						},
 					},
 				},
@@ -288,10 +306,10 @@ func main() {
 							RuntimeID: runtime1_3_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						apis.RuntimeStatus{
-							RuntimeID: runtime1_3_1_2ID,
-							Phase:     apis.Unknown,
-						},
+						//apis.RuntimeStatus{
+						//	RuntimeID: runtime1_3_1_2ID,
+						//	Phase:     apis.Unknown,
+						//},
 					},
 					Phase: apis.Unknown,
 				},
@@ -330,10 +348,10 @@ func main() {
 									RuntimeID: runtime1_1_1_1ID,
 									Phase:     apis.Unknown,
 								},
-								apis.RuntimeStatus{
-									RuntimeID: runtime1_1_1_2ID,
-									Phase:     apis.Unknown,
-								},
+								//apis.RuntimeStatus{
+								//	RuntimeID: runtime1_1_1_2ID,
+								//	Phase:     apis.Unknown,
+								//},
 							},
 							Phase: apis.Unknown,
 						},
@@ -350,10 +368,10 @@ func main() {
 									RuntimeID: runtime1_2_1_1ID,
 									Phase:     apis.Unknown,
 								},
-								apis.RuntimeStatus{
-									RuntimeID: runtime1_2_1_2ID,
-									Phase:     apis.Unknown,
-								},
+								//apis.RuntimeStatus{
+								//	RuntimeID: runtime1_2_1_2ID,
+								//	Phase:     apis.Unknown,
+								//},
 							},
 							Phase: apis.Unknown,
 						},
@@ -370,10 +388,10 @@ func main() {
 									RuntimeID: runtime1_3_1_1ID,
 									Phase:     apis.Unknown,
 								},
-								apis.RuntimeStatus{
-									RuntimeID: runtime1_3_1_2ID,
-									Phase:     apis.Unknown,
-								},
+								//apis.RuntimeStatus{
+								//	RuntimeID: runtime1_3_1_2ID,
+								//	Phase:     apis.Unknown,
+								//},
 							},
 							Phase: apis.Unknown,
 						},
@@ -427,28 +445,28 @@ func main() {
 	//如果已经存在，先删掉
 	////err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
 
-	err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
-	err1 := groupsClient.Delete(context.TODO(), "TrainGroup", metav1.DeleteOptions{})
-	err2 := groupsClient.Delete(context.TODO(), "ReasonGroup", metav1.DeleteOptions{})
-	err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup", metav1.DeleteOptions{})
-	if err != nil {
-		logs.Errorf("task delete error: %v", err1)
-	}
-	if err1 != nil {
-		logs.Errorf("group1 delete error: %v", err2)
-	}
-	if err2 != nil {
-		logs.Errorf("group2 delete error: %v", err2)
-	}
-	if err3 != nil {
-		logs.Errorf("group3 delete error: %v", err3)
-	}
+	//err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
+	//err1 := groupsClient.Delete(context.TODO(), "TrainGroup", metav1.DeleteOptions{})
+	//err2 := groupsClient.Delete(context.TODO(), "ReasonGroup", metav1.DeleteOptions{})
+	//err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup", metav1.DeleteOptions{})
+	//if err != nil {
+	//	logs.Errorf("task delete error: %v", err1)
+	//}
+	//if err1 != nil {
+	//	logs.Errorf("group1 delete error: %v", err2)
+	//}
+	//if err2 != nil {
+	//	logs.Errorf("group2 delete error: %v", err2)
+	//}
+	//if err3 != nil {
+	//	logs.Errorf("group3 delete error: %v", err3)
+	//}
 	// Create一个Task
 	logs.Infof("creating")
 	results, err := tasksClient.Create(context.TODO(), task, metav1.CreateOptions{})
 	results1, err1 := groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
 	results2, err2 := groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
-	results3, err2 := groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
+	results3, err3 := groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
 
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)

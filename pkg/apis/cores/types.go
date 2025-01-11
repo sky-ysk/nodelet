@@ -666,15 +666,15 @@ type Runtime struct {
 
 	//添加-hzy
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
-	Waiting bool     `json:"waiting,omitempty" yaml:"waiting"`
+	Waiting bool     `json:"waiting" yaml:"waiting"`
 
 	//-hzy暂时添加
-	Labels      map[string]string // 用于模板的 labels 配置
-	Selector    map[string]string // Deployment/Service 选择器
-	Ports       []Port            // 容器/服务端口
-	ServiceType string            // 服务类型，例如 ClusterIP
-	TargetPorts []int             // 目标端口映射
-	Replicas    int32             // 用于 Deployment 副本数量
+	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
+	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
+	Ports       []Port            `json:"ports,omitempty" yaml:"ports"`             // 容器/服务端口
+	ServiceType string            `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
+	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
+	Replicas    int32             `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
 }
 
 //	 输入的数据有以下几类
@@ -759,7 +759,7 @@ type ActionStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 
 	//增加一个参数-hzy
-	Waiting bool `json:"waiting,omitempty" yaml:"waiting"`
+	Waiting bool `json:"waiting" yaml:"waiting"`
 }
 
 type RuntimeStatus struct {

@@ -122,7 +122,7 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 			if err != nil {
 				logs.Error("get group %s failed", groupName)
 			}
-			if gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1" { //gr.Status.Node == "CloudNode1"
+			if gr.Status.Node == "CloudNode1" { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 				if gr.Status.Phase == apis.ReadyToDeploy {
 					groupUpdate := types.GroupUpdate{
 						Group: gr,
@@ -143,60 +143,60 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 }
 
 // 读取Task
-func (te *TaskExporter) ReceiveTaskInfo() {
-	for {
-		tasks := te.GetTask() //读取etcd但中的Task列表
-		for i := range tasks {
-			task := tasks[i]
-			logs.Debugf("receive task：%v, readey to check whether task has been submitted", task.Name)
-			te.taskManager.AddTask(task) //将Task放入到TaskManager当中
-			for j := range task.Spec.Groups {
-				//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
-				groupName := task.Spec.Groups[j].Name
-				// 从etcd当中读group的信息
-				gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-				if err != nil {
-					logs.Errorf("get group %s failed", groupName)
-				}
-				if gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1" {
-					if gr.Status.Phase == apis.ReadyToDeploy {
-						groupUpdate := types.GroupUpdate{
-							Group: gr,
-							Op:    types.ADD,
-						}
-						te.updateCh <- groupUpdate
-					} else if gr.Status.Phase == apis.ReadyToKill {
-						//TODO
-						groupUpdate := types.GroupUpdate{
-							Group: gr,
-							Op:    types.KILL,
-						}
-						te.updateCh <- groupUpdate
-					}
-				}
-			}
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-
-// 从client-go中读取task信息
-func (te *TaskExporter) GetTask() []*apis.Task {
-	//读取 etcd当中的Task列表
-	list, err := te.tasksClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		logs.Errorf("get task list err:%v", err)
-	}
-	var tasks []*apis.Task
-	for _, t := range list.Items { //遍历etcd当中的所有task
-		if t.Status.Phase == apis.ReadyToDeploy { // 如果taskStatus的phase为ReadyToDeploy
-			task, err2 := te.tasksClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
-			if err2 != nil {
-				logs.Error("Get task by taskID error from etcd：", err2)
-			}
-			tasks = append(tasks, task)
-		}
-	}
-
-	return tasks
-}
+//func (te *TaskExporter) ReceiveTaskInfo() {
+//	for {
+//		tasks := te.GetTask() //读取etcd但中的Task列表
+//		for i := range tasks {
+//			task := tasks[i]
+//			logs.Debugf("receive task：%v, readey to check whether task has been submitted", task.Name)
+//			te.taskManager.AddTask(task) //将Task放入到TaskManager当中
+//			for j := range task.Spec.Groups {
+//				//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
+//				groupName := task.Spec.Groups[j].Name
+//				// 从etcd当中读group的信息
+//				gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
+//				if err != nil {
+//					logs.Errorf("get group %s failed", groupName)
+//				}
+//				if gr.Status.Node == "CloudNode1" { // if gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
+//					if gr.Status.Phase == apis.ReadyToDeploy {
+//						groupUpdate := types.GroupUpdate{
+//							Group: gr,
+//							Op:    types.ADD,
+//						}
+//						te.updateCh <- groupUpdate
+//					} else if gr.Status.Phase == apis.ReadyToKill {
+//						//TODO
+//						groupUpdate := types.GroupUpdate{
+//							Group: gr,
+//							Op:    types.KILL,
+//						}
+//						te.updateCh <- groupUpdate
+//					}
+//				}
+//			}
+//		}
+//		time.Sleep(1 * time.Second)
+//	}
+//}
+//
+//// 从client-go中读取task信息
+//func (te *TaskExporter) GetTask() []*apis.Task {
+//	//读取 etcd当中的Task列表
+//	list, err := te.tasksClient.List(context.TODO(), metav1.ListOptions{})
+//	if err != nil {
+//		logs.Errorf("get task list err:%v", err)
+//	}
+//	var tasks []*apis.Task
+//	for _, t := range list.Items { //遍历etcd当中的所有task
+//		if t.Status.Phase == apis.ReadyToDeploy { // 如果taskStatus的phase为ReadyToDeploy
+//			task, err2 := te.tasksClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
+//			if err2 != nil {
+//				logs.Error("Get task by taskID error from etcd：", err2)
+//			}
+//			tasks = append(tasks, task)
+//		}
+//	}
+//
+//	return tasks
+//}
