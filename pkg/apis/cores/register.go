@@ -39,6 +39,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&GroupList{},
 		&Action{},
 		&ActionList{},
+		&Event{},
+		&EventList{},
 	)
 
 	// Add common types

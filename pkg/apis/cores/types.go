@@ -1,8 +1,9 @@
 package apis
 
 import (
-	"hit.edu/framework/pkg/apis/meta"
 	"time"
+
+	"hit.edu/framework/pkg/apis/meta"
 )
 
 const (
@@ -23,6 +24,53 @@ type Time struct {
 type Event struct {
 	//TODO: 定义Event
 	//TODO: ObjectReference设计
+	meta.TypeMeta
+	meta.ObjectMeta
+	ObjectReference ObjectReference
+	// 事件产生原因，机器可读，供handler判断
+	Reason string
+	// 描述，应有用户可读性
+	Message string
+	// 事件产生来源
+	Source    EventSource
+	EventTime Time
+	Count     int32
+	Type      string // EventTypeNormal or EventTypeWarning
+	// todo: 补充 action、reporting controller 、 instance
+}
+
+type EventSource struct {
+	// 事件产生组件
+	Component string
+	// 事件产生节点
+	Host string
+}
+
+// event type 常量
+const (
+	EventTypeNormal  string = "Normal"
+	EventTypeWarning string = "Warning"
+)
+
+// todo:改objereference
+type ObjectReference struct {
+	// GVK
+	APIVersion string
+	Kind       string
+	// Name
+	Namespace       string
+	Name            string
+	UID             UID
+	ResourceVersion string
+}
+type UID string
+
+type EventList struct {
+	meta.TypeMeta
+
+	meta.ListMeta
+
+	Events []Event `json:"events" yaml:"events"`
 }
 
 // Node

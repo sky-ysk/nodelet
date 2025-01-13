@@ -465,3 +465,63 @@ func (in *Result) DeepCopyInto(out *Result) {
 	*out = *in
 	in.Belongs.DeepCopyInto(&out.Belongs)
 }
+
+// Event相关结构体
+func (in *Event) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+func (in *Event) DeepCopy() *Event {
+	if in == nil {
+		return nil
+	}
+	out := new(Event)
+	in.DeepCopyInto(out)
+	return out
+}
+func (in *Event) DeepCopyInto(out *Event) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.ObjectReference.DeepCopyInto(&out.ObjectReference)
+	in.Source.DeepCopyInto(&out.Source)
+}
+
+func (in *EventList) DeepCopyInto(out *EventList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Events != nil {
+		in, out := &in.Events, &out.Events
+		*out = make([]Event, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *EventList) DeepCopy() *EventList {
+	if in == nil {
+		return nil
+	}
+	out := new(EventList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *EventList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *EventSource) DeepCopyInto(out *EventSource) {
+	*out = *in
+}
+
+func (in *ObjectReference) DeepCopyInto(out *ObjectReference) {
+	*out = *in
+}
