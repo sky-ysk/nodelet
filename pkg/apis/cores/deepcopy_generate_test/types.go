@@ -1,3 +1,5 @@
+// 目前的自动深拷贝方法生成还存在问题，需要修改
+
 // +k8s:deepcopy-gen=package
 package deepcopy
 
