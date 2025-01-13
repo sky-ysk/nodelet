@@ -27,7 +27,7 @@ type Manager interface {
 	DeleteGroup(*apis.Group)
 
 	// 获取Group通过Name
-	GetGroupByID(groupName string) (*apis.Group, error) // 添加这个方法
+	GetGroupByID(groupID string) (*apis.Group, error) // 添加这个方法
 }
 
 type groupManager struct {

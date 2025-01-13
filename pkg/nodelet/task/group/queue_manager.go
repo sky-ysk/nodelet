@@ -175,7 +175,7 @@ func (gq *GroupQueues) DeleteFromCompleted(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.completedQueue[key]; !exists {
-		logs.Info("%v not in Completed queue", key)
+		logs.Infof("groupId: %v not in Completed queue", key)
 		return false
 	}
 	delete(gq.completedQueue, key)

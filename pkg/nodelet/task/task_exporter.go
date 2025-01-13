@@ -120,7 +120,7 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 			// 从etcd当中读group的信息
 			gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 			if err != nil {
-				logs.Error("get group %s failed", groupName)
+				logs.Errorf("get group %s failed", groupName)
 			}
 			if gr.Status.Node == "CloudNode1" { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 				if gr.Status.Phase == apis.ReadyToDeploy {
@@ -137,6 +137,7 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 					te.updateCh <- groupUpdate
 				}
 			}
+			time.Sleep(200 * time.Millisecond)
 		}
 		time.Sleep(1 * time.Second)
 	}

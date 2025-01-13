@@ -21,7 +21,7 @@ import (
 // 创建一个Rest Client
 // 验证xxx动词
 // 与API Server通信，并执行基础操作
-// 3个group，3个Action，每个Action一个Runtime，一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
+// 3个group，6个Action，每个Action两个Runtime，一共12个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
@@ -79,26 +79,44 @@ func main() {
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+	action1_1_2Name := "Action1-2" // 第一个Task下的第一个Group下的第二个ActionName  "cmd_yolo_train_action"
 	action1_2_1Name := "Action2-1" // 第一个Task下的第二个Group下的第一个ActionName
+	action1_2_2Name := "Action2-2" // 第一个Task下的第二个Group下的第二个ActionName
 	action1_3_1Name := "Action3-1" // 第一个Task下的第三个Group下的第一个ActionName
+	action1_3_2Name := "Action3-2" // 第一个Task下的第三个Group下的第二个ActionName
 	action1_1_1ID := "ActionID1-1" // 第一个Task下的第一个Group下的第一个ActionID
+	action1_1_2ID := "ActionID1-2" // 第一个Task下的第一个Group下的第二个ActionID
 	action1_2_1ID := "ActionID2-1" // 第一个Task下的第二个Group下的第一个ActionID
+	action1_2_2ID := "ActionID2-2" // 第一个Task下的第二个Group下的第二个ActionID
 	action1_3_1ID := "ActionID3-1" // 第一个Task下的第三个Group下的第一个ActionID
+	action1_3_2ID := "ActionID3-2" // 第一个Task下的第三个Group下的第二个ActionID
 
 	// runtime
 	runtime1_1_1_1Name := "Runtime1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_1_1_2Name := "Runtime1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_1_1_2Name := "Runtime1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_1_2_1Name := "Runtime1-2-1" // 第一个Task下的第一个Group下的第二个ActionName下的第一个RuntimeName
+	runtime1_1_2_2Name := "Runtime1-2-2" // 第一个Task下的第一个Group下的第二个ActionName下的第二个RuntimeName
 	runtime1_2_1_1Name := "Runtime2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_2_1_2Name := "Runtime2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_2_1_2Name := "Runtime2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_2_2_1Name := "Runtime2-2-1" // 第一个Task下的第二个Group下的第二个ActionName下的第一个RuntimeName
+	runtime1_2_2_2Name := "Runtime2-2-2" // 第一个Task下的第二个Group下的第二个ActionName下的第二个RuntimeName
 	runtime1_3_1_1Name := "Runtime3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_3_1_2Name := "Runtime3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_3_1_2Name := "Runtime3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_3_2_1Name := "Runtime3-2-1" // 第一个Task下的第三个Group下的第二个ActionName下的第一个RuntimeName
+	runtime1_3_2_2Name := "Runtime3-2-2" // 第一个Task下的第三个Group下的第二个ActionName下的第二个RuntimeName
 
 	runtime1_1_1_1ID := "RuntimeID1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
-	//runtime1_1_1_2ID := "RuntimeID1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_1_1_2ID := "RuntimeID1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_1_2_1ID := "RuntimeID1-2-1" // 第一个Task下的第一个Group下的第二个ActionName下的第一个RuntimeID
+	runtime1_1_2_2ID := "RuntimeID1-2-2" // 第一个Task下的第一个Group下的第二个ActionName下的第二个RuntimeID
 	runtime1_2_1_1ID := "RuntimeID2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
-	//runtime1_2_1_2ID := "RuntimeID2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_2_1_2ID := "RuntimeID2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_2_2_1ID := "RuntimeID2-2-1" // 第一个Task下的第二个Group下的第二个ActionName下的第一个RuntimeID
+	runtime1_2_2_2ID := "RuntimeID2-2-2" // 第一个Task下的第二个Group下的第二个ActionName下的第二个RuntimeID
 	runtime1_3_1_1ID := "RuntimeID3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeID
-	//runtime1_3_1_2ID := "RuntimeID3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_3_1_2ID := "RuntimeID3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_3_2_1ID := "RuntimeID3-2-1" // 第一个Task下的第三个Group下的第二个ActionName下的第一个RuntimeID
+	runtime1_3_2_2ID := "RuntimeID3-2-2" // 第一个Task下的第三个Group下的第二个ActionName下的第二个RuntimeID
 
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧
@@ -113,7 +131,8 @@ func main() {
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_1_1Name},
 					Spec: apis.ActionSpec{
-						Name: action1_1_1Name,
+						Name:    action1_1_1Name,
+						Parents: make([]string, 0),
 						Runtimes: []apis.Runtime{
 							apis.Runtime{
 								Name:    runtime1_1_1_1Name,
@@ -124,15 +143,15 @@ func main() {
 								Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
-							//apis.Runtime{
-							//	Name:    runtime1_1_1_2Name,
-							//	Type:    apis.ByCommand,
-							//	Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-							//	Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
-							//Parents: []string{runtime1_1_1_1ID}, // 加入Parents
-							//Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
-							//EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-							//},
+							apis.Runtime{
+								Name:    runtime1_1_1_2Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Parents: []string{runtime1_1_1_1ID}, // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
 						},
 					},
 					Status: apis.ActionStatus{
@@ -143,10 +162,51 @@ func main() {
 								RuntimeID: runtime1_1_1_1ID, // RuntimeID = RuntimeName + ActionID
 								Phase:     apis.Unknown,
 							},
-							//apis.RuntimeStatus{
-							//	RuntimeID: runtime1_1_1_2ID, // RuntimeID = RuntimeName + ActionID
-							//	Phase:     apis.Unknown,
-							//},
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_1_1_2ID, // RuntimeID = RuntimeName + ActionID
+								Phase:     apis.Unknown,
+							},
+						},
+					},
+				},
+				apis.Action{
+					ObjectMeta: metav1.ObjectMeta{Name: action1_1_2Name},
+					Spec: apis.ActionSpec{
+						Name:    action1_1_2Name,
+						Parents: []string{action1_1_1ID},
+						Runtimes: []apis.Runtime{
+							apis.Runtime{
+								Name:    runtime1_1_2_1Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Parents: make([]string, 0), // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
+							apis.Runtime{
+								Name:    runtime1_1_2_2Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Parents: []string{runtime1_1_2_1ID}, // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
+						},
+					},
+					Status: apis.ActionStatus{
+						ActionID: action1_1_2ID, // ActionID =ActionName + GroupID
+						Phase:    apis.Unknown,
+						RuntimeStatus: []apis.RuntimeStatus{
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_1_2_1ID, // RuntimeID = RuntimeName + ActionID
+								Phase:     apis.Unknown,
+							},
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_1_2_2ID, // RuntimeID = RuntimeName + ActionID
+								Phase:     apis.Unknown,
+							},
 						},
 					},
 				},
@@ -162,10 +222,24 @@ func main() {
 							RuntimeID: runtime1_1_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						//apis.RuntimeStatus{
-						//	RuntimeID: runtime1_1_1_2ID,
-						//	Phase:     apis.Unknown,
-						//},
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_1_1_2ID,
+							Phase:     apis.Unknown,
+						},
+					},
+					Phase: apis.Unknown,
+				},
+				apis.ActionStatus{
+					ActionID: action1_1_2ID,
+					RuntimeStatus: []apis.RuntimeStatus{
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_1_2_1ID,
+							Phase:     apis.Unknown,
+						},
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_1_2_2ID,
+							Phase:     apis.Unknown,
+						},
 					},
 					Phase: apis.Unknown,
 				},
@@ -186,7 +260,8 @@ func main() {
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_2_1Name},
 					Spec: apis.ActionSpec{
-						Name: action1_2_1Name,
+						Name:    action1_2_1Name,
+						Parents: make([]string, 0),
 						Runtimes: []apis.Runtime{
 							apis.Runtime{
 								Name:    runtime1_2_1_1Name,
@@ -197,15 +272,15 @@ func main() {
 								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
-							//apis.Runtime{
-							//	Name:    runtime1_2_1_2Name,
-							//	Type:    apis.ByCommand,
-							//	Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-							//	Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
-							//	Parents: []string{runtime1_2_1_1ID}, // 加入Parents
-							//	Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
-							//	EnvVar: []apis.EnvVar{apis.EnvVar{Name: "",Value: ""}},
-							//},
+							apis.Runtime{
+								Name:    runtime1_2_1_2Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Parents: []string{runtime1_2_1_1ID}, // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
 						},
 					},
 					Status: apis.ActionStatus{
@@ -216,10 +291,51 @@ func main() {
 								RuntimeID: runtime1_2_1_1ID,
 								Phase:     apis.Unknown,
 							},
-							//apis.RuntimeStatus{
-							//	RuntimeID: runtime1_2_1_2ID,
-							//	Phase:     apis.Unknown,
-							//},
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_2_1_2ID,
+								Phase:     apis.Unknown,
+							},
+						},
+					},
+				},
+				apis.Action{
+					ObjectMeta: metav1.ObjectMeta{Name: action1_2_2Name},
+					Spec: apis.ActionSpec{
+						Name:    action1_2_2Name,
+						Parents: []string{action1_2_1ID},
+						Runtimes: []apis.Runtime{
+							apis.Runtime{
+								Name:    runtime1_2_2_1Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Parents: make([]string, 0), // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
+							apis.Runtime{
+								Name:    runtime1_2_2_2Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Parents: []string{runtime1_2_2_1ID}, // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
+						},
+					},
+					Status: apis.ActionStatus{
+						ActionID: action1_2_2ID,
+						Phase:    apis.Unknown,
+						RuntimeStatus: []apis.RuntimeStatus{
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_2_2_1ID,
+								Phase:     apis.Unknown,
+							},
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_2_2_2ID,
+								Phase:     apis.Unknown,
+							},
 						},
 					},
 				},
@@ -235,10 +351,24 @@ func main() {
 							RuntimeID: runtime1_2_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						//apis.RuntimeStatus{
-						//	RuntimeID: runtime1_2_1_2ID,
-						//	Phase:     apis.Unknown,
-						//},
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_2_1_2ID,
+							Phase:     apis.Unknown,
+						},
+					},
+					Phase: apis.Unknown,
+				},
+				apis.ActionStatus{
+					ActionID: action1_2_2ID,
+					RuntimeStatus: []apis.RuntimeStatus{
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_2_2_1ID,
+							Phase:     apis.Unknown,
+						},
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_2_2_2ID,
+							Phase:     apis.Unknown,
+						},
 					},
 					Phase: apis.Unknown,
 				},
@@ -259,7 +389,8 @@ func main() {
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_3_1Name},
 					Spec: apis.ActionSpec{
-						Name: action1_3_1Name,
+						Name:    action1_3_1Name,
+						Parents: make([]string, 0),
 						Runtimes: []apis.Runtime{
 							apis.Runtime{
 								Name:    runtime1_3_1_1Name,
@@ -270,15 +401,15 @@ func main() {
 								Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
 								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
-							//apis.Runtime{
-							//	Name:    runtime1_3_1_2Name,
-							//	Type:    apis.ByCommand,
-							//	Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-							//	Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
-							//Parents: []string{runtime1_3_1_1ID}, // 加入Parents
-							//Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
-							//EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-							//},
+							apis.Runtime{
+								Name:    runtime1_3_1_2Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
+								Parents: []string{runtime1_3_1_1ID}, // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
 						},
 					},
 					Status: apis.ActionStatus{
@@ -289,10 +420,51 @@ func main() {
 								RuntimeID: runtime1_3_1_1ID, // RuntimeID = RuntimeName + ActionID
 								Phase:     apis.Unknown,
 							},
-							//apis.RuntimeStatus{
-							//	RuntimeID: runtime1_3_1_2ID, // RuntimeID = RuntimeName + ActionID
-							//	Phase:     apis.Unknown,
-							//},
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_3_1_2ID, // RuntimeID = RuntimeName + ActionID
+								Phase:     apis.Unknown,
+							},
+						},
+					},
+				},
+				apis.Action{
+					ObjectMeta: metav1.ObjectMeta{Name: action1_3_2Name},
+					Spec: apis.ActionSpec{
+						Name:    action1_3_2Name,
+						Parents: []string{action1_3_1ID},
+						Runtimes: []apis.Runtime{
+							apis.Runtime{
+								Name:    runtime1_3_2_1Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
+								Parents: make([]string, 0), // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
+							apis.Runtime{
+								Name:    runtime1_3_2_2Name,
+								Type:    apis.ByCommand,
+								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
+								Parents: []string{runtime1_3_2_1ID}, // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
+								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+							},
+						},
+					},
+					Status: apis.ActionStatus{
+						ActionID: action1_3_2ID, // ActionID =ActionName + GroupID
+						Phase:    apis.Unknown,
+						RuntimeStatus: []apis.RuntimeStatus{
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_3_2_1ID, // RuntimeID = RuntimeName + ActionID
+								Phase:     apis.Unknown,
+							},
+							apis.RuntimeStatus{
+								RuntimeID: runtime1_3_2_2ID, // RuntimeID = RuntimeName + ActionID
+								Phase:     apis.Unknown,
+							},
 						},
 					},
 				},
@@ -308,10 +480,24 @@ func main() {
 							RuntimeID: runtime1_3_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						//apis.RuntimeStatus{
-						//	RuntimeID: runtime1_3_1_2ID,
-						//	Phase:     apis.Unknown,
-						//},
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_3_1_2ID,
+							Phase:     apis.Unknown,
+						},
+					},
+					Phase: apis.Unknown,
+				},
+				apis.ActionStatus{
+					ActionID: action1_3_2ID,
+					RuntimeStatus: []apis.RuntimeStatus{
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_3_2_1ID,
+							Phase:     apis.Unknown,
+						},
+						apis.RuntimeStatus{
+							RuntimeID: runtime1_3_2_2ID,
+							Phase:     apis.Unknown,
+						},
 					},
 					Phase: apis.Unknown,
 				},
@@ -351,10 +537,24 @@ func main() {
 									RuntimeID: runtime1_1_1_1ID,
 									Phase:     apis.Unknown,
 								},
-								//apis.RuntimeStatus{
-								//	RuntimeID: runtime1_1_1_2ID,
-								//	Phase:     apis.Unknown,
-								//},
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_1_1_2ID,
+									Phase:     apis.Unknown,
+								},
+							},
+							Phase: apis.Unknown,
+						},
+						apis.ActionStatus{
+							ActionID: action1_1_2ID,
+							RuntimeStatus: []apis.RuntimeStatus{
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_1_2_1ID,
+									Phase:     apis.Unknown,
+								},
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_1_2_2ID,
+									Phase:     apis.Unknown,
+								},
 							},
 							Phase: apis.Unknown,
 						},
@@ -372,10 +572,24 @@ func main() {
 									RuntimeID: runtime1_2_1_1ID,
 									Phase:     apis.Unknown,
 								},
-								//apis.RuntimeStatus{
-								//	RuntimeID: runtime1_2_1_2ID,
-								//	Phase:     apis.Unknown,
-								//},
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_2_1_2ID,
+									Phase:     apis.Unknown,
+								},
+							},
+							Phase: apis.Unknown,
+						},
+						apis.ActionStatus{
+							ActionID: action1_2_2ID,
+							RuntimeStatus: []apis.RuntimeStatus{
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_2_2_1ID,
+									Phase:     apis.Unknown,
+								},
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_2_2_2ID,
+									Phase:     apis.Unknown,
+								},
 							},
 							Phase: apis.Unknown,
 						},
@@ -393,10 +607,24 @@ func main() {
 									RuntimeID: runtime1_3_1_1ID,
 									Phase:     apis.Unknown,
 								},
-								//apis.RuntimeStatus{
-								//	RuntimeID: runtime1_3_1_2ID,
-								//	Phase:     apis.Unknown,
-								//},
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_3_1_2ID,
+									Phase:     apis.Unknown,
+								},
+							},
+							Phase: apis.Unknown,
+						},
+						apis.ActionStatus{
+							ActionID: action1_3_2ID,
+							RuntimeStatus: []apis.RuntimeStatus{
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_3_2_1ID,
+									Phase:     apis.Unknown,
+								},
+								apis.RuntimeStatus{
+									RuntimeID: runtime1_3_2_2ID,
+									Phase:     apis.Unknown,
+								},
 							},
 							Phase: apis.Unknown,
 						},

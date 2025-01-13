@@ -780,6 +780,7 @@ type RuntimeStatus struct {
 
 	//增加一个参数0hzy
 	RuntimeID string `json:"runtime_id,omitempty" yaml:"runtime_id"`
+	//Waiting   bool   `json:"waiting" yaml:"waiting"`
 }
 
 // 任务的输出结果
