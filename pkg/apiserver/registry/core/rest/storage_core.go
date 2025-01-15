@@ -8,6 +8,7 @@ import (
 
 	//genericapiserver "k8s.io/apiserver/pkg/server"
 	actionstore "hit.edu/framework/pkg/apiserver/registry/core/action"
+	eventstore "hit.edu/framework/pkg/apiserver/registry/core/event"
 	groupstore "hit.edu/framework/pkg/apiserver/registry/core/group"
 	nodestore "hit.edu/framework/pkg/apiserver/registry/core/node"
 	taskstore "hit.edu/framework/pkg/apiserver/registry/core/task"
@@ -44,6 +45,10 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 	if err != nil {
 		return server.APIGroupInfo{}, err
 	}
+	eventStorage, err := eventstore.NewEventStorage(restOptionsGetter)
+	if err != nil {
+		return server.APIGroupInfo{}, err
+	}
 	storage := map[string]rest.Storage{}
 	if resource := "nodes"; true {
 		storage[resource] = nodeStorage.Node
@@ -70,7 +75,9 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		storage[resource+"/status"] = actionStorage.Status
 		storage[resource+"/spec"] = actionStorage.Spec
 	}
-
+	if resource := "events"; true {
+		storage[resource] = eventStorage.Event
+	}
 	if len(storage) > 0 {
 		apiGroupInfo.VersionedResourcesStorageMap["v1"] = storage
 	}
