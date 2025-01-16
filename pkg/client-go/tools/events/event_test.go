@@ -1,11 +1,8 @@
 package events
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -19,6 +16,31 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 )
+
+var table = []apis.Event{
+	{
+		ObjectMeta: meta.ObjectMeta{
+			Name:      "test-event",
+			Namespace: "",
+		},
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Event",
+			APIVersion: "resources/v1",
+		},
+		ObjectReference: apis.ObjectReference{
+			Kind:       "Node",
+			Name:       "CloudNode1",
+			Namespace:  "",
+			UID:        "default",
+			APIVersion: "resources/v1",
+		},
+		Reason:  "Started",
+		Message: "some verbose message: 1",
+		Source:  apis.EventSource{Component: "eventTest", Host: "127.0.0.1"},
+		Count:   1,
+		Type:    apis.EventTypeNormal,
+	},
+}
 
 func TestForEventClient(t *testing.T) {
 	moduleName := "TestForEventClient"
@@ -57,34 +79,14 @@ func TestForEventClient(t *testing.T) {
 	// 获得eventsClient
 	eventsClient := clientSet.Core().Events(apis.NamespaceAll)
 
-	table := []apis.Event{
-		{
-			ObjectMeta: meta.ObjectMeta{
-				Name:      "test-event",
-				Namespace: "",
-			},
-			TypeMeta: meta.TypeMeta{
-				Kind:       "Event",
-				APIVersion: "resources/v1",
-			},
-			ObjectReference: apis.ObjectReference{
-				Kind:       "Node",
-				Name:       "CloudNode1",
-				Namespace:  "",
-				UID:        "default",
-				APIVersion: "resources/v1",
-			},
-			Reason:  "Started",
-			Message: "some verbose message: 1",
-			Source:  apis.EventSource{Component: "eventTest", Host: "127.0.0.1"},
-			Count:   1,
-			Type:    apis.EventTypeNormal,
-		},
-	}
-
 	// //如果已经存在，先删掉
-	// err = eventsClient.Delete(context.TODO(), "test-event", meta.DeleteOptions{})
-	// Create一个Task
+	logs.Info("event deleting")
+	err = eventsClient.Delete(context.TODO(), "test-event", meta.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("Failed to delete event: %v", err)
+		// panic(err)
+	}
+	// Create一个event
 	logs.Info("event creating")
 	for _, item := range table {
 		result, err := eventsClient.Create(context.TODO(), &item, meta.CreateOptions{})
@@ -92,10 +94,10 @@ func TestForEventClient(t *testing.T) {
 			logs.Errorf("Failed to create event: %v", err)
 			panic(err)
 		}
-		logs.Info("Created event : ", result)
+		logs.Info("Created event : ", result.Name)
 	}
 
-	prompt()
+	// prompt()
 }
 
 func TestForBroadcaster(t *testing.T) {
@@ -141,30 +143,13 @@ func TestForBroadcaster(t *testing.T) {
 	// 获得eventsClient
 	eventsClient := clientSet.Core().Events(apis.NamespaceAll)
 
+	// 先删除冗余事件
+	clearEvents(eventsClient)
+
 	// StartRecordingToSink()绑定了将事件上传至APIserver的handler
 	// EventSinkImpl实现了上报事件的Create/patch/update方式，需要绑定一个eventsclient
 	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: eventsClient})
 
-	table := []apis.Event{
-		{
-			ObjectMeta: meta.ObjectMeta{
-				Name:      "test-event",
-				Namespace: "default",
-			},
-			ObjectReference: apis.ObjectReference{
-				Kind:       "Pod",
-				Name:       "test-pod",
-				Namespace:  "default",
-				UID:        "bar",
-				APIVersion: "v1",
-			},
-			Reason:  "Started",
-			Message: "some verbose message: 1",
-			Source:  apis.EventSource{Component: "eventTest", Host: "127.0.0.1"},
-			Count:   1,
-			Type:    apis.EventTypeNormal,
-		},
-	}
 	// 生成并提交一个event
 	recorder := eventBroadcaster.NewRecorder(schema.NewSchema(), apis.EventSource{Component: "eventTest"})
 	for _, item := range table {
@@ -174,14 +159,14 @@ func TestForBroadcaster(t *testing.T) {
 	time.Sleep(3 * time.Second)
 }
 
-func prompt() {
-	fmt.Printf("-> Press Return key to continue.")
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		break
+func clearEvents(client core.EventInterface) {
+	logs.Info("event deleting")
+	for _, item := range table {
+		err := client.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
+		if err != nil {
+			logs.Errorf("Failed to delete event: %v", err)
+			// panic(err)
+		}
 	}
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
-	logs.Info()
+
 }
