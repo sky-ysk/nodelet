@@ -39,7 +39,7 @@ type NodeExporter struct {
 func NewNodeExporter(cfg *Config, client core.NodeInterface) (*NodeExporter, error) {
 	// TODO：参数配置
 	// 创建NodeCollector 读取配置信息
-	logs.Info("init NodeExporter-------")
+	logs.Info("Init NodeExporter module")
 	nc, err := collector.NewNodeCollector(cfg.EnabledCollectors)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func (n *NodeExporter) UploadCache(node *apis.Node, cacheType string) {
 	//TODO 实现上传逻辑到API-server{  ----先放入到NodeStatus当中，然后通过client-go写入到api-server当中
 	_, err := n.nodesClient.Update(context.TODO(), node, metav1.UpdateOptions{})
 	if err != nil {
-		logs.Errorf("Failed to update Node: %v", err)
+		logs.Errorf("Failed to update Node, err:%v", err)
 		return
 	}
 	// 清空缓存
@@ -137,7 +137,7 @@ func (n *NodeExporter) UploadCache(node *apis.Node, cacheType string) {
 	} else {
 		n.dynamicCache = make(map[string]collector.Metric)
 	}
-	logs.Info("cache uploaded and cleared")
+	logs.Info("Cache uploaded and cleared")
 }
 
 func (n *NodeExporter) processMetri(types string, metric collector.Metric) {
@@ -155,7 +155,7 @@ func (n *NodeExporter) processMetri(types string, metric collector.Metric) {
 		defer n.dynamicCacheLock.Unlock()
 		n.dynamicCache[key] = metric // 将 metric 存储到缓存中
 	}
-	logs.Info("successfully processed metric: ", key, metric.ToString())
+	logs.Infof("Processed metric:%v-%v successfully", key, metric.ToString())
 }
 
 func (n *NodeExporter) processMetriToNode(node *apis.Node, metric collector.Metric, cacheType string) {

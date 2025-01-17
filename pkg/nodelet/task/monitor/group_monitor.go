@@ -60,7 +60,7 @@ func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, group
 
 func (gmo *GroupMonitor) Start() {
 	//TODO 轮询检查队列当中的内容
-	logs.Info("GroupMonitor begin")
+	logs.Info("GroupMonitor component start")
 
 	//订阅事件
 	chRuntimeStart := make(chan interface{})
@@ -103,7 +103,7 @@ func (gmo *GroupMonitor) CheckStatus() {
 // 都要改成for i：=range
 func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Group在多个设备上运行，group之间有依赖关系，需要检查
 	// TODO 轮询检查Checking队列，检查任务group的依赖是否满足，如果满足才放入running队列当中
-	logs.Info("pending queue checking")
+	logs.Info("Pending queue start checking")
 	for {
 		select {
 		case <-time.After(time.Second * 1):
@@ -113,7 +113,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 				// 从etcd当中读取group信息
 				get, err := gmo.groupClient.Get(context.TODO(), gr.Name, metav1.GetOptions{})
 				if err != nil {
-					logs.Errorf("etcd get group error:%v", err)
+					logs.Errorf("Etcd get group error:%v", err)
 				}
 				if !gmo.groupDepenSatisfy(get) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
 					//logs.Debugf("The group ：%s execution dependency is not satisfied again, now still in Checking Queue", gr.Name)
@@ -135,11 +135,11 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 						},
 					})
 					if err != nil {
-						logs.Errorf("json Marshal failed, err:%v", err)
+						logs.Errorf("Json Marshal failed, err:%v", err)
 					}
 					_, err = gmo.groupClient.Patch(context.TODO(), get.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 					if err != nil {
-						logs.Errorf("patch group error:%v===123", err)
+						logs.Errorf("Patch group error-1:%v", err)
 					}
 					// update的方式
 					//_, err := gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
@@ -153,16 +153,16 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 					//此处不用再修改group信息为Running，真正启动任务的时候，会修改phase为running
 					// TODO: 检查需要运行的Action
 					// TODO: 开始部署
-					logs.Infof("[checking queue] start group %s", get.Name)
+					logs.Infof("Checking queue start group:%s", get.Spec.Name)
 					//根据group当中的Action开启相应的runtime  group(Spec:Actions)--action（Spec：Runtimes）
 					grou, err := gmo.groupManager.GetGroupByID(get.Status.GroupID)
 					if err != nil {
-						logs.Errorf("get group by id frmo group_manager err:%v", err)
+						logs.Errorf("Get group by id frmo group_manager err:%v", err)
 					}
 					for j := range get.Spec.Actions {
 						action := &get.Spec.Actions[j]
 						if !gmo.actionDepenSatisfy(j, get) {
-							logs.Infof("Action %s in group %s waiting for dependencies", action.Name, get.Name)
+							logs.Infof("Action:%s in group:%s waiting for dependencies", action.Spec.Name, get.Spec.Name)
 							//action.Status.Waiting = true
 							grou.Spec.Actions[j].Status.Waiting = true
 							//logs.Infof("****************CheckingQueueCheck:ActionWaiting:%v,j:%v", grou.Spec.Actions[j].Status.Waiting, j)
@@ -171,7 +171,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 						for k := range action.Spec.Runtimes {
 							ru := &action.Spec.Runtimes[k]
 							if !gmo.runtimeDepenSatisfy(j, k, get) {
-								logs.Infof("Runtime %s in group %s waiting for dependencies", ru.Name, get.Name)
+								logs.Infof("Runtime:%s in group:%s waiting for dependencies", ru.Name, get.Spec.Name)
 								//ru.Waiting = true
 								grou.Spec.Actions[j].Spec.Runtimes[k].Waiting = true
 								//logs.Infof("****************CheckingQueueCheck:RuntimeWaiting:%v,j:%v,k:%v", grou.Spec.Actions[j].Spec.Runtimes[k].Waiting, j, k)
@@ -179,13 +179,13 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 							}
 							go gmo.runtimeManager.Run(get, action, ru, j, k)
 							if err != nil {
-								logs.Error("run task err:", err.Error())
+								logs.Error("Run task err:%v", err)
 							}
 						}
 					}
 					_, err = gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
 					if err != nil {
-						logs.Errorf("update task error:%v", err)
+						logs.Errorf("Update task error:%v", err)
 					}
 				}
 				//// 也上传一份到group_manager当中
@@ -202,7 +202,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 // ②检查runtime、Action当中的parents是否执行完成，如果完成，则执行
 func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的Group，下面有多个Action，之间有依赖关系，需要检查
 	//TODO 监控进程的返回值等判断任务是否正常执行完成，正常则放入completedqueue，否则放入errorqueue(方法待确认)
-	logs.Info("running queue checking")
+	logs.Info("Running queue start checking")
 	for {
 		select {
 		case <-time.After(time.Second * 1):
@@ -212,7 +212,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 				// 从etcd当中读取group信息
 				group, err := gmo.groupClient.Get(context.TODO(), gro.Name, metav1.GetOptions{})
 				if err != nil {
-					logs.Errorf("etcd get group error:%v", err)
+					logs.Errorf("Etcd get group error:%v", err)
 				}
 				var isSuccess bool                  // 标记group下面的action是否都执行成功
 				for j := range group.Spec.Actions { // 遍历group当中的Action
@@ -230,7 +230,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 					}
 					grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID)
 					if err != nil {
-						logs.Errorf("get group by id from group_manager err:%v", err)
+						logs.Errorf("Get group by id from group_manager err:%v", err)
 					}
 					if action.Status.Phase == apis.DeployCheck && grou.Spec.Actions[j].Status.Waiting { //&& action.Status.Waiting
 						if !gmo.actionDepenSatisfy(j, group) {
@@ -279,7 +279,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 							//说明runtime可以执行
 							go gmo.runtimeManager.Run(group, action, r, j, k)
 							if err != nil {
-								logs.Error("run task err", err.Error())
+								logs.Errorf("Run task err:%v", err)
 							}
 						}
 
@@ -295,7 +295,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 							}
 							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID)
 							if err != nil {
-								logs.Errorf("get group by id from group_manager err:%v", err)
+								logs.Errorf("Get group by id from group_manager err:%v", err)
 							}
 							//logs.Infof("$$$$$$==================grou.Spec.Actions[j].Spec.Runtimes[m].Waiting:%v,j:%v,m:%v", grou.Spec.Actions[j].Spec.Runtimes[m].Waiting, j, m)
 							if grou.Spec.Actions[j].Spec.Runtimes[m].Waiting { //如果说runtime也是被标记等待执行的状态，这才能开始执行  if r.Waiting
@@ -317,7 +317,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 								//}
 								err = gmo.runtimeManager.Run(group, action, r, j, m)
 								if err != nil {
-									logs.Error("run task err", err.Error())
+									logs.Errorf("run task err:%v", err)
 								}
 							}
 						}
@@ -326,7 +326,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 				}
 				if isSuccess {
 					//将任务迁移到Completed队列当中
-					logs.Infof("move to completed queue")
+					logs.Info("Move to completed queue")
 					gmo.groupQueues.DeleteFromRunningAndAddToCompleted(group.Status.GroupID)
 					continue
 				}
@@ -336,46 +336,48 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 }
 
 func (gmo *GroupMonitor) CompletedQueueCheck() {
-	logs.Info("Completed queue checking")
+	logs.Info("Completed queue start checking")
 	//TODO 可能主要是将信息上传到api-server当中，然后将group_manager中的信息删除
 	for {
 		select {
 		case <-time.After(time.Second * 10):
-			var start = false
+			//var start = false
 			completed := gmo.groupQueues.GetAllCompleted()
 			for i := range completed {
 				gro := completed[i]
-				logs.Infof("delete groupName:%v", gro.Name)
+				logs.Infof("Delete group:%v", gro.Spec.Name)
 				gmo.groupManager.DeleteGroup(gro)
 				gmo.groupQueues.DeleteFromCompleted(gro.Status.GroupID) //得根据groupId进行删除，不是根据groupName
-				start = true
+				//start = true
 			}
-			if start {
-				checking := gmo.groupQueues.GetAllChecking()
-				var checkingNum int
-				for i := range checking {
-					checkingNum++
-					logs.Infof("check groupName:%v,num=%v", checking[i].Name, checkingNum)
-				}
-				var runningNum int
-				running := gmo.groupQueues.GetAllRunning()
-				for i := range running {
-					runningNum++
-					logs.Infof("running groupName:%v,num=%v", running[i].Name, runningNum)
-				}
-				var errorNum int
-				errored := gmo.groupQueues.GetAllError()
-				for i := range errored {
-					errorNum++
-					logs.Infof("error groupName:%v,num=%v", errored[i].Name, errorNum)
-				}
-			}
+
+			//
+			//if start {
+			//	checking := gmo.groupQueues.GetAllChecking()
+			//	var checkingNum int
+			//	for i := range checking {
+			//		checkingNum++
+			//		logs.Infof("Check groupName:%v,num=%v", checking[i].Name, checkingNum)
+			//	}
+			//	var runningNum int
+			//	running := gmo.groupQueues.GetAllRunning()
+			//	for i := range running {
+			//		runningNum++
+			//		logs.Infof("running groupName:%v,num=%v", running[i].Name, runningNum)
+			//	}
+			//	var errorNum int
+			//	errored := gmo.groupQueues.GetAllError()
+			//	for i := range errored {
+			//		errorNum++
+			//		logs.Infof("error groupName:%v,num=%v", errored[i].Name, errorNum)
+			//	}
+			//}
 
 		}
 	}
 }
 func (gmo *GroupMonitor) ErrorQueueCheck() {
-	logs.Info("Error queue checking")
+	logs.Info("Error queue start checking")
 	////TODO 可能要做的就是通知调度器，group部署失败
 	//for {
 	//	select {
@@ -393,12 +395,12 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	groupName := event.GroupName
 	get, err := gmo.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("failed get group:%v from etcd, err:%v", groupName, err)
+		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
 	}
 	actionIndex := event.ActionIndex
 	runtimeIndex := event.RuntimeIndex
 	phase := event.Phase // 这里接收的Phase有可能是running，也有可能是Failed
-	logs.Infof("handleRuntimeStartUpdate方法，收到phase:%s", phase)
+	logs.Infof("Get runtime start event notify, the phase:%s", phase)
 	startTime := event.StartAt
 	lastTime := event.LastTime
 	//actionID := a.Name + ":" + get.Status.GroupID    actionID := get.Status.ActionStatus[actionIndex].ActionID
@@ -411,7 +413,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	// 首先先修改该runtime所对应的group-所对应的Task的phase
 	list, err := gmo.taskClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("get list task err:%v", err)
+		logs.Errorf("Get list task err:%v", err)
 	}
 	var groupIndexInTask int //当前group在Task当中的下标
 	var task1 *apis.Task     //group所属的Task对象
@@ -420,7 +422,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 		if t.Status.TaskID == taskID { // 如果taskId对上了，则获取该Task
 			task1, err2 = gmo.taskClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
 			if err2 != nil {
-				logs.Error("Get task by taskID error from etcd：", err2)
+				logs.Errorf("Get task by taskID error from etcd:%v", err2)
 			}
 			break
 		}
@@ -534,14 +536,14 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 
 	_, err4 := gmo.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 	if err4 != nil {
-		logs.Errorf("update group-runtiem-start info error-1:%v", err4)
+		logs.Errorf("Update group-runtiem-start info error-1:%v", err4)
 		time.Sleep(100 * time.Millisecond)
 		_, err4 = gmo.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 	}
 	//logs.Info("time----monitor1=============:")
 	_, err3 := gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
 	if err3 != nil {
-		logs.Error("update group-runtiem-start info error-2:", err3)
+		logs.Error("Update group-runtiem-start info error-2:", err3)
 		time.Sleep(100 * time.Millisecond)
 		_, err3 = gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
 	}
@@ -596,16 +598,16 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 // 处理Runtime运行时结束,如果runtime是最后一个执行完成的，还得同时标记action的phase   总结：所有临时变量赋值时都得使用&
 func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEvent1) {
 	// 更新 Runtime 的状态，依据实际变化更新相应字段
-	logs.Info("Handling Runtime End Status Update")
+	logs.Info("Handling runtime end status update")
 	groupName := event.GroupName
 	get, err := gmo.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("failed get group:%v from etcd, err:%v", groupName, err)
+		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
 	}
 	actionIndex := event.ActionIndex
 	runtimeIndex := event.RuntimeIndex
 	phase := event.Phase //当前phase可能为Succeed、Failed、Migrating、Migrated
-	logs.Infof("handleRuntimeEndUpdate方法，收到phase:%s", phase)
+	logs.Infof("Get runtime finish event notify, the phase:%s", phase)
 	finshTime := event.FinishAt
 	lastTime := event.LastTime
 	// Task 信息
@@ -628,7 +630,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 
 	list, err := gmo.taskClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("get list task err:%v", err)
+		logs.Errorf("Get list task err:%v", err)
 	}
 	var groupIndexInTask int
 	var task1 *apis.Task
@@ -637,7 +639,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为checking
 			task1, err2 = gmo.taskClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
 			if err2 != nil {
-				logs.Error("Get task by taskID error from etcd：", err2)
+				logs.Error("Get task by taskID error from etcd:%v", err2)
 			}
 		}
 	}
@@ -711,8 +713,8 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		}
 	}
 	//如果说TaskStatus下面的Group都被执行了，还得修改TaskStatus的phase的状态
-	logs.Infof("otherGroupCompleted:%v", otherGroupCompleted)
-	logs.Infof("nowGroupCompleted:%v", nowGroupCompleted)
+	//logs.Infof("otherGroupCompleted:%v", otherGroupCompleted)
+	//logs.Infof("nowGroupCompleted:%v", nowGroupCompleted)
 	if otherGroupCompleted && nowGroupCompleted {
 		task1.Status.Phase = phase
 		task1.Status.FinishAt = finshTime
@@ -725,13 +727,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 
 	_, err3 := gmo.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 	if err3 != nil {
-		logs.Errorf("update group-runtiem-start info error-3:%v", err3)
+		logs.Errorf("Update group-runtiem-start info error-3:%v", err3)
 		time.Sleep(100 * time.Millisecond)
 		_, err3 = gmo.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 	}
 	_, err4 := gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
 	if err4 != nil {
-		logs.Errorf("update group-runtiem-start info error-4:%v", err4) //报错
+		logs.Errorf("Update group-runtiem-start info error-4:%v", err4) //报错
 		time.Sleep(100 * time.Millisecond)
 		_, err4 = gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
 	}
@@ -747,10 +749,10 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	p := get.Status.Phase
 	actionStatus := get.Status.ActionStatus[0].Phase
 	runStatus1 := get.Status.ActionStatus[0].RuntimeStatus[0].Phase
-	logs.Infof("END ：taskStatus:%v, groupStatus:%v, action status: %v, runtime Status: %v", taskPhase, p, actionStatus, runStatus1)
+	logs.Infof("Runtime END: taskStatus:%v, groupStatus:%v, actionStatus:%v, runtimeStatus:%v", taskPhase, p, actionStatus, runStatus1)
 	actionStatus1 := get.Spec.Actions[0].Status.Phase
 	runtimeStatus1 := get.Spec.Actions[0].Status.RuntimeStatus[0].Phase
-	logs.Infof("END ：action status1: %v, runtime Status: %v", actionStatus1, runtimeStatus1)
+	logs.Infof("Runtime END: actionStatus:%v, runtimeStatus:%v", actionStatus1, runtimeStatus1)
 }
 
 // 同group_workers当中的方法
@@ -762,22 +764,24 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 	} else {
 		//检查父亲group是否执行完成
 		for i := range group.Spec.Parents {
-			parentGroupID := group.Spec.Parents[i]
-			var parentGroupName string
-			// 去client-go当中查group
-			groupList, err := gmo.groupClient.List(context.TODO(), metav1.ListOptions{})
+			//parentGroupID := group.Spec.Parents[i]
+			parentName := group.Spec.Parents[i]
+			//var parentGroupName string
+			//// 去client-go当中查group
+			//groupList, err := gmo.groupClient.List(context.TODO(), metav1.ListOptions{})
+			//if err != nil {
+			//	logs.Error("get list group from etcd err:", err.Error())
+			//}
+			//for _, g := range groupList.Items {
+			//	if g.Status.GroupID == parentGroupID {
+			//		parentGroupName = g.Name
+			//		break
+			//	}
+			//}
+			// TODO 这里得判断这个group和当前的group是否属于同一个Task
+			result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{}) //这里查父亲group的状态，得去etcd当中查
 			if err != nil {
-				logs.Error("get list group from etcd err:", err.Error())
-			}
-			for _, g := range groupList.Items {
-				if g.Status.GroupID == parentGroupID {
-					parentGroupName = g.Name
-					break
-				}
-			}
-			result, err := gmo.groupClient.Get(context.TODO(), parentGroupName, metav1.GetOptions{}) //这里查父亲group的状态，得去etcd当中查
-			if err != nil {
-				logs.Errorf("Failed to get parent group: %s form etcd, err:%v", parentGroupName, err)
+				logs.Errorf("Failed to get parent group:%s form etcd, err:%v", parentName, err)
 			}
 			if result.Status.Phase != apis.Successed {
 				return false //说明当前group的付钱group还没完成，直接返回false即可
@@ -800,7 +804,7 @@ func (gmo *GroupMonitor) checkGroupDepencies(group *apis.Group) bool {
 			// 去client-go当中查group
 			result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
 			if err != nil {
-				logs.Errorf("Failed to get group: %s", parentName)
+				logs.Errorf("Failed to get group:%s", parentName)
 			}
 			if result.Status.Phase != apis.Successed {
 				return false //说明当前group的付钱group还没完成，直接返回false即可
@@ -819,10 +823,12 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 	//}
 	actionSpec := &group.Spec.Actions[actionIndex].Spec
 	for i := range actionSpec.Parents { // 遍历当前Action的所有父亲Action
-		actionParentID := actionSpec.Parents[i]
+		//actionParentID := actionSpec.Parents[i]
+		actionParentName := actionSpec.Parents[i]
 		for j := range group.Status.ActionStatus { // 遍历group当中所有的action，先对actionID，然后看这个action的Phase如何
 			as := &group.Status.ActionStatus[j]
-			if as.ActionID == actionParentID && as.Phase != apis.Successed { //目前定义，Action的父亲Action必须是成功状态
+			a := &group.Spec.Actions[j]
+			if a.Name == actionParentName && as.Phase != apis.Successed { //目前定义，Action的父亲Action必须是成功状态
 				return false
 			}
 		}
@@ -840,10 +846,12 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	//}
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
 	for i := range runtime.Parents { // 遍历当前runtime的父亲
-		runtimeParentID := runtime.Parents[i]
+		//runtimeParentID := runtime.Parents[i]
+		runtimeParentName := runtime.Parents[i]
 		for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
 			rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
-			if rs.RuntimeID == runtimeParentID && rs.Phase != apis.Successed {
+			r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
+			if r.Name == runtimeParentName && rs.Phase != apis.Successed {
 				return false
 			}
 		}
@@ -864,13 +872,13 @@ func (gmo *GroupMonitor) handleStatusUpdate(group *apis.Group, failed apis.Phase
 
 	list, err := gmo.taskClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("get list task from etcd err:%v", err)
+		logs.Errorf("Get list task from etcd err:%v", err)
 	}
 	for _, ta := range list.Items {
 		if ta.Status.TaskID == taskID {
 			task1, err := gmo.taskClient.Get(context.TODO(), ta.Name, metav1.GetOptions{})
 			if err != nil {
-				logs.Errorf("get task from etcd err:%v", err)
+				logs.Errorf("Get task from etcd err:%v", err)
 			}
 			task1.Status.Phase = failed
 			task1.Status.StartAt = time
@@ -885,12 +893,12 @@ func (gmo *GroupMonitor) handleStatusUpdate(group *apis.Group, failed apis.Phase
 			}
 			_, err = gmo.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 			if err != nil {
-				logs.Errorf("update task from etcd err:%v", err)
+				logs.Errorf("Update task from etcd err:%v", err)
 			}
 		}
 	}
 	_, err = gmo.groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
 	if err != nil {
-		logs.Errorf("update group from etcd err:%v", err)
+		logs.Errorf("Update group from etcd err:%v", err)
 	}
 }

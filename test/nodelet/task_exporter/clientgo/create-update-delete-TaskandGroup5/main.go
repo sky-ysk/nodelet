@@ -101,7 +101,7 @@ func main() {
 	runtime1_3_1_2ID := "RuntimeID3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
 
 	// 统一地规定： Belongs：填的是ID
-	//            Parents: 填的也是ID吧
+	//            Parents: 填的也是ID吧--改为Name
 
 	g1 := apis.Group{
 		ObjectMeta: metav1.ObjectMeta{Name: group1_1Name, Namespace: ""},
@@ -129,7 +129,7 @@ func main() {
 								Type:    apis.ByCommand,
 								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
 								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
-								Parents: []string{runtime1_1_1_1ID}, // 加入Parents
+								Parents: []string{runtime1_1_1_1Name}, // 加入Parents
 								Image:   "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
@@ -181,7 +181,7 @@ func main() {
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
 			Name:    group1_2Name,
-			Parents: []string{group1_1ID}, // 加入Parents
+			Parents: []string{group1_1Name}, // 加入Parents
 			Actions: []apis.Action{
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_2_1Name},
@@ -202,7 +202,7 @@ func main() {
 								Type:    apis.ByCommand,
 								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
 								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
-								Parents: []string{runtime1_2_1_1ID}, // 加入Parents
+								Parents: []string{runtime1_2_1_1Name}, // 加入Parents
 								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
@@ -254,7 +254,7 @@ func main() {
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
 			Name:    group1_3Name,
-			Parents: []string{group1_1ID, group1_2ID}, // 加入Parents ID
+			Parents: []string{group1_1Name, group1_2Name}, // 加入Parents ID
 			Actions: []apis.Action{
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_3_1Name},
@@ -265,18 +265,18 @@ func main() {
 								Name:    runtime1_3_1_1Name,
 								Type:    apis.ByCommand,
 								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents: make([]string, 0), // 加入Parents
-								Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
+								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
 							apis.Runtime{
 								Name:    runtime1_3_1_2Name,
 								Type:    apis.ByCommand,
 								Command: []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/pull_robot.py"},
-								Parents: []string{runtime1_3_1_1ID}, // 加入Parents
-								Image:   "/home/public/workspace/heongtong_yolo_linux/pull_robot.py",
+								Args:    []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Parents: []string{runtime1_3_1_1Name}, // 加入Parents
+								Image:   "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:  []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 							},
 						},

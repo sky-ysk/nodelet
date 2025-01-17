@@ -88,7 +88,7 @@ func (gm *groupManager) AddGroup(group *apis.Group) {
 	defer gm.modifyLock.Unlock()
 	//检查GroupID是否已经存在
 	if _, exists := gm.groupsByID[group.Status.GroupID]; exists {
-		logs.Errorf("Group With ID %s is existed", group.Status.GroupID)
+		logs.Errorf("Group:%s is existed", group.Spec.Name)
 		return
 	}
 	gm.groupsByID[group.Status.GroupID] = group

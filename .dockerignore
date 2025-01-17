@@ -1,0 +1,9 @@
+# 排除 .git 目录
+.git
+
+# 排除 node_modules
+node_modules/
+
+# 排除临时文件
+*.log
+tmp/

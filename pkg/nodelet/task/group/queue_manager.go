@@ -32,7 +32,7 @@ func (gq *GroupQueues) AddToChecking(key string, value *apis.Group) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.checkingQueue[key]; exists {
-		logs.Info("%v has been added to checking queue", key)
+		logs.Infof("Group:%v has been added to checking queue", value.Spec.Name)
 		return false
 	}
 	gq.checkingQueue[key] = value
@@ -42,7 +42,7 @@ func (gq *GroupQueues) AddToRunning(key string, value *apis.Group) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.runningQueue.Load(key); exists {
-		logs.Debug("%v has been added to running queue", key)
+		logs.Debugf("Group:%v has been added to running queue", value.Spec.Name)
 		return false
 	}
 	gq.runningQueue.Store(key, value)
@@ -52,7 +52,7 @@ func (gq *GroupQueues) AddToError(key string, value *apis.Group) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.errorQueue[key]; exists {
-		logs.Info("%v has been added to error queue", key)
+		logs.Infof("Group:%v has been added to error queue", value.Spec.Name)
 		return false
 	}
 	gq.errorQueue[key] = value
@@ -62,7 +62,7 @@ func (gq *GroupQueues) AddToCompleted(key string, value *apis.Group) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.completedQueue[key]; exists {
-		logs.Info("%v has been added to completed queue", key)
+		logs.Infof("Group:%v has been added to completed queue", value.Spec.Name)
 		return false
 	}
 	gq.completedQueue[key] = value
@@ -74,7 +74,7 @@ func (gq *GroupQueues) DeleteFromChecking(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.checkingQueue[key]; !exists {
-		logs.Debug("%v not in checking queue", key)
+		logs.Debugf("GroupID:%v not in checking queue", key)
 		return false
 	}
 	delete(gq.checkingQueue, key)
@@ -84,14 +84,14 @@ func (gq *GroupQueues) DeleteFromCheckingAndAddToError(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.checkingQueue[key]; !exists {
-		logs.Errorf("group ID:%v not in checking queue, delete failed", key)
+		logs.Errorf("GroupID:%v not in checking queue, delete failed-1", key)
 		return false
 	}
 	group := gq.checkingQueue[key]
 	delete(gq.checkingQueue, key)
 
 	if _, exists := gq.errorQueue[key]; exists {
-		logs.Errorf("group ID：%v has been added to error queue, it's error", key)
+		logs.Errorf("GroupID:%v has been added to error queue, it's a error", key)
 		return false
 	}
 	gq.errorQueue[key] = group
@@ -104,13 +104,13 @@ func (gq *GroupQueues) DeleteFromRunningAndAddToError(key string) bool {
 
 	group, exists := gq.runningQueue.Load(key)
 	if !exists {
-		logs.Errorf("group ID:%v not in running queue, delete failed", key)
+		logs.Errorf("GroupID:%v not in running queue, delete failed", key)
 		return false
 	}
 	gq.runningQueue.Delete(key)
 
 	if _, exists := gq.errorQueue[key]; exists {
-		logs.Errorf("group ID：%v has been added to error queue, it's a error", key)
+		logs.Errorf("GroupID:%v has been added to error queue, it's a error", key)
 		return false
 	}
 	gq.errorQueue[key] = group.(*apis.Group)
@@ -121,12 +121,12 @@ func (gq *GroupQueues) DeleteFromRunningAndAddToCompleted(key string) bool {
 	defer gq.queueLock.Unlock()
 	group, exists := gq.runningQueue.Load(key)
 	if !exists {
-		logs.Info("group ID:%v not in running queue, delete failed", key)
+		logs.Infof("GroupID:%v not in running queue, delete failed", key)
 		return false
 	}
 	gq.runningQueue.Delete(key)
 	if _, exists := gq.completedQueue[key]; exists {
-		logs.Errorf("group ID: %v has been added to completed queue, it's a error", key)
+		logs.Errorf("GroupID:%v has been added to completed queue, it's a error", key)
 		return false
 	}
 	gq.completedQueue[key] = group.(*apis.Group)
@@ -137,14 +137,14 @@ func (gq *GroupQueues) DeleteFromCheckingAndAddToRunning(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.checkingQueue[key]; !exists {
-		logs.Errorf("group ID:%v not in checking queue, delete failed", key)
+		logs.Errorf("GroupID:%v not in checking queue, delete failed", key)
 		return false
 	}
 	group := gq.checkingQueue[key]
 	delete(gq.checkingQueue, key)
 
 	if _, exists := gq.runningQueue.Load(key); exists {
-		logs.Errorf("group ID：%v has been added to running queue, it's error", key)
+		logs.Errorf("GroupID:%v has been added to running queue, it's error", key)
 		return false
 	}
 	gq.runningQueue.Store(key, group)
@@ -155,7 +155,7 @@ func (gq *GroupQueues) DeleteFromRunning(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.runningQueue.Load(key); !exists {
-		logs.Info("%v not in running queue", key)
+		logs.Infof("GroupID:%v not in running queue", key)
 		return false
 	}
 	gq.runningQueue.Delete(key)
@@ -165,7 +165,7 @@ func (gq *GroupQueues) DeleteFromError(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.errorQueue[key]; !exists {
-		logs.Info("%v not in Error queue", key)
+		logs.Infof("GroupID:%v not in error queue", key)
 		return false
 	}
 	delete(gq.errorQueue, key)
@@ -175,7 +175,7 @@ func (gq *GroupQueues) DeleteFromCompleted(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
 	if _, exists := gq.completedQueue[key]; !exists {
-		logs.Infof("groupId: %v not in Completed queue", key)
+		logs.Infof("GroupID:%v not in completed queue", key)
 		return false
 	}
 	delete(gq.completedQueue, key)
@@ -285,16 +285,16 @@ func (gq *GroupQueues) UpdateGroup(groupID string, group *apis.Group) error {
 	if state, ok := gq.getFromQueue(groupID); ok {
 		switch state {
 		case "checking":
-			logs.Info("checking group update")
+			logs.Info("Checking group update")
 			gq.checkingQueue[groupID] = group
 		case "running":
-			logs.Info("running group update")
+			logs.Info("Running group update")
 			gq.runningQueue.Store(groupID, group)
 		case "error":
-			logs.Info("error group update")
+			logs.Info("Error group update")
 			gq.errorQueue[groupID] = group
 		case "completed":
-			logs.Info("completed group update")
+			logs.Info("Completed group update")
 			gq.completedQueue[groupID] = group
 		default:
 			err = fmt.Errorf("Unfind group named %s", groupID)

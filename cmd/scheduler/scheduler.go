@@ -28,10 +28,9 @@
 package main
 
 import (
-	"os"
-
 	"hit.edu/framework/cmd/scheduler/app"
 	"hit.edu/framework/pkg/component-base/cli"
+	"os"
 )
 
 func main() {

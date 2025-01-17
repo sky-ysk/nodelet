@@ -513,7 +513,7 @@ func NewGenericServerResponse(code int, verb string, qualifiedResource schema.Gr
 			Group: qualifiedResource.Group,
 			Kind:  qualifiedResource.Resource,
 			Name:  name,
-			
+
 			Causes:            causes,
 			RetryAfterSeconds: int32(retryAfterSeconds),
 		},
@@ -724,7 +724,7 @@ func IsTooManyRequests(err error) bool {
 	if reason == meta.StatusReasonTooManyRequests {
 		return true
 	}
-	
+
 	// IsTooManyRequests' checking of code predates the checking of the code in
 	// the other Is* functions. In order to maintain backward compatibility, this
 	// does not check that the reason is unknown.
@@ -742,7 +742,7 @@ func IsRequestEntityTooLargeError(err error) bool {
 	if reason == meta.StatusReasonRequestEntityTooLarge {
 		return true
 	}
-	
+
 	// IsRequestEntityTooLargeError's checking of code predates the checking of
 	// the code in the other Is* functions. In order to maintain backward
 	// compatibility, this does not check that the reason is unknown.
