@@ -8,8 +8,12 @@ import (
 
 	//genericapiserver "k8s.io/apiserver/pkg/server"
 	actionstore "hit.edu/framework/pkg/apiserver/registry/core/action"
+	devicestore "hit.edu/framework/pkg/apiserver/registry/core/device"
+	eventstore "hit.edu/framework/pkg/apiserver/registry/core/event"
 	groupstore "hit.edu/framework/pkg/apiserver/registry/core/group"
 	nodestore "hit.edu/framework/pkg/apiserver/registry/core/node"
+	resourcestore "hit.edu/framework/pkg/apiserver/registry/core/resource"
+	scenestore "hit.edu/framework/pkg/apiserver/registry/core/scene"
 	taskstore "hit.edu/framework/pkg/apiserver/registry/core/task"
 	workflowstore "hit.edu/framework/pkg/apiserver/registry/core/workflow"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
@@ -51,6 +55,27 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		logs.Error("error occur while create ActionStorage", err)
 		return server.APIGroupInfo{}, err
 	}
+	deviceStorage, err := devicestore.NewDeviceStorage(restOptionsGetter)
+	if err != nil {
+		logs.Error("error occur while create DeviceStorage", err)
+		return server.APIGroupInfo{}, err
+	}
+	sceneStorage, err := scenestore.NewSceneStorage(restOptionsGetter)
+	if err != nil {
+		logs.Error("error occur while create SceneStorage", err)
+		return server.APIGroupInfo{}, err
+	}
+	resourceStorage, err := resourcestore.NewResourceStorage(restOptionsGetter)
+	if err != nil {
+		logs.Error("error occur while create ResourceStorage", err)
+		return server.APIGroupInfo{}, err
+	}
+	eventStorage, err := eventstore.NewEventStorage(restOptionsGetter)
+	if err != nil {
+		logs.Error("error occur while create EventStorage", err)
+		return server.APIGroupInfo{}, err
+	}
+
 	storage := map[string]rest.Storage{}
 	if resource := "nodes"; true {
 		storage[resource] = nodeStorage.Node
@@ -77,7 +102,24 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		storage[resource+"/status"] = actionStorage.Status
 		storage[resource+"/spec"] = actionStorage.Spec
 	}
-
+	if resource := "devices"; true {
+		storage[resource] = deviceStorage.Device
+		storage[resource+"/status"] = deviceStorage.Status
+		storage[resource+"/spec"] = deviceStorage.Spec
+	}
+	if resource := "scenes"; true {
+		storage[resource] = sceneStorage.Scene
+		storage[resource+"/status"] = sceneStorage.Status
+		storage[resource+"/spec"] = sceneStorage.Spec
+	}
+	if resource := "resources"; true {
+		storage[resource] = resourceStorage.Resource
+		storage[resource+"/status"] = resourceStorage.Status
+		storage[resource+"/spec"] = resourceStorage.Spec
+	}
+	if resource := "events"; true {
+		storage[resource] = eventStorage.Event
+	}
 	if len(storage) > 0 {
 		apiGroupInfo.VersionedResourcesStorageMap["v1"] = storage
 	}
