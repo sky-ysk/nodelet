@@ -3,9 +3,11 @@ package endpoints
 import (
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
+	"go.uber.org/zap"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"path"
 	"strings"
@@ -164,10 +166,12 @@ func (g *APIGroupVersion) InstallREST(container *restful.Container) error {
 		prefix:            prefix,
 		minRequestTimeout: g.MinRequestTimeout,
 	}
+	logs.Debug("APIInstaller created", zap.String("prefix", installer.prefix))
 
 	// 注册所有资源及其Handler
 	ws, errs := installer.Install()
 	if errs != nil {
+		logs.Error("install APIInstaller failed", zap.String("error", utilerrors.NewAggregate(errs).Error()))
 		return utilerrors.NewAggregate(errs)
 	}
 

@@ -72,7 +72,7 @@ func NewAPIServerHandler(name string, s runtime.NegotiatedSerializer) *APIServer
 func (d director) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	//对请求进行预处理
-	req = preProcess(w, req)
+	//req = preProcess(w, req)
 	path := req.URL.Path
 	//logs.Info("Get Http Request with Path\t", path)
 	logs.Info("Get Http Request with Path", zap.String("path", path))

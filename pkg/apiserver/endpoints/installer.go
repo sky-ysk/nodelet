@@ -3,6 +3,7 @@ package endpoints
 import (
 	"fmt"
 	"github.com/emicklei/go-restful/v3"
+	"go.uber.org/zap"
 	"hit.edu/framework/pkg/apimachinery/conversion"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apis/meta"
@@ -10,6 +11,7 @@ import (
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/types"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"unicode"
 
@@ -78,11 +80,13 @@ func (a *APIInstaller) Install() (*restful.WebService, []error) {
 	sort.Strings(paths)
 
 	for _, path := range paths {
+		logs.Debug("register Resource Handlers", zap.String("resource path", a.prefix+"/"+path))
 		apiResource, err := a.registerResourceHandlers(path, a.group.Storage[path], ws)
 		if apiResource != nil {
 			apiResources = append(apiResources, *apiResource)
 		}
 		if err != nil {
+			logs.Error("register Resource Handlers failed", zap.String("resource path", path), zap.String("error", err.Error()))
 			errors = append(errors, fmt.Errorf("error in registering resource: %s, %v", path, err))
 		}
 	}
@@ -99,6 +103,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	//获取资源、子资源（资源的status等子资源）、组和版本名称
 	resource, subresource, err := splitSubresource(path)
 	if err != nil {
+		logs.Error("splitSubresource failed,path:"+path, zap.Error(err))
 		return nil, nil
 	}
 	isSubresource := len(subresource) > 0
@@ -107,10 +112,12 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	//创建特定Kind类型的对象实例
 	fqKindToRegister, err := GetResourceKind(a.group.GroupVersion, storage, a.group.Typer)
 	if err != nil {
+		logs.Error("get resource kind failed", zap.Error(err))
 		return nil, err
 	}
 	versionedPtr, err := a.group.Creater.New(fqKindToRegister)
 	if err != nil {
+		logs.Error("create new versionedPtr failed", zap.Error(err))
 		return nil, err
 	}
 	defaultVersionedObject := indirectArbitraryPointer(versionedPtr)
@@ -158,10 +165,12 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		list := lister.NewList()
 		listGVKs, _, err := a.group.Typer.ObjectKinds(list)
 		if err != nil {
+			logs.Error("get resource kind failed", zap.Error(err))
 			return nil, err
 		}
 		versionedListPtr, err := a.group.Creater.New(a.group.GroupVersion.WithKind(listGVKs[0].Kind))
 		if err != nil {
+			logs.Error("create new versionedPtr failed", zap.Error(err))
 			return nil, err
 		}
 		versionedList = indirectArbitraryPointer(versionedListPtr)
@@ -169,18 +178,22 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 	versionedListOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("ListOptions"))
 	if err != nil {
+		logs.Error("create new ListOptions failed", zap.Error(err))
 		return nil, err
 	}
 	versionedCreateOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("CreateOptions"))
 	if err != nil {
+		logs.Error("create new CreateOptions failed", zap.Error(err))
 		return nil, err
 	}
 	versionedPatchOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("PatchOptions"))
 	if err != nil {
+		logs.Error("create new PatchOptions failed", zap.Error(err))
 		return nil, err
 	}
 	versionedUpdateOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("UpdateOptions"))
 	if err != nil {
+		logs.Error("create new UpdateOptions failed", zap.Error(err))
 		return nil, err
 	}
 
@@ -189,6 +202,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	if isDeleter {
 		versionedDeleteOptions, err = a.group.Creater.New(optionsExternalVersion.WithKind("DeleteOptions"))
 		if err != nil {
+			logs.Error("create new DeleteOptions failed", zap.Error(err))
 			return nil, err
 		}
 		versionedDeleterObject = indirectArbitraryPointer(versionedDeleteOptions)
@@ -203,6 +217,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 	versionedStatusPtr, err := a.group.Creater.New(optionsExternalVersion.WithKind("Status"))
 	if err != nil {
+		logs.Error("create new Status failed", zap.Error(err))
 		return nil, err
 	}
 	versionedStatus := indirectArbitraryPointer(versionedStatusPtr)
@@ -398,16 +413,16 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 					doc = "list or watch " + subresource + " of objects of kind " + kind
 				}
 				route.Doc(doc)
-				verbs["WATCHLIST"] = struct{}{}
-				verbs["WATCH"] = struct{}{}
+				verbs["watchlist"] = struct{}{}
+				verbs["watch"] = struct{}{}
 			case isWatcher:
 				doc := "watch objects of kind " + kind
 				if isSubresource {
 					doc = "watch " + subresource + "of objects of kind " + kind
 				}
 				route.Doc(doc)
-				verbs["WATCHLIST"] = struct{}{}
-				verbs["WATCH"] = struct{}{}
+				verbs["watchlist"] = struct{}{}
+				verbs["watch"] = struct{}{}
 			}
 			addParams(route, action.Params)
 			routes = append(routes, route)
@@ -568,7 +583,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	//if shortNamesProvider, ok := storage.(rest.ShortNamesProvider); ok {
 	//	apiResource.ShortName = shortNamesProvider.ShortNames()
 	//}
-
+	logs.Debug("install restfulAPI for resource " + apiResource.Name + " done,supported verbs:" + apiResource.Verbs.String())
 	return &apiResource, nil
 }
 

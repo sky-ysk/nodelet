@@ -24,6 +24,7 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 		//尝试获取资源的名称
 		namespace, name, err := scope.Namer.Name(req)
 		if err != nil {
+			logs.Error("get name from requestInfo failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -37,6 +38,7 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 			//从body体中或者url query中解析DeleteOptions
 			body, err := limitedReadBody(req, 0)
 			if err != nil {
+				logs.Error("limitedReadBody failed:", err.Error())
 				scope.err(err, w, req)
 				return
 			}
@@ -44,21 +46,25 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 			if len(body) > 0 {
 				s, err := negotiation.NegotiateInputSerializer(req, false, scope.Serializer)
 				if err != nil {
+					logs.Error("get input serializer failed", zap.Error(err))
 					scope.err(err, w, req)
 					return
 				}
 				defaultGVK := scope.MetaGroupVersion.WithKind("DeleteOptions")
 				obj, _, err := scope.Serializer.DecoderToVersion(s.Serializer, defaultGVK.GroupVersion()).Decode(body, &defaultGVK, options)
 				if err != nil {
+					logs.Error("get decoder failed", zap.Error(err))
 					scope.err(err, w, req)
 					return
 				}
 				if obj != options {
+					logs.Error("decoded object cannot be converted to DeleteOptions")
 					scope.err(fmt.Errorf("decoded object cannot be converted to DeleteOptions"), w, req)
 					return
 				}
 			} else {
 				if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), meta.SchemeGroupVersion, options); err != nil {
+					logs.Error("decode DeleteOptions failed:", err.Error())
 					err = errors.NewBadRequest(err.Error())
 					scope.err(err, w, req)
 					return
@@ -85,6 +91,7 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 		}
 		result, err := requestFunc()
 		if err != nil {
+			logs.Error("delete object in database failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
@@ -139,12 +146,14 @@ func DeleteCollection(r rest.CollectionDeleter, checkBody bool, scope *RequestSc
 			if len(body) > 0 {
 				s, err := negotiation.NegotiateInputSerializer(req, false, scope.Serializer)
 				if err != nil {
+					logs.Error("get input serializer failed", zap.Error(err))
 					scope.err(err, w, req)
 					return
 				}
 				defaultGVK := scope.MetaGroupVersion.WithKind("DeleteOptions")
 				obj, _, err := scope.Serializer.DecoderToVersion(s.Serializer, defaultGVK.GroupVersion()).Decode(body, &defaultGVK, options)
 				if err != nil {
+					logs.Error("get decoder failed", zap.Error(err))
 					scope.err(err, w, req)
 					return
 				}
@@ -154,6 +163,7 @@ func DeleteCollection(r rest.CollectionDeleter, checkBody bool, scope *RequestSc
 				}
 			} else {
 				if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), meta.SchemeGroupVersion, options); err != nil {
+					logs.Error("decode url parameters failed", zap.Error(err))
 					err = errors.NewBadRequest(err.Error())
 					scope.err(err, w, req)
 					return
@@ -174,6 +184,7 @@ func DeleteCollection(r rest.CollectionDeleter, checkBody bool, scope *RequestSc
 		}
 		result, err := requestFunc()
 		if err != nil {
+			logs.Error("delete collection in database", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}

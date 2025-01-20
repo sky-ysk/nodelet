@@ -76,6 +76,7 @@ func NewConfig(opts *options.Options) *Config {
 	c.RESTOptionsGetter = storageFactory
 	c.Serializer = legacyscheme.Codecs
 	c.RequestInfoResolver = NewRequestInfoResolver()
+	logs.Info("Config Completed")
 
 	return c
 }

@@ -40,11 +40,13 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 			}
 		}
 		if !supportPatchType {
+			logs.Error(negotiation.NewUnsupportedMediaTypeError(patchTypes))
 			scope.err(negotiation.NewUnsupportedMediaTypeError(patchTypes), w, req)
 		}
 
 		namespace, name, err := scope.Namer.Name(req)
 		if err != nil {
+			logs.Error("get name from requestInfo failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -55,6 +57,7 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 
 		body, err := limitedReadBody(req, 0)
 		if err != nil {
+			logs.Error("read limitedBody failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -62,6 +65,7 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 
 		options := &meta.PatchOptions{}
 		if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), meta.SchemeGroupVersion, options); err != nil {
+			logs.Error("decode PatchOptions failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
@@ -72,7 +76,9 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 		baseContentType := runtime.ContentTypeJSON
 		s, ok := runtime.SerializerInfoForMediaType(scope.Serializer.SupportedMediaTypes(), baseContentType)
 		if !ok {
-			scope.err(fmt.Errorf("no serializer defined for %v", baseContentType), w, req)
+			err := fmt.Errorf("no serializer defined for %v", baseContentType)
+			logs.Error(zap.Error(err))
+			scope.err(err, w, req)
 			return
 		}
 		gv := scope.Kind.GroupVersion()
@@ -103,6 +109,7 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 
 		result, wasCreated, err := p.patchResource(ctx, scope)
 		if err != nil {
+			logs.Error("patch object in database failed:", err.Error())
 			scope.err(err, w, req)
 		}
 		logs.Info("patch object in database done", zap.String("kind", result.GetObjectKind().GroupVersionKind().Kind))
@@ -185,6 +192,7 @@ func (p *patcher) applyPatch(ctx context.Context, _, currentObject runtime.Objec
 	}
 
 	if patchErr != nil {
+		logs.Error(zap.Error(patchErr))
 		return nil, patchErr
 	}
 
@@ -197,6 +205,7 @@ func (p *patcher) applyPatch(ctx context.Context, _, currentObject runtime.Objec
 		if err != nil {
 			return nil, err
 		}
+		logs.Error(zap.Error(err))
 		return nil, errors.NewConflict(p.resource.GroupResource(), p.name, fmt.Errorf("uid mismatch: the provided object specified uid %s, and no existing object was found", accessor.GetUID()))
 	}
 
@@ -208,6 +217,7 @@ func (p *patcher) applyPatch(ctx context.Context, _, currentObject runtime.Objec
 	}
 
 	if err := checkName(objToUpdate, p.name, p.namespace, p.namer); err != nil {
+		logs.Error("error occur while checking name", zap.Error(err))
 		return nil, err
 	}
 	return objToUpdate, nil
@@ -220,25 +230,26 @@ type jsonPatcher struct {
 func (p *jsonPatcher) applyPatchToCurrentObject(requestContext context.Context, currentObject runtime.Object) (runtime.Object, error) {
 	currentObjJS, err := runtime.Encode(p.codec, currentObject)
 	if err != nil {
+		logs.Error("error occur while encoding currentObj", zap.Error(err))
 		return nil, err
 	}
 
 	// Apply the patch.
 	patchedObjJS, _, err := p.applyJSPatch(currentObjJS)
 	if err != nil {
+		logs.Error("error occur while applying json patch", zap.Error(err))
 		return nil, err
 	}
 
 	objToUpdate := p.restPatcher.New()
 
 	if err := runtime.DecodeInto(p.codec, patchedObjJS, objToUpdate); err != nil {
+		logs.Error("error occur while decoding updatedObj", zap.Error(err))
 		return nil, err
 	}
 
 	if p.options == nil {
-		// Provide a more informative error for the crash that would
-		// happen on the next line
-		panic("PatchOptions required but not provided")
+		logs.Error("PatchOptions required but not provided")
 	}
 	return objToUpdate, nil
 }

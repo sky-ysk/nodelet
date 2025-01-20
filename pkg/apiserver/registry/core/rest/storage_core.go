@@ -81,6 +81,6 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 	if len(storage) > 0 {
 		apiGroupInfo.VersionedResourcesStorageMap["v1"] = storage
 	}
-	logs.Info("RESTStorage create successfully")
+	logs.Info("Core APIGroupInfo created")
 	return apiGroupInfo, nil
 }

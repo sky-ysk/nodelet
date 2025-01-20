@@ -27,6 +27,7 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, includeName bool) h
 		if err != nil {
 			if includeName {
 				// name 是必需的，返回
+				logs.Error("name must be specified", zap.Error(err))
 				scope.err(err, w, req)
 				return
 			}
@@ -34,6 +35,7 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, includeName bool) h
 			// 否则，尝试查找命名空间
 			namespace, err = scope.Namer.Namespace(req)
 			if err != nil {
+				logs.Error("get namespace from requestInfo failed", zap.Error(err))
 				scope.err(err, w, req)
 				return
 			}
@@ -43,12 +45,14 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, includeName bool) h
 
 		s, err := negotiation.NegotiateInputSerializer(req, false, scope.Serializer)
 		if err != nil {
+			logs.Error("get input serializer failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
 
 		body, err := limitedReadBody(req, 0)
 		if err != nil {
+			logs.Error("limitedReadBody failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
@@ -79,6 +83,7 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, includeName bool) h
 			//	rest.WipeObjectMetaSystemFields(objectMeta)
 			//}
 			if err := EnsureObjectNamespaceMatchesRequestNamespace(ExpectedNamespaceForResource(namespace, scope.Resource), objectMeta); err != nil {
+				logs.Error(zap.Error(err))
 				scope.err(err, w, req)
 				return
 			}
@@ -87,6 +92,7 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, includeName bool) h
 		options := &meta.CreateOptions{}
 		values := req.URL.Query()
 		if err := metainternalversionscheme.ParameterCodec.DecodeParameters(values, meta.SchemeGroupVersion, options); err != nil {
+			logs.Error("decode CreateOptions failed:", err.Error())
 			err = errors.NewBadRequest(err.Error())
 			scope.err(err, w, req)
 			return
@@ -99,6 +105,7 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, includeName bool) h
 		}
 		result, err := requestFunc()
 		if err != nil {
+			logs.Error("store object in database failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
