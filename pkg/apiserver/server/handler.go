@@ -85,7 +85,8 @@ func (d director) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			// 处理apis的情况
 			if path == "/apis" || path == "/apis/" {
 				//logs.Info("Http Requests Start With /apis")
-				//logs.Info("Http Requests Start With /apis")
+				//logs.Info("Http Requests Start With /apis")]
+
 				logs.Infof("%v: %v %q satisfied by gorestful with webservice %v", d.name, req.Method, path, ws.RootPath())
 
 				d.goRestfulContainer.Dispatch(w, req)

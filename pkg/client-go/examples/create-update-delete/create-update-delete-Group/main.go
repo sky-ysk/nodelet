@@ -64,6 +64,24 @@ func main() {
 
 	groupsClient := clientSet.Core().Groups("test")
 
+	action := apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-actions",
+			Namespace: "test",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "demo-action",
+			Runtimes: []apis.Runtime{
+				apis.Runtime{
+					Name: "demo-runtime",
+				},
+			},
+		},
+	}
 	group := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-groups",
@@ -74,9 +92,34 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
-			Name: "demo-group",
+			Name:    "demo-group",
+			Actions: []apis.Action{action},
 		},
 	}
+
+	//patchGroup3, err := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"actions": []map[string]interface{}{
+	//			{
+	//				"status": map[string]interface{}{
+	//					"status": []map[string]interface{}{
+	//						{
+	//							"phase": "patch-phase-value", // 这里设置你想要的新值
+	//						},
+	//					},
+	//				},
+	//			},
+	//		},
+	//	},
+	//})
+
+	patchGroup3, err := json.Marshal([]map[string]interface{}{
+		{
+			"op":    "replace",
+			"path":  "/spec/actions/0/status/status/0/phase",
+			"value": "new-phase-value", // 这里替换为你需要的 Phase 值
+		},
+	})
 
 	//group2 := &apis.Group{
 	//	ObjectMeta: metav1.ObjectMeta{
@@ -102,12 +145,17 @@ func main() {
 	//		GroupName: "demo-group",
 	//	},
 	//}
-	patchGroup, err := json.Marshal(map[string]interface{}{
-		"Spec": map[string]interface{}{
-			"GroupName": "patch-group-name",
-			"HostName":  "master",
-		},
-	})
+
+	//patchGroup, err := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"name": "patch-group-name",
+	//		"actions": []map[string]interface{}{
+	//			{
+	//				"name": "patch-action-name",
+	//			},
+	//		},
+	//	},
+	//})
 
 	//监听事件并打印  监听resources/v1/groups
 	go func() {
@@ -178,15 +226,13 @@ func main() {
 	}
 
 	fmt.Println("get result", result)
-	fmt.Println("修改前的result.Spec.GroupName：", result.Spec.Name)
 
-	result.Spec.Name = "updatedGroupName"
+	result.Spec.Actions[0].Spec.Name = "updated action-runtime-Name"
 	_, updateErr := groupsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
 		panic(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	fmt.Println("修改后的result.Spec.GroupName：", result.Spec.Name)
 	fmt.Println("Updated group...")
 	prompt()
 
@@ -206,7 +252,7 @@ func main() {
 
 	//Patch 一个Group
 	fmt.Println("patching")
-	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup3, metav1.PatchOptions{})
 	fmt.Println("patchResult: ", patchResult)
 	fmt.Println("patch Done")
 

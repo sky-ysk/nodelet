@@ -16,6 +16,7 @@ type CoreInterface interface {
 	DevicesGetter
 	DatasGetter
 	ScenesGetter
+	ResourceRequirementsGetter
 }
 
 type CoreClient struct {
@@ -53,6 +54,10 @@ func (c *CoreClient) Datas(namespace string) DataInterface {
 
 func (c *CoreClient) Scenes(namespace string) SceneInterface {
 	return newScenes(c, namespace)
+}
+
+func (c *CoreClient) ResourceRequirements(namespace string) ResourceRequirementInterface {
+	return newResourceRequirements(c, namespace)
 }
 
 func (c *CoreClient) RESTClient() rest.Interface {

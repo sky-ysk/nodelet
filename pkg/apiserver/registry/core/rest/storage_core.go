@@ -26,6 +26,7 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		NegotiatedSerializer:         legacyscheme.Codecs,
 	}
 	logs.Init("etcd")
+
 	nodeStorage, err := nodestore.NewNodeStorage(restOptionsGetter)
 	if err != nil {
 		logs.Error("error occur while create NodeStorage", err)

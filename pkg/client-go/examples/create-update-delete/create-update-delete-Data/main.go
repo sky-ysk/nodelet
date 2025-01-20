@@ -13,6 +13,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
 	"os"
@@ -25,7 +26,9 @@ import (
 // 验证xxx动词
 // 与API Server通信，并执行基础操作
 
+// 尚未与api server测试
 func main() {
+	logs.Init("main")
 	//启动模拟 HTTP 服务器
 	go func() {
 		server := createMockAPIServer()
@@ -169,7 +172,8 @@ func createMockAPIServer() *http.Server {
 	datas := make(map[string]apis.Data)
 
 	// 处理data的集合操作（POST 创建,List 和 Watch）
-	mux.HandleFunc("/apis/resources/v1/datas", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/apis/resources/v1/namespaces/test/datas", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Received request:", r.Method, r.URL.Path)
 		query := r.URL.Query()
 		iswatch := query.Get("watch")
 		fieldSelector := query.Get("fieldSelector")
@@ -227,7 +231,6 @@ func createMockAPIServer() *http.Server {
 				http.Error(w, "Unsupported Content-Type", http.StatusUnsupportedMediaType)
 				return
 			}
-
 			// 解析请求体中的 Data 数据
 			newData := &apis.Data{}
 			if err := json.NewDecoder(r.Body).Decode(&newData); err != nil {
@@ -257,7 +260,7 @@ func createMockAPIServer() *http.Server {
 		}
 	})
 	// 处理data的单个操作（单个的GET 查询和 PUT、Patch 更新）
-	mux.HandleFunc("/apis/resources/v1/datas/demo-datas", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/apis/resources/v1/namespaces/test/datas/demo-datas", func(w http.ResponseWriter, r *http.Request) {
 		dataName := "demo-datas" // 固定为 demo-datas
 
 		switch r.Method {

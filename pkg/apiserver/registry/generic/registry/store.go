@@ -58,7 +58,9 @@ type GenericStore interface {
 	GetDeleteStrategy() rest.RESTDeleteStrategy
 }
 
-func init() { logs.Init("etcd") }
+func init() {
+	logs.Init("etcd")
+}
 
 // Store 实现了hit.edu/framework/pkg/apiserver/registry/rest.StandardStorage接口，为REST存储提供基础操作
 // Store 用于嵌入到RESTStorage中，为RESTStorage实现与底层存储相关的细节

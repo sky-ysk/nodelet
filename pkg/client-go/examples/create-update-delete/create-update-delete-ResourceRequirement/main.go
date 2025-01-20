@@ -73,42 +73,42 @@ func main() {
 		panic(err)
 	}
 	// 资源定义在 pkg/apis/xxx/type.go 下
-	// 这里以访问资源Device为例，
-	// 获取访问Device的客户端
+	// 这里以访问资源ResourceRequirement为例，
+	// 获取访问ResourceRequirement的客户端
 	// 默认访问的Namespace是 ""
 
-	devicesClient := clientSet.Core().Devices("test")
+	resourceRequirementsClient := clientSet.Core().ResourceRequirements("test")
 
-	device1 := &apis.Device{
+	resourceRequirement1 := &apis.ResourceRequirement{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-devices",
+			Name:      "demo-resourceRequirements",
 			Namespace: "test",
 		},
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Device",
+			Kind:       "ResourceRequirement",
 			APIVersion: "resources/v1",
 		},
 	}
 
-	// Create一个Device
+	// Create一个ResourceRequirement
 	fmt.Println("creating")
-	results, err := devicesClient.Create(context.TODO(), device1, metav1.CreateOptions{})
+	results, err := resourceRequirementsClient.Create(context.TODO(), resourceRequirement1, metav1.CreateOptions{})
 
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Created device ", results)
+	fmt.Println("Created resourceRequirement ", results)
 
 	prompt()
 
 	// todo:update 和 patch
 
-	// List所有Device
+	// List所有ResourceRequirement
 	fmt.Println("listing")
 	lstOpts := metav1.ListOptions{
-		FieldSelector: "ObjectMeta.Name=demo-devices",
+		FieldSelector: "ObjectMeta.Name=demo-resourceRequirements",
 	}
-	list, err := devicesClient.List(context.TODO(), lstOpts)
+	list, err := resourceRequirementsClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		panic(err)
 	}
@@ -119,21 +119,21 @@ func main() {
 	fmt.Println("listing done")
 	prompt()
 
-	// Delete一个Device
+	// Delete一个ResourceRequirement
 	fmt.Println("deleting")
-	err = devicesClient.Delete(context.TODO(), "demo-devices", metav1.DeleteOptions{})
+	err = resourceRequirementsClient.Delete(context.TODO(), "demo-resourceRequirements", metav1.DeleteOptions{})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Deleted device...")
+	fmt.Println("Deleted resourceRequirement...")
 	prompt()
 
-	// Delete 之后再次 List所有Device
+	// Delete 之后再次 List所有ResourceRequirement
 	fmt.Println("listing")
 	lstOpts = metav1.ListOptions{
-		FieldSelector: "ObjectMeta.Name=demo-devices",
+		FieldSelector: "ObjectMeta.Name=demo-resourceRequirements",
 	}
-	list, err = devicesClient.List(context.TODO(), lstOpts)
+	list, err = resourceRequirementsClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		panic(err)
 	}
@@ -169,10 +169,10 @@ func createMockAPIServer() *http.Server {
 	mux := http.NewServeMux()
 
 	// 模拟存储节点的内存数据库
-	devices := make(map[string]apis.Device)
+	resourceRequirements := make(map[string]apis.ResourceRequirement)
 
-	// 处理device的集合操作（POST 创建,List 和 Watch）
-	mux.HandleFunc("/apis/resources/v1/namespaces/test/devices", func(w http.ResponseWriter, r *http.Request) {
+	// 处理resourceRequirement的集合操作（POST 创建,List 和 Watch）
+	mux.HandleFunc("/apis/resources/v1/namespaces/test/resourcerequirements", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Received request:", r.Method, r.URL.Path)
 		query := r.URL.Query()
 		iswatch := query.Get("watch")
@@ -181,10 +181,10 @@ func createMockAPIServer() *http.Server {
 		case http.MethodGet:
 			if iswatch == "true" { // 判断是否是Watch请求
 				// 解析 fieldSelector 并筛选节点
-				filteredDevices := make([]apis.Device, 0)
-				for _, device := range devices {
-					if deviceMatchesFieldSelector(device, fieldSelector) {
-						filteredDevices = append(filteredDevices, device)
+				filteredResourceRequirements := make([]apis.ResourceRequirement, 0)
+				for _, resourceRequirement := range resourceRequirements {
+					if resourceRequirementMatchesFieldSelector(resourceRequirement, fieldSelector) {
+						filteredResourceRequirements = append(filteredResourceRequirements, resourceRequirement)
 					}
 				}
 				watchChan := make(chan watch.Event)
@@ -209,18 +209,18 @@ func createMockAPIServer() *http.Server {
 				return
 			} else { //否则为List请求
 				// 解析 fieldSelector 并筛选节点
-				devicesList := apis.DeviceList{}
-				filteredDevices := make([]apis.Device, 0)
-				for _, device := range devices {
-					if deviceMatchesFieldSelector(device, fieldSelector) {
-						filteredDevices = append(filteredDevices, device)
+				resourceRequirementsList := apis.ResourceRequirementList{}
+				filteredResourceRequirements := make([]apis.ResourceRequirement, 0)
+				for _, resourceRequirement := range resourceRequirements {
+					if resourceRequirementMatchesFieldSelector(resourceRequirement, fieldSelector) {
+						filteredResourceRequirements = append(filteredResourceRequirements, resourceRequirement)
 					}
 				}
-				devicesList.Items = filteredDevices
+				resourceRequirementsList.Items = filteredResourceRequirements
 				// 返回筛选后的节点列表
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
-				if err := json.NewEncoder(w).Encode(devicesList); err != nil {
+				if err := json.NewEncoder(w).Encode(resourceRequirementsList); err != nil {
 					http.Error(w, "Error encoding response", http.StatusInternalServerError)
 				}
 			}
@@ -231,51 +231,51 @@ func createMockAPIServer() *http.Server {
 				http.Error(w, "Unsupported Content-Type", http.StatusUnsupportedMediaType)
 				return
 			}
-			// 解析请求体中的 Device 数据
-			newDevice := &apis.Device{}
-			if err := json.NewDecoder(r.Body).Decode(&newDevice); err != nil {
+			// 解析请求体中的 ResourceRequirement 数据
+			newResourceRequirement := &apis.ResourceRequirement{}
+			if err := json.NewDecoder(r.Body).Decode(&newResourceRequirement); err != nil {
 				http.Error(w, "Invalid request body", http.StatusBadRequest)
 				return
 			}
 
 			// 模拟存储节点
-			devices[newDevice.ObjectMeta.Name] = *newDevice
+			resourceRequirements[newResourceRequirement.ObjectMeta.Name] = *newResourceRequirement
 
 			// 推送 Watch 事件
-			fmt.Println("newDevice:", newDevice)
+			fmt.Println("newResourceRequirement:", newResourceRequirement)
 			event := watch.Event{
 				Type:   "ADDED",
-				Object: newDevice,
+				Object: newResourceRequirement,
 			}
 			notifyWatchers(event)
 
 			// 返回创建成功的响应
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.WriteHeader(http.StatusCreated) // 状态码 201 Created
-			if err := json.NewEncoder(w).Encode(newDevice); err != nil {
+			if err := json.NewEncoder(w).Encode(newResourceRequirement); err != nil {
 				http.Error(w, "Error encoding response", http.StatusInternalServerError)
 			}
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	})
-	// 处理device的单个操作（单个的GET 查询和 PUT、Patch 更新）
-	mux.HandleFunc("/apis/resources/v1/namespaces/test/devices/demo-devices", func(w http.ResponseWriter, r *http.Request) {
-		deviceName := "demo-devices" // 固定为 demo-devices
+	// 处理resourceRequirement的单个操作（单个的GET 查询和 PUT、Patch 更新）
+	mux.HandleFunc("/apis/resources/v1/namespaces/test/resourcerequirements/demo-resourceRequirements", func(w http.ResponseWriter, r *http.Request) {
+		resourceRequirementName := "demo-resourceRequirements" // 固定为 demo-resourceRequirements
 
 		switch r.Method {
 		case http.MethodGet: // GET 查询
 			// 查询内存数据库中的节点
-			device, exists := devices[deviceName]
+			resourceRequirement, exists := resourceRequirements[resourceRequirementName]
 			if !exists {
-				http.Error(w, "Device not found", http.StatusNotFound)
+				http.Error(w, "ResourceRequirement not found", http.StatusNotFound)
 				return
 			}
 
 			// 返回节点信息
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.WriteHeader(http.StatusOK) // 状态码 200 OK
-			if err := json.NewEncoder(w).Encode(device); err != nil {
+			if err := json.NewEncoder(w).Encode(resourceRequirement); err != nil {
 				http.Error(w, "Error encoding response", http.StatusInternalServerError)
 			}
 
@@ -286,34 +286,34 @@ func createMockAPIServer() *http.Server {
 				return
 			}
 
-			// 解析请求体中的 Device 数据
-			updatedDevice := &apis.Device{}
-			if err := json.NewDecoder(r.Body).Decode(&updatedDevice); err != nil {
+			// 解析请求体中的 ResourceRequirement 数据
+			updatedResourceRequirement := &apis.ResourceRequirement{}
+			if err := json.NewDecoder(r.Body).Decode(&updatedResourceRequirement); err != nil {
 				http.Error(w, "Invalid request body", http.StatusBadRequest)
 				return
 			}
 
 			// 检查节点是否存在
-			_, exists := devices[deviceName]
+			_, exists := resourceRequirements[resourceRequirementName]
 			if !exists {
-				http.Error(w, "Device not found", http.StatusNotFound)
+				http.Error(w, "ResourceRequirement not found", http.StatusNotFound)
 				return
 			}
 
 			// 更新节点信息
-			devices[deviceName] = *updatedDevice
+			resourceRequirements[resourceRequirementName] = *updatedResourceRequirement
 
 			// 推送 Watch 事件：MODIFIED
 			event := watch.Event{
 				Type:   "MODIFIED",
-				Object: updatedDevice,
+				Object: updatedResourceRequirement,
 			}
 			notifyWatchers(event)
 
 			// 返回更新成功的响应
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.WriteHeader(http.StatusOK) // 状态码 200 OK
-			if err := json.NewEncoder(w).Encode(updatedDevice); err != nil {
+			if err := json.NewEncoder(w).Encode(updatedResourceRequirement); err != nil {
 				http.Error(w, "Error encoding response", http.StatusInternalServerError)
 			}
 		case http.MethodPatch: // PATCH 部分更新
@@ -325,9 +325,9 @@ func createMockAPIServer() *http.Server {
 			}
 
 			// 查询内存数据库中的节点
-			device, exists := devices[deviceName]
+			resourceRequirement, exists := resourceRequirements[resourceRequirementName]
 			if !exists {
-				http.Error(w, "Device not found", http.StatusNotFound)
+				http.Error(w, "ResourceRequirement not found", http.StatusNotFound)
 				return
 			}
 
@@ -339,42 +339,42 @@ func createMockAPIServer() *http.Server {
 			}
 
 			// 应用 Patch 到现有的节点
-			updatedDevice := device
-			if err := json.Unmarshal(patchData, &updatedDevice); err != nil {
+			updatedResourceRequirement := resourceRequirement
+			if err := json.Unmarshal(patchData, &updatedResourceRequirement); err != nil {
 				http.Error(w, "Invalid Patch format", http.StatusBadRequest)
 				return
 			}
 
 			// 更新内存中的节点
-			devices[deviceName] = updatedDevice
+			resourceRequirements[resourceRequirementName] = updatedResourceRequirement
 
 			// 推送 Watch 事件：MODIFIED
 			event := watch.Event{
 				Type:   "MODIFIED",
-				Object: &updatedDevice,
+				Object: &updatedResourceRequirement,
 			}
 			notifyWatchers(event)
 
 			// 返回更新成功的响应
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.WriteHeader(http.StatusOK) // 状态码 200 OK
-			if err := json.NewEncoder(w).Encode(updatedDevice); err != nil {
+			if err := json.NewEncoder(w).Encode(updatedResourceRequirement); err != nil {
 				http.Error(w, "Error encoding response", http.StatusInternalServerError)
 			}
 		case http.MethodDelete: // 删除节点
-			deletedevice, exists := devices[deviceName]
+			deleteresourceRequirement, exists := resourceRequirements[resourceRequirementName]
 			if !exists {
-				http.Error(w, "Device not found", http.StatusNotFound)
+				http.Error(w, "ResourceRequirement not found", http.StatusNotFound)
 				return
 			}
-			deletedDevice := &deletedevice
+			deletedResourceRequirement := &deleteresourceRequirement
 			// 删除节点
-			delete(devices, deviceName)
+			delete(resourceRequirements, resourceRequirementName)
 
 			// 推送 Watch 事件：DELETED
 			event := watch.Event{
 				Type:   "DELETED",
-				Object: deletedDevice,
+				Object: deletedResourceRequirement,
 			}
 			notifyWatchers(event)
 
@@ -396,12 +396,12 @@ func createMockAPIServer() *http.Server {
 	return server
 }
 
-func deviceMatchesFieldSelector(device apis.Device, fieldSelector string) bool {
+func resourceRequirementMatchesFieldSelector(resourceRequirement apis.ResourceRequirement, fieldSelector string) bool {
 	if fieldSelector == "" {
 		return true // 如果没有指定 fieldSelector，匹配所有节点
 	}
 
-	// 示例：支持解析 "ObjectMeta.Name=demo-devices" 的 fieldSelector
+	// 示例：支持解析 "ObjectMeta.Name=demo-resourceRequirements" 的 fieldSelector
 	parts := strings.Split(fieldSelector, "=")
 	if len(parts) != 2 {
 		return false
@@ -410,7 +410,7 @@ func deviceMatchesFieldSelector(device apis.Device, fieldSelector string) bool {
 	key, value := parts[0], parts[1]
 	switch key {
 	case "ObjectMeta.Name":
-		return device.ObjectMeta.Name == value
+		return resourceRequirement.ObjectMeta.Name == value
 	// 可扩展其他字段匹配
 	default:
 		return false
@@ -418,8 +418,8 @@ func deviceMatchesFieldSelector(device apis.Device, fieldSelector string) bool {
 }
 
 var (
-	devices    = make(map[string]apis.Device) // 模拟存储节点的内存数据库
-	watchChans = make([]chan watch.Event, 0)  // 维护所有watch监听的通道
+	resourceRequirements = make(map[string]apis.ResourceRequirement) // 模拟存储节点的内存数据库
+	watchChans           = make([]chan watch.Event, 0)               // 维护所有watch监听的通道
 )
 
 // 推送事件

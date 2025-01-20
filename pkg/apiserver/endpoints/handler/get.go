@@ -44,6 +44,7 @@ func getResourceHandler(scope *RequestScope, getter getterFunc) http.HandlerFunc
 			status.Code = int32(code)
 		}
 		logs.Info("About to write a response")
+
 		defer logs.Info("Writing http response done")
 		responsewriters.WriteObjectNegotiated(scope.Serializer, scope, scope.Kind.GroupVersion(), w, req, code, result, false)
 	}
@@ -101,6 +102,7 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope *RequestScope, minReques
 			return
 		}
 		logs.Info("decode ListOptions succeed")
+
 		//metainternalversion.SetListOptionsDefaults(&opts, utilfeature.DefaultFeatureGate.Enabled(features.WatchList))
 
 		if hasName {

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/util/sets"
+	"hit.edu/framework/pkg/component-base/logs"
 	"sync"
 )
 
@@ -482,10 +483,10 @@ func (f *DeltaFIFO) queueActionInternalLocked(actionType, internalActionType Del
 		// when given a non-empty list (as it is here).
 		// If somehow it happens anyway, deal with it but complain.
 		if oldDeltas == nil {
-			panic(fmt.Sprintf("Impossible dedupDeltas for id=%q: oldDeltas=%#+v, obj=%#+v; ignoring", id, oldDeltas, obj))
+			logs.Infof("Impossible dedupDeltas for id=%q: oldDeltas=%#+v, obj=%#+v; ignoring", id, oldDeltas, obj)
 			return nil
 		}
-		panic(fmt.Sprintf("Impossible dedupDeltas for id=%q: oldDeltas=%#+v, obj=%#+v; breaking invariant by storing empty Deltas", id, oldDeltas, obj))
+		logs.Infof("Impossible dedupDeltas for id=%q: oldDeltas=%#+v, obj=%#+v; breaking invariant by storing empty Deltas", id, oldDeltas, obj)
 		f.items[id] = newDeltas
 		return fmt.Errorf("Impossible dedupDeltas for id=%q: oldDeltas=%#+v, obj=%#+v; broke DeltaFIFO invariant by storing empty Deltas", id, oldDeltas, obj)
 	}
@@ -591,7 +592,7 @@ func (f *DeltaFIFO) Pop(process PopProcessFunc) (interface{}, error) {
 		item, ok := f.items[id]
 		if !ok {
 			// This should never happen
-			panic(fmt.Sprintf("Inconceivable! %q was in f.queue but not f.items; ignoring.", id))
+			logs.Errorf("Inconceivable! %q was in f.queue but not f.items; ignoring.", id)
 			continue
 		}
 		delete(f.items, id)
@@ -616,7 +617,7 @@ func (f *DeltaFIFO) Pop(process PopProcessFunc) (interface{}, error) {
 // the one present in the last delta in `f.items`. If there is no delta for K
 // in `f.items`, it is the object in `f.knownObjects`
 func (f *DeltaFIFO) Replace(list []interface{}, _ string) error {
-	fmt.Println("deltafifo Replace list:", list)
+	logs.Tracef("deltafifo Replace list:", list)
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	keys := make(sets.Set[string], len(list))
@@ -630,7 +631,7 @@ func (f *DeltaFIFO) Replace(list []interface{}, _ string) error {
 	// Add Sync/Replaced action for each new item.
 	for _, item := range list {
 		key, err := f.KeyOf(item)
-		fmt.Println("deltafifo Replace item:", item, "key:", key)
+		logs.Tracef("deltafifo Replace item:", item, "key:", key)
 		if err != nil {
 			return KeyError{item, err}
 		}
@@ -678,10 +679,10 @@ func (f *DeltaFIFO) Replace(list []interface{}, _ string) error {
 			deletedObj, exists, err := f.knownObjects.GetByKey(k)
 			if err != nil {
 				deletedObj = nil
-				panic(fmt.Sprintf("Unexpected error %v during lookup of key %v, placing DeleteFinalStateUnknown marker without object", err, k))
+				logs.Infof("Unexpected error %v during lookup of key %v, placing DeleteFinalStateUnknown marker without object", err, k)
 			} else if !exists {
 				deletedObj = nil
-				panic(fmt.Sprintf("Key %v does not exist in known objects store, placing DeleteFinalStateUnknown marker without object", k))
+				logs.Infof("Key %v does not exist in known objects store, placing DeleteFinalStateUnknown marker without object", k)
 			}
 			queuedDeletions++
 			if err := f.queueActionLocked(Deleted, DeletedFinalStateUnknown{k, deletedObj}); err != nil {
@@ -721,10 +722,10 @@ func (f *DeltaFIFO) Resync() error {
 func (f *DeltaFIFO) syncKeyLocked(key string) error {
 	obj, exists, err := f.knownObjects.GetByKey(key)
 	if err != nil {
-		panic(fmt.Sprintf("Unexpected error %v during lookup of key %v, unable to queue object for sync", err, key))
+		logs.Infof("Unexpected error %v during lookup of key %v, unable to queue object for sync", err, key)
 		return nil
 	} else if !exists {
-		panic(fmt.Sprintf("Key %v does not exist in known objects store, unable to queue object for sync", key))
+		logs.Infof("Key %v does not exist in known objects store, unable to queue object for sync", key)
 		return nil
 	}
 

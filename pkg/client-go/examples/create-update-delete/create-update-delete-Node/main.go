@@ -114,9 +114,12 @@ func main() {
 	}
 
 	patchNode, err := json.Marshal(map[string]interface{}{
-		"Spec": map[string]interface{}{
-			"NodeName": "patch-node-name",
-			"HostName": "master",
+		"objectMeta": map[string]interface{}{
+			"namespace": "test",
+		},
+		"spec": map[string]interface{}{
+			"nodeName": "patch-node-name",
+			"hostName": "master",
 		},
 	})
 
@@ -141,26 +144,26 @@ func main() {
 			select {
 			case event, ok := <-watchChan:
 				if !ok {
-					fmt.Println("watchChan closed")
+					logs.Tracef("watchChan closed")
 					return
 				}
 
 				// 打印事件类型和对象的相关信息
-				fmt.Println("接收到事件类型:", event.Type)
+				logs.Tracef("接收到事件类型:", event.Type)
 				switch event.Type {
 				case watch.Added:
-					fmt.Println("资源被添加: ", event.Object)
+					logs.Tracef("资源被添加: ", event.Object)
 				case watch.Modified:
-					fmt.Println("资源被修改: ", event.Object)
+					logs.Tracef("资源被修改: ", event.Object)
 				case watch.Deleted:
-					fmt.Println("资源被删除: ", event.Object)
+					logs.Tracef("资源被删除: ", event.Object)
 				case watch.Error:
-					fmt.Println("发生错误: ", event.Object)
+					logs.Tracef("发生错误: ", event.Object)
 				case watch.Bookmark:
-					fmt.Println("收到Bookmark", event.Object)
+					logs.Tracef("收到Bookmark", event.Object)
 
 				default:
-					fmt.Println("未识别的事件类型: ", event.Type)
+					logs.Tracef("未识别的事件类型: ", event.Type)
 				}
 			}
 		}
@@ -189,8 +192,8 @@ func main() {
 		logs.Info(fmt.Errorf("Failed to get : %v", getErr))
 	}
 
-	fmt.Println("get result", result)
-	fmt.Println("修改前的result.Spec.NodeName：", result.Spec.NodeName)
+	logs.Tracef("get result", result)
+	logs.Tracef("修改前的result.Spec.NodeName：", result.Spec.NodeName)
 
 	result.Spec.NodeName = "updatedNodeName"
 	_, updateErr := nodesClient.Update(context.TODO(), result, metav1.UpdateOptions{})
@@ -198,12 +201,12 @@ func main() {
 		logs.Error(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	fmt.Println("修改后的result.Spec.NodeName：", result.Spec.NodeName)
-	fmt.Println("Updated node...")
+	logs.Tracef("修改后的result.Spec.NodeName：", result.Spec.NodeName)
+	logs.Tracef("Updated node...")
 	prompt()
 
 	// List 所有Node
-	fmt.Println("listing 筛选的node")
+	logs.Tracef("listing 筛选的node")
 	lstOpts := metav1.ListOptions{
 		LabelSelector: "environment",
 	}
@@ -258,12 +261,10 @@ func main() {
 		logs.Trace(d)
 	}
 
-	fmt.Println("listing done")
-
-	select {}
+	logs.Tracef("listing done")
 
 	//DeleteCollection 删除所有Spec.NodeName=demo-node的Node
-	fmt.Println("deleting collection")
+	logs.Tracef("deleting collection")
 	lstOpts = metav1.ListOptions{
 		FieldSelector: "Spec.NodeName=demo-node",
 	}
@@ -271,7 +272,7 @@ func main() {
 	if err != nil {
 		logs.Error(err)
 	}
-	fmt.Println("Deleted collection...")
+	logs.Tracef("Deleted collection...")
 	prompt()
 
 	// DeleteCollection 之后再次 List所有Node
@@ -285,6 +286,8 @@ func main() {
 		logs.Trace(d)
 	}
 	logs.Trace("listing done")
+
+	select {}
 }
 
 // From K8s

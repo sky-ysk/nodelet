@@ -33,7 +33,11 @@ type DeviceList struct {
 	Items []Device
 }
 
-//todo：ResourceList 和types中的ResourceList撞了
+type ResourceRequirementList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []ResourceRequirement
+}
 
 type DataList struct {
 	meta.TypeMeta
@@ -167,7 +171,6 @@ func (in *TaskList) DeepCopyInto(out *TaskList) {
 		}
 	}
 }
-
 func (in *TaskList) DeepCopy() *TaskList {
 	if in == nil {
 		return nil
@@ -176,7 +179,6 @@ func (in *TaskList) DeepCopy() *TaskList {
 	in.DeepCopyInto(out)
 	return out
 }
-
 func (in *TaskList) DeepCopyObject() runtime.Object {
 	if c := in.DeepCopy(); c != nil {
 		return c
@@ -536,6 +538,54 @@ func (in *SceneList) DeepCopy() *SceneList {
 }
 
 func (in *SceneList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+func (in *ResourceRequirement) DeepCopyInto(out *ResourceRequirement) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
+	in.Status.DeepCopyInto(&out.Status)
+}
+func (in *ResourceRequirement) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+func (in *ResourceRequirement) DeepCopy() *ResourceRequirement {
+	if in == nil {
+		return nil
+	}
+	out := new(ResourceRequirement)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *ResourceRequirementList) DeepCopyInto(out *ResourceRequirementList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]ResourceRequirement, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+func (in *ResourceRequirementList) DeepCopy() *ResourceRequirementList {
+	if in == nil {
+		return nil
+	}
+	out := new(ResourceRequirementList)
+	in.DeepCopyInto(out)
+	return out
+}
+func (in *ResourceRequirementList) DeepCopyObject() runtime.Object {
 	if c := in.DeepCopy(); c != nil {
 		return c
 	}

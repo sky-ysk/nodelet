@@ -8,6 +8,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/component-base/logs"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
@@ -105,7 +106,7 @@ func (r *Reflector) Run(stopCh <-chan struct{}) {
 	//对于长时间未响应的数据，或者频繁请求的数据，通过指数退避算法将数据后移
 	wait.BackoffUntil(func() {
 		if err := r.ListAndWatch(stopCh); err != nil {
-			panic(err)
+			logs.Info(err)
 		}
 	}, r.backoffManager, true, stopCh)
 }
@@ -124,7 +125,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			return nil
 		}
 		if err != nil {
-			panic(fmt.Sprintf("The watchlist request ended with an error, falling back to the standard LIST/WATCH semantics because making progress is better than deadlocking, err = %v", err))
+			logs.Errorf("The watchlist request ended with an error, falling back to the standard LIST/WATCH semantics because making progress is better than deadlocking, err = %v", err)
 			fallbackToList = true
 			// ensure that we won't accidentally pass some garbage down the watch.
 			w = nil
@@ -250,7 +251,7 @@ func (r *Reflector) list(stopCh <-chan struct{}) error {
 
 	list, err := r.listerWatcher.List(options)
 	if err != nil {
-		panic(fmt.Sprintf("%s: failed to list: %v", r.name, err))
+		logs.Infof("%s: failed to list: %v", r.name, err)
 		return err
 	}
 
@@ -355,9 +356,8 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 	}
 	//r.setIsLastSyncResourceVersionUnavailable(false)
 
-	fmt.Println("开始进行replace")
 	if err := r.store.Replace(temporaryStore.List(), ""); err != nil {
-		fmt.Println("failed to replace temporary store:", err)
+		logs.Infof("failed to replace temporary store:", err)
 		return nil, fmt.Errorf("unable to sync watch-list result: %w", err)
 	}
 
@@ -418,16 +418,16 @@ loop:
 			}
 			// 错误事件直接引发 panic
 			if event.Type == watch.Error {
-				panic(fmt.Sprintf("event.Type == watch.Error"))
+				logs.Info("event.Type == watch.Error")
 			}
 			// 类型验证
 			if expectedType != nil && reflect.TypeOf(event.Object) != nil && expectedType != reflect.TypeOf(event.Object) {
-				fmt.Println("类型验证不匹配的事件")
+				logs.Info("类型验证不匹配的事件")
 				continue // 跳过不匹配的事件
 			}
 			// GVK 验证
 			if expectedGVK != nil && *expectedGVK != event.Object.GetObjectKind().GroupVersionKind() {
-				fmt.Println("GVK验证不匹配的事件")
+				logs.Info("GVK验证不匹配的事件")
 				continue // 跳过不匹配的事件
 			}
 			//meta, err := meta.Accessor(event.Object)
@@ -440,15 +440,15 @@ loop:
 			switch event.Type {
 			case watch.Added:
 				if err := store.Add(event.Object); err != nil {
-					panic(fmt.Errorf("unable to add watch event object: %#v", event.Object))
+					logs.Errorf("unable to add watch event object: %#v", event.Object)
 				}
 			case watch.Modified:
 				if err := store.Update(event.Object); err != nil {
-					panic(fmt.Errorf("unable to update watch event object: %#v", event.Object))
+					logs.Errorf("unable to update watch event object: %#v", event.Object)
 				}
 			case watch.Deleted:
 				if err := store.Delete(event.Object); err != nil {
-					panic(fmt.Errorf("unable to delete watch event object: %#v", event.Object))
+					logs.Errorf("unable to delete watch event object: %#v", event.Object)
 				}
 			case watch.Bookmark:
 				// A `Bookmark` means watch has synced here, just update the resourceVersion
@@ -457,7 +457,7 @@ loop:
 				//}
 				watchListBookmarkReceived = true
 			default:
-				panic(fmt.Errorf("unknown watch event: %#v", event))
+				logs.Errorf("unknown watch event: %#v", event)
 			}
 			//setLastSyncResourceVersion(resourceVersion)
 			if watchListBookmarkReceived {

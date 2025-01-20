@@ -595,7 +595,7 @@ func decodeObj(codec runtime.Codec, versioner storage.Versioner, data []byte, re
 	obj, err := runtime.Decode(codec, []byte(data))
 	if err != nil {
 		if fatalOnDecodeError {
-			panic(err)
+			logs.Error(err)
 		}
 		return nil, err
 	}

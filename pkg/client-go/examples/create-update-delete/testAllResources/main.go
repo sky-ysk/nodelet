@@ -20,10 +20,10 @@ import (
 // 与API Server通信，并执行基础操作
 
 func main() {
-	logs.Init("client-go-examples")
+	logs.Init("client-go-testAllResources")
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	//fmt.Println(scheme)
+	logs.Tracef("scheme: %v", scheme)
 	//参数配置
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
@@ -41,7 +41,7 @@ func main() {
 		},
 		UserAgent: "defaultUserAgent",
 		Transport: &http.Transport{
-			MaxIdleConns:        1000,             // 最大空闲连接数
+			MaxIdleConns:        10000,            // 最大空闲连接数
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
@@ -64,7 +64,7 @@ func main() {
 	node := &apis.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-nodes",
-			Namespace: apis.NamespaceAll,
+			Namespace: "test",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Node",

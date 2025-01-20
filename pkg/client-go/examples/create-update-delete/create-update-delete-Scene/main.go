@@ -13,6 +13,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
 	"os"
@@ -25,7 +26,9 @@ import (
 // 验证xxx动词
 // 与API Server通信，并执行基础操作
 
+// 尚未与api server测试
 func main() {
+	logs.Init("main")
 	//启动模拟 HTTP 服务器
 	go func() {
 		server := createMockAPIServer()
@@ -74,11 +77,12 @@ func main() {
 	// 获取访问Scene的客户端
 	// 默认访问的Namespace是 ""
 
-	scenesClient := clientSet.Core().Scenes("")
+	scenesClient := clientSet.Core().Scenes("test")
 
 	scene1 := &apis.Scene{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "demo-scenes",
+			Name:      "demo-scenes",
+			Namespace: "test",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Scene",
@@ -168,7 +172,8 @@ func createMockAPIServer() *http.Server {
 	scenes := make(map[string]apis.Scene)
 
 	// 处理scene的集合操作（POST 创建,List 和 Watch）
-	mux.HandleFunc("/apis/resources/v1/scenes", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/apis/resources/v1/namespaces/test/scenes", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Received request:", r.Method, r.URL.Path)
 		query := r.URL.Query()
 		iswatch := query.Get("watch")
 		fieldSelector := query.Get("fieldSelector")
@@ -226,7 +231,6 @@ func createMockAPIServer() *http.Server {
 				http.Error(w, "Unsupported Content-Type", http.StatusUnsupportedMediaType)
 				return
 			}
-
 			// 解析请求体中的 Scene 数据
 			newScene := &apis.Scene{}
 			if err := json.NewDecoder(r.Body).Decode(&newScene); err != nil {
@@ -256,7 +260,7 @@ func createMockAPIServer() *http.Server {
 		}
 	})
 	// 处理scene的单个操作（单个的GET 查询和 PUT、Patch 更新）
-	mux.HandleFunc("/apis/resources/v1/scenes/demo-scenes", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/apis/resources/v1/namespaces/test/scenes/demo-scenes", func(w http.ResponseWriter, r *http.Request) {
 		sceneName := "demo-scenes" // 固定为 demo-scenes
 
 		switch r.Method {

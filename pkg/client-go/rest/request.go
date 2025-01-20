@@ -257,7 +257,7 @@ func (r *Request) newStreamWatcher(resp *http.Response) (watch.Interface, runtim
 	contentType := resp.Header.Get("Content-Type")
 	mediaType, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		//panic("Unexpected content type from the server")
+		logs.Error("Unexpected content type from the server")
 	}
 
 	// 获取解码器和流式序列化器
@@ -323,6 +323,7 @@ func (r *Request) Body(obj interface{}) *Request {
 	default:
 		r.err = fmt.Errorf("unknown type used for body: %+v", obj)
 	}
+	logs.Trace("Body to string:", string(r.bodyBytes))
 	return r
 }
 
@@ -492,12 +493,12 @@ func (r *Request) tryThrottleWithInfo(ctx context.Context, retryInfo string) err
 	}
 
 	if latency > longThrottleLatency {
-		panic(message)
+		logs.Error(message)
 	}
 	if latency > extraLongThrottleLatency {
 		// If the rate limiter latency is very high, the log message should be printed at a higher log level,
 		// but we use a throttled logger to prevent spamming.
-		panic(message)
+		logs.Error(message)
 	}
 
 	return nil
@@ -530,6 +531,8 @@ func (r *Request) newHTTPRequest(ctx context.Context) (*http.Request, error) {
 
 	//在r.URL()中可以设置url的命名空间、资源、资源名称，例如resorceName 在查找资源时会用到，但是在创建资源时不会用到
 	url := r.URL().String()
+	logs.Tracef("url:", url)
+	logs.Debugf("body to string:", string(r.bodyBytes))
 	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, newDNSMetricsTrace(ctx)), r.verb, url, body)
 	if err != nil {
 		return nil, err
@@ -568,7 +571,7 @@ func (r *Request) transformResponse(ctx context.Context, resp *http.Response, re
 
 	if err != nil {
 		// Handle error while reading response body
-		panic(fmt.Errorf("Error reading response body: %v", err))
+		logs.Errorf("Error reading response body: %v", err)
 		return Result{
 			err: fmt.Errorf("unexpected error reading response body: %w", err),
 		}
@@ -753,7 +756,7 @@ func (r Result) Get() (runtime.Object, error) {
 	case *metav1.Status:
 		// any status besides StatusSuccess is considered an error.
 		if t.Status != metav1.StatusSuccess {
-			panic("出现了除StatusSuccess之外的状态")
+			logs.Info("出现了除StatusSuccess之外的状态")
 		}
 	}
 	return out, nil

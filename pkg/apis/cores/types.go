@@ -553,24 +553,14 @@ type EnvVar struct {
 	// TODO: 动态获取相关字段
 }
 
-//type Resource struct {
-//	meta.TypeMeta
-//
-//	meta.ObjectMeta
-//
-//	Spec ResourceSpec `json:"spec,omitempty" yaml:"spec"`
-//
-//	Status ResourceStatus `json:"status,omitempty" yaml:"status"`
-//}
-
-type Device struct {
+type ResourceRequirement struct {
 	meta.TypeMeta
 
 	meta.ObjectMeta
 
-	Spec DeviceSpec `json:"spec,omitempty" yaml:"spec"`
+	Spec ResourceSpec `json:"spec,omitempty" yaml:"spec"`
 
-	Status DeviceStatus `json:"status,omitempty" yaml:"status"`
+	Status ResourceStatus `json:"status,omitempty" yaml:"status"`
 }
 
 type Data struct {
@@ -594,11 +584,244 @@ type Scene struct {
 }
 
 // TODO: 后续补充完整
-type ResourceSpec struct{}
-type ResourceStatus struct{}
 
-type DeviceSpec struct{}
-type DeviceStatus struct{}
+// TODO:node字段
+type ResourceSpec struct {
+	// 描述期待占用多少资源 资源的单位是什么
+	ExpectedValue     float64
+	ExpectedValueUnit ResourceUnit
+
+	// 描述资源的固有属性
+	Type     ResourceType   // 类型：网络、计算、存储
+	Name     string         // 名称：cpu、gpu、内存、硬盘
+	Unit     ResourceUnit   // 资源的单位
+	Detail   ResourceDetail // 资源的细致描述
+	Capacity float64        // 资源的总量
+	NodeId   string         // 资源属于哪个node
+}
+type ResourceDetail struct {
+	Type string
+}
+type ResourceStatus struct {
+	// 资源的使用量和他的单位
+	Usage     float64
+	UsageUnit ResourceUnit
+
+	// 剩余的资源和单位
+	Reserved     float64
+	ReservedUnit ResourceUnit
+}
+
+type ResourceType string
+
+const (
+	Compute ResourceType = "compute"
+	Network ResourceType = "network"
+	Storage ResourceType = "storage"
+)
+
+type ResourceUnit string
+
+const (
+	StorageKB       ResourceUnit = "KB"
+	StorageMB       ResourceUnit = "MB"
+	StorageGB       ResourceUnit = "GB"
+	StorageTB       ResourceUnit = "TB"
+	ComputeCPU      ResourceUnit = "cpu"
+	ComputeMilliCPU ResourceUnit = "milliCPU"
+	ComputeNanoCPU  ResourceUnit = "nanocpu"
+	ComputeGPU      ResourceUnit = "gpu"
+	NetworkGbps     ResourceUnit = "Gbps"
+	NetworkMbps     ResourceUnit = "Mbps"
+	NetworkKbps     ResourceUnit = "Kbps"
+	Networkbps      ResourceUnit = "bps"
+)
+
+// 增加设备定义
+type Device struct {
+	//
+	meta.TypeMeta
+
+	//
+	meta.ObjectMeta
+
+	//
+	Spec DeviceSpec
+
+	//
+	Status DeviceStatus
+}
+
+type DevicePhase string
+
+const (
+	DeviceInit         DevicePhase = "Init"
+	DeviceRunning      DevicePhase = "Running"
+	DeviceIdle         DevicePhase = "Idle"
+	DeviceError        DevicePhase = "Error"
+	DeviceDisconnected DevicePhase = "Disconnected"
+)
+
+// 对设备能力的描述
+type DeviceDesc struct {
+	// 在任务部署时，根据Label的内容查找所需设备
+	Label []string
+	// +Optional
+	Docs string
+}
+
+type AccessType string
+
+const (
+	AccessByAbility   AccessType = "ByAbility"
+	AccessByRmf       AccessType = "ByRmf"
+	AccessByCustomize AccessType = "ByCustomize"
+)
+
+// 设备的访问方式
+type AccessMethod struct {
+	// Type
+	Type AccessType
+
+	// 访问方式对应的URL
+	//   对于Customize类型，URL对应部署脚本的地址
+	URL string
+
+	// 设备组
+	//  对于RMF类型，Group对应RMF Fleets
+	Group string
+
+	// 设备别名
+	//   部分情况下，RMF中的设备名与系统中设备名不一致
+	//   默认情况下，Alias应该与Name相同
+	Alias string
+}
+
+type PropertyType string
+
+const (
+	BoolType    PropertyType = "bool"
+	StringType  PropertyType = "String"
+	IntegerType PropertyType = "Integer"
+	DoubleType  PropertyType = "Double"
+	URLType     PropertyType = "URL"
+	ComposeType PropertyType = "Compose"
+)
+
+// 设备的属性
+// TODO: 任务部署时，通过类似Device.Property的方式来寻址
+type Property struct {
+	// Name
+	Name string
+
+	// Type
+	Type PropertyType
+
+	// TODO: 格式校验
+	Value string
+
+	SubProperty []SubProperty
+}
+
+// Compose类型的设备属性
+// 设备属性的子属性，如Location类型，具有子属性Location.X
+type SubProperty struct {
+	// Name
+	Name string
+
+	// Type
+	Type PropertyType
+
+	// TODO: 格式校验
+	Value string
+}
+
+type LockType string
+
+const (
+	SharedLock LockType = "Shared"
+	MutexLock  LockType = "Mutex"
+	NoneLock   LockType = "None"
+)
+
+// 设备资源锁
+type Lock struct {
+	// 锁类型
+	Type LockType
+
+	// 调度时 ref为0时释放
+	Lock bool
+
+	// 资源引用数 部署时
+	Ref int
+}
+
+// 设备事件描述
+type DeviceEvent struct {
+	// EventCode, 时间码，对应事件处理的方案
+	Code int
+
+	// 事件描述
+	Desc string
+
+	// TODO: 额外参数, 设备的上下文状态
+}
+
+type DeviceSpec struct {
+	// 设备名称，每个Node上的设备，名称应该唯一
+	Name string
+
+	// 对设备的描述
+	Desc DeviceDesc
+
+	// 设备的关联Node，每个设备需要与一个Node相关联
+	Node string
+
+	// 设备的访问方式
+	AccessMethod AccessMethod
+
+	// 父设备
+	AttachedDevice string
+
+	// 子设备
+	SubDevices []string
+
+	// 设备的期望属性
+	ExpectedProperties map[string]Property
+}
+
+type DeviceStatus struct {
+	// DeviceID, Name+NodeID
+	DeviceID string
+
+	// 正在使用Device的ActionID
+	ActionID string
+
+	// 设备的实例ID
+	//  对于Ability来说，InstanceID对应Ability的InstanceID
+	//  对于RMF来说，InstanceID对应RMF的TaskID
+	InstanceID string
+
+	// 设备的运行阶段
+	Phase DevicePhase
+
+	// 运行时中，设备的实际状态
+	// 当Phase与Status不一致时，机器人出现运行错误
+	Status string
+
+	// 设备的实际属性
+	Properties map[string]Property
+
+	// 设备资源锁状态
+	Lock Lock
+
+	// 设备事件描述
+	Events []DeviceEvent
+
+	// 上次成功获取设备状态的时间
+	// 如果长时间不能获取设备的状态，则认为设备离线
+	LastTime Time
+}
 
 type DataSpec struct {
 	// 对于文件类型的Data
@@ -608,8 +831,59 @@ type DataSpec struct {
 }
 type DataStatus struct{}
 
-type SceneSpec struct{}
-type SceneStatus struct{}
+// SceneSpec 描述scene的固有属性和期待属性
+type SceneSpec struct {
+	// 每一个scene的标识
+	SceneID string
+
+	// scene的类型 是一个地点还是一个物品
+	Type SceneType
+
+	// 期待属性
+	ExpectedProperty map[string]Property
+
+	// 场景的描述（不可变属性）
+	Desc SceneDesc
+}
+
+type SceneDesc struct {
+	Label []string
+	Value map[string]string
+}
+
+type SceneType string
+
+const (
+	ObjectType   SceneType = "Object"
+	PositionType SceneType = "Position"
+)
+
+/*
+	Object的位置信息存储在SceneStatus.Property中
+	Position的位置信息存储在SceneSpec.SceneDesc中
+*/
+
+// SceneStatus 描述scene的动态属性
+type SceneStatus struct {
+	// 更新的方式和时间
+	UpdateMethod string
+	UpdateTime   Time
+
+	// 关联的场景
+	AttachedScene string
+
+	// 关联的设备
+	AttachedDevice string
+
+	// 关联的任务
+	AttachedTask string
+
+	// 实时属性
+	Property map[string]Property
+
+	// 锁
+	Lock Lock
+}
 
 // Action所需执行环境
 type Runtime struct {
