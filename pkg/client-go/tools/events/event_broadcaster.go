@@ -73,32 +73,33 @@ func (e *eventBroadcaster) StartEventWatcher(eventHandler func(*apis.Event)) (fu
 	watcher, err := e.Watch()
 	if err != nil {
 		// watcher初始化失败
-		logs.Error(err, "Unable start event watcher")
+		logs.Error(err, "Unable start event watcher (will not retry!)")
 		return nil, err
 	}
 	e.wg.Add(1)
 	go func() {
 		defer e.wg.Done()
-		logs.Info("---go routine---")
-		logs.Info("---start event watcher---")
+		logs.Info("---go routine : start event watcher---")
 		for {
 			select {
 			case <-e.cancelationCtx.Done():
 				watcher.Stop()
 				return
-			case watchEvent := <-watcher.ResultChan():
-				logs.Info("watch到新event，交给handler处理")
+			case watchEvent := <-watcher.ResultChan(): // 从 watcher result channel 中取出 event
+				logs.Info("watcher接收到event,交给handler处理")
 				event, ok := watchEvent.Object.(*apis.Event)
 				if !ok {
+					logs.Error("该事件被以错误形式生成")
 					continue
 				}
-				eventHandler(event)
+				eventHandler(event) // 对 event 进行处理 (发送到 apiserver 或 日志)
 			}
 		}
 	}()
 	return watcher.Stop, nil
 }
 
+// 预制的handle，将event发送至apiserver
 func (e *eventBroadcaster) StartRecordingToSink(ctx context.Context, sink EventSink) error {
 	eventHandler := func(event *apis.Event) {
 		e.recordToSink(sink, event)
@@ -120,26 +121,47 @@ func (e *eventBroadcaster) recordToSink(sink EventSink, event *apis.Event) {
 	eventCopy := *event
 	event = &eventCopy
 	// todo:对事件进行预处理，聚合，并判断事件类型（add/patch/update..)
+	// result, err := eventCorrelator.EventCorrelate(event)
 
-	// 假定为新增事件
 	var newEvent *apis.Event
 	var err error
-	// event.ResourceVersion = ""
-	newEvent, err = sink.Create(event)
+
+	if event.Count > 1 {
+		// 应该用patch
+		newEvent, err = sink.Update(event)
+	} else {
+		event.ResourceVersion = ""
+		newEvent, err = sink.Create(event)
+	}
 	if err == nil {
-		UpdateState(newEvent) //todo imply
+		UpdateState(newEvent) //todo: imply
 	}
 	// todo:失败后的重传
-
+	// tries := 0
 }
 
 func UpdateState(event *apis.Event) {
 
 }
+func (e *eventBroadcaster) StartLogging(ctx context.Context, logf func(format string, args ...interface{})) error {
+	eventHandler := func(e *apis.Event) {
+		logf("Event(%#v): type: '%v' reason: '%v' %v", e.InvolvedObject, e.Type, e.Reason, e.Message)
+	}
+	stopWatcher, err := e.StartEventWatcher(eventHandler)
+	if err != nil {
+		return err
+	}
+	go func() {
+		<-ctx.Done()
+		stopWatcher()
+	}()
+	return nil
+}
 
 // 实例Recorder，与该broadcaster绑定
 func (e *eventBroadcaster) NewRecorder(scheme *schema.Schema, source apis.EventSource) EventRecorder {
 	logs.Info("fn NewRecorder")
+	// todo: 将当前的node name写入eventsource
 	return &recorder{scheme, source, e.Broadcaster}
 }
 

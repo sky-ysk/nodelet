@@ -3,6 +3,8 @@ package core
 import (
 	context "context"
 
+	"hit.edu/framework/pkg/apimachinery/types"
+	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apis/meta/internalversion/scheme"
@@ -24,6 +26,9 @@ type EventInterface interface {
 	Delete(ctx context.Context, name string, opts meta.DeleteOptions) error
 	Get(ctx context.Context, name string, opts meta.GetOptions) (*apis.Event, error)
 	List(ctx context.Context, opts meta.ListOptions) (*apis.EventList, error)
+	Watch(ctx context.Context, opts meta.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts meta.PatchOptions, subresources ...string) (result *apis.Event, err error)
+
 	// Watch(ctx context.Context, opts runtime.ListOptions) (watch.Interface, error)
 	EventExpansion
 }

@@ -485,7 +485,7 @@ func (in *Event) DeepCopyInto(out *Event) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	in.ObjectReference.DeepCopyInto(&out.ObjectReference)
+	in.InvolvedObject.DeepCopyInto(&out.InvolvedObject)
 	in.Source.DeepCopyInto(&out.Source)
 }
 
@@ -520,6 +520,21 @@ func (in *EventList) DeepCopyObject() runtime.Object {
 
 func (in *EventSource) DeepCopyInto(out *EventSource) {
 	*out = *in
+}
+
+func (in *ObjectReference) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+func (in *ObjectReference) DeepCopy() *ObjectReference {
+	if in == nil {
+		return nil
+	}
+	out := new(ObjectReference)
+	in.DeepCopyInto(out)
+	return out
 }
 
 func (in *ObjectReference) DeepCopyInto(out *ObjectReference) {

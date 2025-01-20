@@ -265,7 +265,7 @@ func (m *Broadcaster) loop() {
 			event.Object.(functionFakeRuntimeObject)()
 			continue
 		}
-		m.distribute(event)
+		m.distribute(event) // 将 event 分发给 watcher
 	}
 	m.closeAll()
 	m.distributing.Done()
@@ -277,7 +277,7 @@ func (m *Broadcaster) distribute(event Event) {
 	if m.fullChannelBehavior == DropIfChannelFull {
 		for _, w := range m.watchers {
 			select {
-			case w.result <- event:
+			case w.result <- event: // 将 event 发送到 watcher 的 result channel，等待 watcher 进行处理
 			case <-w.stopped:
 			default: // Don't block if the event can't be queued.
 			}

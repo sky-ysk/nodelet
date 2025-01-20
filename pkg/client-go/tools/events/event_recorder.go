@@ -22,14 +22,15 @@ type recorder struct {
 
 	*watch.Broadcaster
 
-	// reportingController string
-	// reportingInstance   string
-
 	// clock clock.Clock
 }
 
-func (recorder *recorder) Eventf(regarding runtime.Object, eventtype, reason, message string, args ...interface{}) {
-	recorder.generateEvent(regarding, eventtype, reason, message)
+func (recorder *recorder) Event(object runtime.Object, eventtype, reason, message string) {
+	recorder.generateEvent(object, eventtype, reason, message)
+}
+
+func (recorder *recorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
+	recorder.Event(object, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
 
 func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason, message string) {
@@ -38,7 +39,10 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 	// 	logs.V2().Error(err, "Could not construct reference, will not report event", "object", object, "eventType", eventtype, "reason", reason, "message", message)
 	// 	return
 	// }
-	ref := &apis.ObjectReference{}
+	ref, ok := object.(*apis.ObjectReference)
+	if !ok {
+		ref = &apis.ObjectReference{}
+	}
 
 	if !ValidateEventType(eventtype) {
 		logs.Error(nil, "Unsupported event type", "eventType", eventtype)
@@ -65,18 +69,22 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 
 func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason, message string) *apis.Event {
 	t := apis.Time{Time: time.Now()}
-	namespace := ref.Namespace
-	if namespace == "" {
-		// namespace = meta.NamespaceDefault
-	}
+	// namespace := ref.Namespace
+	// if namespace == "" {
+	// 	// namespace = meta.NamespaceDefault
+	// }
 	return &apis.Event{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
-			Namespace: namespace,
+			Namespace: "",
 		},
-		// InvolvedObject: *ref,
-		Reason:  reason,
-		Message: message,
+		TypeMeta: meta.TypeMeta{
+			Kind:       "Event",
+			APIVersion: "resources/v1",
+		},
+		InvolvedObject: *ref,
+		Reason:         reason,
+		Message:        message,
 		// FirstTimestamp: t,
 		// LastTimestamp:  t,
 		Count: 1,

@@ -5,6 +5,7 @@ import (
 
 	// "hit.edu/framework/pkg/apimachinery/runtime"
 	// "hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -33,14 +34,8 @@ func (e *events) UpdateForEventSink(event *apis.Event) (*apis.Event, error) {
 }
 
 func (e *events) PatchForEventSink(event *apis.Event, data []byte) (*apis.Event, error) {
-	result := &apis.Event{}
-	// err := e.GetClient().Put().
-	// 	Namespace(event.Namespace).
-	// 	Resource(EventResource).
-	// 	Body(event).
-	// 	Do(context.TODO()).
-	// 	Into(result)
-	return result, nil
+	result, err := e.Patch(context.TODO(), event.GetName(), types.StrategicMergePatchType, data, meta.PatchOptions{})
+	return result, err
 }
 
 // EventSinkImpl定义了上报事件的处理函数

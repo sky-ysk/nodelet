@@ -10,10 +10,10 @@ import (
 
 type EventRecorder interface {
 	// The resulting event will be created in the same namespace as the reference object.
-	// Event(object runtime.Object, eventtype, reason, message string)
+	Event(object runtime.Object, eventtype, reason, message string)
 
 	// // Eventf is just like Event, but with Sprintf for the message field.
-	Eventf(regarding runtime.Object, eventtype, reason, message string, args ...interface{})
+	Eventf(object runtime.Object, eventtype, reason, message string, args ...interface{})
 
 	// // AnnotatedEventf is just like eventf, but with annotations attached
 	// AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{})
@@ -31,7 +31,7 @@ type EventBroadcaster interface {
 
 	// StartLogging starts sending events received from this EventBroadcaster to the given logging
 	// function. The return value can be ignored or used to stop recording, if desired.
-	// StartLogging(logf func(format string, args ...interface{})) watch.Interface
+	StartLogging(ctx context.Context, logf func(format string, args ...interface{})) error
 
 	// StartStructuredLogging starts sending events received from this EventBroadcaster to the structured
 	// logging function. The return value can be ignored or used to stop recording, if desired.
