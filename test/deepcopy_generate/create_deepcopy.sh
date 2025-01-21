@@ -1,10 +1,7 @@
 #!/bin/bash
 
-
-# 进行自动生成
 go run sigs.k8s.io/controller-tools/cmd/controller-gen object paths=types.go
 
-# 设置文件路径
 file1="zz_generated.deepcopy.go"  # 自动生成的深拷贝方法
 file2="add_deepcopy.go"  # 额外补充的函数
 output_file="deepcopy.go"  # 输出文件

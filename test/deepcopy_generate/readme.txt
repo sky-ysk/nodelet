@@ -18,6 +18,6 @@
 
 通过命令运行脚本，生成的深拷贝方法存放在deepcopy.go文件中
 ./create_deepcopy.sh
-将生成的文件替换掉外面的deepcopy.go文件即可
+将生成的文件替换掉deepcopy.go文件即可
 
 
