@@ -25,7 +25,7 @@ func NewTestGenericStoreRegistry(t *testing.T) (storagebackend.DestroyFunc, *Sto
 func newTestGenericStoreRegistry(t *testing.T, scheme *runtime.Scheme) (storagebackend.DestroyFunc, *Store) {
 	podPrefix := "/nodes"
 	server, sc := storagetesting.NewUnsecuredEtcd3TestClientServer(t)
-	strategy := &testRESTStrategy{scheme, true}
+	strategy := &testRESTStrategy{scheme, false}
 
 	newFunc := func() runtime.Object { return &apis.Node{} }
 	newListFunc := func() runtime.Object { return &apis.NodeList{} }

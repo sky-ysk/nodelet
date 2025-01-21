@@ -1,3 +1,4 @@
+// +k8s:deepcopy-gen=package
 package apis
 
 import (
@@ -15,54 +16,87 @@ const (
 // 节点资源信息
 // TODO: 接口版本
 
+type Quantity struct {
+	// 定量数据
+	i int64
+
+	// 单位
+	format string
+}
+
 // TODO: 独立配置
+// +k8s:deepcopy-gen=false
 type Time struct {
 	time.Time `json:"time" yaml:"time"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type NodeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	// TODO: List Options
+	Items []Node `json:"items" yaml:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type WorkflowList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Workflow `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TaskList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Task `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type GroupList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Group `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ActionList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Action `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SceneList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Scene `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DeviceList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Device `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Resource_NodeList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Resource_Node `json:"items" yaml:"items"`
 }
 
-// TODO: 独立配置
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type EventList struct {
+	meta.TypeMeta
+
+	meta.ListMeta
+
+	Events []Event `json:"events" yaml:"events"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Event struct {
 	//TODO: 定义Event
 	//TODO: ObjectReference设计
@@ -107,15 +141,8 @@ type ObjectReference struct {
 }
 type UID string
 
-type EventList struct {
-	meta.TypeMeta
-
-	meta.ListMeta
-
-	Events []Event `json:"events" yaml:"events"`
-}
-
 // Node
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Node struct {
 	//
 	meta.TypeMeta
@@ -140,15 +167,6 @@ type NodeSpec struct {
 	// 不能被调度的节点
 	Unschedulable bool `json:"unschedulable,omitempty" yaml:"unschedulable"`
 	// TODO: 节点Label
-}
-
-type NodeList struct {
-	meta.TypeMeta
-
-	meta.ListMeta
-	// TODO: List Options
-
-	Items []Node `json:"items" yaml:"items"`
 }
 
 // 计算、网络、存储等定量资源
@@ -374,6 +392,7 @@ type IDRef struct {
 	ActionID   string `json:"action_id,omitempty" yaml:"action_id"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Workflow struct {
 	//
 	meta.TypeMeta
@@ -423,6 +442,7 @@ type WorkflowStatus struct {
 }
 
 // --------- Task
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Task struct {
 	//
 	meta.TypeMeta
@@ -487,6 +507,7 @@ type TaskStatus struct {
 }
 
 // ---------- Group
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Group struct {
 	//
 	meta.TypeMeta
@@ -569,7 +590,7 @@ type GroupStatus struct {
 }
 
 // ---------- Action
-
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Action struct {
 	//
 	meta.TypeMeta
@@ -639,7 +660,7 @@ type EnvVar struct {
 	// TODO: 动态获取相关字段
 }
 
-// TODO:整理资源名称
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Resource_Node struct {
 	meta.TypeMeta
 	meta.ObjectMeta
@@ -700,6 +721,7 @@ const (
 )
 
 // 增加设备定义
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Device struct {
 	//
 	meta.TypeMeta
@@ -894,6 +916,7 @@ type DataSpec struct {
 
 type DataStatus struct{}
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Scene struct {
 	//
 	meta.TypeMeta

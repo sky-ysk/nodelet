@@ -50,7 +50,7 @@ apiserver通过restful服务来暴露对资源的操作接口
 
 1. 定义资源结构体并实现runtime.Object 接口
 2. 将资源注册到注册表中
-3. 编写Sample资源的RESTStorage
+3. 编写资源的RESTStorage
 4. 装载RESTStorage
 
 
@@ -343,34 +343,107 @@ apiserver通过restful服务来暴露对资源的操作接口
 
 
 
-# 定制资源字段选择器fieldSelector
 
-所有定制资源都支持 `metadata.name` 和 `metadata.namespace` 字段选择算符。如果想要根据定制资源的其他字段来筛选定制资源，可通过以下两个步骤完成：
 
-1. 在pkg/registry/sample包下添加ToSelectableFields函数来设置可筛选字段
+# **FieldSelector**
 
-   以sample.Status.SampleID为例：
+fieldSelector根据字段筛选资源，目前支持所有资源通用字段name,namespace
 
-   ```go
-   func ToSelectableFields(sample *apis.Sample) fields.Set {
-   	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&sample.ObjectMeta, true)
-   	specificFieldsSet := fields.Set{
-   		"status.sample_id": sample.Status.SampleID,
-   	}
-   	return generic.MergeFieldsSets(objectMetaFieldsSet, specificFieldsSet)
-   }
-   ```
+支持=，==，!=判断筛选（= 和 == 意义相同），示例：
 
-2. 在pkg/registry/sample/storage.go的GetAttrs函数中，将ObjectMetaFieldsSet函数替换为ToSelectableFields
+```bash
+fieldSelector=metadata.name=task-1
+fieldSelector=metadata.name==task-2
+fieldSelector=metadata.namespace!=default
 
-   ```go
-   func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
-   	Sample, ok := obj.(*apis.Sample)
-   	if !ok {
-   		return nil, nil, fmt.Errorf("not a Sample")
-   	}
-   	return labels.Set(Sample.ObjectMeta.Labels), ToSelectableFields(Sample), nil
-   }
-   ```
+不同条件之间通过逗号隔开进行链式选择：
+fieldSelector=metadata.name=task-1,metadata.namespace!=default
 
-   
+请求示例：
+#筛选name为task-1且不在default命名空间下的task资源
+http://localhost:10000/apis/resources/v1/tasks?fieldSelector=metadata.name=task-1,metadata.namespace!=default
+```
+
+
+
+
+
+# **LabelSelector**
+
+labelSelector根据用户定义的标签筛选资源
+
+支持基于等值的判断筛选（和fieldSelector相同）和基于集合的判断筛选
+
+labelSelector语法规则：
+
+```bash
+<selector-syntax>         ::= <requirement> | <requirement> "," <selector-syntax>
+<requirement>             ::= [!] KEY [ <set-based-restriction> | <exact-match-restriction> ]
+<set-based-restriction>   ::= "" | <inclusion-exclusion> <value-set>
+<inclusion-exclusion>     ::= <inclusion> | <exclusion>
+<exclusion>               ::= "notin"
+<inclusion>               ::= "in"
+<value-set>               ::= "(" <values> ")"
+<values>                  ::= VALUE | VALUE "," <values>
+<exact-match-restriction> ::= ["="|"=="|"!="] VALUE
+
+示例：
+#筛选labels标签中,app标签值等于app1或app2,foo标签值等于bar,存在x标签,y标签值不等于y1且不等于y2的资源
+"app in (app1,app2),foo==bar,x,y notin (y1,y2)"
+
+#筛选不存在app标签且foo标签值不等于bar的资源
+"!app,foo!=bar" 
+
+请求示例：
+http://localhost:10000/apis/resources/v1/tasks?labelSelector=app in (app1,app2),foo==bar,x,y notin (y1,y2)
+```
+
+fieldSelector和labelSelector可以结合使用：
+
+```bash
+http://localhost:10000/apis/resources/v1/tasks?fieldSelector=metadata.name=my-service,metadata.namespace!=default&labelSelector=app in (app1,app2),foo==bar,x,y notin (y1,y2)
+```
+
+
+
+
+
+# 定制资源字段选择器FieldSelector
+
+所有资源都支持 `metadata.name` 和 `metadata.namespace` 字段选择算符
+
+如果想要根据定制资源的其他字段来筛选定制资源，可通过以下两个步骤完成：
+
+1. 在资源registry包下添加函数设置可筛选字段
+
+2. 在GetAttrs函数中，将ObjectMetaFieldsSet函数替换为1中添加的函数
+
+
+示例：通过TaskID来筛选Task资源
+
+```go
+//1. 在pkg/apiserver/registry/core/task包下定义函数，将需要设置的请求的字符串status.task_id和Task的TaskID字段绑定起来
+func ToSelectableFields(task *apis.Task) fields.Set{
+    objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&task.ObjectMeta,true)
+    specificFieldsSet := fields.Set{
+        //在这里定义需要设置的请求的字符串status.task_id
+        "status.task_id" : task.Status.TaskID,
+    }
+    return generic.MergeFieldsSets(objectMetaFieldsSet,specificFieldsSet)
+}
+
+//2. 在pkg/apiserver/registry/core/task/storage.go中，将ObjectMetaFieldsSet替换为实现的ToSelectableFields
+// GetAttrs 从传入的资源对象中提取标签和字段
+func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
+	Task, ok := obj.(*apis.Task)
+	if !ok {
+		return nil, nil, fmt.Errorf("not a Task")
+	}
+   	//将原有的ObjectMetaFieldsSet替换为实现的ToSelectableFields
+	return labels.Set(Task.ObjectMeta.Labels), ToSelectableFields(Task), nil
+}
+
+//3. 在请求中的fieldSelector中通过设置status.task_id来通过TaskID来筛选Task资源
+http://localhost:10000/apis/resources/v1/tasks?fieldSelector=status.task_id=={TaskID}
+```
+
