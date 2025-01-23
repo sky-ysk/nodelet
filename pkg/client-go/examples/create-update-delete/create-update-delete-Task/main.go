@@ -65,12 +65,12 @@ func main() {
 	// 获取访问Task的客户端
 	// 默认访问的Namespace是 ""
 
-	tasksClient := clientSet.Core().Tasks("")
+	tasksClient := clientSet.Core().Tasks("test")
 
 	//task := &apis.Task{
 	//	ObjectMeta: metav1.ObjectMeta{
 	//		Name:      "demo-tasks",
-	//		Namespace: "",
+	//		Namespace: "test",
 	//	},
 	//	TypeMeta: metav1.TypeMeta{
 	//		Kind:       "Task",
@@ -80,7 +80,7 @@ func main() {
 	//		Name: "demo-task",
 	//		Groups: []apis.Group{
 	//			apis.Group{
-	//				ObjectMeta: metav1.ObjectMeta{Name: "TestGroup1", Namespace: ""},
+	//				ObjectMeta: metav1.ObjectMeta{Name: "TestGroup1", Namespace: "test"},
 	//				TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 	//				Spec: apis.GroupSpec{
 	//					Name:    "TestGroup1",
@@ -129,7 +129,7 @@ func main() {
 	//				},
 	//			},
 	//			apis.Group{
-	//				ObjectMeta: metav1.ObjectMeta{Name: "TestGroup2", Namespace: ""},
+	//				ObjectMeta: metav1.ObjectMeta{Name: "TestGroup2", Namespace: "test"},
 	//				TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 	//				Spec: apis.GroupSpec{
 	//					Name:    "TestGroup2",
@@ -219,7 +219,7 @@ func main() {
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-tasks",
-			Namespace: "",
+			Namespace: "test",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Task",

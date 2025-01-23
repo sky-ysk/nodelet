@@ -71,7 +71,7 @@ import (
 //	// 获取访问Workflow的客户端
 //	// 默认访问的Namespace是 ""
 //
-//	workflowsClient := clientSet.Core().Workflows("")
+//	workflowsClient := clientSet.Core().Workflows("test")
 //
 //	workflow1 := &apis.Workflow{
 //		ObjectMeta: metav1.ObjectMeta{

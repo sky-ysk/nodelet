@@ -65,12 +65,12 @@ func main() {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	nodesClient := clientSet.Core().Nodes("")
+	nodesClient := clientSet.Core().Nodes("test")
 
 	node := &apis.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-nodes",
-			Namespace: "",
+			Namespace: "test",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Node",

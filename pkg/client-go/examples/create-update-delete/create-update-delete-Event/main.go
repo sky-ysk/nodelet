@@ -92,7 +92,7 @@ var table = []apis.Event{
 	{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      "test-event",
-			Namespace: "",
+			Namespace: "test",
 		},
 		TypeMeta: meta.TypeMeta{
 			Kind:       "Event",
@@ -101,7 +101,7 @@ var table = []apis.Event{
 		InvolvedObject: apis.ObjectReference{
 			Kind:       "Node",
 			Name:       "CloudNode1",
-			Namespace:  "",
+			Namespace:  "test",
 			UID:        "default",
 			APIVersion: "resources/v1",
 		},

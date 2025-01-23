@@ -21,7 +21,7 @@ var table = []apis.Event{
 	{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      "test-event",
-			Namespace: "",
+			Namespace: "test",
 		},
 		TypeMeta: meta.TypeMeta{
 			Kind:       "Event",
@@ -30,7 +30,7 @@ var table = []apis.Event{
 		InvolvedObject: apis.ObjectReference{
 			Kind:       "Node",
 			Name:       "CloudNode1",
-			Namespace:  "",
+			Namespace:  "test",
 			UID:        "default",
 			APIVersion: "resources/v1",
 		},
@@ -125,7 +125,7 @@ func TestForBroadcaster(t *testing.T) {
 	// 5. 模拟一个资源对象（如Pod、Task）的引用，因为事件通常需要与具体的资源相关联
 	objRef := &apis.ObjectReference{
 		Kind:       "Node",         // 资源类型
-		Namespace:  "",             // 命名空间
+		Namespace:  "test",         // 命名空间
 		Name:       "CloudNode1",   // 资源名称
 		UID:        "default",      // 唯一标识符
 		APIVersion: "resources/v1", // API 版本

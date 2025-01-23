@@ -55,6 +55,7 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 	}
 	eventStorage, err := eventstore.NewEventStorage(restOptionsGetter)
 	if err != nil {
+		logs.Error("error occur while create EventStorage", err)
 		return server.APIGroupInfo{}, err
 	}
 	storage := map[string]rest.Storage{}
