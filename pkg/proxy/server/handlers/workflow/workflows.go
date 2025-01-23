@@ -26,32 +26,71 @@ func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
 }
 
 func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *restful.Response) {
-	// 使用client-go实现查询
 	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Get workflows failed: %v", err)
-		response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(http.StatusInternalServerError, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
 	}
 
 	err = response.WriteEntity(results)
 	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(http.StatusInternalServerError, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
 	}
 	logs.Debugf("Get workflows")
 }
 
-// TODO: DeleteAll
+// DeleteAll
+func (h *WorkflowsHandler) DeleteAllWorkflow(request *restful.Request, response *restful.Response) {
+	namespace := request.PathParameter("namespace")
+	str := "Spec.Name=" + namespace
+
+	lstOpts := metav1.ListOptions{
+		FieldSelector: str,
+	}
+	err := h.client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	if err != nil {
+		logs.Errorf("Delete workflows failed: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+	// 返回停止成功的状态
+	response.WriteHeader(http.StatusOK)
+	// 记录日志
+	logs.Debugf("delete all workflows ")
+}
 
 func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
 	ws.Path(WorkflowsPath).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
+
 	ws.Route(ws.GET("").
 		Doc("Get all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		To(h.GetWorkflows).
 		Operation("Get workflows").
+		Returns(200, "OK", []apis.Workflow{}).
+		Returns(400, "Not Found", nil),
+	)
+
+	ws.Route(ws.DELETE("").
+		Doc("Delete all workflows").
+		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		To(h.DeleteAllWorkflow).
+		Operation("Delete workflows").
 		Returns(200, "OK", []apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)
