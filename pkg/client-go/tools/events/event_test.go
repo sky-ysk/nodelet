@@ -106,7 +106,7 @@ func TestForBroadcaster(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. 创建eventsClient
-	// eventsClient := testClientSet().Core().Events(apis.NamespaceAll)
+	eventsClient := testClientSet().Core().Events(apis.NamespaceAll)
 
 	// 2. 创建eventBroadcaster
 	eventBroadcaster := NewBroadcaster(WithContext(ctx))
@@ -114,7 +114,7 @@ func TestForBroadcaster(t *testing.T) {
 
 	// 3.1 启动事件的 API Server 记录功能, StartRecordingToSink()定义了将事件上传至api server的事件处理方式
 	// 配置事件接收器，需要绑定一个eventsClient
-	// eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: eventsClient})
+	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: eventsClient})
 
 	// 3.2 启动日志记录功能
 	eventBroadcaster.StartLogging(ctx, logs.Infof)
@@ -122,7 +122,7 @@ func TestForBroadcaster(t *testing.T) {
 	// 4. 创建事件记录器EventRecorder, 用于记录事件
 	recorder := eventBroadcaster.NewRecorder(schema.NewSchema(), apis.EventSource{Component: "test-controller"})
 
-	// 6. 模拟一个资源对象（如Pod）的引用，因为事件通常需要与具体的资源相关联
+	// 5. 模拟一个资源对象（如Pod、Task）的引用，因为事件通常需要与具体的资源相关联
 	objRef := &apis.ObjectReference{
 		Kind:       "Node",         // 资源类型
 		Namespace:  "",             // 命名空间
