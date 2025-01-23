@@ -2,53 +2,7 @@ package apis
 
 import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apis/meta"
 )
-
-type WorkflowList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Workflow
-}
-type TaskList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Task
-}
-type GroupList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Group
-}
-type ActionList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Action
-}
-
-// todo device, data, scen,resource 需要list吗？
-type DeviceList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Device
-}
-
-type ResourceRequirementList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []ResourceRequirement
-}
-
-type DataList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Data
-}
-type SceneList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Scene
-}
 
 func (in *Time) DeepCopyInto(out *Time) {
 	*out = *in
@@ -543,49 +497,49 @@ func (in *SceneList) DeepCopyObject() runtime.Object {
 	}
 	return nil
 }
-func (in *ResourceRequirement) DeepCopyInto(out *ResourceRequirement) {
+func (in *Resource_Node) DeepCopyInto(out *Resource_Node) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
 	in.Status.DeepCopyInto(&out.Status)
 }
-func (in *ResourceRequirement) DeepCopyObject() runtime.Object {
+func (in *Resource_Node) DeepCopyObject() runtime.Object {
 	if c := in.DeepCopy(); c != nil {
 		return c
 	}
 	return nil
 }
-func (in *ResourceRequirement) DeepCopy() *ResourceRequirement {
+func (in *Resource_Node) DeepCopy() *Resource_Node {
 	if in == nil {
 		return nil
 	}
-	out := new(ResourceRequirement)
+	out := new(Resource_Node)
 	in.DeepCopyInto(out)
 	return out
 }
 
-func (in *ResourceRequirementList) DeepCopyInto(out *ResourceRequirementList) {
+func (in *Resource_NodeList) DeepCopyInto(out *Resource_NodeList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]ResourceRequirement, len(*in))
+		*out = make([]Resource_Node, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 }
-func (in *ResourceRequirementList) DeepCopy() *ResourceRequirementList {
+func (in *Resource_NodeList) DeepCopy() *Resource_NodeList {
 	if in == nil {
 		return nil
 	}
-	out := new(ResourceRequirementList)
+	out := new(Resource_NodeList)
 	in.DeepCopyInto(out)
 	return out
 }
-func (in *ResourceRequirementList) DeepCopyObject() runtime.Object {
+func (in *Resource_NodeList) DeepCopyObject() runtime.Object {
 	if c := in.DeepCopy(); c != nil {
 		return c
 	}

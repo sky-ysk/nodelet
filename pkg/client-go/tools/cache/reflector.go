@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/api/meta"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/util/wait"
@@ -216,7 +217,17 @@ func (r *Reflector) watch(w watch.Interface, stopCh <-chan struct{}) error {
 
 		// 如果当前没有活跃的 Watch 请求，启动新的 Watch
 		if w == nil {
-			options := metav1.ListOptions{}
+			timeoutSeconds := int64(100)
+			options := metav1.ListOptions{
+				ResourceVersion: r.LastSyncResourceVersion(),
+				// We want to avoid situations of hanging watchers. Stop any watchers that do not
+				// receive any events within the timeout window.
+				TimeoutSeconds: &timeoutSeconds,
+				// To reduce load on kube-apiserver on watch restarts, you may enable watch bookmarks.
+				// Reflector doesn't assume bookmarks are returned at all (if the server do not support
+				// watch bookmarks, it will ignore this field).
+				AllowWatchBookmarks: true,
+			}
 
 			var err error
 			w, err = r.listerWatcher.Watch(options)
@@ -239,7 +250,11 @@ func (r *Reflector) watch(w watch.Interface, stopCh <-chan struct{}) error {
 	}
 }
 
-func (r *Reflector) setLastSyncResourceVersion(v string) {}
+func (r *Reflector) setLastSyncResourceVersion(v string) {
+	r.lastSyncResourceVersionMutex.Lock()
+	defer r.lastSyncResourceVersionMutex.Unlock()
+	r.lastSyncResourceVersion = v
+}
 
 // List所有变量
 // list只是列出所有项目，并记录调用时从服务器获得的资源版本。资源版本可用于进一步的 watch。
@@ -291,7 +306,7 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 	var w watch.Interface
 	var err error
 	var temporaryStore Store
-	//var resourceVersion string
+	var resourceVersion string
 
 	// 实现指数回退机制
 	backoff := 1 * time.Second     // 初始等待时间
@@ -300,7 +315,7 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 
 	for {
 		//这里的resourceVersion 并不是api版本（如resources/v1）
-		//resourceVersion := ""
+		resourceVersion = ""
 		lastKnownRV := r.rewatchResourceVersion()
 
 		select {
@@ -315,11 +330,11 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 		timeoutSeconds := int64(5)
 		//options 用来控制和定制如何进行资源监听
 		options := metav1.ListOptions{
-			ResourceVersion:     lastKnownRV,
-			AllowWatchBookmarks: true,
-			SendInitialEvents:   pointer.Bool(true),
-			//ResourceVersionMatch: metav1.ResourceVersionMatchNotOlderThan,
-			TimeoutSeconds: &timeoutSeconds,
+			ResourceVersion:      lastKnownRV,
+			AllowWatchBookmarks:  true,
+			SendInitialEvents:    pointer.Bool(true),
+			ResourceVersionMatch: metav1.ResourceVersionMatchNotOlderThan,
+			TimeoutSeconds:       &timeoutSeconds,
 		}
 
 		w, err = r.listerWatcher.Watch(options)
@@ -342,8 +357,7 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 
 		watchListBookmarkReceived, err := handleListWatch(
 			w, temporaryStore, r.expectedType, r.expectedGVK,
-			nil,
-			//func(rv string) { resourceVersion = rv },
+			func(rv string) { resourceVersion = rv },
 			stopCh,
 		)
 		if err != nil {
@@ -354,14 +368,14 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 			break
 		}
 	}
-	//r.setIsLastSyncResourceVersionUnavailable(false)
+	r.setIsLastSyncResourceVersionUnavailable(false)
 
-	if err := r.store.Replace(temporaryStore.List(), ""); err != nil {
+	if err := r.store.Replace(temporaryStore.List(), resourceVersion); err != nil {
 		logs.Infof("failed to replace temporary store:", err)
 		return nil, fmt.Errorf("unable to sync watch-list result: %w", err)
 	}
 
-	//r.setLastSyncResourceVersion(resourceVersion)
+	r.setLastSyncResourceVersion(resourceVersion)
 	return w, nil
 }
 
@@ -430,11 +444,11 @@ loop:
 				logs.Info("GVK验证不匹配的事件")
 				continue // 跳过不匹配的事件
 			}
-			//meta, err := meta.Accessor(event.Object)
-			//if err != nil {
-			//	panic(fmt.Errorf("%s: unable to understand watch event %#v", event))
-			//}
-			//resourceVersion := meta.GetResourceVersion()
+			meta, err := meta.Accessor(event.Object)
+			if err != nil {
+				panic(fmt.Errorf("%s: unable to understand watch event %#v", event))
+			}
+			resourceVersion := meta.GetResourceVersion()
 
 			// 根据事件类型处理
 			switch event.Type {
@@ -447,25 +461,36 @@ loop:
 					logs.Errorf("unable to update watch event object: %#v", event.Object)
 				}
 			case watch.Deleted:
+				// TODO: Will any consumers need access to the "last known
+				// state", which is passed in event.Object? If so, may need
+				// to change this.
 				if err := store.Delete(event.Object); err != nil {
 					logs.Errorf("unable to delete watch event object: %#v", event.Object)
 				}
 			case watch.Bookmark:
 				// A `Bookmark` means watch has synced here, just update the resourceVersion
-				//if meta.GetAnnotations()[metav1.InitialEventsAnnotationKey] == "true" {
-				//	watchListBookmarkReceived = true
-				//}
+				if meta.GetAnnotations()[metav1.InitialEventsAnnotationKey] == "true" {
+					watchListBookmarkReceived = true
+				}
 				watchListBookmarkReceived = true
 			default:
 				logs.Errorf("unknown watch event: %#v", event)
 			}
-			//setLastSyncResourceVersion(resourceVersion)
+			setLastSyncResourceVersion(resourceVersion)
 			if watchListBookmarkReceived {
 				return watchListBookmarkReceived, nil
 			}
 		}
 	}
 	return watchListBookmarkReceived, nil
+}
+
+// LastSyncResourceVersion is the resource version observed when last sync with the underlying store
+// The value returned is not synchronized with access to the underlying store and is not thread-safe
+func (r *Reflector) LastSyncResourceVersion() string {
+	r.lastSyncResourceVersionMutex.RLock()
+	defer r.lastSyncResourceVersionMutex.RUnlock()
+	return r.lastSyncResourceVersion
 }
 
 // rewatchResourceVersion determines the resource version the reflector should start streaming from.

@@ -44,6 +44,8 @@ type Object interface {
 	SetDeletionGracePeriodSeconds(*int64)
 	GetLabels() map[string]string
 	SetLabels(labels map[string]string)
+	GetAnnotations() map[string]string
+	SetAnnotations(annotations map[string]string)
 }
 
 func (obj *ObjectMeta) GetObjectMeta() Object { return obj }
@@ -77,8 +79,10 @@ func (meta *ObjectMeta) GetDeletionGracePeriodSeconds() *int64 {
 func (meta *ObjectMeta) SetDeletionGracePeriodSeconds(deletionGracePeriodSeconds *int64) {
 	meta.DeletionGracePeriodSeconds = deletionGracePeriodSeconds
 }
-func (meta *ObjectMeta) GetLabels() map[string]string       { return meta.Labels }
-func (meta *ObjectMeta) SetLabels(labels map[string]string) { meta.Labels = labels }
+func (meta *ObjectMeta) GetLabels() map[string]string                 { return meta.Labels }
+func (meta *ObjectMeta) SetLabels(labels map[string]string)           { meta.Labels = labels }
+func (meta *ObjectMeta) GetAnnotations() map[string]string            { return meta.Annotations }
+func (meta *ObjectMeta) SetAnnotations(annotations map[string]string) { meta.Annotations = annotations }
 
 type ListMetaAccessor interface {
 	GetListMeta() ListInterface

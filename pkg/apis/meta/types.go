@@ -90,6 +90,13 @@ type ObjectMeta struct {
 
 	// Labels 可用于组织和分类（作用域和选择）对象的字符串键和值的映射。
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Annotations is an unstructured key value map stored with a resource that may be
+	// set by external tools to store and retrieve arbitrary metadata. They are not
+	// queryable and should be preserved when modifying objects.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,12,rep,name=annotations"`
 }
 
 const (
@@ -103,6 +110,30 @@ const (
 	NamespaceSystem = "kube-system"
 	// NamespacePublic is the namespace where we place public info (ConfigMaps)
 	NamespacePublic = "kube-public"
+)
+
+// from k8s
+const (
+	// InitialEventsAnnotationKey the name of the key
+	// under which an annotation marking the end of
+	// a watchlist stream is stored.
+	//
+	// The annotation is added to a "Bookmark" event.
+	InitialEventsAnnotationKey = "k8s.io/initial-events-end"
+
+	// InitialEventsListBlueprintAnnotationKey is the name of the key
+	// where an empty, versioned list is encoded in the requested format
+	// (e.g., protobuf, JSON, CBOR), then base64-encoded and stored as a string.
+	//
+	// This encoding matches the request encoding format, which may be
+	// protobuf, JSON, CBOR, or others, depending on what the client requested.
+	// This ensures that the reconstructed list can be processed through the
+	// same decoder chain that would handle a standard LIST call response.
+	//
+	// The annotation is added to a "Bookmark" event and is used by clients
+	// to guarantee the format consistency when reconstructing
+	// the list during WatchList processing.
+	InitialEventsListBlueprintAnnotationKey = "kubernetes.io/initial-events-list-blueprint"
 )
 
 type UID string

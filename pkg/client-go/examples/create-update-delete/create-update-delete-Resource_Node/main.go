@@ -3,10 +3,12 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
+	"hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -56,53 +58,72 @@ func main() {
 		panic(err)
 	}
 	// 资源定义在 pkg/apis/xxx/type.go 下
-	// 这里以访问资源Scene为例，
-	// 获取访问Scene的客户端
+	// 这里以访问资源Resource_Node为例，
+	// 获取访问Resource_Node的客户端
 	// 默认访问的Namespace是 ""
 
-	scenesClient := clientSet.Core().Scenes("test")
+	resource_NodesClient := clientSet.Core().Resource_Nodes("test")
 
-	scene := &apis.Scene{
+	resource_Node := &apis.Resource_Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-scenes",
+			Name:      "demo-resource_Nodes",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
 			},
 		},
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Scene",
+			Kind:       "Resource_Node",
 			APIVersion: "resources/v1",
 		},
+		Spec: apis.ResourceSpec{
+			Name: "demo-resource_Node",
+		},
 	}
-	scene2 := &apis.Scene{
+	resource_Node2 := &apis.Resource_Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-scene2",
+			Name:      "demo-resource_Node2",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
 			},
 		},
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Scene",
+			Kind:       "Resource_Node",
 			APIVersion: "resources/v1",
 		},
+		Spec: apis.ResourceSpec{
+			Name: "demo-resource_Node",
+		},
 	}
-	scene3 := &apis.Scene{
+	resource_Node3 := &apis.Resource_Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-scene3",
+			Name:      "demo-resource_Node3",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "qa",
 			},
 		},
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Scene",
+			Kind:       "Resource_Node",
 			APIVersion: "resources/v1",
+		},
+		Spec: apis.ResourceSpec{
+			Name: "demo-resource_Node",
 		},
 	}
 
-	//监听事件并打印  监听resources/v1/scenes
+	patchResource_Node, err := json.Marshal(map[string]interface{}{
+		"objectMeta": map[string]interface{}{
+			"namespace": "test",
+		},
+		"spec": map[string]interface{}{
+			"resource_NodeName": "patch-resource_Node-name",
+			"hostName":          "master",
+		},
+	})
+
+	//监听事件并打印  监听resources/v1/resource_Nodes
 	go func() {
 		logs.Trace("watching")
 		var timeoutSeconds int64 = 20
@@ -110,7 +131,7 @@ func main() {
 			TimeoutSeconds: &timeoutSeconds,
 		}
 
-		watcher, err := scenesClient.Watch(context.TODO(), watchOptions)
+		watcher, err := resource_NodesClient.Watch(context.TODO(), watchOptions)
 		if err != nil {
 			panic(err)
 		}
@@ -148,24 +169,48 @@ func main() {
 		}
 	}()
 
-	// Create三个Scene
+	// Create三个Resource_Node
 	logs.Trace("creating")
-	result, err := scenesClient.Create(context.TODO(), scene, metav1.CreateOptions{})
+	result, err := resource_NodesClient.Create(context.TODO(), resource_Node, metav1.CreateOptions{})
 	if err != nil {
-		logs.Errorf("Failed to create scene: %v", err)
+		logs.Errorf("Failed to create resource_Node: %v", err)
 	} else {
-		logs.Trace("created scene", result)
+		logs.Trace("created resource_Node", result)
 	}
-	_, err = scenesClient.Create(context.TODO(), scene2, metav1.CreateOptions{})
-	_, err = scenesClient.Create(context.TODO(), scene3, metav1.CreateOptions{})
+	_, err = resource_NodesClient.Create(context.TODO(), resource_Node2, metav1.CreateOptions{})
+	_, err = resource_NodesClient.Create(context.TODO(), resource_Node3, metav1.CreateOptions{})
 	prompt()
 
-	// List 所有Scene
-	logs.Tracef("listing 筛选的scene")
+	//Update一个Resource_Node
+
+	logs.Trace("updating")
+	// 部分更改一个参数
+	// 先Get一个Resource_Node ,更改Resource_Node的参数, UpdateResource_Node
+
+	result, getErr := resource_NodesClient.Get(context.TODO(), "demo-resource_Nodes", metav1.GetOptions{})
+	if getErr != nil {
+		logs.Info(fmt.Errorf("Failed to get : %v", getErr))
+	}
+
+	logs.Tracef("get result", result)
+	logs.Tracef("修改前的result.Spec.Resource_NodeName：", result.Spec.Name)
+
+	result.Spec.Name = "updatedResource_NodeName"
+	_, updateErr := resource_NodesClient.Update(context.TODO(), result, metav1.UpdateOptions{})
+	if updateErr != nil {
+		logs.Error(fmt.Errorf("Update failed: %v", updateErr))
+	}
+
+	logs.Tracef("修改后的result.Spec.Resource_NodeName：", result.Spec.Name)
+	logs.Tracef("Updated resource_Node...")
+	prompt()
+
+	// List 所有Resource_Node
+	logs.Tracef("listing 筛选的resource_Node")
 	lstOpts := metav1.ListOptions{
 		LabelSelector: "environment",
 	}
-	list, err := scenesClient.List(context.TODO(), lstOpts)
+	list, err := resource_NodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
@@ -176,10 +221,16 @@ func main() {
 	logs.Trace("listing done")
 	prompt()
 
-	// List 所有Scene
+	//Patch 一个Resource_Node
+	logs.Trace("patching")
+	patchResult, err := resource_NodesClient.Patch(context.TODO(), "demo-resource_Nodes", types.StrategicMergePatchType, patchResource_Node, metav1.PatchOptions{})
+	logs.Trace("patchResult: ", patchResult)
+	logs.Trace("patch Done")
+
+	// List 所有Resource_Node
 	logs.Trace("listing")
 	lstOpts = metav1.ListOptions{}
-	list, err = scenesClient.List(context.TODO(), lstOpts)
+	list, err = resource_NodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
@@ -190,19 +241,19 @@ func main() {
 	logs.Trace("listing done")
 	prompt()
 
-	// Delete一个Scene
+	// Delete一个Resource_Node
 	logs.Trace("deleting")
-	err = scenesClient.Delete(context.TODO(), "demo-scenes", metav1.DeleteOptions{})
+	err = resource_NodesClient.Delete(context.TODO(), "demo-resource_Nodes", metav1.DeleteOptions{})
 	if err != nil {
 		panic(err)
 	}
-	logs.Trace("Deleted scene...")
+	logs.Trace("Deleted resource_Node...")
 	prompt()
 
-	// Delete 之后再次 List所有Scene
+	// Delete 之后再次 List所有Resource_Node
 	logs.Trace("listing")
 	lstOpts = metav1.ListOptions{}
-	list, err = scenesClient.List(context.TODO(), lstOpts)
+	list, err = resource_NodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
@@ -212,22 +263,22 @@ func main() {
 
 	logs.Tracef("listing done")
 
-	//DeleteCollection 删除所有Spec.SceneName=demo-scene的Scene
+	//DeleteCollection 删除所有Spec.Resource_NodeName=demo-resource_Node的Resource_Node
 	logs.Tracef("deleting collection")
 	lstOpts = metav1.ListOptions{
-		FieldSelector: "Spec.SceneName=demo-scene",
+		FieldSelector: "Spec.Resource_NodeName=demo-resource_Node",
 	}
-	err = scenesClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	err = resource_NodesClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
 	logs.Tracef("Deleted collection...")
 	prompt()
 
-	// DeleteCollection 之后再次 List所有Scene
+	// DeleteCollection 之后再次 List所有Resource_Node
 	logs.Trace("listing")
 	lstOpts = metav1.ListOptions{}
-	list, err = scenesClient.List(context.TODO(), lstOpts)
+	list, err = resource_NodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}

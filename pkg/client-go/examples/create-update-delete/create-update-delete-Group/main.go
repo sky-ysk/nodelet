@@ -81,6 +81,14 @@ func main() {
 				},
 			},
 		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: []apis.RuntimeStatus{
+				apis.RuntimeStatus{
+					NodeName: "demo-runtime",
+					Phase:    "running",
+				},
+			},
+		},
 	}
 	group := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
@@ -197,16 +205,12 @@ func main() {
 		}
 	}()
 
-	//如果已经存在，先删掉
-	//err = groupsClient.Delete(context.TODO(), "demo-groups", metav1.DeleteOptions{})
-
 	// Create一个Group
 	fmt.Println("creating")
 	results, err := groupsClient.Create(context.TODO(), group, metav1.CreateOptions{})
 
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
-		panic(err)
 	}
 	//_, _ = groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
 	//_, _ = groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
@@ -252,7 +256,7 @@ func main() {
 
 	//Patch 一个Group
 	fmt.Println("patching")
-	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup3, metav1.PatchOptions{})
+	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup3, metav1.PatchOptions{})
 	fmt.Println("patchResult: ", patchResult)
 	fmt.Println("patch Done")
 

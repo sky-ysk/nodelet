@@ -61,6 +61,51 @@ type NodeList struct {
 	Items []Node `json:"items" yaml:"items"`
 }
 
+type WorkflowList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Workflow
+}
+type TaskList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Task
+}
+type GroupList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Group
+}
+type ActionList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Action
+}
+
+// todo device, data, scen,resource 需要list吗？
+type DeviceList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Device
+}
+
+type Resource_NodeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Resource_Node
+}
+
+type DataList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Data
+}
+type SceneList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Scene
+}
+
 // 计算、网络、存储等定量资源
 // 资源名称 => 定量资源描述
 type ResourceList map[string]Quantity
@@ -553,7 +598,7 @@ type EnvVar struct {
 	// TODO: 动态获取相关字段
 }
 
-type ResourceRequirement struct {
+type Resource_Node struct {
 	meta.TypeMeta
 
 	meta.ObjectMeta
