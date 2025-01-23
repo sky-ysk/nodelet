@@ -3,12 +3,13 @@ package group
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
-	
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	//"hit.edu/framework/pkg/apiserver/registry/core/rest"
 	"hit.edu/framework/pkg/apiserver/registry/generic"
@@ -72,7 +73,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("not a Group")
 	}
-	return labels.Set(Group.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Group.ObjectMeta), nil
+	return labels.Set(Group.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Group.ObjectMeta, true), nil
 }
 func Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
@@ -83,14 +84,14 @@ func Match(label labels.Selector, field fields.Selector) storage.SelectionPredic
 }
 
 func NewGroupStorage(optsGetter generic.RESTOptionsGetter) (GroupStorage, error) {
-	
+
 	store := &genericregistry.Store{
 		NewFunc:                   NewFunc,
 		NewListFunc:               NewListFunc,
 		PredicateFunc:             Match,
 		DefaultQualifiedResource:  apis.Resource("groups"),
 		SingularQualifiedResource: apis.Resource("group"),
-		
+
 		CreateStrategy: thisStrategy,
 		UpdateStrategy: thisStrategy,
 		DeleteStrategy: thisStrategy,
@@ -105,13 +106,13 @@ func NewGroupStorage(optsGetter generic.RESTOptionsGetter) (GroupStorage, error)
 	}
 	statusStore := *store
 	statusStore.UpdateStrategy = thisStrategy
-	
+
 	GroupREST := &REST{Store: store}
 	statusREST := &StatusREST{Store: &statusStore}
-	
+
 	specStore := *store
 	specStore.UpdateStrategy = thisStrategy
-	
+
 	specREST := &SpecREST{Store: &specStore}
 	return GroupStorage{
 		Group:  GroupREST,

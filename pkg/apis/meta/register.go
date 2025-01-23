@@ -3,6 +3,7 @@ package meta
 import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/component-base/logs"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
@@ -78,7 +79,7 @@ func AddTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion, optionsTypes...)
 	scheme.AddUnversionedTypes(SchemeGroupVersion, optionsTypes...)
 	if err := RegisterConversions(scheme); err != nil {
-		panic(err)
+		logs.Info(err)
 	}
 	return nil
 }

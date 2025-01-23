@@ -18,15 +18,24 @@ func TestGetAPIRequestInfo(t *testing.T) {
 		expectedResource    string
 		expectedSubresource string
 		expectedName        string
+		expectedNamespace   string
 		expectedParts       []string
 	}{
 
-		{"GET", "/apis/resources/v1/nodes/foo", "get", "apis", "resources", "v1", "nodes", "", "foo", []string{"nodes", "foo"}},
-		{"POST", "/apis/resources/v1/nodes", "create", "apis", "resources", "v1", "nodes", "", "", []string{"nodes"}},
-		{"PUT", "/apis/resources/v1/nodes/foo", "update", "apis", "resources", "v1", "nodes", "", "foo", []string{"nodes", "foo"}},
-		{"PATCH", "/apis/resources/v1/nodes/foo", "update", "apis", "resources", "v1", "nodes", "", "foo", []string{"nodes", "foo"}},
-		{"DELETE", "/apis/resources/v1/nodes/foo", "delete", "apis", "resources", "v1", "nodes", "", "foo", []string{"nodes", "foo"}},
-		{"GET", "/apis/resources/v1/nodes/foo/status", "get", "apis", "resources", "v1", "nodes", "status", "foo", []string{"nodes", "foo", "status"}},
+		{"GET", "/apis/resources/v1/nodes/foo", "get", "apis", "resources", "v1", "nodes", "", "foo", "", []string{"nodes", "foo"}},
+		{"POST", "/apis/resources/v1/nodes", "create", "apis", "resources", "v1", "nodes", "", "", "", []string{"nodes"}},
+		{"GET", "/apis/resources/v1/nodes", "list", "apis", "resources", "v1", "nodes", "", "", "", []string{"nodes"}},
+		{"PUT", "/apis/resources/v1/nodes/foo", "update", "apis", "resources", "v1", "nodes", "", "foo", "", []string{"nodes", "foo"}},
+		{"PATCH", "/apis/resources/v1/nodes/foo", "patch", "apis", "resources", "v1", "nodes", "", "foo", "", []string{"nodes", "foo"}},
+		{"DELETE", "/apis/resources/v1/nodes/foo", "delete", "apis", "resources", "v1", "nodes", "", "foo", "", []string{"nodes", "foo"}},
+		{"GET", "/apis/resources/v1/nodes/foo/status", "get", "apis", "resources", "v1", "nodes", "status", "foo", "", []string{"nodes", "foo", "status"}},
+		{"GET", "/apis/resources/v1/namespaces/other/nodes/foo", "get", "apis", "resources", "v1", "nodes", "", "foo", "other", []string{"nodes", "foo"}},
+		{"GET", "/apis/resources/v1/namespaces/other/nodes", "list", "apis", "resources", "v1", "nodes", "", "", "other", []string{"nodes"}},
+		{"POST", "/apis/resources/v1/namespaces/other/nodes", "create", "apis", "resources", "v1", "nodes", "", "", "other", []string{"nodes"}},
+		{"PUT", "/apis/resources/v1/namespaces/other/nodes/foo", "update", "apis", "resources", "v1", "nodes", "", "foo", "other", []string{"nodes", "foo"}},
+		{"PATCH", "/apis/resources/v1/namespaces/other/nodes/foo", "patch", "apis", "resources", "v1", "nodes", "", "foo", "other", []string{"nodes", "foo"}},
+		{"DELETE", "/apis/resources/v1/namespaces/other/nodes/foo", "delete", "apis", "resources", "v1", "nodes", "", "foo", "other", []string{"nodes", "foo"}},
+		{"GET", "/apis/resources/v1/namespaces/other/nodes/foo/status", "get", "apis", "resources", "v1", "nodes", "status", "foo", "other", []string{"nodes", "foo", "status"}},
 	}
 
 	resolver := newTestRequestInfoResolver()
@@ -55,6 +64,9 @@ func TestGetAPIRequestInfo(t *testing.T) {
 		}
 		if successCase.expectedName != apiRequestInfo.Name {
 			t.Errorf("Unexpected name for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedName, apiRequestInfo.Name)
+		}
+		if successCase.expectedNamespace != apiRequestInfo.Namespace {
+			t.Errorf("Unexpected namespace for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedNamespace, apiRequestInfo.Namespace)
 		}
 		if !reflect.DeepEqual(successCase.expectedParts, apiRequestInfo.Parts) {
 			t.Errorf("Unexpected parts for url: %s, expected: %v, actual: %v", successCase.url, successCase.expectedParts, apiRequestInfo.Parts)

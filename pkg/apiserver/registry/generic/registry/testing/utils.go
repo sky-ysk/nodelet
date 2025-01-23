@@ -10,16 +10,15 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-	
+
 	"github.com/google/go-cmp/cmp"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
 	"hit.edu/framework/pkg/apiserver/registry/storage/value"
-	
-	"hit.edu/framework/pkg/apimachinery/runtime
+
+	"hit.edu/framework/pkg/apimachinery/runtime"
 	//"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	//"k8s.io/apiserver/pkg/apis/example"
@@ -73,7 +72,7 @@ func computeNodeKey(obj *apis.Node) string {
 func testPropagateStore(ctx context.Context, t *testing.T, store storage.Interface, obj *apis.Node) (string, *apis.Node) {
 	// Setup store with a key and grab the output for returning.
 	key := computeNodeKey(obj)
-	
+
 	// Setup store with the specified key and grab the output for returning.
 	err := store.Delete(ctx, key, &apis.Node{}, nil, storage.ValidateAllObjectFunc, nil)
 	if err != nil && !storage.IsNotFound(err) {
@@ -136,48 +135,48 @@ func testCheckEventType(t *testing.T, w watch.Interface, expectEventType watch.E
 	}
 }
 
-func testCheckResult(t *testing.T, w watch.Interface, expectEvent watch.Event) {
-	testCheckResultFunc(t, w, func(actualEvent watch.Event) {
-		expectNoDiff(t, "incorrect event", expectEvent, actualEvent)
-	})
-}
+// func testCheckResult(t *testing.T, w watch.Interface, expectEvent watch.Event) {
+// 	testCheckResultFunc(t, w, func(actualEvent watch.Event) {
+// 		expectNoDiff(t, "incorrect event", expectEvent, actualEvent)
+// 	})
+// }
 
-func testCheckResultFunc(t *testing.T, w watch.Interface, check func(actualEvent watch.Event)) {
-	select {
-	case res := <-w.ResultChan():
-		obj := res.Object
-		if co, ok := obj.(runtime.CacheableObject); ok {
-			res.Object = co.GetObject()
-		}
-		check(res)
-	case <-time.After(wait.ForeverTestTimeout):
-		t.Errorf("time out after waiting %v on ResultChan", wait.ForeverTestTimeout)
-	}
-}
+// func testCheckResultFunc(t *testing.T, w watch.Interface, check func(actualEvent watch.Event)) {
+// 	select {
+// 	case res := <-w.ResultChan():
+// 		obj := res.Object
+// 		if co, ok := obj.(runtime.CacheableObject); ok {
+// 			res.Object = co.GetObject()
+// 		}
+// 		check(res)
+// 	case <-time.After(wait.ForeverTestTimeout):
+// 		t.Errorf("time out after waiting %v on ResultChan", wait.ForeverTestTimeout)
+// 	}
+// }
 
-func testCheckStop(t *testing.T, w watch.Interface) {
-	select {
-	case e, ok := <-w.ResultChan():
-		if ok {
-			var obj string
-			switch e.Object.(type) {
-			case *apis.Node:
-				obj = e.Object.(*apis.Node).Name
-			case *v1.Status:
-				obj = e.Object.(*v1.Status).Message
-			}
-			t.Errorf("ResultChan should have been closed. Event: %s. Object: %s", e.Type, obj)
-		}
-	case <-time.After(wait.ForeverTestTimeout):
-		t.Errorf("time out after waiting 1s on ResultChan")
-	}
-}
+// func testCheckStop(t *testing.T, w watch.Interface) {
+// 	select {
+// 	case e, ok := <-w.ResultChan():
+// 		if ok {
+// 			var obj string
+// 			switch e.Object.(type) {
+// 			case *apis.Node:
+// 				obj = e.Object.(*apis.Node).Name
+// 			case *v1.Status:
+// 				obj = e.Object.(*v1.Status).Message
+// 			}
+// 			t.Errorf("ResultChan should have been closed. Event: %s. Object: %s", e.Type, obj)
+// 		}
+// 	case <-time.After(wait.ForeverTestTimeout):
+// 		t.Errorf("time out after waiting 1s on ResultChan")
+// 	}
+// }
 
-func testCheckResultsInStrictOrder(t *testing.T, w watch.Interface, expectedEvents []watch.Event) {
-	for _, expectedEvent := range expectedEvents {
-		testCheckResult(t, w, expectedEvent)
-	}
-}
+// func testCheckResultsInStrictOrder(t *testing.T, w watch.Interface, expectedEvents []watch.Event) {
+// 	for _, expectedEvent := range expectedEvents {
+// 		testCheckResult(t, w, expectedEvent)
+// 	}
+// }
 
 func testCheckNoMoreResults(t *testing.T, w watch.Interface) {
 	select {
@@ -221,7 +220,7 @@ func resourceVersionNotOlderThan(sentinel string) func(string) error {
 // StorageInjectingListErrors injects a dummy error for first N GetList calls.
 type StorageInjectingListErrors struct {
 	storage.Interface
-	
+
 	lock   sync.Mutex
 	Errors int
 }
@@ -295,7 +294,7 @@ func (p *PrefixTransformer) GetReadsAndReset() uint64 {
 type reproducingTransformer struct {
 	wrapped value.Transformer
 	store   storage.Interface
-	
+
 	index      uint32
 	nextObject func(uint32) (string, *apis.Node)
 }
