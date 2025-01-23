@@ -118,14 +118,14 @@ func main() {
 			"namespace": "test",
 		},
 		"spec": map[string]interface{}{
-			"actionName": "patch-action-name",
-			"hostName":   "master",
+			"name":     "patch-action-name",
+			"hostName": "master",
 		},
 	})
 
 	//监听事件并打印  监听resources/v1/actions
 	go func() {
-		logs.Trace("watching")
+		logs.Info("watching")
 		var timeoutSeconds int64 = 20
 		watchOptions := metav1.ListOptions{
 			TimeoutSeconds: &timeoutSeconds,
@@ -133,7 +133,7 @@ func main() {
 
 		watcher, err := actionsClient.Watch(context.TODO(), watchOptions)
 		if err != nil {
-			panic(err)
+			logs.Error(err)
 		}
 		defer watcher.Stop() // 确保 watcher 被停止
 
@@ -144,26 +144,26 @@ func main() {
 			select {
 			case event, ok := <-watchChan:
 				if !ok {
-					logs.Tracef("watchChan closed")
+					logs.Info("watchChan closed")
 					return
 				}
 
 				// 打印事件类型和对象的相关信息
-				logs.Tracef("接收到事件类型:", event.Type)
+				logs.Infof("接收到事件类型:", event.Type)
 				switch event.Type {
 				case watch.Added:
-					logs.Tracef("资源被添加: ", event.Object)
+					logs.Infof("资源被添加: ", event.Object)
 				case watch.Modified:
-					logs.Tracef("资源被修改: ", event.Object)
+					logs.Infof("资源被修改: ", event.Object)
 				case watch.Deleted:
-					logs.Tracef("资源被删除: ", event.Object)
+					logs.Infof("资源被删除: ", event.Object)
 				case watch.Error:
-					logs.Tracef("发生错误: ", event.Object)
+					logs.Infof("发生错误: ", event.Object)
 				case watch.Bookmark:
-					logs.Tracef("收到Bookmark", event.Object)
+					logs.Infof("收到Bookmark", event.Object)
 
 				default:
-					logs.Tracef("未识别的事件类型: ", event.Type)
+					logs.Infof("未识别的事件类型: ", event.Type)
 				}
 			}
 		}
@@ -175,7 +175,7 @@ func main() {
 	if err != nil {
 		logs.Errorf("Failed to create action: %v", err)
 	} else {
-		logs.Trace("created action", result)
+		logs.Infof("created action", result)
 	}
 	_, err = actionsClient.Create(context.TODO(), action2, metav1.CreateOptions{})
 	_, err = actionsClient.Create(context.TODO(), action3, metav1.CreateOptions{})
@@ -183,30 +183,30 @@ func main() {
 
 	//Update一个Action
 
-	logs.Trace("updating")
+	logs.Info("updating")
 	// 部分更改一个参数
 	// 先Get一个Action ,更改Action的参数, UpdateAction
 
 	result, getErr := actionsClient.Get(context.TODO(), "demo-actions", metav1.GetOptions{})
 	if getErr != nil {
-		logs.Info(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Error(fmt.Errorf("Failed to get : %v", getErr))
 	}
 
-	logs.Tracef("get result", result)
-	logs.Tracef("修改前的result.Spec.ActionName：", result.Spec.Name)
+	logs.Infof("get result", result)
+	logs.Infof("修改前的result.Spec.Name：", result.Spec.Name)
 
-	result.Spec.Name = "updatedActionName"
+	result.Spec.Name = "updatedName"
 	_, updateErr := actionsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Error(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	logs.Tracef("修改后的result.Spec.ActionName：", result.Spec.Name)
-	logs.Tracef("Updated action...")
+	logs.Infof("修改后的result.Spec.Name：", result.Spec.Name)
+	logs.Info("Updated action...")
 	prompt()
 
 	// List 所有Action
-	logs.Tracef("listing 筛选的action")
+	logs.Info("listing 筛选的action")
 	lstOpts := metav1.ListOptions{
 		LabelSelector: "environment",
 	}
@@ -215,77 +215,77 @@ func main() {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Trace(d)
+		logs.Info(d)
 	}
 
-	logs.Trace("listing done")
+	logs.Info("listing done")
 	prompt()
 
 	//Patch 一个Action
-	logs.Trace("patching")
+	logs.Info("patching")
 	patchResult, err := actionsClient.Patch(context.TODO(), "demo-actions", types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
-	logs.Trace("patchResult: ", patchResult)
-	logs.Trace("patch Done")
+	logs.Infof("patchResult: ", patchResult)
+	logs.Info("patch Done")
 
 	// List 所有Action
-	logs.Trace("listing")
+	logs.Info("listing")
 	lstOpts = metav1.ListOptions{}
 	list, err = actionsClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Trace(d)
+		logs.Info(d)
 	}
 
-	logs.Trace("listing done")
+	logs.Info("listing done")
 	prompt()
 
 	// Delete一个Action
-	logs.Trace("deleting")
+	logs.Info("deleting")
 	err = actionsClient.Delete(context.TODO(), "demo-actions", metav1.DeleteOptions{})
 	if err != nil {
 		panic(err)
 	}
-	logs.Trace("Deleted action...")
+	logs.Info("Deleted action...")
 	prompt()
 
 	// Delete 之后再次 List所有Action
-	logs.Trace("listing")
+	logs.Info("listing")
 	lstOpts = metav1.ListOptions{}
 	list, err = actionsClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Trace(d)
+		logs.Info(d)
 	}
 
-	logs.Tracef("listing done")
+	logs.Info("listing done")
 
-	//DeleteCollection 删除所有Spec.ActionName=demo-action的Action
-	logs.Tracef("deleting collection")
+	//DeleteCollection 删除所有Spec.Name=demo-action的Action
+	logs.Info("deleting collection")
 	lstOpts = metav1.ListOptions{
-		FieldSelector: "Spec.ActionName=demo-action",
+		FieldSelector: "Spec.Name=demo-action",
 	}
 	err = actionsClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
-	logs.Tracef("Deleted collection...")
+	logs.Info("Deleted collection...")
 	prompt()
 
 	// DeleteCollection 之后再次 List所有Action
-	logs.Trace("listing")
+	logs.Info("listing")
 	lstOpts = metav1.ListOptions{}
 	list, err = actionsClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Trace(d)
+		logs.Info(d)
 	}
-	logs.Trace("listing done")
+	logs.Info("listing done")
 
 	select {}
 }

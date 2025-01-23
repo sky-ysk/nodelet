@@ -198,6 +198,8 @@ func main() {
 					fmt.Println("资源被删除: ", event.Object)
 				case watch.Error:
 					fmt.Println("发生错误: ", event.Object)
+				case watch.Bookmark:
+					fmt.Println("收到书签事件: ", event.Object)
 				default:
 					fmt.Println("未识别的事件类型: ", event.Type)
 				}
