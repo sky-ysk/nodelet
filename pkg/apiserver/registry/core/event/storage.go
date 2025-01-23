@@ -37,7 +37,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("not a Event")
 	}
-	return labels.Set(Event.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Event.ObjectMeta), nil
+	return labels.Set(Event.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Event.ObjectMeta, true), nil
 }
 func Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
