@@ -29,14 +29,22 @@ func NewActionHandler(clientSet *clients.ClientSet) *ActionHandler {
 }
 
 func (h *ActionHandler) GetAction(request *restful.Request, response *restful.Response) {
+	// 尝试从url中获取参数
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Action{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -66,14 +74,22 @@ func (h *ActionHandler) GetAction(request *restful.Request, response *restful.Re
 
 func (h *ActionHandler) CreateAction(request *restful.Request, response *restful.Response) {
 	// 先查询action是否存在
+	// 尝试从url中获取参数
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Action{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -153,14 +169,22 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 	// 先检查action是否存在
 	// 存在：更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Action{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查action是否存在
@@ -228,14 +252,22 @@ func (h *ActionHandler) DeleteAction(request *restful.Request, response *restful
 	// 查看action是否存在
 	// 存在，删除节点
 	// 不存在，返回 404 not found
+	// 尝试从url中获取参数
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Action{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 查看action是否存在
@@ -274,14 +306,22 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 	// 先检查action是否存在
 	// 存在：部分更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Action{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查action是否存在
@@ -350,7 +390,7 @@ func (h *ActionHandler) NewGetWebService() *restful.WebService {
 		To(h.GetAction).
 		Doc("Get a action with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the action").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Operation("Get action").
 		Returns(200, "OK", apis.Action{}).
 		Returns(400, "Not Found", nil),
@@ -360,7 +400,7 @@ func (h *ActionHandler) NewGetWebService() *restful.WebService {
 		To(h.CreateAction).
 		Doc("Create a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the action").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action object").DataType("string")).
 		Operation("Create action").
 		Returns(200, "OK", apis.Action{}).
@@ -371,7 +411,7 @@ func (h *ActionHandler) NewGetWebService() *restful.WebService {
 		To(h.UpdateAction).
 		Doc("Update a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the action").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action object").DataType("string")).
 		Operation("Update action").
 		Returns(200, "OK", apis.Action{}).
@@ -381,7 +421,7 @@ func (h *ActionHandler) NewGetWebService() *restful.WebService {
 		To(h.PatchAction).
 		Doc("Patch a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the action").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action field").DataType("string")).
 		Operation("Patch action").
 		Returns(200, "OK", apis.Action{}).
@@ -391,7 +431,7 @@ func (h *ActionHandler) NewGetWebService() *restful.WebService {
 		To(h.DeleteAction).
 		Doc("Delete a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the action").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Operation("Delete action").
 		Returns(200, "OK", apis.Action{}).
 		Returns(400, "Not Found", nil))

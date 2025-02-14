@@ -29,14 +29,22 @@ func NewGroupHandler(clientSet *clients.ClientSet) *GroupHandler {
 }
 
 func (h *GroupHandler) GetGroup(request *restful.Request, response *restful.Response) {
+	// 尝试从url中获取参数
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Group{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -66,14 +74,22 @@ func (h *GroupHandler) GetGroup(request *restful.Request, response *restful.Resp
 
 func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.Response) {
 	// 先查询Group是否存在
+	// 尝试从url中获取参数
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Group{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -152,14 +168,22 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 	// 先检查group是否存在
 	// 存在：更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Group{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查group是否存在
@@ -225,14 +249,22 @@ func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.R
 	// 查看group是否存在
 	// 存在，删除节点
 	// 不存在，返回 404 not found
+	// 尝试从url中获取参数
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Group{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 查看group是否存在
@@ -271,14 +303,22 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 	// 先检查group是否存在
 	// 存在：部分更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Group{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查group是否存在

@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/rs/zerolog"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -55,7 +54,9 @@ func initLogs(conf Config) {
 			LocalTime:  true,
 		}
 
-		writers = append(writers, bufio.NewWriter(hook))
+		// writers = append(writers, bufio.NewWriter(hook))
+		writers = append(writers, hook)
+
 	}
 
 	// 确保日志文件夹存在
@@ -77,6 +78,9 @@ func initLogs(conf Config) {
 		}) // 也可以只输出Stderr
 	}
 
+	if len(writers) == 0 {
+		panic("No writers available for logging. Please check your configuration. File or console require log output")
+	}
 	// 创建一个日志
 	multi := zerolog.MultiLevelWriter(writers...)
 	logs.logger = zerolog.New(multi).With().Timestamp().Stack().Logger()

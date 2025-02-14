@@ -30,14 +30,22 @@ func NewWorkflowHandler(clientSet *clients.ClientSet) *WorkflowHandler {
 }
 
 func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restful.Response) {
+	// 尝试从url中获取参数
 	name := request.QueryParameter(WorkflowName)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Workflow{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -67,14 +75,22 @@ func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restfu
 
 func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *restful.Response) {
 	// 先查询Workflow是否存在
+	// 尝试从url中获取参数
 	name := request.QueryParameter(WorkflowName)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Workflow{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -155,14 +171,22 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 	// 先检查workflow是否存在
 	// 存在：更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(WorkflowName)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Workflow{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查workflow是否存在
@@ -228,14 +252,22 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 	// 查看workflow是否存在
 	// 如果存在，删除workflow
 	// 如果不存在，返回 404 not found
+	// 尝试从url中获取参数
 	name := request.QueryParameter(WorkflowName)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Workflow{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 查看workflow是否存在
@@ -273,14 +305,22 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 	// 先检查资源是否存在
 	// 存在：更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(WorkflowName)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Workflow{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查workflow是否存在
@@ -348,7 +388,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.GetWorkflow).
 		Doc("Get a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the workflow").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
 		Operation("Get workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
@@ -358,7 +398,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.CreateWorkflow).
 		Doc("Create a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the workflow").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Create workflow").
 		Returns(200, "OK", apis.Workflow{}).
@@ -369,7 +409,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.UpdateWorkflow).
 		Doc("Update a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the workflow").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Update workflow").
 		Returns(200, "OK", apis.Workflow{}).
@@ -380,7 +420,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.PatchWorkflow).
 		Doc("Patch a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the workflow").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow field").DataType("string")).
 		Operation("Patch workflow").
 		Returns(200, "OK", apis.Workflow{}).
@@ -391,7 +431,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.DeleteWorkflow).
 		Doc("Delete a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the workflow").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
 		Operation("Delete workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil))

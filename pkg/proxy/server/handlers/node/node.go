@@ -29,14 +29,22 @@ func NewNodeHandler(clientSet *clients.ClientSet) *NodeHandler {
 }
 
 func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Response) {
+	// 尝试从url中获取参数
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Node{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -66,14 +74,22 @@ func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Respon
 
 func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Response) {
 	// 先查询Node是否存在
+	// 尝试从url中获取参数
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Node{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -153,12 +169,19 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 	// 不存在：返回错误
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Node{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查Node是否存在
@@ -226,12 +249,19 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 	// 如果不存在，返回 404 not found
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Node{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 查看node是否存在
@@ -271,12 +301,19 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 	// 不存在：返回错误
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Node{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查Node是否存在
@@ -346,7 +383,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		To(h.GetNode).
 		Doc("Get a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the node").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
 		Operation("Get node").
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil),
@@ -357,7 +394,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		Doc("Create a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Operation("Create node").
-		Param(ws.PathParameter("Name", "The name of the node").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil),
@@ -367,7 +404,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		To(h.UpdateNode).
 		Doc("Update a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the node").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Operation("Update node").
 		Returns(200, "OK", apis.Node{}).
@@ -378,7 +415,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		To(h.PatchNode).
 		Doc("Patch a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the node").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Operation("Patch node").
 		Returns(200, "OK", apis.Node{}).
@@ -389,7 +426,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		To(h.DeleteNode).
 		Doc("Delete a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the node").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
 		Operation("Delete node").
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil))

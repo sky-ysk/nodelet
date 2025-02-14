@@ -33,14 +33,22 @@ func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
 }
 
 func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Response) {
+	// 尝试从url中获取参数
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Task{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -70,14 +78,22 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 
 func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Response) {
 	// 先查询 task 是否存在
+	// 尝试从url中获取参数
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Task{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -194,14 +210,22 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 	// 查看task是否存在
 	// 如果存在，删除任务
 	// 如果不存在，返回 404 not found
+	// 尝试从url中获取参数
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Task{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 查看task是否存在
@@ -242,14 +266,22 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 	// 先检查task是否存在
 	// 存在：更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Task{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查task是否存在
@@ -317,14 +349,22 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 	// 先检查task是否存在
 	// 存在：更新
 	// 不存在：返回错误
+	// 尝试从url中获取参数
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		// url中没有获取到name参数，尝试从请求体中获取
+		req := &apis.Task{}
+		err := request.ReadEntity(&req)
+		if err != nil || req.Name == "" {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
+			if err != nil {
+				logs.Errorf("failed to return a status code ")
+				return
+			}
 			return
+		} else {
+			name = req.Name
 		}
-		return
 	}
 
 	// 检查task是否存在
@@ -395,7 +435,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		To(h.GetTask).
 		Doc("Get a task with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the task").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
 		Operation("get Task").
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
@@ -406,7 +446,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		To(h.CreateTask).
 		Doc("Create a task with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the task").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
 		Param(ws.BodyParameter("Task", "The json string of the Task object").DataType("string")).
 		Operation("createTask").
 		Returns(200, "OK", apis.Task{}).
@@ -418,7 +458,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		To(h.UpdateTask).
 		Doc("Update a task with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the task").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
 		Param(ws.BodyParameter("Task", "The json string of the Task object").DataType("string")).
 		Operation("update Task").
 		Returns(200, "OK", apis.Task{}).
@@ -430,7 +470,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		To(h.PatchTask).
 		Doc("Patch a task").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the task").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
 		Param(ws.BodyParameter("Task", "The json string of the Task field").DataType("string")).
 		Operation("patch Task").
 		Returns(200, "OK", apis.Task{}).
@@ -442,7 +482,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		To(h.DeleteTask).
 		Doc("Delete a task").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the task").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
 		Operation("Delete Task").
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
