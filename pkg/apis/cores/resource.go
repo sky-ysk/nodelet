@@ -6,10 +6,10 @@ package apis
 //TODO: 完善数据格式
 //TODO: 数据验证工作
 
-type Quantity struct {
-	// 定量数据
-	i int64
-
-	// 单位
-	format string
-}
+//type Quantity struct {
+//	// 定量数据
+//	i int64
+//
+//	// 单位
+//	format string
+//}

@@ -9,21 +9,23 @@ import (
 
 // 队列的key目前都填groupID；groupStatus-GroupID
 type GroupQueues struct {
-	queueLock      sync.RWMutex
-	checkingQueue  map[string]*apis.Group
-	runningQueue   sync.Map
-	errorQueue     map[string]*apis.Group
-	completedQueue map[string]*apis.Group
-	groupManager   Manager
+	queueLock        sync.RWMutex
+	checkingQueue    map[string]*apis.Group
+	copyPendingQueue map[string]*apis.Group
+	runningQueue     sync.Map
+	errorQueue       map[string]*apis.Group
+	completedQueue   map[string]*apis.Group
+	groupManager     Manager
 }
 
 func NewGroupQueues(groupManager Manager) *GroupQueues {
 	return &GroupQueues{
-		checkingQueue:  make(map[string]*apis.Group),
-		runningQueue:   sync.Map{},
-		errorQueue:     make(map[string]*apis.Group),
-		completedQueue: make(map[string]*apis.Group),
-		groupManager:   groupManager,
+		checkingQueue:    make(map[string]*apis.Group),
+		copyPendingQueue: make(map[string]*apis.Group),
+		runningQueue:     sync.Map{},
+		errorQueue:       make(map[string]*apis.Group),
+		completedQueue:   make(map[string]*apis.Group),
+		groupManager:     groupManager,
 	}
 }
 
@@ -151,6 +153,40 @@ func (gq *GroupQueues) DeleteFromCheckingAndAddToRunning(key string) bool {
 	return true
 }
 
+func (gq *GroupQueues) DeleteFromCheckingAndAddToCopyPending(key string) bool {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	if _, exists := gq.checkingQueue[key]; !exists {
+		logs.Infof("GroupID:%v not in checking queue, delete failed-2", key)
+		return false
+	}
+	group := gq.checkingQueue[key]
+	delete(gq.checkingQueue, key)
+	if _, exists := gq.copyPendingQueue[key]; exists {
+		logs.Infof("GroupID:%v has been added to copy-pending queue, it's a error", key)
+		return false
+	}
+	gq.copyPendingQueue[key] = group
+	return true
+}
+
+func (gq *GroupQueues) DeleteFromCopyPendingAndAddToRunning(key string) bool {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	if _, exists := gq.copyPendingQueue[key]; !exists {
+		logs.Infof("GroupID:%v not in copy-pending queue, delete failed-3", key)
+		return false
+	}
+	group := gq.copyPendingQueue[key]
+	delete(gq.copyPendingQueue, key)
+	if _, exists := gq.runningQueue.Load(key); exists {
+		logs.Errorf("GroupID:%v has been added to running queue, it's a error", key)
+		return false
+	}
+	gq.runningQueue.Store(key, group)
+	return true
+}
+
 func (gq *GroupQueues) DeleteFromRunning(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
@@ -228,6 +264,16 @@ func (gq *GroupQueues) GetAllChecking() []*apis.Group {
 	defer gq.queueLock.Unlock()
 	values := make([]*apis.Group, 0)
 	for _, value := range gq.checkingQueue {
+		values = append(values, value)
+	}
+	return values
+}
+
+func (gq *GroupQueues) GetAllCopyPending() []*apis.Group {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	values := make([]*apis.Group, 0)
+	for _, value := range gq.copyPendingQueue {
 		values = append(values, value)
 	}
 	return values

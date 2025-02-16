@@ -148,85 +148,91 @@ func (g *groupWorkers) startGroup(gr *apis.Group) {
 	}
 	//修改Checking队列当中改group的信息（同时也同步到group_manager当中），状态都改为checking
 	g.handleCheckingUpdate(group) //12.31新增：除了修改group的状态，还需要修改上层Task的状态为CheckDeploy
+	// 最新：把下面的group的依赖检查放入到group_monitor当中的Checking队列检查，把action、runtime的依赖检查放入group_monitor当中的Running队列检查
 	//检查依赖，如果满足，则放入running队列，开始执行actions
-	if !g.groupDepenSatisfy(group) { //12.31：增加检查是否有父亲group
-		logs.Infof("The group:%s execution dependency is not satisfied", group.Name)
-		//继续放在Checking队列当中，Checking队列会持续检查依赖，直到依赖满足后，才开始执行，重新将任务group交给runtimeManager去执行
-		return
-	}
-	// 任务依赖满足后就将任务从Checking队列转移纸Running队列
-	ok := g.queueManager.DeleteFromCheckingAndAddToRunning(group.Status.GroupID)
-	if !ok {
-		logs.Error("Delete group from checking queue and add to running queue failed")
-	}
+
+	// ************************************把下面这段注释
+	//if !g.groupDepenSatisfy(group) { //12.31：增加检查是否有父亲group
+	//	logs.Infof("The group:%s execution dependency is not satisfied", group.Name)
+	//	//继续放在Checking队列当中，Checking队列会持续检查依赖，直到依赖满足后，才开始执行，重新将任务group交给runtimeManager去执行
+	//	return
+	//}
+	//// 任务依赖满足后就将任务从Checking队列转移纸Running队列
+	//ok := g.queueManager.DeleteFromCheckingAndAddToRunning(group.Status.GroupID)
+	//if !ok {
+	//	logs.Error("Delete group from checking queue and add to running queue failed")
+	//}
+	// ************************************
 
 	//此处不用再修改group信息为Running，真正启动任务的时候，会修改phase为running
 	// TODO: 检查需要运行的Action,开始部署
-	logs.Infof("Ready to start group:%s", group.Name)
+	//logs.Infof("Ready to start group:%s", group.Name)
 	//根据group当中的Action开启相应的runtime  group(Spec:Actions)--action（Spec：Runtimes）
 	// 得有一个变量来标记group里的信息是否改变，如果没有改变就不用上传到etcd当中了，因为相同的group应该不能调用update
-	for i := range group.Spec.Actions {
-		action := &group.Spec.Actions[i]
-		if !g.actionDepenSatisfy(i, group) {
-			logs.Infof("Action:%s in group:%s waiting for dependencies", action.Name, group.Name)
-			//action.Status.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查
-			gro, err := g.groupManager.GetGroupByID(group.Status.GroupID)
-			if err != nil {
-				logs.Errorf("Get group from group_manager component err:%v", err)
-			}
-			gro.Spec.Actions[i].Status.Waiting = true
-			logs.Debugf("StartGroup method:ActionWaiting:%v, i:%v", gro.Spec.Actions[i].Status.Waiting, i)
-			//// patch
-			//patchGroupActions, err4 := json.Marshal(map[string]interface{}{
-			//	"spec": map[string]interface{}{
-			//		"actions": group.Spec.Actions,
-			//	},
-			//})
-			//if err4 != nil {
-			//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
-			//}
-			//_, err = g.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroupActions, metav1.PatchOptions{})
-			//if err != nil {
-			//	logs.Errorf("patch patchGroupActions:group err:%v", err)
-			//}
-			continue
-		}
-		for j := range action.Spec.Runtimes {
-			ru := &action.Spec.Runtimes[j]
-			if !g.runtimeDepenSatisfy(i, j, group) {
-				logs.Infof("Runtime:%s in group:%s waiting for dependencies", ru.Name, group.Name)
-				//ru.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查，检查成功才执行
-				gro, err := g.groupManager.GetGroupByID(group.Status.GroupID)
-				if err != nil {
-					logs.Errorf("Get group from group_manager err:%v", err)
-				}
-				gro.Spec.Actions[i].Spec.Runtimes[j].Waiting = true
-				logs.Debugf("StartGroup method:runtim:%v, Runtimewaiting:%v, i:%v, j:%v", ru.Name, gro.Spec.Actions[i].Spec.Runtimes[j].Waiting, i, j)
-				// TODO patch
-				//logs.Infof("runtime %s in group, waiting:%v,i:%v,j:%v", ru.Name, group.Spec.Actions[i].Spec.Runtimes[j].Waiting, i, j)
-				//// patch
-				//patchGroupActionsRuntimes, err4 := json.Marshal(map[string]interface{}{
-				//	"spec": map[string]interface{}{
-				//		"actions": group.Spec.Actions,
-				//	},
-				//})
-				//if err4 != nil {
-				//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
-				//}
-				//result, err := g.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroupActionsRuntimes, metav1.PatchOptions{})
-				//if err != nil {
-				//	logs.Errorf("patch patchGroupActionsRuntimes:group err:%v", err)
-				//}
-				//logs.Info(result)
-				continue
-			}
-			logs.Infof("Run runtime, runtime:%v", ru.Name)
-			go g.runtimeManager.Run(group, action, ru, i, j) //TODO 考虑这个方法是否使用协程
-			if err != nil {
-				logs.Errorf("Run task err:%v", err)
-			}
-		}
-	}
+
+	// TODO 将下面这段代码合并到了group_monitor当中，还需要测试一下
+	//for i := range group.Spec.Actions {
+	//	action := &group.Spec.Actions[i]
+	//	if !g.actionDepenSatisfy(i, group) {
+	//		logs.Infof("Action:%s in group:%s waiting for dependencies", action.Name, group.Name)
+	//		//action.Status.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查
+	//		gro, err := g.groupManager.GetGroupByID(group.Status.GroupID)
+	//		if err != nil {
+	//			logs.Errorf("Get group from group_manager component err:%v", err)
+	//		}
+	//		gro.Spec.Actions[i].Status.Waiting = true
+	//		logs.Debugf("StartGroup method:ActionWaiting:%v, i:%v", gro.Spec.Actions[i].Status.Waiting, i)
+	//		//// patch
+	//		//patchGroupActions, err4 := json.Marshal(map[string]interface{}{
+	//		//	"spec": map[string]interface{}{
+	//		//		"actions": group.Spec.Actions,
+	//		//	},
+	//		//})
+	//		//if err4 != nil {
+	//		//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
+	//		//}
+	//		//_, err = g.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroupActions, metav1.PatchOptions{})
+	//		//if err != nil {
+	//		//	logs.Errorf("patch patchGroupActions:group err:%v", err)
+	//		//}
+	//		continue
+	//	}
+	//	for j := range action.Spec.Runtimes {
+	//		ru := &action.Spec.Runtimes[j]
+	//		if !g.runtimeDepenSatisfy(i, j, group) {
+	//			logs.Infof("Runtime:%s in group:%s waiting for dependencies", ru.Name, group.Name)
+	//			//ru.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查，检查成功才执行
+	//			gro, err := g.groupManager.GetGroupByID(group.Status.GroupID)
+	//			if err != nil {
+	//				logs.Errorf("Get group from group_manager err:%v", err)
+	//			}
+	//			gro.Spec.Actions[i].Spec.Runtimes[j].Waiting = true
+	//			logs.Debugf("StartGroup method:runtim:%v, Runtimewaiting:%v, i:%v, j:%v", ru.Name, gro.Spec.Actions[i].Spec.Runtimes[j].Waiting, i, j)
+	//			// TODO patch
+	//			//logs.Infof("runtime %s in group, waiting:%v,i:%v,j:%v", ru.Name, group.Spec.Actions[i].Spec.Runtimes[j].Waiting, i, j)
+	//			//// patch
+	//			//patchGroupActionsRuntimes, err4 := json.Marshal(map[string]interface{}{
+	//			//	"spec": map[string]interface{}{
+	//			//		"actions": group.Spec.Actions,
+	//			//	},
+	//			//})
+	//			//if err4 != nil {
+	//			//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
+	//			//}
+	//			//result, err := g.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroupActionsRuntimes, metav1.PatchOptions{})
+	//			//if err != nil {
+	//			//	logs.Errorf("patch patchGroupActionsRuntimes:group err:%v", err)
+	//			//}
+	//			//logs.Info(result)
+	//			continue
+	//		}
+	//		logs.Infof("Run runtime, runtime:%v", ru.Name)
+	//		go g.runtimeManager.Run(group, action, ru, i, j) //TODO 考虑这个方法是否使用协程
+	//		if err != nil {
+	//			logs.Errorf("Run task err:%v", err)
+	//		}
+	//	}
+	//}
 
 	//for i := range group.Status.ActionStatus {
 	//	actionStatus := group.Status.ActionStatus[i]
@@ -296,88 +302,6 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 	return
 }
 
-// 检查Group的依赖是否满足
-func (g *groupWorkers) groupDepenSatisfy(group *apis.Group) bool {
-	// TODO：实现依赖检查逻辑
-	// 目前只是检查Spec当中的Parents选项
-	if len(group.Spec.Parents) == 0 {
-		return true
-	} else {
-		//检查父亲group是否执行完成（得先根据groupID遍历得到GroupName）
-		for i := range group.Spec.Parents {
-			//parentGroupID := group.Spec.Parents[i]
-			parentName := group.Spec.Parents[i]
-			//var parentGroupName string
-			// 去client-go当中查group
-			//groupList, err := g.groupClient.List(context.TODO(), metav1.ListOptions{})
-			//if err != nil {
-			//	logs.Error("get list group from etcd err:", err.Error())
-			//}
-			//for _, g := range groupList.Items {
-			//	if g.Status.GroupID == parentGroupID {
-			//		parentGroupName = g.Name
-			//		break
-			//	}
-			//}
-			// TODO 这里得判断这个group和当前的group是否属于同一个Task，方法一：直接找到父亲Task，然后看Task下的group的Name和上面ParentName是否对上，对的上就进行下面处理
-			result, err := g.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{}) //这里查父亲group的状态，得去etcd当中查
-			if err != nil {
-				logs.Errorf("Failed to get parent group:%s form etcd, err:%v", parentName, err)
-			}
-			if result.Status.Phase != apis.Successed {
-				return false //说明当前group的付钱group还没完成，直接返回false即可
-			}
-		}
-	}
-	return true
-}
-
-// 检查Action的依赖是否满足
-func (g *groupWorkers) actionDepenSatisfy(actionIndex int, group *apis.Group) bool {
-	// 得去etcd当中查稳妥一些，还是查action的parents是否完成---已经不用读了，参数传入的已经是从etcd当中读出来的了
-	//group, err := g.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-	//if err != nil {
-	//	logs.Errorf("get group err:%v", err)
-	//}
-	actionSpec := &group.Spec.Actions[actionIndex].Spec
-	for i := range actionSpec.Parents { // 遍历当前Action的所有父亲Action
-		//actionParentID := actionSpec.Parents[i]
-		actionParentName := actionSpec.Parents[i]
-		for j := range group.Status.ActionStatus { // 遍历group当中所有的action，先对actionID，然后看这个action的Phase如何
-			as := &group.Status.ActionStatus[j]
-			a := &group.Spec.Actions[j]
-			if a.Name == actionParentName && as.Phase != apis.Successed { //目前定义，Action的父亲Action必须是成功状态
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// 检查Runtime的依赖是否满足
-func (g *groupWorkers) runtimeDepenSatisfy(actionIndex, runtimeIndex int, group *apis.Group) bool {
-	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
-	// 得去etcd当中查稳妥一些，还是查action的parents是否完成 ---已经不用读了，参数传入的已经是从etcd当中读出来的了
-	//group, err := g.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-	//if err != nil {
-	//	logs.Errorf("get group err:%v", err)
-	//}
-	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
-	for i := range runtime.Parents { // 遍历当前runtime的父亲
-		//runtimeParentID := runtime.Parents[i]
-		runtimeParentName := runtime.Parents[i]
-		// TODO 后续还需要加入判断该runtime是否和
-		for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
-			rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
-			r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
-			if r.Name == runtimeParentName && rs.Phase != apis.Successed {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 // 修改group下面的所有状态为Checking  +增加：修改group上层的Task状态为Checking
 func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	//gr, err := g.groupClient.Get(context.TODO(), group.Name, metav1.GetOptions{})
@@ -393,9 +317,17 @@ func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	// GroupSpec当中的Actions，需要修改下面的（ActionStatus的Phase以及RuntimeStatus的Phase）
 	for i := range groupSpec.Actions { //Actions
 		actionStatus := &groupSpec.Actions[i].Status //ActionStatus
+		// 为了适配迁移，该Action在A设备上已经执行完成了
+		if actionStatus.Phase == apis.Successed {
+			continue
+		}
 		groupSpec.Actions[i].Status.Phase = apis.DeployCheck
 		//groupSpec.Actions[i].Status.LastTime = times //隐藏
 		for j := range actionStatus.RuntimeStatus { // RuntimeStatus
+			// 为了适配迁移，该Runtime在A设备上已经执行完成了
+			if actionStatus.RuntimeStatus[j].Phase == apis.Successed {
+				continue
+			}
 			actionStatus.RuntimeStatus[j].Phase = apis.DeployCheck
 			//actionStatus.RuntimeStatus[j].LastTime = times // 隐藏
 		}
@@ -403,54 +335,67 @@ func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	//GroupStatus当中的ActionStatus，需要修改（ActionStatus的Phase以及RuntimeStatus的Phase）
 	for i := range groupStatus.ActionStatus { //ActionStatus
 		as := &groupStatus.ActionStatus[i]
+		// 为了适配迁移，该Action在A设备上已经执行完成了
+		if as.Phase == apis.Successed {
+			continue
+		}
 		as.Phase = apis.DeployCheck
 		//as.LastTime = times // 隐藏
 		for j := range as.RuntimeStatus { //RuntimeStatus
 			rs := &as.RuntimeStatus[j]
+			// 为了适配迁移，该Runtime在A设备上已经执行完成了
+			if rs.Phase == apis.Successed {
+				continue
+			}
 			rs.Phase = apis.DeployCheck
 			//rs.LastTime = times // 隐藏
 		}
 	}
 	// 修改Group上层的Task 的Status状态为deploychecking
-	taskID := gr.Status.Belongs.TaskID // 查找该group所属的Task
-	// client-go 查看task-list
-	list, err := g.taskClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		logs.Errorf("Get list task err:%v", err)
-	}
-	for _, t := range list.Items { //遍历etcd当中的所有task，根据taskID取出task
-		if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Checking
-			taskName := t.Name
-			task1, err1 := g.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
-			if err1 != nil {
-				logs.Errorf("Etcd has group:%v, but not has task:%v, get task err:%v,", gr.Name, taskName, err1)
-				return
-			}
-			if task1.Status.Phase == apis.ReadyToDeploy { // TODO 这里为啥要判断是否DeployCheck--因为group被分配到不同的节点上，遍历到group的时候，都需要修改上层Task的信息的话，是重叠的，没必要  这里逻辑错误，如果第一个group遍历到完并且运行了，这里的Task的状态就行Running
-				task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
-				//task1.Status.LastTime = times //隐藏
-			}
-			for i := range task1.Spec.Groups { //同时得更新TaskSpec下的Group以及TaskStatus下的GroupStatus为当前的group信息
-				if gr.Name == task1.Spec.Groups[i].Name {
-					task1.Spec.Groups[i].Spec = gr.Spec
-					task1.Spec.Groups[i].Status = gr.Status
-					task1.Status.GroupStatus[i] = gr.Status
-					break
+	// 为了适配迁移，副本group在handleCheckingUpdate方法当中无需再将Task的状态设置为DeployChecking，由源任务进行修改
+	if !gr.Spec.IsCopy {
+		taskID := gr.Status.Belongs.TaskID // 查找该group所属的Task
+		// client-go 查看task-list
+		list, err := g.taskClient.List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			logs.Errorf("Get list task err:%v", err)
+		}
+		for _, t := range list.Items { //遍历etcd当中的所有task，根据taskID取出task
+			if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Checking
+				taskName := t.Name
+				task1, err1 := g.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
+				if err1 != nil {
+					logs.Errorf("Etcd has group:%v, but not has task:%v, get task err:%v,", gr.Name, taskName, err1)
+					return
 				}
-			}
-			// 将task信息提交到etcd上去
-			_, err1 = g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
-			if err1 != nil {
-				logs.Errorf("Etcd update task:%v err:%v, now is handing group:%v", taskName, err1, gr.Spec.Name) //这里出错
-				// 再次上传
-				time.Sleep(200 * time.Millisecond)
+				logs.Infof("==========================Task的Status.Phase:%v", task1.Status.Phase)
+				if task1.Status.Phase == apis.ReadyToDeploy || task1.Status.Phase == apis.Unknown { // TODO 这里为啥要判断是否DeployCheck--因为group被分配到不同的节点上，遍历到group的时候，都需要修改上层Task的信息的话，是重叠的，没必要  这里逻辑错误，如果第一个group遍历到完并且运行了，这里的Task的状态就行Running
+					task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
+					logs.Info("=================Task的状态被修改为DeployCheck")
+					//task1.Status.LastTime = times //隐藏
+				}
+				for i := range task1.Spec.Groups { //同时得更新TaskSpec下的Group以及TaskStatus下的GroupStatus为当前的group信息
+					if gr.Name == task1.Spec.Groups[i].Name {
+						task1.Spec.Groups[i].Spec = gr.Spec
+						task1.Spec.Groups[i].Status = gr.Status
+						task1.Status.GroupStatus[i] = gr.Status
+						break
+					}
+				}
+				// 将task信息提交到etcd上去
 				_, err1 = g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+				if err1 != nil {
+					logs.Errorf("Etcd update task:%v err:%v, now is handing group:%v", taskName, err1, gr.Spec.Name) //这里出错
+					// 再次上传
+					time.Sleep(200 * time.Millisecond)
+					_, err1 = g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+				}
+				break //后续就不用再遍历Task列表了，直接结束
 			}
-			break //后续就不用再遍历Task列表了，直接结束
 		}
 	}
-	//将group信息提交到etcd上去，使用update更新--出现一次报错
-	_, err = g.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
+	//将group信息提交到etcd上去，使用update更新--出现一次报错  TODO 为了适配迁移，如果后面替换为Patch操作，那么要使用gr.ObjectMeta.Name 来进行patch，因为目前规定gr.ObjectMeta.Name为不同group的标识（针对副本、源group）
+	_, err := g.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
 	logs.Infof("Group's deployCheck phase submit to etcd, group:%v", gr.Name)
 	if err != nil {
 		logs.Errorf("Etcd update group:%v err:%v", gr.Name, err)
@@ -458,34 +403,4 @@ func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 		time.Sleep(200 * time.Millisecond)
 		_, err = g.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
 	}
-	////将group信息提交到etcd上去，使用patch更新
-	//patchGroupActions, err4 := json.Marshal(map[string]interface{}{
-	//	"spec": map[string]interface{}{
-	//		"actions": gr.Spec.Actions,
-	//	},
-	//})
-	//if err4 != nil {
-	//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
-	//}
-	//patchGroupActionStatus, err4 := json.Marshal(map[string]interface{}{
-	//	"status": map[string]interface{}{
-	//		"action_status": gr.Status.ActionStatus,
-	//	},
-	//})
-	//if err4 != nil {
-	//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
-	//}
-	//_, err = g.groupClient.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroupActions, metav1.PatchOptions{})
-	//if err != nil {
-	//	logs.Errorf("=================patch patchGroupActions:group err:%v", err)
-	//}
-	//_, err = g.groupClient.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroupActionStatus, metav1.PatchOptions{})
-	//if err != nil {
-	//	logs.Errorf("=================patch patchGroupActionStatus:group err:%v", err)
-	//}
-	//将queue_manager和group_manager的group信息进行更新
-	//err = g.queueManager.UpdateGroup(gr.Status.GroupID, gr)
-	//if err != nil {
-	//	logs.Error("update group-DeployChecking info to queue_manager、group_manager error")
-	//}
 }

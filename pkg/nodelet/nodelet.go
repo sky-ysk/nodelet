@@ -84,14 +84,13 @@ func InitClient() (*clients.ClientSet, error) {
 
 func (nl *Nodelet) Run(ctx context.Context) {
 	// 构造Node Exporter
-	//ne, err := node.NewNodeExporter(nl.cfg.nc, nl.nodesClient)
+	//ne, err := node.NewNodeExporter(nl.cfg.nc, nl.clientSet)
 	//if err != nil {
 	//	panic(err)
 	//}
 	//go ne.Run(ctx)
 
 	//构造Task Exporter
-	//te, err := task.NewTaskExporter(nl.cfg.tc, nl.nodesClient)
 	te, err := task.NewTaskExporter(nl.cfg.tc, nl.clientSet)
 	if err != nil {
 		panic(err)

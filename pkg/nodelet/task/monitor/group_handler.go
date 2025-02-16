@@ -96,7 +96,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	_, err := gh.groupManager.GetGroupByID(gr.Status.GroupID) // 使用groupID查，因为groupID是唯一分配的
 	if err == nil {                                           //err等于nil说明在group_manager当中能找到group信息
 		// 1、说明group已经存
-		logs.Debugf("Group:%s is already put into Deployer", gr.Spec.Name)
+		logs.Infof("#################################Group:%s is already put into Deployer", gr.Spec.Name)
 		return
 	}
 	//如果说部署器本地没有改groupID信息的话，就存入group信息

@@ -9,8 +9,10 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/group"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	"hit.edu/framework/pkg/nodelet/task/monitor"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
+	_switch "hit.edu/framework/pkg/nodelet/task/switch"
 	"hit.edu/framework/pkg/nodelet/task/task"
 	"hit.edu/framework/pkg/nodelet/task/types"
 	"time"
@@ -44,6 +46,9 @@ type TaskExporter struct {
 	// 处理从上游（API-Server）中的Group的更新事件
 	groupHandler *monitor.GroupHandler
 
+	// 切换模块
+	groupSwitcher *_switch.GroupSwitch
+
 	updateCh chan types.GroupUpdate
 }
 
@@ -62,10 +67,12 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	groupManager := group.NewGroupManager()
 	// Manager 配置Task
 	taskManager := task.NewTaskManager()
+	// grpc_clients_manager
+	clientsManager := intwithRuntime.NewClientsManager()
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb)
+	runtimeManager := runtime.NewRuntimeManager(eb, clientsManager)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -73,16 +80,17 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 
 	taskExporter := &TaskExporter{
 		// Monitor配置
-		nodesClient:  nodeClient,
-		tasksClient:  taskClient,
-		gropsClient:  groupClient,
-		groupManager: groupManager,
-		taskManager:  taskManager,
-		groupLister:  lister,
-		groupWorkers: workers,
-		groupMonitor: monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
-		groupHandler: monitor.NewGroupHandler(groupManager, workers, groupQueues),
-		updateCh:     make(chan types.GroupUpdate),
+		nodesClient:   nodeClient,
+		tasksClient:   taskClient,
+		gropsClient:   groupClient,
+		groupManager:  groupManager,
+		taskManager:   taskManager,
+		groupLister:   lister,
+		groupWorkers:  workers,
+		groupMonitor:  monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
+		groupHandler:  monitor.NewGroupHandler(groupManager, workers, groupQueues),
+		groupSwitcher: _switch.NewSwitchManager(groupQueues, nodeClient, groupClient, runtimeManager, clientsManager),
+		updateCh:      make(chan types.GroupUpdate),
 	}
 
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
@@ -99,8 +107,9 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 
 	go te.groupHandler.Loop(ctx, te.updateCh) //主要监控上层发来的消息，主要是启动、停止任务
 	// 任务部署完成后，需要监控任务的执行情况，并通过Client-Go定期更新
-	go te.groupMonitor.Start() //主要监控正在启动的任务，获取任务状态信息
-	go te.ReceiveGroupInfo()
+	go te.groupMonitor.Start()               //主要监控正在启动的任务，获取任务状态信息
+	go te.ReceiveGroupInfo()                 // 持续从etcd当中读取group
+	go te.groupSwitcher.StartSwitchService() // 开启切换服务
 	select {
 	case <-ctx.Done():
 		return ctx.Err() //退出是返回错误
@@ -116,7 +125,7 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 		}
 		// 遍历group
 		for _, group := range groupList.Items {
-			groupName := group.Spec.Name
+			groupName := group.Name // 这里是一个坑
 			// 从etcd当中读group的信息
 			gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 			if err != nil {

@@ -62,8 +62,34 @@ func main() {
 	// 获取访问Group的客户端
 	// 默认访问的Namespace是 ""
 
-	groupsClient := clientSet.Core().Groups("test")
+	groupsClient := clientSet.Core().Groups("") //目前我支持的api-server，对应的命名空间为""
 
+	action := apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-actions",
+			Namespace: "test",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "demo-action",
+			Runtimes: []apis.Runtime{
+				apis.Runtime{
+					Name: "demo-runtime",
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: []apis.RuntimeStatus{
+				apis.RuntimeStatus{
+					NodeName: "demo-runtime",
+					Phase:    "running",
+				},
+			},
+		},
+	}
 	group := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-groups",
@@ -74,9 +100,44 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
-			Name: "demo-group",
+			Name:    "demo-group",
+			Actions: []apis.Action{action},
+		},
+		Status: apis.GroupStatus{
+			Phase: apis.Unknown,
 		},
 	}
+
+	// 修改源group的Status.phase为Migrating
+	patchGroup, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase": apis.Migrating,
+		},
+	})
+
+	//patchGroup3, err := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"actions": []map[string]interface{}{
+	//			{
+	//				"status": map[string]interface{}{
+	//					"status": []map[string]interface{}{
+	//						{
+	//							"phase": "patch-phase-value", // 这里设置你想要的新值
+	//						},
+	//					},
+	//				},
+	//			},
+	//		},
+	//	},
+	//})
+
+	patchGroup3, err := json.Marshal([]map[string]interface{}{
+		{
+			"op":    "replace",
+			"path":  "/spec/actions/0/status/status/0/phase",
+			"value": "new-phase-value", // 这里替换为你需要的 Phase 值
+		},
+	})
 
 	//group2 := &apis.Group{
 	//	ObjectMeta: metav1.ObjectMeta{
@@ -102,12 +163,17 @@ func main() {
 	//		GroupName: "demo-group",
 	//	},
 	//}
-	patchGroup, err := json.Marshal(map[string]interface{}{
-		"Spec": map[string]interface{}{
-			"GroupName": "patch-group-name",
-			"HostName":  "master",
-		},
-	})
+
+	//patchGroup, err := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"name": "patch-group-name",
+	//		"actions": []map[string]interface{}{
+	//			{
+	//				"name": "patch-action-name",
+	//			},
+	//		},
+	//	},
+	//})
 
 	//监听事件并打印  监听resources/v1/groups
 	go func() {
@@ -149,16 +215,12 @@ func main() {
 		}
 	}()
 
-	//如果已经存在，先删掉
-	//err = groupsClient.Delete(context.TODO(), "demo-groups", metav1.DeleteOptions{})
-
 	// Create一个Group
 	fmt.Println("creating")
 	results, err := groupsClient.Create(context.TODO(), group, metav1.CreateOptions{})
 
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
-		panic(err)
 	}
 	//_, _ = groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
 	//_, _ = groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
@@ -178,15 +240,13 @@ func main() {
 	}
 
 	fmt.Println("get result", result)
-	fmt.Println("修改前的result.Spec.GroupName：", result.Spec.Name)
 
-	result.Spec.Name = "updatedGroupName"
+	result.Spec.Actions[0].Spec.Name = "updated action-runtime-Name"
 	_, updateErr := groupsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
 		panic(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	fmt.Println("修改后的result.Spec.GroupName：", result.Spec.Name)
 	fmt.Println("Updated group...")
 	prompt()
 
@@ -206,8 +266,19 @@ func main() {
 
 	//Patch 一个Group
 	fmt.Println("patching")
-	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup3, metav1.PatchOptions{})
 	fmt.Println("patchResult: ", patchResult)
+	fmt.Println("value: ", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
+	fmt.Println("patch Done")
+
+	prompt()
+	fmt.Println("patching---2")
+	patchResult, err = groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	if err != nil {
+		logs.Errorf("Patch group error-2:%v", err)
+	}
+	fmt.Println("patchResult: ", patchResult)
+	fmt.Println("value: ", result.Status.Phase)
 	fmt.Println("patch Done")
 
 	// List 所有Group

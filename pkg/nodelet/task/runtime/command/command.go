@@ -6,6 +6,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
 	"os"
 	"os/exec"
@@ -18,23 +19,29 @@ import (
 type CommandRuntime struct {
 	processManager *process.ProcessManager
 	eventBus       *eventbus.EventBus
+	clientsManager *intwithRuntime.ClientsManager
+	stopSignal     chan struct{} // 用于标记进程是否被外部停止
 }
 
-func NewCommandRuntime(eventBus *eventbus.EventBus) *CommandRuntime {
+func NewCommandRuntime(eventBus *eventbus.EventBus, clients *intwithRuntime.ClientsManager) *CommandRuntime {
 	pm := process.NewProcessManager()
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
+		clientsManager: clients,
+		stopSignal:     make(chan struct{}),
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
 	logs.Infof("command runtime kill task:%s", group.Name)
+	close(cr.stopSignal) // 关闭通道，标记进程被外部停止
 	err := cr.stopCMD(runtime.Name)
 	if err != nil {
 		return err
 	}
 	return nil
 }
+
 func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("command runtime for runtime task:%s", runtime.Name)
 	// 执行时所需命令
@@ -134,10 +141,19 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 // 监控任务的执行状态，并修改Runtime信息并上传（这里是使用事件上传，后续可能要对比传入group_manager，来修改任务信息）
 func (cr *CommandRuntime) monitorCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, CMD *exec.Cmd) {
 	if err := CMD.Wait(); err != nil {
-		logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
-		// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
-		cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
-		cr.processManager.RemoveProcess(runtime.Name)
+		// 检查 stopSignal 通道是否被关闭，判断进程是否是外部停止的
+		if _, ok := <-cr.stopSignal; !ok {
+			// 通道已关闭，说明是stopCMD终止的  两种情况：一种是用户想停止任务，一种是需要迁移，从而停止任务
+			logs.Info("command killed externally by stopCMD")
+			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.processManager.RemoveProcess(runtime.Name)
+		} else {
+			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
+			// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
+			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.processManager.RemoveProcess(runtime.Name)
+		}
+
 		return
 	}
 	logs.Infof("command %s completed", runtime.Name)
@@ -196,8 +212,20 @@ func (cr *CommandRuntime) notifyRuntimeEndPhase(groupName string, actionIndex, r
 	cr.eventBus.Publish(event)
 }
 
+//func (cr *CommandRuntime) notifyRuntimeMigratePhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
+//	event := events.RuntimeEndPhaseEvent1{
+//		GroupName:    groupName,
+//		ActionIndex:  actionIndex,
+//		RuntimeIndex: runtimeIndex,
+//		Phase:        phase,
+//		FinishAt:     finishTime,
+//		LastTime:     lastTime,
+//	}
+//	cr.eventBus.Publish(event)
+//}
+
 // 获取任务的执行状态（正在运行or运行失败）---该方法暂时没有用到-先放着
-func (cr *CommandRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
+func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 	cmd, exeists := cr.processManager.GetProcess(group.Name)
 	if !exeists {
 		logs.Error("task %s is not running", group.Name)
@@ -219,4 +247,53 @@ func (cr *CommandRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action
 		return "Error", err
 	}
 	return "Completed", nil
+}
+
+// 细粒度控制（grpc）：保存任务状态
+func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
+	//client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
+	logs.Infof("********************【模拟】成功保存了任务状态：ABCDEFG")
+	return "ABCDEFG"
+}
+
+// 细粒度控制（grpc）：恢复任务状态
+func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	// 恢复任务状态，调用grpc接口通知任务恢复任务状态，任务状态存放在etcd当中（group下对应runtime下的runtimeStatus下的keyStatus属性）
+	keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
+	// 下面要使用这个关键状态数据进行恢复，调用Grpc去控制恢复任务状态，这里首先是否需要先启动任务呢？
+	//client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
+	logs.Infof("keyStatus: %s", keyStatus)
+	logs.Info("**********************成功恢复了任务状态****************************")
+	return nil
+}
+
+// 细粒度控制（grpc）：启动任务状态
+func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	// 调用grpc接口启动任务
+	//client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
+	// 下面是为了测试 -----下面的内容是暂时测试的，后面需要替换使用grpc
+	logs.Infof("command runtime for runtime task:%s", runtime.Name)
+	// 执行时所需命令
+	cmd := runtime.Command
+	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
+	args := runtime.Args
+
+	// 目前只接受Command中第一个元素
+	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args)
+	if err != nil {
+
+		logs.Error("Failed to start action:\t", action.Spec.Name)
+		return err
+		// TODO: 输出Action的详细信息
+	}
+	// TODO: 输出Action的详细信息，等级为Debug
+	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
+	return nil
+}
+
+// 细粒度控制（grpc）：初始化任务
+func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+
+	return nil
 }

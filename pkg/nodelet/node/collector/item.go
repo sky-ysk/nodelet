@@ -5,7 +5,7 @@ import "strings"
 // 数据存储的基本单元
 type Item struct {
 	// 收集数据的名称
-	name string //格式：name = namespace + '.' + subsystem + '.' + name
+	name string //格式：name = namespace + '.' + subsystem + '.' + name    node.CPU.Info   node.CPU.Percent
 
 	// 收集数据的描述信息
 	desc string //例如：CPU info from /proc/cpuinfo
