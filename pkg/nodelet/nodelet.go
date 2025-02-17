@@ -9,6 +9,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/nodelet/node"
 	"hit.edu/framework/pkg/nodelet/node/collector"
 	"hit.edu/framework/pkg/nodelet/task"
 	"log"
@@ -84,11 +85,11 @@ func InitClient() (*clients.ClientSet, error) {
 
 func (nl *Nodelet) Run(ctx context.Context) {
 	// 构造Node Exporter
-	//ne, err := node.NewNodeExporter(nl.cfg.nc, nl.clientSet)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//go ne.Run(ctx)
+	ne, err := node.NewNodeExporter(nl.cfg.nc, nl.clientSet)
+	if err != nil {
+		panic(err)
+	}
+	go ne.Run(ctx)
 
 	//构造Task Exporter
 	te, err := task.NewTaskExporter(nl.cfg.tc, nl.clientSet)

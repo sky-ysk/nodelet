@@ -105,7 +105,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	// 2、检查资源是否足够并满足部署条件
 	if isCanDeploy := gh.checkResource(gr); !isCanDeploy {
 		// 如果无法部署，拒绝改Group的部署并通知调度器
-		logs.Errorf("Group:%s cannot be deployed,err:%v", gr.Spec.Name, err)
+		logs.Errorf("Group:%s cannot be deployed,err:%v", gr.Name, err)
 		// TODO 这里得直接提交给调度器，告知group无法部署
 		return
 	}
@@ -143,6 +143,11 @@ func (gh *GroupHandler) HandleGroupKill(gr *apis.Group) {
 
 // TODO 检查本地资源是否可以启动该Group
 func (gh *GroupHandler) checkResource(g *apis.Group) bool {
+	// 首先检查一下这个group的状态是否为ReadyToDeploy
+	logs.Infof("checkResource方法：g.Status.Phase:%v", g.Status.Phase)
+	if g.Status.Phase != apis.ReadyToDeploy {
+		return false
+	}
 	//检查当前节点资源是否满足
 
 	//检查当前节点是否满足Group的条件

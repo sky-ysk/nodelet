@@ -20,7 +20,7 @@ type CommandRuntime struct {
 	processManager *process.ProcessManager
 	eventBus       *eventbus.EventBus
 	clientsManager *intwithRuntime.ClientsManager
-	stopSignal     chan struct{} // 用于标记进程是否被外部停止
+	stopSignals    map[string]chan struct{} // 用于标记进程是否被外部停止
 }
 
 func NewCommandRuntime(eventBus *eventbus.EventBus, clients *intwithRuntime.ClientsManager) *CommandRuntime {
@@ -29,12 +29,12 @@ func NewCommandRuntime(eventBus *eventbus.EventBus, clients *intwithRuntime.Clie
 		processManager: pm,
 		eventBus:       eventBus,
 		clientsManager: clients,
-		stopSignal:     make(chan struct{}),
+		stopSignals:    make(map[string]chan struct{}),
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
 	logs.Infof("command runtime kill task:%s", group.Name)
-	close(cr.stopSignal) // 关闭通道，标记进程被外部停止
+	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
 	err := cr.stopCMD(runtime.Name)
 	if err != nil {
 		return err
@@ -122,6 +122,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 	cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 	cr.processManager.AddProcess(runtime.Name, CMD)
+	cr.stopSignals[runtime.Name] = make(chan struct{})
 	logs.Infof("process id:\t %d is Running", CMD.Process.Pid)
 
 	// return nil
@@ -142,18 +143,17 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 func (cr *CommandRuntime) monitorCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, CMD *exec.Cmd) {
 	if err := CMD.Wait(); err != nil {
 		// 检查 stopSignal 通道是否被关闭，判断进程是否是外部停止的
-		if _, ok := <-cr.stopSignal; !ok {
+		if _, ok := <-cr.stopSignals[runtime.Name]; !ok {
 			// 通道已关闭，说明是stopCMD终止的  两种情况：一种是用户想停止任务，一种是需要迁移，从而停止任务
 			logs.Info("command killed externally by stopCMD")
 			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
-			cr.processManager.RemoveProcess(runtime.Name)
 		} else {
 			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
 			// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
 			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
-			cr.processManager.RemoveProcess(runtime.Name)
 		}
-
+		cr.processManager.RemoveProcess(runtime.Name)
+		delete(cr.stopSignals, runtime.Name)
 		return
 	}
 	logs.Infof("command %s completed", runtime.Name)

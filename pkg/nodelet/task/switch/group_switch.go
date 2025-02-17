@@ -53,7 +53,7 @@ func (sw *GroupSwitch) StartSwitchService() {
 func (sw *GroupSwitch) startListeningSwitchCondition() {
 	for {
 		select {
-		case <-time.After(time.Millisecond * 100):
+		case <-time.After(time.Millisecond * 600):
 			runningGroups := sw.groupQueues.GetAllRunning()
 			for i := range runningGroups {
 				group := runningGroups[i]
@@ -172,7 +172,7 @@ func newGroupInfoCopy(g *apis.Group) *apis.Group {
 	}
 	var groupCopy = &copyGroup // 转换为指针
 	// 接下来修改这个复制出来的Group信息，首先修改group.Name
-	groupCopy.Name = "ReasonCopy"
+	groupCopy.Name = "Reason-Copy"
 	// 将groupCopy的ResourceVersion置空，注意：这是必须的，否则报错
 	groupCopy.ResourceVersion = ""
 	// 修改GroupSpec下的Actions数组当中ActionStatus的Phase和time

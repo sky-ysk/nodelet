@@ -89,7 +89,7 @@ func (g *groupWorkers) UpdateGroup(options *UpdateGroupOptions) {
 	defer g.groupLock.Unlock()
 
 	groupID := options.Group.Status.GroupID
-	groupName := options.Group.Spec.Name
+	groupName := options.Group.Name
 	groupUpdates, exists := g.groupUpdates[groupID] //后期最好将group_workers当中的groupUpdates这个map进行清理（对于已经执行完的group，删除信息）
 	if !exists {
 		groupUpdates = make(chan *UpdateGroupOptions, 1)

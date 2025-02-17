@@ -36,6 +36,7 @@ func NewSwitchCheck(nodeClient core.NodeInterface) *SwitchCheck {
 	if err != nil {
 		logs.Errorf("Get node:%s from etcd err: %v", node.Name, err)
 	}
+	logs.Infof("node.Spec.ClusterCategory:%v", node.Spec.ClusterCategory)
 	clusterCategoty := node.Spec.ClusterCategory
 	switch clusterCategoty {
 	case "Cloud":
@@ -74,10 +75,10 @@ type EdgeNodeSwitchCondition struct {
 }
 
 func (e *EdgeNodeSwitchCondition) CheckCondition(node *apis.Node) bool {
-	cpuAveUtil := getFloatValue(node.Status.Usage["CPU"][0].Values["Aveutil"])
-	memoryUsage := getFloatValue(node.Status.Usage["Memory"][0].Values["Usage"])
-	storageUsage := getFloatValue(node.Status.Usage["Storage"][0].Values["Usage"])
-
+	cpuAveUtil := getFloatValue(node.Status.Usage["cpu"][0].Values["AveUtil"])
+	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
+	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
+	//logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
 	return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
 }
 
@@ -85,9 +86,9 @@ type EndNodeSwitchCondition struct {
 }
 
 func (e *EndNodeSwitchCondition) CheckCondition(node *apis.Node) bool {
-	cpuAveUtil := getFloatValue(node.Status.Usage["CPU"][0].Values["Aveutil"])
-	memoryUsage := getFloatValue(node.Status.Usage["Memory"][0].Values["Usage"])
-	storageUsage := getFloatValue(node.Status.Usage["Storage"][0].Values["Usage"])
+	cpuAveUtil := getFloatValue(node.Status.Usage["cpu"][0].Values["AveUtil"])
+	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
+	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
 
 	return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
 }

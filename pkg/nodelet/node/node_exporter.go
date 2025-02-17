@@ -222,7 +222,7 @@ func (n *NodeExporter) UploadCache(node *apis.Node, cacheType string) {
 	} else {
 		n.dynamicCache = make(map[string]collector.Metric)
 	}
-	logs.Info("Cache uploaded and cleared")
+	//logs.Info("Cache uploaded and cleared")
 }
 
 // 将Metric存到本地的cache当中
@@ -241,7 +241,7 @@ func (n *NodeExporter) processMetri(types string, metric collector.Metric) {
 		defer n.dynamicCacheLock.Unlock()
 		n.dynamicCache[key] = metric // 将 metric 存储到缓存中
 	}
-	logs.Infof("Processed metric:%v-%v successfully", key, metric.ToString())
+	//logs.Debugf("Processed metric:%v-%v successfully", key, metric.ToString())
 }
 
 // 将metric写入到node引用当中
