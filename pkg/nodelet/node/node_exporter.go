@@ -17,8 +17,8 @@ import (
 )
 
 // TODO 11.14 node-exporter后续需要实现的功能，数据处理并填入nodestatus字段，通过client-go定期写入api-server中 --完成
-const NodeName = "CloudNode1" //pve2上需要修改这个NodeName为EdgeNode1
-const clusterCategory = "Cloud"
+const NodeName = "CloudNode1"   //pve2上需要修改这个NodeName为EdgeNode1
+const clusterCategory = "Cloud" // pve2上需要修改这个参数为Edge
 
 // TODO: 接口格式调整
 type Exporter interface {
