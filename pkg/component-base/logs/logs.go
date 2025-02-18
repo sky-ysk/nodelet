@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/rs/zerolog"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -11,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,6 +31,7 @@ type Logger struct {
 }
 
 var logs Logger
+var mu sync.Mutex
 
 func Init(moduleName string) {
 	conf := Config{}
@@ -37,14 +40,15 @@ func Init(moduleName string) {
 }
 
 func initLogs(conf Config) {
-	// 为日志文件名添加日期
-	currentTime := time.Now().Format(time.DateOnly)
-	conf.output.fileName = currentTime + "_" + conf.output.fileName
-
 	// 设置日志轮转
 	var writers []io.Writer
-	logFile := filepath.Join(conf.output.filePath, conf.output.fileName)
+	// 使用独立的缓冲区
 	if conf.output.file {
+		// 为日志文件名添加日期
+		currentTime := time.Now().Format(time.DateOnly)
+		conf.output.fileName = currentTime + "_" + conf.output.fileName
+
+		logFile := filepath.Join(conf.output.filePath, conf.output.fileName)
 		hook := &lumberjack.Logger{
 			Filename:   logFile,
 			MaxSize:    conf.output.maxSize,
@@ -54,9 +58,8 @@ func initLogs(conf Config) {
 			LocalTime:  true,
 		}
 
-		// writers = append(writers, bufio.NewWriter(hook))
-		writers = append(writers, hook)
-
+		buf := bufio.NewWriterSize(hook, 64*1024)
+		writers = append(writers, buf)
 	}
 
 	// 确保日志文件夹存在
@@ -78,12 +81,13 @@ func initLogs(conf Config) {
 		}) // 也可以只输出Stderr
 	}
 
-	if len(writers) == 0 {
-		panic("No writers available for logging. Please check your configuration. File or console require log output")
-	}
 	// 创建一个日志
 	multi := zerolog.MultiLevelWriter(writers...)
 	logs.logger = zerolog.New(multi).With().Timestamp().Stack().Logger()
+
+	// log := zerolog.New(zerolog.MultiLevelWriter(writers...)).With().Timestamp().Logger()
+	// logs.logger = log
+
 	switch conf.level {
 	case "trace":
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
@@ -217,6 +221,8 @@ func flattenMap(data map[string]interface{}, parentKey string, result map[string
 }
 
 func Trace(fields ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	context := logs.logger.With()
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
@@ -225,10 +231,14 @@ func Trace(fields ...interface{}) {
 }
 
 func Tracef(format string, v ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	logs.logger.Trace().Msgf(format, v...)
 }
 
 func Debug(fields ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	context := logs.logger.With()
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
@@ -237,10 +247,14 @@ func Debug(fields ...interface{}) {
 }
 
 func Debugf(format string, v ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	logs.logger.Debug().Msgf(format, v...)
 }
 
 func Info(fields ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	context := logs.logger.With()
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
@@ -249,22 +263,30 @@ func Info(fields ...interface{}) {
 }
 
 func Infof(format string, v ...interface{}) {
-	context := logs.logger.With()
-	context = logs.addContext(context, v...)
-	newLogger := context.Logger()
-	logger := &newLogger
-	logger.Info().Msgf(format, v...)
+	mu.Lock()
+	defer mu.Unlock()
+	logs.logger.Info().Msgf(format, v...)
 }
 
 func Warn(fields ...interface{}) {
-	logs.logger.Warn().Msgf("")
+	mu.Lock()
+	defer mu.Unlock()
+	context := logs.logger.With()
+	context = logs.addContext(context, fields...)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Warn().Msgf("")
 }
 
 func Warnf(format string, v ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	logs.logger.Warn().Msgf(format, v...)
 }
 
 func Error(fields ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	context := logs.logger.With()
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
@@ -273,10 +295,14 @@ func Error(fields ...interface{}) {
 }
 
 func Errorf(format string, v ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	logs.logger.Error().Msgf(format, v...)
 }
 
 func Fatal(fields ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	context := logs.logger.With()
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
@@ -285,10 +311,14 @@ func Fatal(fields ...interface{}) {
 }
 
 func Fatalf(format string, v ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	logs.logger.Fatal().Msgf(format, v...)
 }
 
 func Panic(fields ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	context := logs.logger.With()
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
@@ -297,6 +327,8 @@ func Panic(fields ...interface{}) {
 }
 
 func Panicf(format string, v ...interface{}) {
+	mu.Lock()
+	defer mu.Unlock()
 	logs.logger.Panic().Msgf(format, v...)
 }
 
