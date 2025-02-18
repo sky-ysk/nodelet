@@ -89,3 +89,6 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	return nil
 }
+func (k *K8sRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}

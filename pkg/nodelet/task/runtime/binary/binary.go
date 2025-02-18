@@ -40,3 +40,7 @@ func (br BinaryRuntime) InitRuntime(group *apis.Group, action *apis.Action, runt
 
 	return nil
 }
+func (br BinaryRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+
+	return nil
+}

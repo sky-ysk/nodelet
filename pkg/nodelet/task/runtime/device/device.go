@@ -37,3 +37,6 @@ func (dr DeviceRuntime) StartRuntime(group *apis.Group, action *apis.Action, run
 func (dr DeviceRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	return nil
 }
+func (dr DeviceRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}

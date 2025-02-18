@@ -38,3 +38,6 @@ func (dr ContainerRuntime) StartRuntime(group *apis.Group, action *apis.Action, 
 func (dr ContainerRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	return nil
 }
+func (dr ContainerRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}

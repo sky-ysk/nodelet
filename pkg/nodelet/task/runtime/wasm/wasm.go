@@ -159,3 +159,6 @@ func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runti
 func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	return nil
 }
+func (wr WasmRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}

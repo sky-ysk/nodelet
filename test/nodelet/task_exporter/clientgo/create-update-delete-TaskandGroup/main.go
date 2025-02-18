@@ -76,7 +76,7 @@ func main() {
 					Spec: apis.ActionSpec{
 						Runtimes: []apis.Runtime{
 							apis.Runtime{
-								Waiting: false,
+								//Waiting: false,
 							},
 						},
 					},
@@ -88,7 +88,7 @@ func main() {
 		},
 	}
 
-	group.Spec.Actions[0].Spec.Runtimes[0].Waiting = true
+	//group.Spec.Actions[0].Spec.Runtimes[0].Waiting = true
 
 	//runtimeJson, err := json.Marshal(group.Spec.Actions)
 	//if err != nil {

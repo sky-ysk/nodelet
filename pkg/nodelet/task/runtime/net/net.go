@@ -37,3 +37,6 @@ func (nr NetRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 func (nr NetRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	return nil
 }
+func (nr NetRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}

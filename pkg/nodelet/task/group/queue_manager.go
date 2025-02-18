@@ -187,6 +187,23 @@ func (gq *GroupQueues) DeleteFromCopyPendingAndAddToRunning(key string) bool {
 	return true
 }
 
+func (gq *GroupQueues) DeleteFromCopyPendingAndAddToCompleted(key string) bool {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	if _, exists := gq.copyPendingQueue[key]; !exists {
+		logs.Infof("GroupID:%v not in copy-pending queue, delete failed-4", key)
+		return false
+	}
+	group := gq.copyPendingQueue[key]
+	delete(gq.copyPendingQueue, key)
+	if _, exists := gq.completedQueue[key]; exists {
+		logs.Infof("GroupID:%v has been added to completed queue, it's a error", key)
+		return false
+	}
+	gq.completedQueue[key] = group
+	return true
+}
+
 func (gq *GroupQueues) DeleteFromRunning(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()

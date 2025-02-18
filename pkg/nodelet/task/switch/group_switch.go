@@ -77,13 +77,33 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 	group, err := sw.groupsClient.Get(context.TODO(), g.Name, metav1.GetOptions{})
 	g = group
 	logs.Infof("group:%v migration start", g.Name)
-	// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
-	groupCopy := newGroupInfoCopy(g)
-	// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
-	logs.Infof("group:%v===================", groupCopy.Name)
-	_, err = sw.groupsClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
-	if err != nil {
-		logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
+	var groupCopyName string
+	if group.Spec.Replicas > 0 {
+		// 说明当前group已经提前往etcd里写入了副本group，那么此处就不用再写入了，只需要将原先写的副本group信息当中的groupCopy.Status.CopyStatus 改为"Starting"即可-采用patch
+		patchGroup, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"copy_status": "Starting",
+			},
+		})
+		if err != nil {
+			logs.Errorf("Json Marshal failed, err:%v", err)
+		}
+		// 这里还没想好怎么解决副本group的名字问题----待解决
+		groupCopyName = "Reason-Copy"
+		_, err = sw.groupsClient.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+		if err != nil {
+			logs.Errorf("Patch group error-6:%v", err)
+		}
+	} else {
+		// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
+		groupCopy := NewGroupInfoCopy(g, false) //第二个参数表示是否为提前写入etcd，这里为否
+		groupCopyName = groupCopy.Name
+		// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
+		logs.Infof("group:%v===================", groupCopy.Name)
+		_, err = sw.groupsClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+		if err != nil {
+			logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
+		}
 	}
 
 	// 修改源group的Status.phase为Migrating
@@ -128,7 +148,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 					if err != nil {
 						logs.Errorf("Json Marshal failed, err:%v", err)
 					}
-					patchResult, err = sw.groupsClient.Patch(context.TODO(), groupCopy.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+					patchResult, err = sw.groupsClient.Patch(context.TODO(), groupCopyName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
 					if err != nil {
 						logs.Errorf("Patch group error-5:%v", err)
 					}
@@ -158,7 +178,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 }
 
 // 新增一个创建一个空白的Group信息，删除不必要的内容（例如Running、DeployCheck的属性都得改为Unknown，时间也得修改）
-func newGroupInfoCopy(g *apis.Group) *apis.Group {
+func NewGroupInfoCopy(g *apis.Group, isAhead bool) *apis.Group {
 	// 将原始对象序列化为JSON
 	data, err := json.Marshal(g)
 	if err != nil {
@@ -177,6 +197,8 @@ func newGroupInfoCopy(g *apis.Group) *apis.Group {
 	groupCopy.ResourceVersion = ""
 	// 修改GroupSpec下的Actions数组当中ActionStatus的Phase和time
 	groupCopy.Spec.IsCopy = true // 标记改Group为副本group
+	// 这个副本group信息当中，其副本数量直接置为0（意思是：不再为副本订制副本）
+	groupCopy.Spec.Replicas = 0
 	for i := range groupCopy.Spec.Actions {
 		action := &groupCopy.Spec.Actions[i]
 		if action.Status.Phase == apis.Successed {
@@ -199,7 +221,11 @@ func newGroupInfoCopy(g *apis.Group) *apis.Group {
 	}
 	// 修改GroupStatus下面的phase、ActionStatus的Phase以及runtimeStatus的Phase
 	// 修改副本group信息中的属性来标记副本任务需要马上启动(这个属性会在copyPending队列当中去轮询检查的)
-	groupCopy.Status.CopyStatus = "Starting"
+	if isAhead {
+		groupCopy.Status.CopyStatus = "Waiting" //注意后面真正切换的时候，需要将这个参数改为Starting
+	} else {
+		groupCopy.Status.CopyStatus = "Starting"
+	}
 	// 将groupStatus下的node属性置空
 	groupCopy.Status.Node = ""
 	if groupCopy.Status.Phase != apis.Successed {

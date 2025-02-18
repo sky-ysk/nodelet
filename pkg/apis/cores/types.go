@@ -1086,10 +1086,10 @@ type Runtime struct {
 	//  输出数据作为参数注入到命令参数中
 	Outputs Output `json:"outputs,omitempty" yaml:"outputs"`
 	//添加-hzy
-	Parents                      []string `json:"parents,omitempty" yaml:"parents"`
-	Waiting                      bool     `json:"waiting" yaml:"waiting"`
-	EnableFineGrainedControl     bool     `json:"enable_control,omitempty" yaml:"enable_control"`
-	EnableFineGrainedControlPort string   `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
+	Parents []string `json:"parents,omitempty" yaml:"parents"`
+	//Waiting                      bool     `json:"waiting" yaml:"waiting"`
+	EnableFineGrainedControl     bool   `json:"enable_control,omitempty" yaml:"enable_control"`
+	EnableFineGrainedControlPort string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
 	//-hzy暂时添加
 	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
 	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
@@ -1200,8 +1200,9 @@ type RuntimeStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数0hzy
 	RuntimeID string `json:"runtime_id,omitempty" yaml:"runtime_id"`
-	//Waiting   bool   `json:"waiting" yaml:"waiting"`
+	Waiting   bool   `json:"waiting" yaml:"waiting"`
 	KeyStatus string `json:"key_status" yaml:"key_status"`
+	Initing   bool   `json:"initing,omitempty" yaml:"initing"`
 }
 
 // 任务的输出结果

@@ -2,6 +2,9 @@ package monitor
 
 import (
 	"context"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	_switch "hit.edu/framework/pkg/nodelet/task/switch"
 	"time"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -18,15 +21,18 @@ type GroupHandler struct {
 	groupWorkers group.GroupWorkers
 
 	groupQueues *group.GroupQueues
+	// client -go
+	groupClient core.GroupInterface
 
 	stopCh chan struct{}
 }
 
-func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues) *GroupHandler {
+func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface) *GroupHandler {
 	return &GroupHandler{
 		groupManager: groupManager,
 		groupWorkers: groupWorkers,
 		groupQueues:  groupQueues,
+		groupClient:  groupClient,
 		stopCh:       make(chan struct{}),
 	}
 }
@@ -96,7 +102,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	_, err := gh.groupManager.GetGroupByID(gr.Status.GroupID) // 使用groupID查，因为groupID是唯一分配的
 	if err == nil {                                           //err等于nil说明在group_manager当中能找到group信息
 		// 1、说明group已经存
-		logs.Infof("#################################Group:%s is already put into Deployer", gr.Spec.Name)
+		logs.Infof("Group:%s is already put into Deployer", gr.Spec.Name)
 		return
 	}
 	//如果说部署器本地没有改groupID信息的话，就存入group信息
@@ -108,6 +114,18 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 		logs.Errorf("Group:%s cannot be deployed,err:%v", gr.Name, err)
 		// TODO 这里得直接提交给调度器，告知group无法部署
 		return
+	}
+	// 3、判断group是否需要部署副本，如果需要，在此处往域内的etcd当中添加副本
+	if gr.Spec.Replicas > 0 { //如果床架任务的时候该属性没有赋值的话，初始化是为0的
+		// 为了适配迁移
+		// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
+		groupCopy := _switch.NewGroupInfoCopy(gr, true) // 第二个参数为true，表示的是提前写入etcd
+		// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
+		logs.Infof("group:%v===================", groupCopy.Name)
+		_, err = gh.groupClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+		if err != nil {
+			logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
+		}
 	}
 	// 任务满足条件，提交给GroupWorkers
 	gh.groupWorkers.UpdateGroup(

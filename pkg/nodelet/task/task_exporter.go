@@ -88,7 +88,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupLister:   lister,
 		groupWorkers:  workers,
 		groupMonitor:  monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
-		groupHandler:  monitor.NewGroupHandler(groupManager, workers, groupQueues),
+		groupHandler:  monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient),
 		groupSwitcher: _switch.NewSwitchManager(groupQueues, nodeClient, groupClient, runtimeManager, clientsManager),
 		updateCh:      make(chan types.GroupUpdate),
 	}
@@ -99,12 +99,10 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 }
 
 func (te *TaskExporter) Run(ctx context.Context) error {
-
 	//监听Group资源
 	// 任务监控中会产生各类事件，事件也通过Client-Go更新
 	// +optional,如果任务开启动态资源调整的需求
 	// 任务执行过程中需要动态调整任务进程的资源, 根据当前任务执行的Spec和Status, 通过cGroup动态调整任务执行资源使用情况
-
 	go te.groupHandler.Loop(ctx, te.updateCh) //主要监控上层发来的消息，主要是启动、停止任务
 	// 任务部署完成后，需要监控任务的执行情况，并通过Client-Go定期更新
 	go te.groupMonitor.Start()               //主要监控正在启动的任务，获取任务状态信息

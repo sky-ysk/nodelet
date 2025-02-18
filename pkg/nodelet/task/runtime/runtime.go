@@ -25,6 +25,7 @@ type Runtime interface {
 	RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
 	StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
 	InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
+	StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
 }
 
 type RuntimeManager struct {
@@ -109,4 +110,7 @@ func (rm *RuntimeManager) StartRuntime(group *apis.Group, action *apis.Action, r
 }
 func (rm *RuntimeManager) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	return rm.GetRuntime(runtime.Type).InitRuntime(group, action, runtime, actionIndex, runtimeIndex)
+}
+func (rm *RuntimeManager) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return rm.GetRuntime(runtime.Type).StopRuntime(group, action, runtime, actionIndex, runtimeIndex)
 }
