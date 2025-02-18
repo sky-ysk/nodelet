@@ -8,6 +8,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apis/meta"
 	metainternalversionscheme "hit.edu/framework/pkg/apis/meta/internalversion/scheme"
+	"hit.edu/framework/pkg/apiserver/endpoints/handler/finisher"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"hit.edu/framework/pkg/apiserver/endpoints/request"
@@ -103,7 +104,8 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, includeName bool) h
 		requestFunc := func() (runtime.Object, error) {
 			return r.Create(ctx, name, obj, rest.ValidateAllObjectFunc, options)
 		}
-		result, err := requestFunc()
+		result, err := finisher.FinishRequest(ctx, requestFunc)
+		//result, err := requestFunc()
 		if err != nil {
 			logs.Error("store object in database failed:", err.Error())
 			scope.err(err, w, req)

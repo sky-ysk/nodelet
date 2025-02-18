@@ -134,7 +134,6 @@ func (s *APIServer) Destroy() {
 }
 
 func (s *PreparedAPIServer) RunWithContext(ctx context.Context) error {
-	//logs.Info("Running API Server")
 	logs.Info("Running API Server")
 	// TODO: 实现运行逻辑
 	// TODO: channel配置

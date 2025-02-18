@@ -36,8 +36,6 @@ type APIInstaller struct {
 	minRequestTimeout time.Duration
 }
 
-// TODO: 命名
-// TODO: 增加Namespace支持
 type action struct {
 	Verb          string               // Verb 标识动词 ("GET", "POST", "WATCH", "PROXY", etc).
 	Path          string               // 动词路径

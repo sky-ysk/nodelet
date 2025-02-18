@@ -14,8 +14,6 @@ import (
 	"time"
 )
 
-// TODO: 替换K8s组件
-
 // 这里设置API访问路径
 // API Group配置
 // example: /apis/{group}/{version}/{resources}/
@@ -149,8 +147,6 @@ type APIGroupVersion struct {
 	Namer          runtime.Namer
 	Convertor      runtime.ObjectConvertor
 	Defaulter      runtime.ObjectDefaulter
-	// TODO: 序列化组件
-	// TODO: 反序列化组件
 
 	MinRequestTimeout time.Duration
 

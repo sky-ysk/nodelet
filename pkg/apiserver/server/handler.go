@@ -42,8 +42,6 @@ type director struct {
 }
 
 func NewAPIServerHandler(name string, s runtime.NegotiatedSerializer) *APIServerHandler {
-	// TODO：基础Handler
-	// TODO: Not Found Handler
 	notFoundHandler := notfoundhandler.New()
 
 	goRestfulContainer := restful.NewContainer()

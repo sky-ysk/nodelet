@@ -6,6 +6,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apis/meta"
 	metainternalversionscheme "hit.edu/framework/pkg/apis/meta/internalversion/scheme"
+	"hit.edu/framework/pkg/apiserver/endpoints/handler/finisher"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"hit.edu/framework/pkg/apiserver/endpoints/request"
@@ -90,7 +91,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope) http.HandlerFunc {
 			wasCreated = created
 			return result, err
 		}
-		result, err := requestFunc()
+		result, err := finisher.FinishRequest(ctx, requestFunc)
 		if err != nil {
 			logs.Error("update object in database failed:", err.Error())
 			scope.err(err, w, req)

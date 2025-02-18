@@ -9,6 +9,7 @@ import (
 	"hit.edu/framework/pkg/apis/meta"
 	metainternalversion "hit.edu/framework/pkg/apis/meta/internalversion"
 	metainternalversionscheme "hit.edu/framework/pkg/apis/meta/internalversion/scheme"
+	"hit.edu/framework/pkg/apiserver/endpoints/handler/finisher"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"hit.edu/framework/pkg/apiserver/endpoints/request"
@@ -89,7 +90,7 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 			}
 			return result, nil
 		}
-		result, err := requestFunc()
+		result, err := finisher.FinishRequest(ctx, requestFunc)
 		if err != nil {
 			logs.Error("delete object in database failed:", err.Error())
 			scope.err(err, w, req)

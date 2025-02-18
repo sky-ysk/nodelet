@@ -8,6 +8,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apis/meta"
 	metainternalversionscheme "hit.edu/framework/pkg/apis/meta/internalversion/scheme"
+	"hit.edu/framework/pkg/apiserver/endpoints/handler/finisher"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/types"
@@ -177,7 +178,7 @@ func (p *patcher) patchResource(ctx context.Context, scope *RequestScope) (runti
 		return updateObject, updateErr
 	}
 
-	result, err := requestFunc()
+	result, err := finisher.FinishRequest(ctx, requestFunc)
 	return result, wasCreated, err
 }
 
