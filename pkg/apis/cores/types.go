@@ -310,6 +310,7 @@ const (
 	Restoring   Phase = "Restoring"   //副本恢复任务状态-B
 	Migrating   Phase = "Migrating"   //迁移状态-A
 	Migrated    Phase = "Migrated"    //迁移完成状态-A
+	Init        Phase = "Init"
 )
 
 // 定义流程类型，用于表示有条件的DAG
@@ -1180,7 +1181,8 @@ type ActionStatus struct {
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数-hzy
-	Waiting bool `json:"waiting" yaml:"waiting"`
+	Waiting    bool   `json:"waiting" yaml:"waiting"`
+	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
 }
 
 type RuntimeStatus struct {
@@ -1199,10 +1201,11 @@ type RuntimeStatus struct {
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数0hzy
-	RuntimeID string `json:"runtime_id,omitempty" yaml:"runtime_id"`
-	Waiting   bool   `json:"waiting" yaml:"waiting"`
-	KeyStatus string `json:"key_status" yaml:"key_status"`
-	Initing   bool   `json:"initing,omitempty" yaml:"initing"`
+	RuntimeID  string `json:"runtime_id,omitempty" yaml:"runtime_id"`
+	Waiting    bool   `json:"waiting" yaml:"waiting"`
+	KeyStatus  string `json:"key_status" yaml:"key_status"`
+	Initing    bool   `json:"initing,omitempty" yaml:"initing"`
+	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
 }
 
 // 任务的输出结果

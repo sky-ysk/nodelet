@@ -94,6 +94,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 		if err != nil {
 			logs.Errorf("Patch group error-6:%v", err)
 		}
+		logs.Info("===================================将副本任务的copy_Status修改为Starting")
 	} else {
 		// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 		groupCopy := NewGroupInfoCopy(g, false) //第二个参数表示是否为提前写入etcd，这里为否
@@ -222,8 +223,10 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool) *apis.Group {
 	// 修改GroupStatus下面的phase、ActionStatus的Phase以及runtimeStatus的Phase
 	// 修改副本group信息中的属性来标记副本任务需要马上启动(这个属性会在copyPending队列当中去轮询检查的)
 	if isAhead {
+		logs.Infof("============预部署副本===========")
 		groupCopy.Status.CopyStatus = "Waiting" //注意后面真正切换的时候，需要将这个参数改为Starting
 	} else {
+		logs.Infof("============直接启动副本===========")
 		groupCopy.Status.CopyStatus = "Starting"
 	}
 	// 将groupStatus下的node属性置空

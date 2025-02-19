@@ -295,11 +295,13 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 // 细粒度控制（grpc）：初始化任务
 func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	logs.Infof("runtime has Init====")
+	cr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
 	return nil
 }
 
 // 细粒度控制（grpc）：关闭任务
 func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-
+	logs.Infof("runtime has stop====")
+	cr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	return nil
 }

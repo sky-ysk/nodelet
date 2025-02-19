@@ -17,6 +17,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -105,6 +106,17 @@ func main() {
 		},
 		Status: apis.GroupStatus{
 			Phase: apis.Unknown,
+			ActionStatus: []apis.ActionStatus{
+				apis.ActionStatus{
+					Phase: apis.Successed,
+					RuntimeStatus: []apis.RuntimeStatus{
+						apis.RuntimeStatus{
+							NodeName: "demo-runtime",
+							Phase:    "running",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -131,11 +143,24 @@ func main() {
 	//	},
 	//})
 
-	patchGroup3, err := json.Marshal([]map[string]interface{}{
+	//patchGroup3, err := json.Marshal([]map[string]interface{}{
+	//	{
+	//		"op":    "replace",
+	//		"path":  "/spec/actions/0/status/status/0/phase",
+	//		"value": "new-phase-value", // 这里替换为你需要的 Phase 值
+	//	},
+	//})
+
+	patchGroup4, err := json.Marshal([]map[string]interface{}{
 		{
 			"op":    "replace",
-			"path":  "/spec/actions/0/status/status/0/phase",
-			"value": "new-phase-value", // 这里替换为你需要的 Phase 值
+			"path":  "/spec/actions/" + strconv.Itoa(0) + "/status/status/" + strconv.Itoa(0) + "/phase",
+			"value": apis.Migrated,
+		}, // 顺带groupStatus下面的runtime的状态也修改了，看行不行
+		{
+			"op":    "replace",
+			"path":  "/status/action_status/" + strconv.Itoa(0) + "/status/" + strconv.Itoa(0) + "/phase",
+			"value": apis.Migrated,
 		},
 	})
 
@@ -266,10 +291,18 @@ func main() {
 
 	//Patch 一个Group
 	fmt.Println("patching")
-	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup3, metav1.PatchOptions{})
+	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup4, metav1.PatchOptions{})
 	fmt.Println("patchResult: ", patchResult)
-	fmt.Println("value: ", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
+	//fmt.Println("value: ", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
 	fmt.Println("patch Done")
+
+	fmt.Println("geting")
+	result, getErr = groupsClient.Get(context.TODO(), "demo-groups", metav1.GetOptions{})
+	if getErr != nil {
+		panic(fmt.Errorf("Failed to get : %v", getErr))
+	}
+	fmt.Println("spec/actions/0/status/status/0/phase:", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
+	fmt.Println("status/action_status/0/status/0/phase:", result.Status.ActionStatus[0].RuntimeStatus[0].Phase)
 
 	prompt()
 	fmt.Println("patching---2")

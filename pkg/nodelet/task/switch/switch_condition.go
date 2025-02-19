@@ -66,7 +66,7 @@ func (c *CloudNodeSwitchCondition) CheckCondition(node *apis.Node) bool {
 	logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
 
 	// 下面两行代码为了测试迁移流程
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 	return true
 	//return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
 }
