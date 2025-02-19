@@ -29,12 +29,14 @@ func getResourceHandler(scope *RequestScope, getter getterFunc) http.HandlerFunc
 		req = req.WithContext(ctx)
 		namespace, name, err := scope.Namer.Name(req)
 		if err != nil {
+			logs.Error("get name from requestInfo failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
 		ctx = request.WithNamespace(ctx, namespace)
 		result, err := getter(ctx, name, req)
 		if err != nil {
+			logs.Error("Get from storage failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
@@ -57,6 +59,7 @@ func GetResource(r rest.Getter, scope *RequestScope) http.HandlerFunc {
 			options := meta.GetOptions{}
 			if values := req.URL.Query(); len(values) > 0 {
 				if err := metainternalversionscheme.ParameterCodec.DecodeParameters(values, scope.MetaGroupVersion, &options); err != nil {
+					logs.Error("decode GetOptions failed:", err.Error())
 					err = errors.NewBadRequest(err.Error())
 					return nil, err
 				}
@@ -84,6 +87,7 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope *RequestScope, minReques
 
 		namespace, err := scope.Namer.Namespace(req)
 		if err != nil {
+			logs.Error("get name from requestInfo failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -97,6 +101,7 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope *RequestScope, minReques
 
 		opts := metainternalversion.ListOptions{}
 		if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), scope.MetaGroupVersion, &opts); err != nil {
+			logs.Error("decode ListOptions failed:", err.Error())
 			err = errors.NewBadRequest(err.Error())
 			scope.err(err, w, req)
 			return
@@ -122,6 +127,7 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope *RequestScope, minReques
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {
+			logs.Error("get output serializer failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -159,6 +165,7 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope *RequestScope, minReques
 
 			handler, err := serveWatchHandler(watcher, scope, outputMediaType, req, w, timeout, emptyVersionedList)
 			if err != nil {
+				logs.Error("error occur while serving watch handler", zap.Error(err))
 				scope.err(err, w, req)
 				return
 			}
@@ -175,6 +182,7 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope *RequestScope, minReques
 		logs.Info("It's a list request,about to List from storage")
 		result, err := r.List(ctx, &opts)
 		if err != nil {
+			logs.Error("list from storage failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}

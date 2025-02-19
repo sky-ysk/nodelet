@@ -768,7 +768,9 @@ func TestPatch(t *testing.T) {
 			Images:      nil,
 			Wasms:       nil,
 			Addresses:   apis.NodeAddress{},
-			NodeInfo:    apis.NodeSystemInfo{},
+			NodeInfo: apis.NodeSystemInfo{
+				BootID: "foo",
+			},
 		},
 	}
 	data, err := runtime.Encode(codec, simple)
@@ -800,20 +802,20 @@ func TestPatch(t *testing.T) {
 
 	//测试Patch
 	jsonPatchBytes := []byte(`[
-		{ "op": "replace", "path": "/Spec/NodeName", "value": "boo" },
-		{ "op": "add", "path": "/Status/Addresses/Type", "value": "IPv6" },
-		{ "op": "remove", "path": "/Status/NodeInfo/BootID" }
+		{ "op": "replace", "path": "/spec/node_name", "value": "boo" },
+		{ "op": "add", "path": "/status/addresses/type", "value": "IPv6" },
+		{ "op": "remove", "path": "/status/info/boot_id" }
 	]`)
 	mergePatchBytes := []byte(`{
- 		"Spec": {
-   		"NodeName": "boo"
+ 		"spec": {
+   		"node_name": "boo"
 		},
- 		"Status": {
-   		"Addresses": {
-     			"Type": "IPv6"
+ 		"status": {
+   		"addresses": {
+     			"type": "IPv6"
 			},
-   		"NodeInfo": {
-     			"BootID": null
+   		"info": {
+     			"boot_id": null
    		}
  		}
 	}`)
@@ -1624,7 +1626,7 @@ func TestNamespacedList(t *testing.T) {
 	}
 
 	//测试List
-	url := server.URL + "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/nodes"
+	url := server.URL + "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/workflows"
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -1639,13 +1641,13 @@ func TestNamespacedList(t *testing.T) {
 		t.Logf("body: %s", string(body))
 	}
 
-	var nodeList apis.NodeList
-	_, err = extractBody(resp, &nodeList)
+	var workflowList apis.WorkflowList
+	_, err = extractBody(resp, &workflowList)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	for _, item := range nodeList.Items {
+	for _, item := range workflowList.Items {
 		if item.Name != "foo" && item.Name != "foo1" {
 			t.Errorf("get unexpected item :%s", item.Name)
 		}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer/streaming"
@@ -49,6 +50,7 @@ func serveWatchHandler(watcher watch.Interface, scope *RequestScope, mediaTypeOp
 
 	serializer, err := negotiation.NegotiateOutputMediaTypeStream(req, scope.Serializer, scope)
 	if err != nil {
+		logs.Error("get output serializer failed", zap.Error(err))
 		return nil, err
 	}
 	framer := serializer.StreamSerializer.Framer
@@ -78,6 +80,7 @@ func (s *WatchServer) HandleHTTP(w http.ResponseWriter, req *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		err := fmt.Errorf("unable to start watch - can't get http.Flusher: %#v", w)
+		logs.Error(zap.Error(err))
 		s.Scope.err(errors.NewInternalError(err), w, req)
 		return
 	}
@@ -85,6 +88,7 @@ func (s *WatchServer) HandleHTTP(w http.ResponseWriter, req *http.Request) {
 	framer := s.Framer.NewFrameWriter(w)
 	if framer == nil {
 		err := fmt.Errorf("no stream framing support is available for media type %q", s.MediaType)
+		logs.Error(zap.Error(err))
 		s.Scope.err(errors.NewBadRequest(err.Error()), w, req)
 		return
 	}
@@ -116,8 +120,9 @@ func (s *WatchServer) HandleHTTP(w http.ResponseWriter, req *http.Request) {
 				logs.Info("resultChan has been Closed")
 				return
 			}
-			logs.Info("sending a Watch Event")
+			logs.Debug("sending a "+watchEvent.Type+" watchEvent", watchEvent.Object)
 			if err := watchEncoder.Encode(watchEvent); err != nil {
+				logs.Error("error occur while encoding a watchEvent", zap.Error(err))
 				return
 			}
 			flusher.Flush()

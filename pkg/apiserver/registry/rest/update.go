@@ -54,10 +54,10 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 		return kerr
 	}
 
-	requestNamespace, _ := genericapirequest.NamespaceFrom(ctx)
-	//if !ok {
-	//	return errors.NewInternalError(fmt.Errorf("no namespace information found in request context"))
-	//}
+	requestNamespace, ok := genericapirequest.NamespaceFrom(ctx)
+	if !ok && strategy.NamespaceScoped() {
+		return errors.NewInternalError(fmt.Errorf("no namespace information found in request context"))
+	}
 	if err := EnsureObjectNamespaceMatchesRequestNamespace(ExpectedNamespaceForScope(requestNamespace, strategy.NamespaceScoped()), objectMeta); err != nil {
 		return err
 	}

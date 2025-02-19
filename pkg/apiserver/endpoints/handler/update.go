@@ -6,6 +6,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apis/meta"
 	metainternalversionscheme "hit.edu/framework/pkg/apis/meta/internalversion/scheme"
+	"hit.edu/framework/pkg/apiserver/endpoints/handler/finisher"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"hit.edu/framework/pkg/apiserver/endpoints/request"
@@ -21,6 +22,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope) http.HandlerFunc {
 		ctx := req.Context()
 		namespace, name, err := scope.Namer.Name(req)
 		if err != nil {
+			logs.Error("get name from requestInfo failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -31,6 +33,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope) http.HandlerFunc {
 
 		body, err := limitedReadBody(req, 0)
 		if err != nil {
+			logs.Error("limitedReadBody failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
@@ -39,6 +42,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope) http.HandlerFunc {
 		options := &meta.UpdateOptions{}
 		if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), scope.MetaGroupVersion, options); err != nil {
 			err = errors.NewBadRequest(err.Error())
+			logs.Error("decode UpdateOptions failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
@@ -47,6 +51,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope) http.HandlerFunc {
 
 		s, err := negotiation.NegotiateInputSerializer(req, false, scope.Serializer)
 		if err != nil {
+			logs.Error("get input serializer failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -68,6 +73,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope) http.HandlerFunc {
 		}
 
 		if err := checkName(obj, name, namespace, scope.Namer); err != nil {
+			logs.Error("error occur while checking name", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
@@ -85,8 +91,9 @@ func UpdateResource(r rest.Updater, scope *RequestScope) http.HandlerFunc {
 			wasCreated = created
 			return result, err
 		}
-		result, err := requestFunc()
+		result, err := finisher.FinishRequest(ctx, requestFunc)
 		if err != nil {
+			logs.Error("update object in database failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}

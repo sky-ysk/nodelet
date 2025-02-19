@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/filters"
 	corerest "hit.edu/framework/pkg/apiserver/registry/core/rest"
@@ -84,6 +85,7 @@ func NewAPIServer(cfg *Config) *APIServer {
 	apiServerHandler := server.NewAPIServerHandler(APIServerName, cfg.Serializer)
 
 	//构建handler链
+	logs.Info("start to build handler chain")
 	apiServerHandler.FullHandlerChain = HandlerWithFilters(apiServerHandler.FullHandlerChain, cfg)
 
 	s := &APIServer{
@@ -104,18 +106,23 @@ func NewAPIServer(cfg *Config) *APIServer {
 // TODO:访问控制
 func HandlerWithFilters(apiHandler http.Handler, c *Config) http.Handler {
 	//注入requestInfo到请求上下文
+	logs.Debug("handler register with RequestInfo filter")
 	apiHandler = filters.WithRequestInfo(apiHandler, c.RequestInfoResolver)
 	return apiHandler
 }
 
 func (s *APIServer) PrepareRun() PreparedAPIServer {
-	// TODO: 在这里实现PreRun相关逻辑
+	//创建核心组apiGroupInfo并注入各资源RESTStorage
+	logs.Info("creating core apiGroupInfo")
 	apiGroupInfo, err := corerest.NewRESTStorage(s.RESTOptionsGetter)
 	if err != nil {
-		logs.Error("get coreStorage failed", zap.Error(err))
+		logs.Error("Core apiGroupInfo created failed", zap.Error(err))
 	}
 
+	//装载各Group的资源RESTStorage
+	logs.Info("installing core apiGroupInfo")
 	if err := s.InstallAPIGroup(&apiGroupInfo); err != nil {
+		logs.Error("Install Core Resources failed", zap.Error(err))
 		return PreparedAPIServer{}
 	}
 
@@ -127,7 +134,6 @@ func (s *APIServer) Destroy() {
 }
 
 func (s *PreparedAPIServer) RunWithContext(ctx context.Context) error {
-	//logs.Info("Running API Server")
 	logs.Info("Running API Server")
 	// TODO: 实现运行逻辑
 	// TODO: channel配置
@@ -191,20 +197,20 @@ func (s PreparedAPIServer) NonBlockingRunWithContext(ctx context.Context, shutdo
 	return stoppedCh, listenerStoppedCh, nil
 }
 
-// Install API Resources
+// InstallAPIGroup Install API Resources
 func (s *APIServer) InstallAPIGroup(apiGroupInfo *server.APIGroupInfo) error {
-	groupVersion := schema.GroupVersion{
-		Group:   "resources",
-		Version: "v1",
-	}
+	groupVersion := apis.SchemeGroupVersion
 	// 这里安装REST相关组件
+	logs.Debug("creating apiGroupVersion with RESTStorage", zap.String("group", groupVersion.Group), zap.String("version", groupVersion.Version))
 	apiGroupVersion, err := s.getAPIGroupVersion(apiGroupInfo, groupVersion, APIGroupPrefix)
 	if err != nil {
+		logs.Error("create APIGroupVersion failed", zap.Error(err))
 		return err
 	}
 
 	err = apiGroupVersion.InstallREST(s.Handler.GoRestfulContainer)
 	if err != nil {
+		logs.Error("install REST failed", zap.Error(err))
 		return err
 	}
 
