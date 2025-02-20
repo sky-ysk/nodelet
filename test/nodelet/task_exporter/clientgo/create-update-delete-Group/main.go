@@ -17,6 +17,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -62,7 +63,7 @@ func main() {
 	// 获取访问Group的客户端
 	// 默认访问的Namespace是 ""
 
-	groupsClient := clientSet.Core().Groups("test")
+	groupsClient := clientSet.Core().Groups("") //目前我支持的api-server，对应的命名空间为""
 
 	action := apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -85,7 +86,7 @@ func main() {
 			RuntimeStatus: []apis.RuntimeStatus{
 				apis.RuntimeStatus{
 					NodeName: "demo-runtime",
-					Phase:    "running",
+					Phase:    "Migrated",
 				},
 			},
 		},
@@ -103,7 +104,28 @@ func main() {
 			Name:    "demo-group",
 			Actions: []apis.Action{action},
 		},
+		Status: apis.GroupStatus{
+			Phase: apis.Unknown,
+			ActionStatus: []apis.ActionStatus{
+				apis.ActionStatus{
+					Phase: apis.Successed,
+					RuntimeStatus: []apis.RuntimeStatus{
+						apis.RuntimeStatus{
+							NodeName: "demo-runtime",
+							Phase:    "Migrated",
+						},
+					},
+				},
+			},
+		},
 	}
+
+	// 修改源group的Status.phase为Migrating
+	patchGroup, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase": apis.Migrating,
+		},
+	})
 
 	//patchGroup3, err := json.Marshal(map[string]interface{}{
 	//	"spec": map[string]interface{}{
@@ -121,11 +143,24 @@ func main() {
 	//	},
 	//})
 
-	patchGroup3, err := json.Marshal([]map[string]interface{}{
+	//patchGroup3, err := json.Marshal([]map[string]interface{}{
+	//	{
+	//		"op":    "replace",
+	//		"path":  "/spec/actions/0/status/status/0/phase",
+	//		"value": "new-phase-value", // 这里替换为你需要的 Phase 值
+	//	},
+	//})
+
+	patchGroup4, err := json.Marshal([]map[string]interface{}{
 		{
 			"op":    "replace",
-			"path":  "/spec/actions/0/status/status/0/phase",
-			"value": "new-phase-value", // 这里替换为你需要的 Phase 值
+			"path":  "/spec/actions/" + strconv.Itoa(0) + "/status/status/" + strconv.Itoa(0) + "/phase",
+			"value": apis.Migrated,
+		}, // 顺带groupStatus下面的runtime的状态也修改了，看行不行
+		{
+			"op":    "replace",
+			"path":  "/status/action_status/" + strconv.Itoa(0) + "/status/" + strconv.Itoa(0) + "/phase",
+			"value": apis.Migrated,
 		},
 	})
 
@@ -198,8 +233,6 @@ func main() {
 					fmt.Println("资源被删除: ", event.Object)
 				case watch.Error:
 					fmt.Println("发生错误: ", event.Object)
-				case watch.Bookmark:
-					fmt.Println("收到书签事件: ", event.Object)
 				default:
 					fmt.Println("未识别的事件类型: ", event.Type)
 				}
@@ -258,8 +291,27 @@ func main() {
 
 	//Patch 一个Group
 	fmt.Println("patching")
-	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup3, metav1.PatchOptions{})
+	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup4, metav1.PatchOptions{})
 	fmt.Println("patchResult: ", patchResult)
+	//fmt.Println("value: ", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
+	fmt.Println("patch Done")
+
+	fmt.Println("geting")
+	result, getErr = groupsClient.Get(context.TODO(), "demo-groups", metav1.GetOptions{})
+	if getErr != nil {
+		panic(fmt.Errorf("Failed to get : %v", getErr))
+	}
+	fmt.Println("spec/actions/0/status/status/0/phase:", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
+	fmt.Println("status/action_status/0/status/0/phase:", result.Status.ActionStatus[0].RuntimeStatus[0].Phase)
+
+	prompt()
+	fmt.Println("patching---2")
+	patchResult, err = groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	if err != nil {
+		logs.Errorf("Patch group error-2:%v", err)
+	}
+	fmt.Println("patchResult: ", patchResult)
+	fmt.Println("value: ", result.Status.Phase)
 	fmt.Println("patch Done")
 
 	// List 所有Group

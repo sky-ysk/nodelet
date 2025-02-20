@@ -13,6 +13,7 @@ type GroupQueues struct {
 	checkingQueue    map[string]*apis.Group
 	copyPendingQueue map[string]*apis.Group
 	runningQueue     sync.Map
+	MigratedQueue    map[string]*apis.Group
 	errorQueue       map[string]*apis.Group
 	completedQueue   map[string]*apis.Group
 	groupManager     Manager
@@ -23,6 +24,7 @@ func NewGroupQueues(groupManager Manager) *GroupQueues {
 		checkingQueue:    make(map[string]*apis.Group),
 		copyPendingQueue: make(map[string]*apis.Group),
 		runningQueue:     sync.Map{},
+		MigratedQueue:    make(map[string]*apis.Group),
 		errorQueue:       make(map[string]*apis.Group),
 		completedQueue:   make(map[string]*apis.Group),
 		groupManager:     groupManager,
@@ -135,6 +137,23 @@ func (gq *GroupQueues) DeleteFromRunningAndAddToCompleted(key string) bool {
 	return true
 }
 
+func (gq *GroupQueues) DeleteFromRunningAndAddToMigrated(key string) bool {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	group, exists := gq.runningQueue.Load(key)
+	if !exists {
+		logs.Infof("GroupID:%v not in running queue, delete failed", key)
+		return false
+	}
+	gq.runningQueue.Delete(key)
+	if _, exists := gq.MigratedQueue[key]; exists {
+		logs.Errorf("GroupID:%v has been added to migrated queue, it's a error", key)
+		return false
+	}
+	gq.MigratedQueue[key] = group.(*apis.Group)
+	return true
+}
+
 func (gq *GroupQueues) DeleteFromCheckingAndAddToRunning(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
@@ -196,6 +215,23 @@ func (gq *GroupQueues) DeleteFromCopyPendingAndAddToCompleted(key string) bool {
 	}
 	group := gq.copyPendingQueue[key]
 	delete(gq.copyPendingQueue, key)
+	if _, exists := gq.completedQueue[key]; exists {
+		logs.Infof("GroupID:%v has been added to completed queue, it's a error", key)
+		return false
+	}
+	gq.completedQueue[key] = group
+	return true
+}
+
+func (gq *GroupQueues) DeleteFromMigratedAndAddToCompleted(key string) bool {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	if _, exists := gq.MigratedQueue[key]; !exists {
+		logs.Infof("GroupID:%v not in copy-pending queue, delete failed-4", key)
+		return false
+	}
+	group := gq.MigratedQueue[key]
+	delete(gq.MigratedQueue, key)
 	if _, exists := gq.completedQueue[key]; exists {
 		logs.Infof("GroupID:%v has been added to completed queue, it's a error", key)
 		return false
@@ -311,6 +347,15 @@ func (gq *GroupQueues) GetAllCompleted() []*apis.Group {
 	defer gq.queueLock.Unlock()
 	values := make([]*apis.Group, 0)
 	for _, value := range gq.completedQueue {
+		values = append(values, value)
+	}
+	return values
+}
+func (gq *GroupQueues) GetAllMigrated() []*apis.Group {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	values := make([]*apis.Group, 0)
+	for _, value := range gq.MigratedQueue {
 		values = append(values, value)
 	}
 	return values
