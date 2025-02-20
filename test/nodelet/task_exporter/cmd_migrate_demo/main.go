@@ -19,19 +19,18 @@ import (
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
+	logs.Infof("runtime for task cmd_migrate_demo")
 
 	runtime_test()
 
 }
 
 func rpc_client_test() {
-	runtimeId := "runtime-1"
-	logs.Infof("runtime for task:%s", runtimeId)
 	cmd := pullService()
 	defer stopCMD(cmd)
 
 	port := "5123"
-	client := grpc_client.NewRuntimeClient(port, runtimeId)
+	client := grpc_client.NewRuntimeClient(port)
 
 	// rpc调用init()
 	_, error := client.RunAppInit()
@@ -66,11 +65,13 @@ func rpc_client_test() {
 
 func runtime_test() {
 	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus(), intwithRuntime.NewClientsManager())
-	commandRuntime.Run(newGroup, action, runtime, 0, 0)
+
+	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
+	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
+
+	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
 	defer commandRuntime.Kill(newGroup, action, runtime)
 
-	commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
-	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
 	time.Sleep(2 * time.Second)
 	commandRuntime.StoreData(newGroup, action, runtime, 0, 0)
 	time.Sleep(2 * time.Second)
@@ -124,11 +125,13 @@ var newGroup = &apis.Group{
 					Name: "migrate-example-1",
 					Runtimes: []apis.Runtime{
 						apis.Runtime{
-							Name:    "CMD",
-							Image:   "",
-							Type:    apis.ByCommand,
-							Command: []string{"python3"},
-							Args:    []string{"/home/kcm/py_examples/migration-demo-0116/yolo-runner.py"},
+							Name:                         "CMD",
+							Image:                        "",
+							Type:                         apis.ByCommand,
+							Command:                      []string{"python3"},
+							Args:                         []string{"/home/kcm/py_examples/migration-demo-0116/yolo-runner.py"},
+							EnableFineGrainedControl:     true,
+							EnableFineGrainedControlPort: "5123",
 						},
 					},
 				},
