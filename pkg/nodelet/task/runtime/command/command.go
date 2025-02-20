@@ -278,7 +278,9 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 // 细粒度控制（grpc）：恢复任务状态
 func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	// 恢复任务状态，调用grpc接口通知任务恢复任务状态，任务状态存放在etcd当中（group下对应runtime下的runtimeStatus下的keyStatus属性）
-	keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
+	// keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
+	keyStatus := ""
+
 	// 下面要使用这个关键状态数据进行恢复，调用Grpc去控制恢复任务状态，这里首先是否需要先启动任务呢？
 	//client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
 	logs.Infof("keyStatus: %s", keyStatus)
@@ -300,33 +302,34 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	// 调用grpc接口启动任务
 	//client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
-	// 下面是为了测试 -----下面的内容是暂时测试的，后面需要替换使用grpc
-	logs.Infof("command runtime for runtime task:%s", runtime.Name)
-	// 执行时所需命令
-	cmd := runtime.Command
-	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
-	args := runtime.Args
 
-	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args)
-	if err != nil {
+	// // 下面是为了测试 -----下面的内容是暂时测试的，后面需要替换使用grpc
+	// logs.Infof("command runtime for runtime task:%s", runtime.Name)
+	// // 执行时所需命令
+	// cmd := runtime.Command
+	// // Command的执行参数, 所有的参数都需要作为执行参数传入系统
+	// args := runtime.Args
 
-		logs.Error("Failed to start action:\t", action.Spec.Name)
-		return err
-		// TODO: 输出Action的详细信息
+	// // 目前只接受Command中第一个元素
+	// err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args)
+	// if err != nil {
+
+	// 	logs.Error("Failed to start action:\t", action.Spec.Name)
+	// 	return err
+	// 	// TODO: 输出Action的详细信息
+	// }
+	// // TODO: 输出Action的详细信息，等级为Debug
+	// logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
+
+	// start() rpc调用并不能取代Run(),应当在Run后再去rpc调用任务的start()?
+	if cr.client == nil {
+		return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
 	}
-	// TODO: 输出Action的详细信息，等级为Debug
-	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
-
-	// // start() rpc调用并不能取代Run(),应当在Run后再去rpc调用任务的start()?
-	// if cr.client == nil {
-	// 	return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
-	// }
-	// // rpc调用start()
-	// _, error := cr.client.RunAppStart()
-	// if error != nil {
-	// 	logs.Errorf("任务恢复状态失败: %e", error)
-	// }
+	// rpc调用start()
+	_, error := cr.client.RunAppStart()
+	if error != nil {
+		logs.Errorf("任务恢复状态失败: %e", error)
+	}
 
 	return nil
 }

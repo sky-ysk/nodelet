@@ -10,12 +10,21 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
+	"hit.edu/framework/pkg/nodelet/task/runtime/command"
 )
 
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
+
+	runtime_test()
+
+}
+
+func rpc_client_test() {
 	runtimeId := "runtime-1"
 	logs.Infof("runtime for task:%s", runtimeId)
 	cmd := pullService()
@@ -55,6 +64,21 @@ func main() {
 	time.Sleep(1 * time.Second)
 }
 
+func runtime_test() {
+	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus(), intwithRuntime.NewClientsManager())
+	commandRuntime.Run(newGroup, action, runtime, 0, 0)
+	defer commandRuntime.Kill(newGroup, action, runtime)
+
+	commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
+	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
+	time.Sleep(2 * time.Second)
+	commandRuntime.StoreData(newGroup, action, runtime, 0, 0)
+	time.Sleep(2 * time.Second)
+	commandRuntime.RestoreData(newGroup, action, runtime, 0, 0)
+
+	prompt()
+}
+
 func prompt() {
 	fmt.Printf("-> Press Return key to continue.")
 	scanner := bufio.NewScanner(os.Stdin)
@@ -89,7 +113,7 @@ func stopCMD(cmd *exec.Cmd) {
 	}
 }
 
-var newGroup = apis.Group{
+var newGroup = &apis.Group{
 	ObjectMeta: meta.ObjectMeta{Name: "migrate-example-1"},
 	Spec: apis.GroupSpec{
 		Name:    "migrate-example-1",
@@ -115,4 +139,6 @@ var newGroup = apis.Group{
 		GroupID: "migrate-example-1",
 	},
 }
-var groups = []*apis.Group{&newGroup}
+var groups = []*apis.Group{newGroup}
+var action = &newGroup.Spec.Actions[0]
+var runtime = &action.Spec.Runtimes[0]
