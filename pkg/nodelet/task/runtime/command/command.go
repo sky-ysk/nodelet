@@ -302,6 +302,14 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 // 细粒度控制（grpc）：关闭任务
 func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	logs.Infof("runtime has stop====")
-	cr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+
+	//---------删除
+	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
+	err := cr.stopCMD(runtime.Name)
+	if err != nil {
+		return err
+	}
+	// ------------
+	//cr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	return nil
 }

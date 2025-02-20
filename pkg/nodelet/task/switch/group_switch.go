@@ -137,6 +137,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 					continue
 				}
 				if runtimeStatus.Phase == apis.Running && action.Spec.Runtimes[j].EnableFineGrainedControl { // runtime正在运行，且runtime是细粒度控制的
+					logs.Info("!!!!!!!!!!!!!!!!!!!!!!!!!")
 					data := sw.runtimeManager.StoreData(g, action, runtime, i, j) // 获取group下的正在执行runtime的关键数据
 					// 将获取到的任务关键装填数据写入到本域的etcd上的副本group当中
 					patchGroup, err := json.Marshal([]map[string]interface{}{
@@ -155,9 +156,10 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 					}
 					logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[0].RuntimeStatus[0].KeyStatus)
 					// 关闭源任务当中的runtime
-					err = sw.runtimeManager.Kill(g, action, runtime)
+					logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+					err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
 					if err != nil {
-						logs.Errorf("Kill group error:%v", err)
+						logs.Errorf("Stop group error:%v", err)
 					}
 				}
 				// 跟python任务建立grpc连接--先隐藏测试
@@ -170,6 +172,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 			}
 		}
 		// 将源group从Running队列迁移到Completed队列
+		logs.Info("--------------DeleteFromRunningAndAddToMigratedQueue=====================")
 		ok := sw.groupQueues.DeleteFromRunningAndAddToMigrated(g.Status.GroupID)
 		if !ok {
 			logs.Error("Delete group from running queue and add to completed queue failed-2")
