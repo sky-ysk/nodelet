@@ -170,7 +170,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 			}
 		}
 		// 将源group从Running队列迁移到Completed队列
-		ok := sw.groupQueues.DeleteFromRunningAndAddToCompleted(g.Status.GroupID)
+		ok := sw.groupQueues.DeleteFromRunningAndAddToMigrated(g.Status.GroupID)
 		if !ok {
 			logs.Error("Delete group from running queue and add to completed queue failed-2")
 		}
