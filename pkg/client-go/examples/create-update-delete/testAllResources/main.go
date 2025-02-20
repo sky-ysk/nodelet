@@ -106,17 +106,17 @@ func main() {
 
 	result, getErr := nodesClient.Get(context.TODO(), "demo-nodes", metav1.GetOptions{})
 	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Errorf("Failed to get : %v", getErr)
 	}
 	fmt.Println("get result", result)
 	result2, getErr := groupsClient.Get(context.TODO(), "demo-groups", metav1.GetOptions{})
 	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Errorf("Failed to get : %v", getErr)
 	}
 	fmt.Println("get result", result2)
 	result3, getErr := workflowsClient.Get(context.TODO(), "demo-workflows", metav1.GetOptions{})
 	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Errorf("Failed to get : %v", getErr)
 	}
 	fmt.Println("get result", result3)
 }
