@@ -57,7 +57,7 @@ func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis
 	wasm_file := runtime.Image
 	wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcAddr)
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 	err := wr.wasmClient.Connect()
 	if err != nil {
 		logs.Error("wasm client 连接失败:", err)

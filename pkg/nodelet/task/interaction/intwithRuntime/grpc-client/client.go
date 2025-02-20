@@ -3,11 +3,12 @@ package grpc_client
 import (
 	"context"
 	"errors"
+	"time"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"hit.edu/framework/pkg/component-base/logs"
 	pb "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/proto"
-	"time"
 )
 
 type RuntimeClient struct {
@@ -45,8 +46,27 @@ func (r *RuntimeClient) checkConnection() bool {
 	return connState
 }
 
+// rpc远程调用init
+func (c *RuntimeClient) RunAppInit() (result *pb.Result, err error) {
+	logs.Infof("RunAppInit()")
+	if !c.checkConnection() {
+		return &pb.Result{}, errors.New("runAppInit: grpc connection failed")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result, err = c.grpcClient.Init(ctx, &pb.InitIntent{})
+	for err != nil {
+		time.Sleep(time.Millisecond * 100)
+		logs.Debug("retry to runAppInit")
+		result, err = c.grpcClient.Init(ctx, &pb.InitIntent{})
+	}
+	logs.Infof("runAppInit: result:%v", result)
+	return result, nil
+}
+
 // rpc远程调用服务端启动应用
 func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
+	logs.Infof("RunAppStart()")
 	if !c.checkConnection() {
 		return &pb.Result{}, errors.New("runAppStart: grpc connection failed")
 	}
@@ -54,6 +74,7 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 	defer cancel()
 	result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	for err != nil {
+		time.Sleep(time.Millisecond * 100)
 		logs.Debug("retry to runAppStart")
 		result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	}
@@ -63,6 +84,7 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 
 // rpc远程调用服务端保存应用状态
 func (c *RuntimeClient) RunAppStore() (result *pb.Result, err error) {
+	logs.Infof("RunAppStore()")
 	if !c.checkConnection() {
 		return &pb.Result{}, errors.New("runAppStore: grpc connection failed")
 	}
@@ -79,6 +101,7 @@ func (c *RuntimeClient) RunAppStore() (result *pb.Result, err error) {
 
 // rpc远程调用服务端保存应用状态
 func (c *RuntimeClient) RunAppRestore(keyStatus string) (result *pb.Result, err error) {
+	logs.Infof("RunAppRestore()")
 	if !c.checkConnection() {
 		return &pb.Result{}, errors.New("runAppRestore: grpc connection failed")
 	}

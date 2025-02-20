@@ -2,24 +2,27 @@ package command
 
 import (
 	"fmt"
-	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/events"
-	"hit.edu/framework/pkg/nodelet/events/eventbus"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
-	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
 	"os"
 	"os/exec"
 	rt "runtime"
 	"strconv"
 	"syscall"
 	"time"
+
+	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
+	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
+	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
 )
 
 type CommandRuntime struct {
 	processManager *process.ProcessManager
 	eventBus       *eventbus.EventBus
 	clientsManager *intwithRuntime.ClientsManager
+	client         *grpc_client.RuntimeClient
 	stopSignals    map[string]chan struct{} // 用于标记进程是否被外部停止
 }
 
@@ -59,6 +62,11 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	}
 	// TODO: 输出Action的详细信息，等级为Debug
 	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
+
+	// 建立grpc连接
+	port := "5123" //端口应该作为创建runtime的参数
+	cr.client = grpc_client.NewRuntimeClient(port, "")
+
 	return nil
 }
 
@@ -252,8 +260,18 @@ func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Act
 // 细粒度控制（grpc）：保存任务状态
 func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
-	//client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
-	logs.Infof("********************【模拟】成功保存了任务状态：ABCDEFG")
+	// client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
+	// kcm:每个runtime绑定一个client，这里直接使用client即可？
+	if cr.client == nil {
+		// 该方法应增加err返回值
+		return ""
+	}
+	// rpc调用store()
+	_, error := cr.client.RunAppStore()
+	if error != nil {
+		logs.Errorf("任务保存状态失败: %e", error)
+	}
+	// logs.Infof("********************【模拟】成功保存了任务状态：ABCDEFG")
 	return "ABCDEFG"
 }
 
@@ -264,7 +282,17 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	// 下面要使用这个关键状态数据进行恢复，调用Grpc去控制恢复任务状态，这里首先是否需要先启动任务呢？
 	//client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
 	logs.Infof("keyStatus: %s", keyStatus)
-	logs.Info("**********************成功恢复了任务状态****************************")
+	// logs.Info("**********************成功恢复了任务状态****************************")
+
+	if cr.client == nil {
+		return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
+	}
+	// rpc调用restore()
+	_, error := cr.client.RunAppRestore(keyStatus)
+	if error != nil {
+		logs.Errorf("任务恢复状态失败: %e", error)
+	}
+
 	return nil
 }
 
@@ -289,11 +317,31 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 	}
 	// TODO: 输出Action的详细信息，等级为Debug
 	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
+
+	// // start() rpc调用并不能取代Run(),应当在Run后再去rpc调用任务的start()?
+	// if cr.client == nil {
+	// 	return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
+	// }
+	// // rpc调用start()
+	// _, error := cr.client.RunAppStart()
+	// if error != nil {
+	// 	logs.Errorf("任务恢复状态失败: %e", error)
+	// }
+
 	return nil
 }
 
 // 细粒度控制（grpc）：初始化任务
 func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	if cr.client == nil {
+		return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
+	}
+	// rpc调用init()
+	_, error := cr.client.RunAppInit()
+	if error != nil {
+		logs.Errorf("任务恢复状态失败: %e", error)
+	}
+
 	logs.Infof("runtime has Init====")
 	cr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
 	return nil
