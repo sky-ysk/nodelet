@@ -30,7 +30,7 @@ func rpc_client_test() {
 	defer stopCMD(cmd)
 
 	port := "5123"
-	client := grpc_client.NewRuntimeClient(port)
+	client := grpc_client.NewRuntimeClient(port, "123")
 
 	// rpc调用init()
 	_, error := client.RunAppInit()
@@ -93,7 +93,7 @@ func prompt() {
 
 func pullService() *exec.Cmd {
 	logs.Infof("拉起任务")
-	cmd := exec.Command("python3", "/home/kcm/py_examples/migration-demo-0116/yolo-runner.py")
+	cmd := exec.Command("python3", "/home/public/workspace/yolo_projects/yolo-runner.py") ///home/kcm/py_examples/migration-demo-0116/yolo-runner.py
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
@@ -129,7 +129,7 @@ var newGroup = &apis.Group{
 							Image:                        "",
 							Type:                         apis.ByCommand,
 							Command:                      []string{"python3"},
-							Args:                         []string{"/home/kcm/py_examples/migration-demo-0116/yolo-runner.py"},
+							Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner.py"},
 							EnableFineGrainedControl:     true,
 							EnableFineGrainedControlPort: "5123",
 						},

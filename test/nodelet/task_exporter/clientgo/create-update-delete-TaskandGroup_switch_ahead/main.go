@@ -111,7 +111,7 @@ func main() {
 	//runtime1_3_1_1FineGrainedControl := false
 	//runtime1_3_1_2FineGrainedControl := false
 
-	runtime1_1_1_1FineGrainedControlPort := "1234"
+	runtime1_1_1_1FineGrainedControlPort := "5123"
 	//runtime1_1_1_2FineGrainedControlPort := "4567"
 	//runtime1_2_1_1FineGrainedControlPort := "9101"
 	//runtime1_2_1_2FineGrainedControlPort := "1121"
@@ -137,9 +137,9 @@ func main() {
 								Name:                         runtime1_1_1_1Name,
 								Type:                         apis.ByCommand,
 								Command:                      []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:                         []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner.py"},
 								Parents:                      make([]string, 0), // 加入Parents
-								Image:                        "/home/public/workspace/heongtong_yolo_linux/train.py",
+								Image:                        "/home/public/workspace/yolo_projects/yolo-runner.py",
 								EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
 								EnableFineGrainedControlPort: runtime1_1_1_1FineGrainedControlPort,

@@ -616,7 +616,7 @@ type GroupStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//添加-hzy
 	CheckDependencyCount int32  `json:"check_dependency_count" yaml:"check_dependency_count"`
-	CopyStatus           string `json:"copy_status,omitempty" yaml:"copy_status"`
+	CopyStatus           string `json:"copy_status,omitempty" yaml:"copy_status"` //如果是源任务，这个参数可以标记其副本任务的执行状态    如果是副本任务，这个参数可以标记其是预部署还是说直接切换
 }
 
 // ---------- Action
@@ -1203,8 +1203,9 @@ type RuntimeStatus struct {
 	//增加一个参数0hzy
 	RuntimeID  string `json:"runtime_id,omitempty" yaml:"runtime_id"`
 	Waiting    bool   `json:"waiting" yaml:"waiting"`
-	KeyStatus  string `json:"key_status" yaml:"key_status"`
 	Initing    bool   `json:"initing,omitempty" yaml:"initing"`
+	Starting   bool   `json:"starting,omitempty" yaml:"starting"`
+	KeyStatus  string `json:"key_status" yaml:"key_status"`
 	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
 }
 

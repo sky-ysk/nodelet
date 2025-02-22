@@ -37,6 +37,11 @@ func NewCommandRuntime(eventBus *eventbus.EventBus, clients *intwithRuntime.Clie
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
 	logs.Infof("command runtime kill task:%s", group.Name)
+	// 如果 stopSignals[runtime.Name] 已经被关闭，直接返回
+	if cr.stopSignals[runtime.Name] == nil {
+		logs.Infof("stopSignal for runtime %s already closed", runtime.Name)
+		return nil
+	}
 	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
 	err := cr.stopCMD(runtime.Name)
 	if err != nil {
@@ -296,7 +301,7 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 	cr.Run(group, action, runtime, actionIndex, runtimeIndex)
 	// 初始化rpc客户端
 	if cr.client == nil {
-		cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort)
+		cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, "")
 	}
 	// rpc调用start()
 	_, error := cr.client.RunAppStart()
@@ -304,8 +309,7 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 		logs.Errorf("任务启动失败: %e", error)
 	}
 
-	logs.Infof("runtime has started ====")
-	cr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
+	logs.Info("runtime has started =====================")
 
 	return nil
 }
@@ -317,7 +321,7 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 
 	// 初始化rpc客户端
 	if cr.client == nil {
-		cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort)
+		cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, "")
 	}
 	// rpc调用init()
 	_, error := cr.client.RunAppInit()

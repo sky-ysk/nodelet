@@ -76,7 +76,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 	// 从etcd当中读取group信息
 	group, err := sw.groupsClient.Get(context.TODO(), g.Name, metav1.GetOptions{})
 	g = group
-	logs.Infof("group:%v migration start", g.Name)
+	logs.Infof("group:%v migration start", g.Name) //此处作为迁移的开始
 	var groupCopyName string
 	if group.Spec.Replicas > 0 {
 		// 说明当前group已经提前往etcd里写入了副本group，那么此处就不用再写入了，只需要将原先写的副本group信息当中的groupCopy.Status.CopyStatus 改为"Starting"即可-采用patch
@@ -157,7 +157,9 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 					logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[0].RuntimeStatus[0].KeyStatus)
 					// 关闭源任务当中的runtime
 					logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-					err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
+					//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
+					time.Sleep(1 * time.Second)
+					err = sw.runtimeManager.Kill(g, action, runtime)
 					if err != nil {
 						logs.Errorf("Stop group error:%v", err)
 					}

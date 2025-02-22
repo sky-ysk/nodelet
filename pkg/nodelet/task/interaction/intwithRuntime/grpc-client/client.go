@@ -18,8 +18,8 @@ type RuntimeClient struct {
 	grpcClient      pb.RuntimeIntentClient
 }
 
-func NewRuntimeClient(port string) *RuntimeClient {
-	client := &RuntimeClient{ServerIPAndPort: "127.0.0.1:" + port}
+func NewRuntimeClient(port string, runtimeID string) *RuntimeClient {
+	client := &RuntimeClient{ServerIPAndPort: "127.0.0.1:" + port, RuntimeID: runtimeID}
 	for {
 		success := client.checkConnection()
 		if success {

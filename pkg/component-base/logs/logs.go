@@ -38,6 +38,8 @@ func Init(moduleName string) {
 }
 
 func initLogs(conf Config) {
+	// 设置全局时间格式为包含纳秒的格式
+	zerolog.TimeFieldFormat = time.RFC3339Nano // 新增代码
 	// 为日志文件名添加日期
 	currentTime := time.Now().Format(time.DateOnly)
 	conf.output.fileName = currentTime + "_" + conf.output.fileName
@@ -73,7 +75,7 @@ func initLogs(conf Config) {
 	}
 	if conf.output.console {
 		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout,
-			TimeFormat: time.DateTime,
+			TimeFormat: "2006-01-02 15:04:05.000", // 为了评估迁移的延时，这里暂时修改一下 原：time.DateTime
 		}) // 也可以只输出Stderr
 	}
 
