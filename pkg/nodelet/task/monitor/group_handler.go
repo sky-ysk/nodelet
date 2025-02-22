@@ -47,7 +47,7 @@ type Handler interface {
 func (gh *GroupHandler) Loop(ctx context.Context, updateCh <-chan types.GroupUpdate) {
 	const (
 		// base = 100000 * time.Millisecond //100s
-		base = 5000 * time.Millisecond //5s
+		base = 100 * time.Millisecond //5s
 	)
 	logs.Info("GroupHandler component start")
 	duration := base

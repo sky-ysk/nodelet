@@ -72,7 +72,6 @@ func runtime_test() {
 	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
 	defer commandRuntime.Kill(newGroup, action, runtime)
 
-	time.Sleep(2 * time.Second)
 	commandRuntime.StoreData(newGroup, action, runtime, 0, 0)
 	time.Sleep(2 * time.Second)
 	commandRuntime.RestoreData(newGroup, action, runtime, 0, 0)
@@ -93,7 +92,7 @@ func prompt() {
 
 func pullService() *exec.Cmd {
 	logs.Infof("拉起任务")
-	cmd := exec.Command("python3", "/home/public/workspace/yolo_projects/yolo-runner.py") ///home/kcm/py_examples/migration-demo-0116/yolo-runner.py
+	cmd := exec.Command("/home/public/anaconda3/envs/yolo/bin/python", "/home/public/workspace/yolo_projects/yolo-runner.py") ///home/kcm/py_examples/migration-demo-0116/yolo-runner.py
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()

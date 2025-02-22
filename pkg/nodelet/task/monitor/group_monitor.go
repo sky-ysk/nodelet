@@ -358,6 +358,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 				var isSuccess bool                            // 标记group下面的action是否都执行成功
 				for actionIndex := range group.Spec.Actions { // 遍历group当中的Action
 					action := &group.Spec.Actions[actionIndex]
+					actionStatus := &group.Status.ActionStatus[actionIndex]
 					isSuccess = false
 					// 为了适配迁移，状态为Migrated也说明Action成功结束了，然后接下来就通过Action成功标记Group成功了
 					if action.Status.Phase == apis.Successed || action.Status.Phase == apis.Migrated { // 当前action的状态为Successed
@@ -394,6 +395,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 						}
 						for runtimeIndex := range action.Spec.Runtimes {
 							runtime := &action.Spec.Runtimes[runtimeIndex]
+							runtimeStatus := &actionStatus.RuntimeStatus[runtimeIndex]
 							if grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting == true { // 说明是第二次遍历到这个runtime，第一次遍历到该runtime的时候，其依赖没有满足
 								if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) {
 									continue
@@ -410,8 +412,13 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 							if runtime.EnableFineGrainedControl { // 当前group是副本任务，且实现了细粒度控制方法
 								logs.Infof("****************************hhhhhhhhhhhhhhhh****************************************")
 								if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
-									go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
-									//go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
+									logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
+									if runtimeStatus.KeyStatus == "" {
+										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
+									} else {
+										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex) //这句好像会阻塞
+										go gmo.runtimeManager.RestoreData(group, action, runtime, actionIndex, runtimeIndex)
+									}
 									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
 								}
 							} else {
@@ -528,7 +535,7 @@ func (gmo *GroupMonitor) MigratedQueueCheck() {
 				if err != nil {
 					logs.Errorf("Etcd get group error:%v", err)
 				}
-				logs.Info("监控副本group是否完成")
+				//logs.Info("监控副本group是否完成")
 				copyGroupName := "Reason-Copy"
 				// 查询副本group的状态是否完成，如果完成了，就将group迁移到Completed队列
 				getGroup, err := gmo.groupClient.Get(context.TODO(), copyGroupName, metav1.GetOptions{})

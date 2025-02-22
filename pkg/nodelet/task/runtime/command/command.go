@@ -283,8 +283,10 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	keyStatus := ""
 	logs.Infof("keyStatus: %s", keyStatus)
 
-	if cr.client == nil {
-		return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
+	for {
+		if cr.client != nil {
+			break
+		}
 	}
 	// rpc调用restore()
 	_, error := cr.client.RunAppRestore(keyStatus)

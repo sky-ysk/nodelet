@@ -100,7 +100,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 		groupCopy := NewGroupInfoCopy(g, false) //第二个参数表示是否为提前写入etcd，这里为否
 		groupCopyName = groupCopy.Name
 		// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
-		logs.Infof("group:%v===================", groupCopy.Name)
+		logs.Infof("group:%v######################################", groupCopy.Name)
 		_, err = sw.groupsClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
 		if err != nil {
 			logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
@@ -154,7 +154,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 					if err != nil {
 						logs.Errorf("Patch group error-5:%v", err)
 					}
-					logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[0].RuntimeStatus[0].KeyStatus)
+					logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[i].RuntimeStatus[j].KeyStatus)
 					// 关闭源任务当中的runtime
 					logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 					//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
@@ -259,8 +259,4 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool) *apis.Group {
 		}
 	}
 	return groupCopy
-}
-func newGroupInfoCopy1(g *apis.Group) *apis.Group {
-
-	return nil
 }

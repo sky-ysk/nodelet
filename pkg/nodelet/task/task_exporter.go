@@ -144,9 +144,9 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 					te.updateCh <- groupUpdate
 				}
 			}
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
