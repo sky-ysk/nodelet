@@ -134,7 +134,7 @@ func main() {
 								Name:                         runtime1_1_1_1Name,
 								Type:                         apis.ByCommand,
 								Command:                      []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner.py"}, ///home/public/workspace/heongtong_yolo_linux/train.py
+								Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner.py"}, // /home/public/workspace/heongtong_yolo_linux/train.py
 								Parents:                      make([]string, 0),                                               // 加入Parents
 								Image:                        "/home/public/workspace/yolo_projects/yolo-runner.py",
 								EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},

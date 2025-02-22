@@ -81,7 +81,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	// TODO: 不同系统平台下的CMD，根据运行平台选择对应路径下的解释器等
 	//判断程序所在Linux还是Windows环境，决定python等解释器路径
 	sysType := rt.GOOS
-	pyPath := "/home/ysk/miniconda3/envs/py38/bin/python" //默认linux
+	pyPath := "/home/public/anaconda3/yolo/bin/python" //默认linux
 	if sysType == "linux" {
 		//可能有其他执行器路径需要指定，后续可加
 	} else if sysType == "windows" {

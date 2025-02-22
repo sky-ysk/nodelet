@@ -411,6 +411,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 								logs.Infof("****************************hhhhhhhhhhhhhhhh****************************************")
 								if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
 									go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
+									//go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
 									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
 								}
 							} else {
