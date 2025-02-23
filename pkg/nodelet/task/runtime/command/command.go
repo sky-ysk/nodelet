@@ -285,7 +285,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	// 恢复任务状态，调用grpc接口通知任务恢复任务状态，任务状态存放在etcd当中（group下对应runtime下的runtimeStatus下的keyStatus属性）
 	// keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
 	keyStatus := ""
-	logs.Infof("keyStatus: %s", keyStatus)
+	//logs.Infof("keyStatus: %s", keyStatus)
 
 	for {
 		if cr.client != nil {

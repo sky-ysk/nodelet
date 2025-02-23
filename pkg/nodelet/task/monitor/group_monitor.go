@@ -328,7 +328,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck() { //TODO 对于专门存放副�
 						continue
 					}
 				} else if group.Status.CopyStatus == "Starting" {
-					logs.Infof("=============CopyPending--Starting")
+					//logs.Infof("=============CopyPending--Starting")
 					ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToRunning(group.Status.GroupID)
 					if !ok {
 						logs.Error("Delete group from copy checking queue and add to running queue failed")
