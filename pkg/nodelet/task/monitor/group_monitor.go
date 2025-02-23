@@ -117,7 +117,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 				// 从etcd当中读取group信息
 				get, err := gmo.groupClient.Get(context.TODO(), gr.Name, metav1.GetOptions{})
 				if err != nil {
-					logs.Errorf("Etcd get group error:%v", err)
+					logs.Errorf("Etcd get group error-1:%v", err)
 				}
 				if !gmo.groupDepenSatisfy(get) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
 					//logs.Debugf("The group ：%s execution dependency is not satisfied again, now still in Checking Queue", gr.Name)
@@ -232,7 +232,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck() { //TODO 对于专门存放副�
 				// 从etcd当中读取group信息
 				group, err := gmo.groupClient.Get(context.TODO(), gro.Name, metav1.GetOptions{})
 				if err != nil {
-					logs.Errorf("Etcd get group error:%v", err)
+					logs.Errorf("Etcd get group error-2:%v", err)
 				}
 				if group.Status.CopyStatus == "Waiting" { // 说明副本任务是提前部署好的
 					// 这里打算Init初始化group,就是提前进行Running步骤  源任务一个Runtime执行完成后，就修改runtime的状态即可
@@ -353,7 +353,7 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 				// 从etcd当中读取group信息
 				group, err := gmo.groupClient.Get(context.TODO(), gro.Name, metav1.GetOptions{})
 				if err != nil {
-					logs.Errorf("Etcd get group error:%v", err)
+					logs.Errorf("Etcd get group error-3:%v", err)
 				}
 				var isSuccess bool                            // 标记group下面的action是否都执行成功
 				for actionIndex := range group.Spec.Actions { // 遍历group当中的Action
@@ -533,7 +533,7 @@ func (gmo *GroupMonitor) MigratedQueueCheck() {
 				// 从etcd获取group信息
 				group, err := gmo.groupClient.Get(context.TODO(), gro.Name, metav1.GetOptions{})
 				if err != nil {
-					logs.Errorf("Etcd get group error:%v", err)
+					logs.Errorf("Etcd get group error-4:%v", err)
 				}
 				//logs.Info("监控副本group是否完成")
 				copyGroupName := "Reason-Copy"

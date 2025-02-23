@@ -58,7 +58,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	args := runtime.Args
 
 	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args)
+	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, false)
 	if err != nil {
 
 		logs.Error("Failed to start action:\t", action.Spec.Name)
@@ -73,7 +73,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 
 // 可能需要区分输出output的指定位置, 后续需要改成使用cmd package里的build cmd等
 // 需要保存进程的pid，检查进程是否是正常执行完成
-func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, cmd string, args []string) error {
+func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
 	// exec.Command可以接受的命令
 	// name表示可执行二进制的name
 	// ...args表示命令所需的参数
@@ -129,7 +129,11 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
-	cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+	if isInit {
+		cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
+	} else {
+		cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+	}
 	cr.processManager.AddProcess(runtime.Name, CMD)
 	cr.stopSignals[runtime.Name] = make(chan struct{})
 	logs.Infof("process id:\t %d is Running", CMD.Process.Pid)
@@ -287,6 +291,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 		if cr.client != nil {
 			break
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 	// rpc调用restore()
 	_, error := cr.client.RunAppRestore(keyStatus)
@@ -311,40 +316,51 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 		logs.Errorf("任务启动失败: %e", error)
 	}
 
-	logs.Info("runtime has started =====================")
+	//logs.Info("runtime has started =====================")
 
 	return nil
 }
 
 // 细粒度控制（grpc）：初始化任务
 func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	// 运行任务进程
-	cr.Run(group, action, runtime, actionIndex, runtimeIndex)
+	// 1、运行任务进程
+	cmd := runtime.Command
+	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
+	args := runtime.Args
+	// 目前只接受Command中第一个元素
+	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, true)
+	if err != nil {
 
-	// 初始化rpc客户端
+		logs.Error("Failed to start action:\t", action.Spec.Name)
+		return err
+		// TODO: 输出Action的详细信息
+	}
+	// TODO: 输出Action的详细信息，等级为Debug
+	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
+
+	// 2、初始化rpc客户端（若无初始化）
 	if cr.client == nil {
 		cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, "")
 	}
-	// rpc调用init()
+	// 3、rpc调用init()
 	_, error := cr.client.RunAppInit()
 	if error != nil {
 		logs.Errorf("任务init失败: %e", error)
 	}
 
-	logs.Infof("runtime has Init ====")
-	cr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
+	//logs.Infof("runtime has Init ====")
 	return nil
 }
 
-// 细粒度控制（grpc）：关闭任务
+// 细粒度控制（grpc）：停止任务
 func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	logs.Infof("runtime has stop====")
 
-	//---------删除
-	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
-	err := cr.stopCMD(runtime.Name)
-	if err != nil {
-		return err
+	//---------停止
+	// rpc调用restore()
+	_, error := cr.client.RunAppStop()
+	if error != nil {
+		logs.Errorf("任务关闭失败: %e", error)
 	}
 	// ------------
 	//cr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})

@@ -120,6 +120,24 @@ func (c *RuntimeClient) RunAppRestore(keyStatus string) (result *pb.Result, err 
 	return result, nil
 }
 
+// rpc远程调用服务端启动应用
+func (c *RuntimeClient) RunAppStop() (result *pb.Result, err error) {
+	logs.Infof("StopAppStart()")
+	if !c.checkConnection() {
+		return &pb.Result{}, errors.New("runAppStop: grpc connection failed")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result, err = c.grpcClient.Stop(ctx, &pb.StopIntent{})
+	for err != nil {
+		time.Sleep(time.Millisecond * 100)
+		logs.Debug("retry to runAppStop")
+		result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
+	}
+	logs.Infof("runAppStop: result:%v", result)
+	return result, nil
+}
+
 func (c *RuntimeClient) close() {
 	defer c.conn.Close()
 }

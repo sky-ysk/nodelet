@@ -139,6 +139,10 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 				if runtimeStatus.Phase == apis.Running && action.Spec.Runtimes[j].EnableFineGrainedControl { // runtime正在运行，且runtime是细粒度控制的
 					logs.Info("!!!!!!!!!!!!!!!!!!!!!!!!!")
 					data := sw.runtimeManager.StoreData(g, action, runtime, i, j) // 获取group下的正在执行runtime的关键数据
+					err := sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
+					if err != nil {
+						logs.Errorf("Stop runtime error:%v", err)
+					}
 					// 将获取到的任务关键装填数据写入到本域的etcd上的副本group当中
 					patchGroup, err := json.Marshal([]map[string]interface{}{
 						{
