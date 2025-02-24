@@ -41,6 +41,7 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 	// }
 	ref, ok := object.(*apis.ObjectReference)
 	if !ok {
+		logs.Error("ref converted failed")
 		ref = &apis.ObjectReference{}
 	}
 

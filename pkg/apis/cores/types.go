@@ -74,7 +74,7 @@ type Event struct {
 	//TODO: ObjectReference设计
 	meta.TypeMeta
 	meta.ObjectMeta
-	ObjectReference ObjectReference
+	InvolvedObject ObjectReference
 	// 事件产生原因，机器可读，供handler判断
 	Reason string
 	// 描述，应有用户可读性

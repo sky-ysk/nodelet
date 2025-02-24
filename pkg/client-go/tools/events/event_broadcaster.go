@@ -79,7 +79,7 @@ func (e *eventBroadcaster) StartEventWatcher(eventHandler func(*apis.Event)) (fu
 	e.wg.Add(1)
 	go func() {
 		defer e.wg.Done()
-		logs.Info("---go routine : start event watcher---")
+		logs.Info("go routine : start event watcher")
 		for {
 			select {
 			case <-e.cancelationCtx.Done():

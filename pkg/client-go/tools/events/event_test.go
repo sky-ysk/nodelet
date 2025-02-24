@@ -80,7 +80,7 @@ func TestForEventClient(t *testing.T) {
 	logs.Init(moduleName)
 
 	// 获得eventsClient
-	eventsClient := testClientSet().Core().Events(apis.NamespaceAll)
+	eventsClient := testClientSet().Core().Events("test")
 
 	// 先删除冗余事件
 	clearEvents(eventsClient)
@@ -106,7 +106,7 @@ func TestForBroadcaster(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. 创建eventsClient
-	eventsClient := testClientSet().Core().Events(apis.NamespaceAll)
+	eventsClient := testClientSet().Core().Events("test")
 
 	// 2. 创建eventBroadcaster
 	eventBroadcaster := NewBroadcaster(WithContext(ctx))
