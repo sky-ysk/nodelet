@@ -2,10 +2,11 @@ package events
 
 import (
 	"context"
+	"os"
 	"sync"
 	"time"
 
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -86,10 +87,10 @@ func (e *eventBroadcaster) StartEventWatcher(eventHandler func(*apis.Event)) (fu
 				watcher.Stop()
 				return
 			case watchEvent := <-watcher.ResultChan(): // 从 watcher result channel 中取出 event
-				logs.Info("watcher接收到event,交给handler处理")
+				logs.Info("watcher has received the event")
 				event, ok := watchEvent.Object.(*apis.Event)
 				if !ok {
-					logs.Error("该事件被以错误形式生成")
+					logs.Trace("Incorrect event format, the event has been discarded")
 					continue
 				}
 				eventHandler(event) // 对 event 进行处理 (发送到 apiserver 或 日志)
@@ -159,10 +160,11 @@ func (e *eventBroadcaster) StartLogging(ctx context.Context, logf func(format st
 }
 
 // 实例Recorder，与该broadcaster绑定
-func (e *eventBroadcaster) NewRecorder(scheme *schema.Schema, source apis.EventSource) EventRecorder {
+func (e *eventBroadcaster) NewRecorder(scheme *runtime.Scheme, reportingComponent string) EventRecorder {
 	logs.Info("fn NewRecorder")
+	hostname, _ := os.Hostname()
 	// todo: 将当前的node name写入eventsource
-	return &recorder{scheme, source, e.Broadcaster}
+	return &recorder{scheme, apis.EventSource{Component: reportingComponent, Host: hostname}, e.Broadcaster}
 }
 
 func (e *eventBroadcaster) Shutdown() {

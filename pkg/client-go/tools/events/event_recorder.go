@@ -1,23 +1,24 @@
 package events
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/tools/reference"
 	"hit.edu/framework/pkg/component-base/logs"
-
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 )
 
 // "k8s.io/apimachinery/pkg/watch"
 // "k8s.io/utils/clock"
 
 type recorder struct {
-	scheme *schema.Schema
+	scheme *runtime.Scheme
 	source apis.EventSource
 
 	*watch.Broadcaster
@@ -34,15 +35,16 @@ func (recorder *recorder) Eventf(object runtime.Object, eventtype, reason, messa
 }
 
 func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason, message string) {
-	// ref, err := ref.GetReference(recorder.scheme, object)
-	// if err != nil {
-	// 	logs.V2().Error(err, "Could not construct reference, will not report event", "object", object, "eventType", eventtype, "reason", reason, "message", message)
-	// 	return
-	// }
-	ref, ok := object.(*apis.ObjectReference)
-	if !ok {
-		logs.Error("ref converted failed")
+	ref, err := reference.GetReference(recorder.scheme, object)
+	if err != nil {
+		logs.Error(err, "Could not construct reference, will not report event", "object", object, "eventType", eventtype, "reason", reason, "message", message)
 		ref = &apis.ObjectReference{}
+		// return
+	} else {
+		codecFactory := serializer.NewCodecFactory(recorder.scheme)
+		writer := &bytes.Buffer{}
+		codecFactory.LegacyCodec().Encode(object, writer)
+		ref.FieldPath = writer.String()
 	}
 
 	if !ValidateEventType(eventtype) {
@@ -56,6 +58,7 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 	// event.ReportingInstance = recorder.source.Host
 	// event.ReportingController = recorder.source.Component
 
+	logs.Info("generateEvent--recorder.ActionOrDrop")
 	sent, err := recorder.ActionOrDrop(watch.Added, event)
 	// 这个 broadcaster 已经结束了
 	if err != nil {
@@ -70,14 +73,15 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 
 func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason, message string) *apis.Event {
 	t := apis.Time{Time: time.Now()}
-	// namespace := ref.Namespace
-	// if namespace == "" {
-	// 	// namespace = meta.NamespaceDefault
-	// }
+	namespace := ref.Namespace
+	if namespace == "" {
+		// namespace = meta.NamespaceDefault
+		namespace = "test"
+	}
 	return &apis.Event{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
-			Namespace: "",
+			Namespace: namespace,
 		},
 		TypeMeta: meta.TypeMeta{
 			Kind:       "Event",

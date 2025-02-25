@@ -28,22 +28,22 @@ var table = []apis.Event{
 			APIVersion: "resources/v1",
 		},
 		InvolvedObject: apis.ObjectReference{
-			Kind:       "Node",
-			Name:       "CloudNode1",
+			Kind:       "Group",
+			Name:       "mygroup",
 			Namespace:  "test",
 			UID:        "default",
 			APIVersion: "resources/v1",
+			FieldPath:  "spec.containers{mycon}",
 		},
-		Reason:  "Created",
-		Message: "Successfully created cloud node 1",
+		Reason:  "Started",
+		Message: "Successfully Started ComandRuntime",
 		Source:  apis.EventSource{Component: "test-controller", Host: "127.0.0.1"},
 		Count:   1,
 		Type:    apis.EventTypeNormal,
 	},
 }
 
-func testClientSet() *clients.ClientSet {
-	scheme := runtime.NewScheme()
+func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	apis.AddToScheme(scheme)
 	logs.Info(scheme)
 	// 创建ClientSet
@@ -74,13 +74,52 @@ func testClientSet() *clients.ClientSet {
 	return clientSet
 }
 
+func TestForBroadcaster(t *testing.T) {
+	moduleName := "TestForBroadcaster"
+	logs.Init(moduleName)
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+
+	// 1. 创建eventsClient
+	eventsClient := initClientSet(scheme).Core().Events("test")
+
+	// 2. 创建eventBroadcaster
+	eventBroadcaster := NewBroadcaster(WithContext(ctx))
+	defer eventBroadcaster.Shutdown()
+
+	// 3.1 启动事件的 API Server 记录功能, StartRecordingToSink()定义了将事件上传至api server的事件处理方式
+	// 配置事件接收器，需要绑定一个eventsClient
+	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: eventsClient})
+
+	// 3.2 启动日志记录功能
+	eventBroadcaster.StartLogging(ctx, logs.Infof)
+
+	// 4. 创建事件记录器EventRecorder, 用于记录事件
+	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
+
+	// 5. 模拟一个资源对象（如Pod、Task）的引用，因为事件通常需要与具体的资源相关联
+	var testGroup = &apis.Group{
+		ObjectMeta: meta.ObjectMeta{
+			Name:      "group-test",
+			Namespace: "test",
+			UID:       "123",
+		},
+	}
+
+	for _, item := range table {
+		recorder.Eventf(testGroup, item.Type, item.Reason, item.Message)
+	}
+
+	time.Sleep(2 * time.Second)
+}
+
 func TestForEventClient(t *testing.T) {
 	moduleName := "TestForEventClient"
-	logs.Info("---", moduleName, "---")
 	logs.Init(moduleName)
+	scheme := runtime.NewScheme()
 
 	// 获得eventsClient
-	eventsClient := testClientSet().Core().Events("test")
+	eventsClient := initClientSet(scheme).Core().Events("test")
 
 	// 先删除冗余事件
 	clearEvents(eventsClient)
@@ -95,46 +134,10 @@ func TestForEventClient(t *testing.T) {
 		}
 		logs.Info("Created event : ", result.Name)
 	}
-
-	// prompt()
 }
 
-func TestForBroadcaster(t *testing.T) {
-	moduleName := "TestForBroadcaster"
-	logs.Info("---", moduleName, "---")
-	logs.Init(moduleName)
-	ctx := context.Background()
+func TestForRef(t *testing.T) {
 
-	// 1. 创建eventsClient
-	eventsClient := testClientSet().Core().Events("test")
-
-	// 2. 创建eventBroadcaster
-	eventBroadcaster := NewBroadcaster(WithContext(ctx))
-	defer eventBroadcaster.Shutdown()
-
-	// 3.1 启动事件的 API Server 记录功能, StartRecordingToSink()定义了将事件上传至api server的事件处理方式
-	// 配置事件接收器，需要绑定一个eventsClient
-	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: eventsClient})
-
-	// 3.2 启动日志记录功能
-	eventBroadcaster.StartLogging(ctx, logs.Infof)
-
-	// 4. 创建事件记录器EventRecorder, 用于记录事件
-	recorder := eventBroadcaster.NewRecorder(schema.NewSchema(), apis.EventSource{Component: "test-controller"})
-
-	// 5. 模拟一个资源对象（如Pod、Task）的引用，因为事件通常需要与具体的资源相关联
-	objRef := &apis.ObjectReference{
-		Kind:       "Node",         // 资源类型
-		Namespace:  "test",         // 命名空间
-		Name:       "CloudNode1",   // 资源名称
-		UID:        "default",      // 唯一标识符
-		APIVersion: "resources/v1", // API 版本
-	}
-	for _, item := range table {
-		recorder.Eventf(objRef, item.Type, item.Reason, item.Message)
-	}
-
-	time.Sleep(2 * time.Second)
 }
 
 func clearEvents(client core.EventInterface) {
@@ -148,3 +151,13 @@ func clearEvents(client core.EventInterface) {
 	}
 
 }
+
+// objRef := &apis.ObjectReference{
+// 	Kind:       "Pod",
+// 	Name:       "mypod",
+// 	Namespace:  "test",
+// 	UID:        "default",
+// 	APIVersion: "resources/v1",
+// 	FieldPath:  "spec.containers{mycon}",
+// }
+// testRef, err := reference.GetPartialReference(scheme, testGroup, "spec.actions[2]")

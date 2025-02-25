@@ -6,6 +6,7 @@ import (
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/component-base/logs"
 )
 
 // FullChannelBehavior controls how the Broadcaster reacts if a watcher's watch
@@ -236,6 +237,7 @@ func (m *Broadcaster) ActionOrDrop(action EventType, obj runtime.Object) (bool, 
 
 	select {
 	case m.incoming <- Event{action, obj}:
+		logs.Info("broadcaster--ActionOrDrop")
 		return true, nil
 	default:
 		return false, nil
@@ -273,7 +275,7 @@ func (m *Broadcaster) loop() {
 
 // distribute sends event to all watchers. Blocking.
 func (m *Broadcaster) distribute(event Event) {
-	// logs.V1().Info("broadcaster在事件队列incoming中发现新event，将其分发给监听的watcher")
+	// logs.Info("broadcaster在事件队列incoming中发现新event，将其分发给监听的watcher")
 	if m.fullChannelBehavior == DropIfChannelFull {
 		for _, w := range m.watchers {
 			select {

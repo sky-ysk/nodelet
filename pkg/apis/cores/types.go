@@ -110,6 +110,7 @@ type ObjectReference struct {
 	Name            string
 	UID             UID
 	ResourceVersion string
+	FieldPath       string
 }
 type UID string
 

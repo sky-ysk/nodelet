@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	apis "hit.edu/framework/pkg/apis/cores"
 )
 
@@ -40,7 +39,7 @@ type EventBroadcaster interface {
 
 	// NewRecorder returns an EventRecorder that can be used to send events to this EventBroadcaster
 	// with the event source set to the given event source.
-	NewRecorder(scheme *schema.Schema, source apis.EventSource) EventRecorder
+	NewRecorder(scheme *runtime.Scheme, reportingComponent string) EventRecorder
 
 	// Shutdown shuts down the broadcaster. Once the broadcaster is shut
 	// down, it will only try to record an event in a sink once before
