@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -30,17 +29,15 @@ type Runtime interface {
 }
 
 type RuntimeManager struct {
-	runtimes       map[apis.RuntimeType]Runtime
-	eventbus       *eventbus.EventBus
-	clientsManager *intwithRuntime.ClientsManager
-	mu             sync.Mutex
+	runtimes map[apis.RuntimeType]Runtime
+	eventbus *eventbus.EventBus
+	mu       sync.Mutex
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, client *intwithRuntime.ClientsManager) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus) *RuntimeManager {
 	return &RuntimeManager{
-		runtimes:       make(map[apis.RuntimeType]Runtime),
-		clientsManager: client,
-		eventbus:       bus,
+		runtimes: make(map[apis.RuntimeType]Runtime),
+		eventbus: bus,
 	}
 }
 
