@@ -13,7 +13,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
 )
@@ -21,17 +20,16 @@ import (
 type CommandRuntime struct {
 	processManager *process.ProcessManager
 	eventBus       *eventbus.EventBus
-	clientsManager *intwithRuntime.ClientsManager
-	client         *grpc_client.RuntimeClient
-	stopSignals    map[string]chan struct{} // 用于标记进程是否被外部停止
+
+	client      *grpc_client.RuntimeClient
+	stopSignals map[string]chan struct{} // 用于标记进程是否被外部停止
 }
 
-func NewCommandRuntime(eventBus *eventbus.EventBus, clients *intwithRuntime.ClientsManager) *CommandRuntime {
+func NewCommandRuntime(eventBus *eventbus.EventBus) *CommandRuntime {
 	pm := process.NewProcessManager()
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
-		clientsManager: clients,
 		stopSignals:    make(map[string]chan struct{}),
 	}
 }

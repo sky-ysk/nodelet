@@ -9,7 +9,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/group"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	"hit.edu/framework/pkg/nodelet/task/monitor"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
 	_switch "hit.edu/framework/pkg/nodelet/task/switch"
@@ -67,12 +66,10 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	groupManager := group.NewGroupManager()
 	// Manager 配置Task
 	taskManager := task.NewTaskManager()
-	// grpc_clients_manager
-	clientsManager := intwithRuntime.NewClientsManager()
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, clientsManager)
+	runtimeManager := runtime.NewRuntimeManager(eb)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -89,7 +86,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupWorkers:  workers,
 		groupMonitor:  monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
 		groupHandler:  monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient),
-		groupSwitcher: _switch.NewSwitchManager(groupQueues, nodeClient, groupClient, runtimeManager, clientsManager),
+		groupSwitcher: _switch.NewSwitchManager(groupQueues, nodeClient, groupClient, runtimeManager),
 		updateCh:      make(chan types.GroupUpdate),
 	}
 
@@ -122,13 +119,14 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 			logs.Errorf("List task err:%v", err)
 		}
 		// 遍历group
-		for _, group := range groupList.Items {
-			groupName := group.Name // 这里是一个坑
-			// 从etcd当中读group的信息
-			gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-			if err != nil {
-				logs.Errorf("get group:%s failed", groupName)
-			}
+		for i := range groupList.Items {
+			gr := &groupList.Items[i] // 修改了此处，如果不行的话，改为原来的
+			//groupName := gr.Name // 这里是一个坑
+			//// 从etcd当中读group的信息
+			//gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
+			//if err != nil {
+			//	logs.Errorf("get group:%s failed", groupName)
+			//}
 			if gr.Status.Node == "CloudNode1" { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 				if gr.Status.Phase == apis.ReadyToDeploy {
 					groupUpdate := types.GroupUpdate{

@@ -3,7 +3,6 @@ package runtime
 import (
 	"fmt"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	"sync"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -29,17 +28,15 @@ type Runtime interface {
 }
 
 type RuntimeManager struct {
-	runtimes       map[apis.RuntimeType]Runtime
-	eventbus       *eventbus.EventBus
-	clientsManager *intwithRuntime.ClientsManager
-	mu             sync.Mutex
+	runtimes map[apis.RuntimeType]Runtime
+	eventbus *eventbus.EventBus
+	mu       sync.Mutex
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, client *intwithRuntime.ClientsManager) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus) *RuntimeManager {
 	return &RuntimeManager{
-		runtimes:       make(map[apis.RuntimeType]Runtime),
-		clientsManager: client,
-		eventbus:       bus,
+		runtimes: make(map[apis.RuntimeType]Runtime),
+		eventbus: bus,
 	}
 }
 
@@ -65,7 +62,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = wasm.NewWasmRuntime()
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.eventbus, rm.clientsManager)
+			runtime = command.NewCommandRuntime(rm.eventbus)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime()

@@ -9,7 +9,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/group"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
 	"strconv"
 	"time"
@@ -24,18 +23,15 @@ type GroupSwitch struct {
 	groupsClient core.GroupInterface
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
-	// grpc-客户端clients管理
-	grpcClientsManager *intwithRuntime.ClientsManager
 }
 
-func NewSwitchManager(groupQueues *group.GroupQueues, nodesClient core.NodeInterface, groupsClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, clientsManager *intwithRuntime.ClientsManager) *GroupSwitch {
+func NewSwitchManager(groupQueues *group.GroupQueues, nodesClient core.NodeInterface, groupsClient core.GroupInterface, runtimeManager *runtime.RuntimeManager) *GroupSwitch {
 	return &GroupSwitch{
-		groupQueues:        groupQueues,
-		switchCheck:        NewSwitchCheck(nodesClient),
-		groupsClient:       groupsClient,
-		nodesClient:        nodesClient,
-		runtimeManager:     runtimeManager,
-		grpcClientsManager: clientsManager,
+		groupQueues:    groupQueues,
+		switchCheck:    NewSwitchCheck(nodesClient),
+		groupsClient:   groupsClient,
+		nodesClient:    nodesClient,
+		runtimeManager: runtimeManager,
 	}
 }
 
@@ -76,7 +72,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 	// 从etcd当中读取group信息
 	group, err := sw.groupsClient.Get(context.TODO(), g.Name, metav1.GetOptions{})
 	g = group
-	logs.Infof("group:%v migration start", g.Name) //此处作为迁移的开始
+	logs.Infof("Group:%v migration start", g.Name) //此处作为迁移的开始
 	var groupCopyName string
 	if group.Spec.Replicas > 0 {
 		// 说明当前group已经提前往etcd里写入了副本group，那么此处就不用再写入了，只需要将原先写的副本group信息当中的groupCopy.Status.CopyStatus 改为"Starting"即可-采用patch
@@ -94,7 +90,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 		if err != nil {
 			logs.Errorf("Patch group error-6:%v", err)
 		}
-		logs.Info("===================================将副本任务的copy_Status修改为Starting")
+		logs.Info("Change the copy_Status of the copy task to Starting")
 	} else {
 		// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 		groupCopy := NewGroupInfoCopy(g, false) //第二个参数表示是否为提前写入etcd，这里为否
@@ -120,7 +116,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 	if err != nil {
 		logs.Errorf("Patch group error-2:%v", err)
 	}
-	logs.Infof("**************源任务groupStatus.Phase:%v", patchResult.Status.Phase)
+	logs.Infof("Source groupStatus.Phase:%v", patchResult.Status.Phase)
 	// 获取任务group中需要迁移的runtime的当前的执行状态，并将该状态写入到副本group上的runtimeStatus中的keyStatus，并关闭源group中Running的runtime   注意对于DeployCheck的任务，就不采用这种读取状态并写入的方式
 	// 注意：如果说Runtime本身没有细粒度控制的话，就不用再保存任务状态以及写入到副本任务上去
 	for i := range g.Spec.Actions {
@@ -137,7 +133,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 					continue
 				}
 				if runtimeStatus.Phase == apis.Running && action.Spec.Runtimes[j].EnableFineGrainedControl { // runtime正在运行，且runtime是细粒度控制的
-					logs.Info("!!!!!!!!!!!!!!!!!!!!!!!!!")
+					//logs.Info("!!!!!!!!!!!!!!!!!!!!!!!!!")
 					data := sw.runtimeManager.StoreData(g, action, runtime, i, j) // 获取group下的正在执行runtime的关键数据
 					err := sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
 					if err != nil {
@@ -158,7 +154,7 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 					if err != nil {
 						logs.Errorf("Patch group error-5:%v", err)
 					}
-					logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[i].RuntimeStatus[j].KeyStatus)
+					//logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[i].RuntimeStatus[j].KeyStatus)
 					// 关闭源任务当中的runtime
 					logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 					//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
