@@ -2,9 +2,10 @@ package runtime
 
 import (
 	"fmt"
+	"sync"
+
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
-	"sync"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -65,7 +66,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = wasm.NewWasmRuntime()
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.eventbus, rm.clientsManager)
+			runtime = command.NewCommandRuntime(rm.eventbus)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime()

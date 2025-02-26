@@ -31,16 +31,16 @@ func NewRuntimeClient(port string, runtimeID string) *RuntimeClient {
 	return client
 }
 
-func (r *RuntimeClient) checkConnection() bool {
+func (c *RuntimeClient) checkConnection() bool {
 	connState := true
-	if r.conn == nil {
-		conn, err := grpc.Dial(r.ServerIPAndPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if c.conn == nil {
+		conn, err := grpc.Dial(c.ServerIPAndPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			logs.Debugf("failed to connect to grpc server:%v", err)
 			connState = false
 		} else {
-			r.conn = conn
-			r.grpcClient = pb.NewRuntimeIntentClient(conn)
+			c.conn = conn
+			c.grpcClient = pb.NewRuntimeIntentClient(conn)
 		}
 	}
 	return connState
@@ -56,7 +56,7 @@ func (c *RuntimeClient) RunAppInit() (result *pb.Result, err error) {
 	defer cancel()
 	result, err = c.grpcClient.Init(ctx, &pb.InitIntent{})
 	for err != nil {
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
 		logs.Debug("retry to runAppInit")
 		result, err = c.grpcClient.Init(ctx, &pb.InitIntent{})
 	}
@@ -74,7 +74,7 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 	defer cancel()
 	result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	for err != nil {
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
 		logs.Debug("retry to runAppStart")
 		result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	}

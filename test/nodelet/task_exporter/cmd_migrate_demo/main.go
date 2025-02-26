@@ -11,7 +11,6 @@ import (
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
 )
@@ -64,7 +63,7 @@ func rpc_client_test() {
 }
 
 func runtime_test() {
-	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus(), intwithRuntime.NewClientsManager())
+	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus())
 
 	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
 	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)

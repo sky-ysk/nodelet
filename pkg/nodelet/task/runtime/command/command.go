@@ -13,7 +13,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
 )
@@ -21,17 +20,16 @@ import (
 type CommandRuntime struct {
 	processManager *process.ProcessManager
 	eventBus       *eventbus.EventBus
-	clientsManager *intwithRuntime.ClientsManager
-	client         *grpc_client.RuntimeClient
-	stopSignals    map[string]chan struct{} // 用于标记进程是否被外部停止
+
+	client      *grpc_client.RuntimeClient
+	stopSignals map[string]chan struct{} // 用于标记进程是否被外部停止
 }
 
-func NewCommandRuntime(eventBus *eventbus.EventBus, clients *intwithRuntime.ClientsManager) *CommandRuntime {
+func NewCommandRuntime(eventBus *eventbus.EventBus) *CommandRuntime {
 	pm := process.NewProcessManager()
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
-		clientsManager: clients,
 		stopSignals:    make(map[string]chan struct{}),
 	}
 }
@@ -299,7 +297,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 		logs.Errorf("任务恢复状态失败: %e", error)
 	}
 
-	return nil
+	return error
 }
 
 // 细粒度控制（grpc）：启动任务状态
@@ -318,7 +316,7 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 
 	//logs.Info("runtime has started =====================")
 
-	return nil
+	return error
 }
 
 // 细粒度控制（grpc）：初始化任务
@@ -349,7 +347,7 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	}
 
 	//logs.Infof("runtime has Init ====")
-	return nil
+	return error
 }
 
 // 细粒度控制（grpc）：停止任务
@@ -364,5 +362,5 @@ func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, ru
 	}
 	// ------------
 	//cr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
-	return nil
+	return error
 }
