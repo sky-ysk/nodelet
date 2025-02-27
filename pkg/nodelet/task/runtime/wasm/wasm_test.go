@@ -10,49 +10,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
-func TestForWasm(t *testing.T) {
-	newRuntime := apis.Runtime{
-		Name:    "CMD",
-		Image:   "/home/hzy/goproject/new-wasm/resourcelet/test/wasm/wasm_task/printf.wasm", //暂时以文件本地地址进行测试
-		Type:    apis.ByWasm,
-		Command: []string{},
-		Args:    []string{},
-	}
-	newAction := apis.Action{
-		Spec: apis.ActionSpec{
-			Name: "TestAction",
-			Runtimes: []apis.Runtime{
-				newRuntime,
-			},
-		},
-	}
-	newGroup := apis.Group{
-		ObjectMeta: meta.ObjectMeta{Name: "cmd_yolo_train"},
-		Spec: apis.GroupSpec{
-			Name:    "TestGroup",
-			Parents: make([]string, 0),
-			Actions: []apis.Action{
-				newAction,
-			},
-		},
-		Status: apis.GroupStatus{
-			GroupID: "test-train-group",
-		},
-	}
-
-	logs.Info("---TestForWasm---")
-	wasm_runtime := NewWasmRuntime()
-	// 运行时会跑在独立的进程,所以程序结束一定要kill进程,不然始终在运行
-	defer wasm_runtime.StopCMD()
-
-	time.Sleep(1 * time.Second)
-	wasm_runtime.Run(&newGroup, &newAction, &newRuntime, 0, 0)
-	time.Sleep(1 * time.Second)
-	wasm_runtime.Destory()
-}
-
 func TestForAIWasm(t *testing.T) {
-	// fmt.Printf("abc")
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Info("---TestForAIWasm---")
@@ -61,7 +19,7 @@ func TestForAIWasm(t *testing.T) {
 	defer wasm_runtime.StopCMD()
 
 	wasm_runtime.Run(&newGroup, &newAction, &newRuntime, 0, 0)
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 	wasm_runtime.Destory()
 
 }

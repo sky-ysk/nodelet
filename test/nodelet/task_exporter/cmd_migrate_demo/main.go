@@ -24,6 +24,66 @@ func main() {
 
 }
 
+func runtime_test() {
+	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus())
+
+	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
+	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
+
+	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
+	defer commandRuntime.Kill(newGroup, action, runtime)
+
+	commandRuntime.StoreData(newGroup, action, runtime, 0, 0)
+	time.Sleep(2 * time.Second)
+	commandRuntime.RestoreData(newGroup, action, runtime, 0, 0)
+
+	prompt()
+}
+
+func prompt() {
+	fmt.Printf("-> Press Return key to continue.")
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		break
+	}
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+}
+
+var newGroup = &apis.Group{
+	ObjectMeta: meta.ObjectMeta{Name: "migrate-example-1"},
+	Spec: apis.GroupSpec{
+		Name:    "migrate-example-1",
+		Parents: make([]string, 0),
+		Actions: []apis.Action{
+			{
+				Spec: apis.ActionSpec{
+					Name: "migrate-example-1",
+					Runtimes: []apis.Runtime{
+						{
+							Name:                         "CMD",
+							Image:                        "",
+							Type:                         apis.ByCommand,
+							Command:                      []string{"python3"},
+							Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner.py"},
+							EnableFineGrainedControl:     true,
+							EnableFineGrainedControlPort: "5123",
+						},
+					},
+				},
+			},
+		},
+	},
+	Status: apis.GroupStatus{
+		GroupID: "migrate-example-1",
+	},
+}
+
+// var groups = []*apis.Group{newGroup}
+var action = &newGroup.Spec.Actions[0]
+var runtime = &action.Spec.Runtimes[0]
+
 func rpc_client_test() {
 	cmd := pullService()
 	defer stopCMD(cmd)
@@ -62,33 +122,6 @@ func rpc_client_test() {
 	time.Sleep(1 * time.Second)
 }
 
-func runtime_test() {
-	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus())
-
-	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
-	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
-
-	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
-	defer commandRuntime.Kill(newGroup, action, runtime)
-
-	commandRuntime.StoreData(newGroup, action, runtime, 0, 0)
-	time.Sleep(2 * time.Second)
-	commandRuntime.RestoreData(newGroup, action, runtime, 0, 0)
-
-	prompt()
-}
-
-func prompt() {
-	fmt.Printf("-> Press Return key to continue.")
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		break
-	}
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
-}
-
 func pullService() *exec.Cmd {
 	logs.Infof("拉起任务")
 	cmd := exec.Command("/home/public/anaconda3/envs/yolo/bin/python", "/home/public/workspace/yolo_projects/yolo-runner.py") ///home/kcm/py_examples/migration-demo-0116/yolo-runner.py
@@ -111,35 +144,3 @@ func stopCMD(cmd *exec.Cmd) {
 		logs.Info("进程已停止")
 	}
 }
-
-var newGroup = &apis.Group{
-	ObjectMeta: meta.ObjectMeta{Name: "migrate-example-1"},
-	Spec: apis.GroupSpec{
-		Name:    "migrate-example-1",
-		Parents: make([]string, 0),
-		Actions: []apis.Action{
-			apis.Action{
-				Spec: apis.ActionSpec{
-					Name: "migrate-example-1",
-					Runtimes: []apis.Runtime{
-						apis.Runtime{
-							Name:                         "CMD",
-							Image:                        "",
-							Type:                         apis.ByCommand,
-							Command:                      []string{"python3"},
-							Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner.py"},
-							EnableFineGrainedControl:     true,
-							EnableFineGrainedControlPort: "5123",
-						},
-					},
-				},
-			},
-		},
-	},
-	Status: apis.GroupStatus{
-		GroupID: "migrate-example-1",
-	},
-}
-var groups = []*apis.Group{newGroup}
-var action = &newGroup.Spec.Actions[0]
-var runtime = &action.Spec.Runtimes[0]

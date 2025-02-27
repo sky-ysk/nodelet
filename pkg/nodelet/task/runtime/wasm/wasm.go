@@ -166,7 +166,6 @@ func (wr WasmRuntime) StoreData(group *apis.Group, action *apis.Action, runtime 
 		// return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
 		return ""
 	}
-	// logs.Infof("********************【模拟】成功保存了任务状态：ABCDEFG")
 	return ""
 }
 

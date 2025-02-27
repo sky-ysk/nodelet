@@ -26,8 +26,8 @@ import (
 func main() {
 	//---临时参数:以cmd任务形式运行wasm任务
 	// 目前需保证/tmp/wasm的前缀不可改变
-	cmd := []string{"/tmp/wasm/toolchain/wa2x-wasi-nn"}
-	arg := []string{"/tmp/wasm/onnx.so"}
+	// cmd := []string{"/tmp/wasm/toolchain/wa2x-wasi-nn"}
+	// arg := []string{"/tmp/wasm/onnx.so"}
 	//---
 	moduleName := "testModule"
 	logs.Init(moduleName)
@@ -67,8 +67,8 @@ func main() {
 	// 获取访问Task的客户端
 	// 默认访问的Namespace是 ""
 
-	tasksClient := clientSet.Core().Tasks("")
-	groupsClient := clientSet.Core().Groups("")
+	tasksClient := clientSet.Core().Tasks("test")
+	groupsClient := clientSet.Core().Groups("test")
 
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,10 +95,14 @@ func main() {
 									Name: "wasm_action",
 									Runtimes: []apis.Runtime{
 										apis.Runtime{
-											Name:    "wasm-cmd",
-											Type:    apis.ByCommand,
-											Command: cmd,
-											Args:    arg,
+											Name:    "wasm-test-ai-task",
+											Image:   "/tmp/wasm/onnx.wasm", //暂时以文件本地地址进行测试
+											Type:    apis.ByWasm,
+											Command: []string{},
+											Args:    []string{},
+											// EnvVar: []apis.EnvVar{
+											// 	{Name: "FIXTURES_DIR", Value: "/home/kcm/tmp/wasm/fixtures"},
+											// },
 										},
 									},
 								},
@@ -171,10 +175,14 @@ func main() {
 						Name: "wasm_action",
 						Runtimes: []apis.Runtime{
 							apis.Runtime{
-								Name:    "wasm-cmd",
-								Type:    apis.ByCommand,
-								Command: cmd,
-								Args:    arg,
+								Name:    "wasm-test-ai-task",
+								Image:   "/tmp/wasm/onnx.wasm", //暂时以文件本地地址进行测试
+								Type:    apis.ByWasm,
+								Command: []string{},
+								Args:    []string{},
+								// EnvVar: []apis.EnvVar{
+								// 	{Name: "FIXTURES_DIR", Value: "/home/kcm/tmp/wasm/fixtures"},
+								// },
 							},
 						},
 					},
