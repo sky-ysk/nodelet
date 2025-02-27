@@ -350,7 +350,7 @@ func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 // 		}
 // 	}()
 // 	//pop queue
-// 	sched.SchedulingQueue.ReadyGroups.SyncLock.Lock()
+// 	sched.SchedulingQueue.ReadyGroups.SyncLock.IsLocked()
 // 	readyGroups := sched.SchedulingQueue.ReadyGroups.GetQueue()
 // 	for _, group := range readyGroups {
 // 		//TODO match

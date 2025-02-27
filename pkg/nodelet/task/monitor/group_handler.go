@@ -43,7 +43,7 @@ func (gh *GroupHandler) Loop(ctx context.Context, updateCh <-chan types.GroupUpd
 		// base = 100000 * time.Millisecond //100s
 		base = 5000 * time.Millisecond //5s
 	)
-	logs.Info("GroupHandler begin")
+	logs.Info("GroupHandler component start")
 	duration := base
 
 	for {
@@ -77,7 +77,7 @@ func (gh *GroupHandler) LoopIteration(ctx context.Context, updateCh <-chan types
 				logs.Debug("Update group")
 				gh.HandleGroupUpdate(u.Group)
 			default:
-				logs.Error("unhandled default case")
+				logs.Error("Unhandled default case")
 			}
 		}
 	}
@@ -96,7 +96,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	_, err := gh.groupManager.GetGroupByID(gr.Status.GroupID) // 使用groupID查，因为groupID是唯一分配的
 	if err == nil {                                           //err等于nil说明在group_manager当中能找到group信息
 		// 1、说明group已经存
-		logs.Debug("Group %s is already put into Deployer")
+		logs.Debugf("Group:%s is already put into Deployer", gr.Spec.Name)
 		return
 	}
 	//如果说部署器本地没有改groupID信息的话，就存入group信息
@@ -105,7 +105,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	// 2、检查资源是否足够并满足部署条件
 	if isCanDeploy := gh.checkResource(gr); !isCanDeploy {
 		// 如果无法部署，拒绝改Group的部署并通知调度器
-		logs.Errorf("Group %s cannot be deployed: %s\n", gr.Name, err)
+		logs.Errorf("Group:%s cannot be deployed,err:%v", gr.Spec.Name, err)
 		// TODO 这里得直接提交给调度器，告知group无法部署
 		return
 	}

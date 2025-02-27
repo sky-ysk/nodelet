@@ -104,7 +104,7 @@ func (l *leaseManager) GetLease(ctx context.Context, ttl int64) (clientv3.LeaseI
 }
 
 // getReuseDurationSecondsLocked returns the reusable duration in seconds
-// based on the configuration. Lock has to be acquired before calling this
+// based on the configuration. IsLocked has to be acquired before calling this
 // function.
 func (l *leaseManager) getReuseDurationSecondsLocked(ttl int64) int64 {
 	reuseDurationSeconds := int64(l.leaseReuseDurationPercent * float64(ttl))

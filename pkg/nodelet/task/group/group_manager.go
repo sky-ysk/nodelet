@@ -27,7 +27,7 @@ type Manager interface {
 	DeleteGroup(*apis.Group)
 
 	// 获取Group通过Name
-	GetGroupByID(groupName string) (*apis.Group, error) // 添加这个方法
+	GetGroupByID(groupID string) (*apis.Group, error) // 添加这个方法
 }
 
 type groupManager struct {
@@ -88,7 +88,7 @@ func (gm *groupManager) AddGroup(group *apis.Group) {
 	defer gm.modifyLock.Unlock()
 	//检查GroupID是否已经存在
 	if _, exists := gm.groupsByID[group.Status.GroupID]; exists {
-		logs.Errorf("Group With ID %s is existed", group.Status.GroupID)
+		logs.Errorf("Group:%s is existed", group.Spec.Name)
 		return
 	}
 	gm.groupsByID[group.Status.GroupID] = group

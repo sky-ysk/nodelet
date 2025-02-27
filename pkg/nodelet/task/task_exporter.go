@@ -86,7 +86,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	}
 
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
-	logs.Info("init task exporter")
+	logs.Info("Init task exporter")
 	return taskExporter, nil
 }
 
@@ -112,15 +112,15 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 		//读取 etcd当中的group列表
 		groupList, err := te.gropsClient.List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			logs.Error("list task err:", err.Error())
+			logs.Errorf("List task err:%v", err)
 		}
 		// 遍历group
 		for _, group := range groupList.Items {
-			groupName := group.Name
+			groupName := group.Spec.Name
 			// 从etcd当中读group的信息
 			gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 			if err != nil {
-				logs.Error("get group %s failed", groupName)
+				logs.Errorf("get group:%s failed", groupName)
 			}
 			if gr.Status.Node == "CloudNode1" { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 				if gr.Status.Phase == apis.ReadyToDeploy {
@@ -137,6 +137,7 @@ func (te *TaskExporter) ReceiveGroupInfo() {
 					te.updateCh <- groupUpdate
 				}
 			}
+			time.Sleep(200 * time.Millisecond)
 		}
 		time.Sleep(1 * time.Second)
 	}

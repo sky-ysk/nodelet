@@ -125,7 +125,7 @@ func main() {
 
 	//监听事件并打印  监听resources/v1/nodes
 	go func() {
-		logs.Info("watching")
+		logs.Trace("watching")
 		var timeoutSeconds int64 = 20
 		watchOptions := metav1.ListOptions{
 			TimeoutSeconds: &timeoutSeconds,
@@ -144,26 +144,26 @@ func main() {
 			select {
 			case event, ok := <-watchChan:
 				if !ok {
-					logs.Info("watchChan closed")
+					fmt.Println("watchChan closed")
 					return
 				}
 
 				// 打印事件类型和对象的相关信息
-				logs.Infof("接收到事件类型:", event.Type)
+				fmt.Println("接收到事件类型:", event.Type)
 				switch event.Type {
 				case watch.Added:
-					logs.Infof("资源被添加: ", event.Object)
+					fmt.Println("资源被添加: ", event.Object)
 				case watch.Modified:
-					logs.Infof("资源被修改: ", event.Object)
+					fmt.Println("资源被修改: ", event.Object)
 				case watch.Deleted:
-					logs.Infof("资源被删除: ", event.Object)
+					fmt.Println("资源被删除: ", event.Object)
 				case watch.Error:
-					logs.Infof("发生错误: ", event.Object)
+					fmt.Println("发生错误: ", event.Object)
 				case watch.Bookmark:
-					logs.Infof("收到Bookmark", event.Object)
+					fmt.Println("收到Bookmark", event.Object)
 
 				default:
-					logs.Infof("未识别的事件类型: ", event.Type)
+					fmt.Println("未识别的事件类型: ", event.Type)
 				}
 			}
 		}
@@ -175,7 +175,7 @@ func main() {
 	if err != nil {
 		logs.Errorf("Failed to create node: %v", err)
 	} else {
-		logs.Infof("created node", result)
+		logs.Trace("created node", result)
 	}
 	_, err = nodesClient.Create(context.TODO(), node2, metav1.CreateOptions{})
 	_, err = nodesClient.Create(context.TODO(), node3, metav1.CreateOptions{})
@@ -183,17 +183,17 @@ func main() {
 
 	//Update一个Node
 
-	logs.Info("updating")
+	logs.Trace("updating")
 	// 部分更改一个参数
 	// 先Get一个Node ,更改Node的参数, UpdateNode
 
 	result, getErr := nodesClient.Get(context.TODO(), "demo-nodes", metav1.GetOptions{})
 	if getErr != nil {
-		logs.Error(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Info(fmt.Errorf("Failed to get : %v", getErr))
 	}
 
-	logs.Infof("get result", result)
-	logs.Infof("修改前的result.Spec.NodeName：", result.Spec.NodeName)
+	fmt.Println("get result", result)
+	fmt.Println("修改前的result.Spec.NodeName：", result.Spec.NodeName)
 
 	result.Spec.NodeName = "updatedNodeName"
 	_, updateErr := nodesClient.Update(context.TODO(), result, metav1.UpdateOptions{})
@@ -201,12 +201,12 @@ func main() {
 		logs.Error(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	logs.Infof("修改后的result.Spec.NodeName：", result.Spec.NodeName)
-	logs.Info("Updated node...")
+	fmt.Println("修改后的result.Spec.NodeName：", result.Spec.NodeName)
+	fmt.Println("Updated node...")
 	prompt()
 
 	// List 所有Node
-	logs.Info("listing 筛选的node")
+	fmt.Println("listing 筛选的node")
 	lstOpts := metav1.ListOptions{
 		LabelSelector: "environment",
 	}
@@ -215,53 +215,53 @@ func main() {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Info(d)
+		logs.Trace(d)
 	}
 
-	logs.Info("listing done")
+	logs.Trace("listing done")
 	prompt()
 
 	//Patch 一个Node
-	logs.Info("patching")
+	logs.Trace("patching")
 	patchResult, err := nodesClient.Patch(context.TODO(), "demo-nodes", types.StrategicMergePatchType, patchNode, metav1.PatchOptions{})
-	logs.Infof("patchResult: ", patchResult)
-	logs.Info("patch Done")
+	logs.Trace("patchResult: ", patchResult)
+	logs.Trace("patch Done")
 
 	// List 所有Node
-	logs.Info("listing")
+	logs.Trace("listing")
 	lstOpts = metav1.ListOptions{}
 	list, err = nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Info(d)
+		logs.Trace(d)
 	}
 
-	logs.Info("listing done")
+	logs.Trace("listing done")
 	prompt()
 
 	// Delete一个Node
-	logs.Info("deleting")
+	logs.Trace("deleting")
 	err = nodesClient.Delete(context.TODO(), "demo-nodes", metav1.DeleteOptions{})
 	if err != nil {
 		panic(err)
 	}
-	logs.Info("Deleted node...")
+	logs.Trace("Deleted node...")
 	prompt()
 
 	// Delete 之后再次 List所有Node
-	logs.Info("listing")
+	logs.Trace("listing")
 	lstOpts = metav1.ListOptions{}
 	list, err = nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Info(d)
+		logs.Trace(d)
 	}
 
-	logs.Info("listing done")
+	fmt.Println("listing done")
 
 	//DeleteCollection 删除所有Spec.NodeName=demo-node的Node
 	logs.Info("deleting collection")
@@ -287,7 +287,29 @@ func main() {
 	}
 	logs.Info("listing done")
 
-	select {}
+	//DeleteCollection 删除所有Spec.NodeName=demo-node的Node
+	fmt.Println("deleting collection")
+	lstOpts = metav1.ListOptions{
+		FieldSelector: "Spec.NodeName=demo-node",
+	}
+	err = nodesClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	if err != nil {
+		logs.Error(err)
+	}
+	fmt.Println("Deleted collection...")
+	prompt()
+
+	// DeleteCollection 之后再次 List所有Node
+	logs.Trace("listing")
+	lstOpts = metav1.ListOptions{}
+	list, err = nodesClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		logs.Error(err)
+	}
+	for _, d := range list.Items {
+		logs.Trace(d)
+	}
+	logs.Trace("listing done")
 }
 
 // From K8s
