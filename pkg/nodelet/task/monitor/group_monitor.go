@@ -101,7 +101,8 @@ func (gmo *GroupMonitor) CheckStatus() {
 }
 
 // 都要改成for i：=range
-func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Group在多个设备上运行，group之间有依赖关系，需要检查
+func (gmo *GroupMonitor) CheckingQueueCheck() {
+	//主要针对Task下的多个Group在多个设备上运行，group之间有依赖关系，需要检查
 	// TODO 轮询检查Checking队列，检查任务group的依赖是否满足，如果满足才放入running队列当中
 	logs.Info("Pending queue start checking")
 	for {
@@ -200,7 +201,8 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 
 // 检查Running队列，做的事情：①如果发现任务完成，迁移到Completed队列，如果发现任务失败，迁移到Error队列
 // ②检查runtime、Action当中的parents是否执行完成，如果完成，则执行
-func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的Group，下面有多个Action，之间有依赖关系，需要检查
+func (gmo *GroupMonitor) RunningQueueCheck() {
+	//主要针对当前设备上的Group，下面有多个Action，之间有依赖关系，需要检查
 	//TODO 监控进程的返回值等判断任务是否正常执行完成，正常则放入completedqueue，否则放入errorqueue(方法待确认)
 	logs.Info("Running queue start checking")
 	for {
@@ -393,10 +395,12 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	// 更新 Runtime 的状态，依据实际变化更新相应字段
 	logs.Info("Handling Runtime Start Status Update")
 	groupName := event.GroupName
+
 	get, err := gmo.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
 	}
+
 	actionIndex := event.ActionIndex
 	runtimeIndex := event.RuntimeIndex
 	phase := event.Phase // 这里接收的Phase有可能是running，也有可能是Failed
@@ -418,6 +422,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	var groupIndexInTask int //当前group在Task当中的下标
 	var task1 *apis.Task     //group所属的Task对象
 	var err2 error
+
 	for _, t := range list.Items { //遍历etcd当中的所有task，找到当前group所属的Task
 		if t.Status.TaskID == taskID { // 如果taskId对上了，则获取该Task
 			task1, err2 = gmo.taskClient.Get(context.TODO(), t.Name, metav1.GetOptions{})

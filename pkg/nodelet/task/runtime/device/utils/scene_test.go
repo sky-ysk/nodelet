@@ -64,7 +64,7 @@ func NewRuntimeAndActionScene() (*apis.Runtime, *apis.Action) {
 					AttachedDevice: "",
 					AttachedScene:  "",
 					Lock: apis.Lock{
-						Lock: true,
+						IsLocked: true,
 					},
 				},
 				"p1": apis.SceneStatus{
@@ -72,7 +72,7 @@ func NewRuntimeAndActionScene() (*apis.Runtime, *apis.Action) {
 					AttachedDevice: "",
 					AttachedScene:  "",
 					Lock: apis.Lock{
-						Lock: true,
+						IsLocked: true,
 					},
 				},
 			},

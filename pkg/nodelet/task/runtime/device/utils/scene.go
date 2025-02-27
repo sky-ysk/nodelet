@@ -50,7 +50,7 @@ func CheckObjectScene(spec apis.SceneSpec, status apis.SceneStatus) bool {
 	flag := true
 	// TODO:上锁还是未上锁？
 	// 检查锁的状态
-	if !status.Lock.Lock {
+	if !status.Lock.IsLocked {
 		flag = false
 		logs.Warnf("Object %s is not locked", spec.SceneID)
 	}
@@ -80,7 +80,7 @@ func CheckPositionScene(spec apis.SceneSpec, status apis.SceneStatus) bool {
 	flag := true
 	// TODO:上锁还是未上锁？
 	// 检查锁的状态
-	if !status.Lock.Lock {
+	if !status.Lock.IsLocked {
 		flag = false
 		logs.Warnf("Position %s is not locked", spec.SceneID)
 	}
@@ -121,16 +121,72 @@ func UpdateSceneStatus(runtime *apis.Runtime, action *apis.Action, deviceNumber 
 					AttachedTask:   temporaryMap[scene.SceneID].AttachedTask,
 					AttachedDevice: temporaryMap[scene.SceneID].AttachedDevice,
 					Property:       map[string]apis.Property{"location": apis.Property{Name: "location"}},
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref + 1},
+
+					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
+					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
 				}
 				action.Status.Scenes[scene.SceneID] = status
+
 			// position类型
 			case apis.PositionType:
 				// TODO:SceneId
 				status := apis.SceneStatus{
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref + 1},
 					UpdateTime:     temporaryMap[scene.SceneID].Time,
 					AttachedTask:   temporaryMap[scene.SceneID].AttachedTask,
 					AttachedDevice: temporaryMap[scene.SceneID].AttachedDevice,
 					Property:       map[string]apis.Property{"isOccupied": apis.Property{Name: "isOccupied", Value: "true", Type: apis.BoolType}},
+
+					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
+					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
+				}
+				action.Status.Scenes[scene.SceneID] = status
+			}
+		}
+	} else { // TODO:多个设备
+
+	}
+
+	return nil
+}
+
+// RecoverSceneStatus 恢复Scene状态
+func RecoverSceneStatus(runtime *apis.Runtime, action *apis.Action, deviceNumber int, taskId string) error {
+	scenes := runtime.Scenes
+	/* 需要更新的状态有：关联设备 关联任务 时间 关联scene 属性 */
+	// 只有一个设备
+	temporaryMap := GetSceneStatusUpdateMap(runtime, taskId, action)
+	if deviceNumber == 1 {
+		for _, scene := range scenes {
+			switch scene.Type {
+			// object类
+			case apis.ObjectType:
+				// TODO:SceneId Location
+				status := apis.SceneStatus{
+					UpdateTime:     temporaryMap[scene.SceneID].Time,
+					AttachedTask:   "",
+					AttachedDevice: "",
+					Property:       map[string]apis.Property{"location": apis.Property{Name: "location"}},
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: false, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref - 1},
+
+					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
+					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
+				}
+				action.Status.Scenes[scene.SceneID] = status
+
+			// position类型
+			case apis.PositionType:
+				// TODO:SceneId
+				status := apis.SceneStatus{
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref + 1},
+					UpdateTime:     temporaryMap[scene.SceneID].Time,
+					AttachedTask:   temporaryMap[scene.SceneID].AttachedTask,
+					AttachedDevice: temporaryMap[scene.SceneID].AttachedDevice,
+					Property:       map[string]apis.Property{"isOccupied": apis.Property{Name: "isOccupied", Value: "true", Type: apis.BoolType}},
+
+					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
+					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
 				}
 				action.Status.Scenes[scene.SceneID] = status
 			}

@@ -15,10 +15,10 @@ func NewDeviceRuntime() DeviceRuntime {
 	return DeviceRuntime{}
 }
 
-func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action) error {
+func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 
-	//从action中获取runtime TODO:暂时设置为第1个runtime
-	runtime := &action.Spec.Runtimes[0]
+	// 从action中获取runtime
+	runtime := &action.Spec.Runtimes[runtimeIndex]
 
 	// 检查Device
 	logs.Infof("Action[%s] Runtime[%s] CheckDevice start\n", action.Spec.Name, runtime.Name)
@@ -104,12 +104,65 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action) error {
 	}
 	logs.Infof("Action[%s] Runtime[%s] update scene status is finished\n", action.Spec.Name, runtime.Name)
 
+	// etcd更改
 	return nil
 }
 
-func (dr DeviceRuntime) Kill(group *apis.Group, action *apis.Action) error {
-	// TODO: 检查Action的运行状态，只有在Running状态的任务，才能停止部署
+func (dr DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+	// 检查action的运行状态，只有处在running状态时才能取消
+	if action.Status.Phase == apis.Running {
+		// 一个runtime可能涉及到多个或一个 device 获取全部的device
+		err, devices := utils.GetDevices(runtime, action)
+		if err != nil {
+			logs.Errorf("Action[%s] Runtime[%s] CheckDevice failed\n", action.Spec.Name, runtime.Name)
+			return err
+		}
+		// 遍历全部的device
+		for index, device := range devices {
+			// device的taskId存储在output中，同时取出
+			output := runtime.Outputs[index]
+			// 发布指令
+			_, err = rmf.PublishCancelTaskInstruction(device, output.Value)
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] PublishCancelTaskInstruction failed\n", action.Spec.Name, runtime.Name)
+				return err
+			}
+			//修改Device状态
+			logs.Infof("Action[%s] Runtime[%s] recover device status start\n", action.Spec.Name, runtime.Name)
+			err = utils.RecoverDeviceStatus(action)
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] recover device status failed", action.Spec.Name, runtime.Name)
+				return fmt.Errorf("Action[%s] Runtime[%s] recover device status failed ", action.Spec.Name, runtime.Name)
+			}
+			logs.Infof("Action[%s] Runtime[%s] recover device status is finished\n", action.Spec.Name, runtime.Name)
 
+			//修改Resource状态
+			logs.Infof("Action[%s] Runtime[%s] recover resource status start\n", action.Spec.Name, runtime.Name)
+			err = utils.RecoverResourceStatus(runtime, action)
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] recover status failed", action.Spec.Name, runtime.Name)
+				return fmt.Errorf("Action[%s] Runtime[%s] recover status failed ", action.Spec.Name, runtime.Name)
+			}
+			logs.Infof("Action[%s] Runtime[%s] recover resource status  is finished\n", action.Spec.Name, runtime.Name)
+
+			//修改Scene状态
+			logs.Infof("Action[%s] Runtime[%s] recover scene status  start\n", action.Spec.Name, runtime.Name)
+			err = utils.RecoverSceneStatus(runtime, action, len(devices), action.Status.ActionID)
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] recover scene status failed", action.Spec.Name, runtime.Name)
+				return fmt.Errorf("Action[%s] Runtime[%s] recover scene status failed ", action.Spec.Name, runtime.Name)
+			}
+			logs.Infof("Action[%s] Runtime[%s] recover scene status is finished\n", action.Spec.Name, runtime.Name)
+
+		}
+
+		// etcd更改
+
+	}
 	logs.Infof("device runtime kill task: %s", group.Name)
 	return nil
+}
+
+func (dr DeviceRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
+	return "", nil
 }

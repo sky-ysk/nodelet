@@ -1,0 +1,46 @@
+package utils
+
+import (
+	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/component-base/logs"
+)
+
+// CheckDeviceLock 检查Device锁的状态
+func CheckDeviceLock(status *apis.DeviceStatus) error {
+	if status.Lock.IsLocked == false {
+		logs.Errorf("Device %s is not locked", status.DeviceID)
+		return fmt.Errorf("Device %s is not locked\n", status.DeviceID)
+	}
+	return nil
+}
+
+// CheckSceneLock 检查Scene锁的状态
+func CheckSceneLock(status *apis.SceneStatus) error {
+	if status.Lock.IsLocked == false {
+		logs.Errorf("Scene is not locked")
+		return fmt.Errorf("Deviceis not locked\n")
+	}
+	return nil
+}
+
+// ReleaseSceneLock 释放一次引用 Ref为0解锁
+func ReleaseSceneLock(status *apis.SceneStatus) error {
+	status.Lock.Ref -= 1
+	if status.Lock.Ref == 0 {
+		status.Lock.IsLocked = false
+	}
+	return nil
+}
+
+// ReleaseDeviceLock 释放一次引用 Ref为0解锁
+func ReleaseDeviceLock(device *apis.Device, action *apis.Action) error {
+	device.Status.Lock.Ref -= 1
+	if device.Status.Lock.Ref == 0 {
+		// 查看父设备的Ref
+		if action.Status.Devices[device.Spec.AttachedDevice].Lock.Ref == 0 {
+			device.Status.Lock.IsLocked = false
+		}
+	}
+	return nil
+}

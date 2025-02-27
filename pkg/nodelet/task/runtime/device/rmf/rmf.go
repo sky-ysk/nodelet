@@ -100,12 +100,14 @@ func PublishAbilityInstruction(device apis.Device, ability string) (string, erro
 
 // PublishCancelTaskInstruction 发布取消任务的指令，返回是否成功
 func PublishCancelTaskInstruction(device apis.Device, taskId string) (bool, error) {
+	// 构建取消任务的指令
 	instruction, err := inst.NewCancelTaskInst(taskId)
 	logs.Infof("cancel task instruction has been created\n")
 	if err != nil {
 		logs.Errorf("Error new cancel task inst: %v\n", err)
 		return false, err
 	}
+	
 	requestForPost := NewPostRequest(fmt.Sprintf("%s/tasks/cancel_task", device.Spec.AccessMethod.URL), instruction)
 	// 创建HTTP client
 	client := &http.Client{}

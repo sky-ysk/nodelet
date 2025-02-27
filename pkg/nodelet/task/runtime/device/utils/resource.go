@@ -137,13 +137,61 @@ func UpdateResourceStatus(runtime *apis.Runtime, action *apis.Action) error {
 		switch resource.Type {
 		case apis.Storage:
 			// TODO:更新usage 考虑unit
-			r := apis.ResourceStatus{Reserved: action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue}
+			r := apis.ResourceStatus{
+				Reserved:     action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue,
+				Usage:        action.Status.Resources[resource.Name].Usage,
+				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
+				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+			}
 			action.Status.Resources[resource.Name] = r
 		case apis.Network:
-			r := apis.ResourceStatus{Reserved: action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue}
+			r := apis.ResourceStatus{
+				Reserved:     action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue,
+				Usage:        action.Status.Resources[resource.Name].Usage,
+				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
+				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+			}
 			action.Status.Resources[resource.Name] = r
 		case apis.Compute:
-			r := apis.ResourceStatus{Reserved: action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue}
+			r := apis.ResourceStatus{
+				Reserved:     action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue,
+				Usage:        action.Status.Resources[resource.Name].Usage,
+				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
+				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+			}
+			action.Status.Resources[resource.Name] = r
+		}
+	}
+	return nil
+}
+func RecoverResourceStatus(runtime *apis.Runtime, action *apis.Action) error {
+	resources := runtime.Resources
+	for _, resource := range resources {
+		switch resource.Type {
+		case apis.Storage:
+			// TODO:更新usage 考虑unit
+			r := apis.ResourceStatus{
+				Reserved:     action.Status.Resources[resource.Name].Reserved + resource.ExpectedValue,
+				Usage:        action.Status.Resources[resource.Name].Usage,
+				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
+				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+			}
+			action.Status.Resources[resource.Name] = r
+		case apis.Network:
+			r := apis.ResourceStatus{
+				Reserved:     action.Status.Resources[resource.Name].Reserved + resource.ExpectedValue,
+				Usage:        action.Status.Resources[resource.Name].Usage,
+				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
+				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+			}
+			action.Status.Resources[resource.Name] = r
+		case apis.Compute:
+			r := apis.ResourceStatus{
+				Reserved:     action.Status.Resources[resource.Name].Reserved + resource.ExpectedValue,
+				Usage:        action.Status.Resources[resource.Name].Usage,
+				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
+				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+			}
 			action.Status.Resources[resource.Name] = r
 		}
 	}

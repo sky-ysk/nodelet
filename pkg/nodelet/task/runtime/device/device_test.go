@@ -42,7 +42,7 @@ func NewActionAndRuntime() *apis.Action {
 			Devices: map[string]apis.DeviceStatus{
 				"transferRobot": apis.DeviceStatus{
 					Lock: apis.Lock{
-						Lock: true,
+						IsLocked: true,
 					},
 					Status:     "idle",
 					Phase:      apis.DeviceIdle,
@@ -58,7 +58,7 @@ func NewActionAndRuntime() *apis.Action {
 					AttachedDevice: "",
 					AttachedScene:  "",
 					Lock: apis.Lock{
-						Lock: true,
+						IsLocked: true,
 					},
 				},
 				"p1": apis.SceneStatus{
@@ -66,7 +66,7 @@ func NewActionAndRuntime() *apis.Action {
 					AttachedDevice: "",
 					AttachedScene:  "",
 					Lock: apis.Lock{
-						Lock: true,
+						IsLocked: true,
 					},
 				},
 			},

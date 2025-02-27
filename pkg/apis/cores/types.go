@@ -739,7 +739,7 @@ type Lock struct {
 	Type LockType
 
 	// 调度时 ref为0时释放
-	Lock bool
+	IsLocked bool
 
 	// 资源引用数 部署时
 	Ref int

@@ -34,8 +34,9 @@ type CancelPhaseWorker interface {
 
 // CancelTaskRequest 用来构建取消任务的指令
 type CancelTaskRequest struct {
-	Type   string `json:"type"`
-	TaskId string `json:"task_id"`
+	Type   string   `json:"type"`
+	TaskId string   `json:"task_id"`
+	Label  []string `json:"labels"`
 }
 
 // CancelTaskSuccessResponse 用来解析成功的信息

@@ -54,7 +54,7 @@ func NewRuntimeAndActionDevice() (*apis.Runtime, *apis.Action) {
 			Devices: map[string]apis.DeviceStatus{
 				"transferRobot": apis.DeviceStatus{
 					Lock: apis.Lock{
-						Lock: true,
+						IsLocked: true,
 					},
 					Status:     "idle",
 					Phase:      apis.DeviceIdle,
