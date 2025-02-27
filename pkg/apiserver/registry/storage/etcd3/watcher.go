@@ -4,47 +4,46 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hit.edu/framework/pkg/apimachinery/watch"
 	"math/rand/v2"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	
+
+	"hit.edu/framework/pkg/apimachinery/watch"
+	"hit.edu/framework/pkg/component-base/logs"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	grpccodes "google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
-	
+
 	apierrors "hit.edu/framework/pkg/apimachinery/errors"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
 	"hit.edu/framework/pkg/apiserver/registry/storage/value"
-	
+
 	utilflowcontrol "k8s.io/apiserver/pkg/util/flowcontrol"
 )
 
+// 缓冲区大小设置
 const (
-	// We have set a buffer in order to reduce times of context switches.
 	incomingBufSize         = 100
 	outgoingBufSize         = 100
 	processEventConcurrency = 10
 )
 
-// defaultWatcherMaxLimit is used to facilitate construction tests
 var defaultWatcherMaxLimit int64 = maxLimit
 
-// fatalOnDecodeError is used during testing to panic the server if watcher encounters a decoding error
+// fatalOnDecodeError 用于在解码错误时触发panic
 var fatalOnDecodeError = false
 
 func init() {
-	// check to see if we are running in a test environment
 	TestOnlySetFatalOnDecodeError(true)
 	fatalOnDecodeError, _ = strconv.ParseBool(os.Getenv("KUBE_PANIC_WATCH_DECODE_ERROR"))
 }
 
-// TestOnlySetFatalOnDecodeError should only be used for cases where decode errors are expected and need to be tested. e.g. conversion webhooks.
 func TestOnlySetFatalOnDecodeError(b bool) {
 	fatalOnDecodeError = b
 }
@@ -60,7 +59,7 @@ type watcher struct {
 	getCurrentStorageRV func(context.Context) (uint64, error)
 }
 
-// watchChan implements watch.Interface.
+// watchChan 实现了 watch.Interface.
 type watchChan struct {
 	watcher           *watcher
 	key               string
@@ -75,13 +74,8 @@ type watchChan struct {
 	errChan           chan error
 }
 
-// Watch watches on a key and returns a watch.Interface that transfers relevant notifications.
-// If rev is zero, it will return the existing object(s) and then start watching from
-// the maximum revision+1 from returned objects.
-// If rev is non-zero, it will watch events happened after given revision.
-// If opts.Recursive is false, it watches on given key.
-// If opts.Recursive is true, it watches any children and directories under the key, excluding the root key itself.
-// pred must be non-nil. Only if opts.Predicate matches the change, it will be returned.
+// Watch 监视指定的key，并返回相关事件的接口
+// rev参数用于指定修订的版本，为0时使用最新版本
 func (w *watcher) Watch(ctx context.Context, key string, rev int64, opts storage.ListOptions) (watch.Interface, error) {
 	if opts.Recursive && !strings.HasSuffix(key, "/") {
 		key += "/"
@@ -93,16 +87,12 @@ func (w *watcher) Watch(ctx context.Context, key string, rev int64, opts storage
 	if err != nil {
 		return nil, err
 	}
+	logs.Info("start watch on : " + key)
 	wc := w.createWatchChan(ctx, key, startWatchRV, opts.Recursive, opts.ProgressNotify, opts.Predicate)
 	go wc.run(isInitialEventsEndBookmarkRequired(opts), areInitialEventsRequired(rev, opts))
-	
-	// For etcd watch we don't have an easy way to answer whether the watch
-	// has already caught up. So in the initial version (given that watchcache
-	// is by default enabled for all resources but Events), we just deliver
-	// the initialization signal immediately. Improving this will be explored
-	// in the future.
+
 	utilflowcontrol.WatchInitialized(ctx)
-	
+
 	return wc, nil
 }
 
@@ -126,49 +116,29 @@ func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, re
 	return wc
 }
 
-// getStartWatchResourceVersion returns a ResourceVersion
-// the watch will be started from.
-// Depending on the input parameters the semantics of the returned ResourceVersion are:
-//   - start at Exact (return resourceVersion)
-//   - start at Most Recent (return an RV from etcd)
+// getStartWatchResourceVersion 返回开始watch的ResourceVersion
 func (w *watcher) getStartWatchResourceVersion(ctx context.Context, resourceVersion int64, opts storage.ListOptions) (int64, error) {
 	if resourceVersion > 0 {
 		return resourceVersion, nil
 	}
 	if opts.SendInitialEvents == nil || *opts.SendInitialEvents {
-		// note that when opts.SendInitialEvents=true
-		// we will be issuing a consistent LIST request
-		// against etcd followed by the special bookmark event
 		return 0, nil
 	}
-	// at this point the clients is interested
-	// only in getting a stream of events
-	// starting at the MostRecent point in time (RV)
 	currentStorageRV, err := w.getCurrentStorageRV(ctx)
 	if err != nil {
 		return 0, err
 	}
-	// currentStorageRV is taken from resp.Header.Revision (int64)
-	// and cast to uint64, so it is safe to do reverse
-	// at some point we should unify the interface but that
-	// would require changing  Versioner.UpdateList
 	return int64(currentStorageRV), nil
 }
 
-// isInitialEventsEndBookmarkRequired since there is no way to directly set
-// opts.ProgressNotify from the API and the etcd3 impl doesn't support
-// notification for external clients we simply return initialEventsEndBookmarkRequired
-// to only send the bookmark event after the initial list call.
-//
-// see: https://github.com/kubernetes/kubernetes/issues/120348
 func isInitialEventsEndBookmarkRequired(opts storage.ListOptions) bool {
 	return opts.SendInitialEvents != nil && *opts.SendInitialEvents && opts.Predicate.AllowWatchBookmarks
 }
 
-// areInitialEventsRequired returns true if all events from the etcd should be returned.
+// areInitialEventsRequired 判断是否要返回初始事件
 func areInitialEventsRequired(resourceVersion int64, opts storage.ListOptions) bool {
 	if opts.SendInitialEvents == nil && resourceVersion == 0 {
-		return true // legacy case
+		return true
 	}
 	return opts.SendInitialEvents != nil && *opts.SendInitialEvents
 }
@@ -198,13 +168,14 @@ func isCancelError(err error) bool {
 	return false
 }
 
+// run启动watch，并处理监听到的事件
 func (wc *watchChan) run(initialEventsEndBookmarkRequired, forceInitialEvents bool) {
 	watchClosedCh := make(chan struct{})
 	go wc.startWatching(watchClosedCh, initialEventsEndBookmarkRequired, forceInitialEvents)
-	
+
 	var resultChanWG sync.WaitGroup
 	wc.processEvents(&resultChanWG)
-	
+
 	select {
 	case err := <-wc.errChan:
 		if isCancelError(err) {
@@ -212,21 +183,17 @@ func (wc *watchChan) run(initialEventsEndBookmarkRequired, forceInitialEvents bo
 		}
 		errResult := transformErrorToEvent(err)
 		if errResult != nil {
-			// error result is guaranteed to be received by user before closing ResultChan.
 			select {
 			case wc.resultChan <- *errResult:
-			case <-wc.ctx.Done(): // user has given up all results
+			case <-wc.ctx.Done():
 			}
 		}
 	case <-watchClosedCh:
 	case <-wc.ctx.Done(): // user cancel
 	}
-	
-	// We use wc.ctx to reap all goroutines. Under whatever condition, we should stop them all.
-	// It's fine to double cancel.
+
 	wc.cancel()
-	
-	// we need to wait until resultChan wouldn't be used anymore
+
 	resultChanWG.Wait()
 	close(wc.resultChan)
 }
@@ -243,9 +210,7 @@ func (wc *watchChan) RequestWatchProgress() error {
 	return wc.watcher.client.RequestProgress(wc.ctx)
 }
 
-// sync tries to retrieve existing data and send them to process.
-// The revision to watch will be set to the revision in response.
-// All events sent will have isCreated=true
+// sync 同步数据并发送到后续事件处理中
 func (wc *watchChan) sync() error {
 	opts := []clientv3.OpOption{}
 	if wc.recursive {
@@ -253,41 +218,39 @@ func (wc *watchChan) sync() error {
 		rangeEnd := clientv3.GetPrefixRangeEnd(wc.key)
 		opts = append(opts, clientv3.WithRange(rangeEnd))
 	}
-	
+
 	var err error
 	var lastKey []byte
 	var withRev int64
 	var getResp *clientv3.GetResponse
-	
+
 	preparedKey := wc.key
-	
+
 	for {
 		getResp, err = wc.watcher.client.KV.Get(wc.ctx, preparedKey, opts...)
 		if err != nil {
 			return interpretListError(err, true, preparedKey, wc.key)
 		}
-		
+
 		if len(getResp.Kvs) == 0 && getResp.More {
 			return fmt.Errorf("no results were found, but etcd indicated there were more values remaining")
 		}
-		
-		// send items from the response until no more results
+
+		// 发送所有etcd返回的响应
 		for i, kv := range getResp.Kvs {
 			lastKey = kv.Key
 			wc.sendEvent(parseKV(kv))
-			// free kv early. Long lists can take O(seconds) to decode.
 			getResp.Kvs[i] = nil
 		}
-		
+
 		if withRev == 0 {
 			wc.initialRev = getResp.Header.Revision
 		}
-		
-		// no more results remain
+
 		if !getResp.More {
 			return nil
 		}
-		
+
 		preparedKey = string(lastKey) + "\x00"
 		if withRev == 0 {
 			withRev = getResp.Header.Revision
@@ -299,9 +262,9 @@ func (wc *watchChan) sync() error {
 func logWatchChannelErr(err error) {
 	switch {
 	case strings.Contains(err.Error(), "mvcc: required revision has been compacted"):
-		// mvcc revision compaction which is regarded as warning, not error
+		logs.Error("watch chan error:", err.Error())
 	case isCancelError(err):
-		// expected when watches close, no need to log
+		logs.Error("watch chan error:", err.Error())
 	}
 }
 
@@ -313,21 +276,7 @@ func Jitter(duration time.Duration, maxFactor float64) time.Duration {
 	return wait
 }
 
-// startWatching does:
-// - get current objects if initialRev=0; set initialRev to current rev
-// - watch on given key and send events to process.
-//
-// initialEventsEndBookmarkSent helps us keep track
-// of whether we have sent an annotated bookmark event.
-//
-// it's important to note that we don't
-// need to track the actual RV because
-// we only send the bookmark event
-// after the initial list call.
-//
-// when this variable is set to false,
-// it means we don't have any specific
-// preferences for delivering bookmark events.
+// startWatching启动对指定键的监听，并处理事件和错误
 func (wc *watchChan) startWatching(watchClosedCh chan struct{}, initialEventsEndBookmarkRequired, forceInitialEvents bool) {
 	if wc.initialRev > 0 && forceInitialEvents {
 		currentStorageRV, err := wc.watcher.getCurrentStorageRV(wc.ctx)
@@ -340,12 +289,16 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}, initialEventsEnd
 			return
 		}
 	}
+
+	//同步初始事件
 	if forceInitialEvents {
 		if err := wc.sync(); err != nil {
+			logs.Error("fail in sync:", err.Error())
 			wc.sendError(err)
 			return
 		}
 	}
+	//初始事件的bookmark
 	if initialEventsEndBookmarkRequired {
 		wc.sendEvent(func() *event {
 			e := progressNotifyEvent(wc.initialRev)
@@ -364,16 +317,17 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}, initialEventsEnd
 	for wres := range wch {
 		if wres.Err() != nil {
 			err := wres.Err()
-			// If there is an error on server (e.g. compaction), the channel will return it before closed.
+			// 因为发生错误而关闭
 			logWatchChannelErr(err)
 			wc.sendError(err)
 			return
 		}
+		// 回送bookmark
 		if wres.IsProgressNotify() {
 			wc.sendEvent(progressNotifyEvent(wres.Header.GetRevision()))
 			continue
 		}
-		
+
 		for _, e := range wres.Events {
 			parsedEvent, err := parseEvent(e)
 			if err != nil {
@@ -384,14 +338,11 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}, initialEventsEnd
 			wc.sendEvent(parsedEvent)
 		}
 	}
-	// When we come to this point, it's only possible that client side ends the watch.
-	// e.g. cancel the context, close the client.
-	// If this watch chan is broken and context isn't cancelled, other goroutines will still hang.
-	// We should notify the main thread that this goroutine has exited.
+	// 结束监视
 	close(watchClosedCh)
 }
 
-// processEvents processes events from etcd watcher and sends results to resultChan.
+// processEvents 从etcdwatcher处理事件并发送到resultChan
 func (wc *watchChan) processEvents(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go wc.serialProcessEvents(wg)
@@ -405,9 +356,6 @@ func (wc *watchChan) serialProcessEvents(wg *sync.WaitGroup) {
 			if res == nil {
 				continue
 			}
-			// If user couldn't receive results fast enough, we also block incoming events from watcher.
-			// Because storing events in local will cause more memory usage.
-			// The worst case would be closing the fast watcher.
 			select {
 			case wc.resultChan <- *res:
 			case <-wc.ctx.Done():
@@ -419,13 +367,14 @@ func (wc *watchChan) serialProcessEvents(wg *sync.WaitGroup) {
 	}
 }
 
+// concurrentProcessEvents并发地处理从wc.incomingEventChan中接收到的事件
 func (wc *watchChan) concurrentProcessEvents(wg *sync.WaitGroup) {
 	p := concurrentOrderedEventProcessing{
 		input:           wc.incomingEventChan,
 		processFunc:     wc.transform,
 		output:          wc.resultChan,
 		processingQueue: make(chan chan *watch.Event, processEventConcurrency-1),
-		
+
 		objectType:    wc.watcher.objectType,
 		groupResource: wc.watcher.groupResource,
 	}
@@ -445,7 +394,7 @@ type concurrentOrderedEventProcessing struct {
 	input       chan *event
 	processFunc func(*event) *watch.Event
 	output      chan watch.Event
-	
+
 	processingQueue chan chan *watch.Event
 	// Metadata for logging
 	objectType    string
@@ -494,9 +443,6 @@ func (p *concurrentOrderedEventProcessing) collectEventProcessing(ctx context.Co
 		if e == nil {
 			continue
 		}
-		// If user couldn't receive results fast enough, we also block incoming events from watcher.
-		// Because storing events in local will cause more memory usage.
-		// The worst case would be closing the fast watcher.
 		select {
 		case <-ctx.Done():
 			return
@@ -517,18 +463,20 @@ func (wc *watchChan) acceptAll() bool {
 	return wc.internalPred.Empty()
 }
 
-// transform transforms an event into a result for user if not filtered.
+// transform 将事件转换成结果
 func (wc *watchChan) transform(e *event) (res *watch.Event) {
 	curObj, oldObj, err := wc.prepareObjs(e)
 	if err != nil {
+		logs.Error("error in prepare object", err.Error())
 		wc.sendError(err)
 		return nil
 	}
-	
+
 	switch {
 	case e.isProgressNotify:
 		object := wc.watcher.newFunc()
 		if err := wc.watcher.versioner.UpdateObject(object, uint64(e.rev)); err != nil {
+			logs.Error("error in update object", err.Error())
 			return nil
 		}
 		//if e.isInitialEventsEndBookmark {
@@ -616,10 +564,10 @@ func (wc *watchChan) sendEvent(e *event) {
 
 func (wc *watchChan) prepareObjs(e *event) (curObj runtime.Object, oldObj runtime.Object, err error) {
 	if e.isProgressNotify {
-		// progressNotify events doesn't contain neither current nor previous object version,
+		// progressNotify 事件不包含当前或之前的对象版本
 		return nil, nil, nil
 	}
-	
+
 	if !e.isDeleted {
 		data, _, err := wc.watcher.transformer.TransformFromStorage(wc.ctx, e.value, authenticatedDataString(e.key))
 		if err != nil {
@@ -630,18 +578,11 @@ func (wc *watchChan) prepareObjs(e *event) (curObj runtime.Object, oldObj runtim
 			return nil, nil, err
 		}
 	}
-	// We need to decode prevValue, only if this is deletion event or
-	// the underlying filter doesn't accept all objects (otherwise we
-	// know that the filter for previous object will return true and
-	// we need the object only to compute whether it was filtered out
-	// before).
 	if len(e.prevValue) > 0 && (e.isDeleted || !wc.acceptAll()) {
 		data, _, err := wc.watcher.transformer.TransformFromStorage(wc.ctx, e.prevValue, authenticatedDataString(e.key))
 		if err != nil {
 			return nil, nil, err
 		}
-		// Note that this sends the *old* object with the etcd revision for the time at
-		// which it gets deleted.
 		oldObj, err = decodeObj(wc.watcher.codec, wc.watcher.versioner, data, e.rev)
 		if err != nil {
 			return nil, nil, err
@@ -654,14 +595,10 @@ func decodeObj(codec runtime.Codec, versioner storage.Versioner, data []byte, re
 	obj, err := runtime.Decode(codec, []byte(data))
 	if err != nil {
 		if fatalOnDecodeError {
-			// we are running in a test environment and thus an
-			// error here is due to a coder mistake if the defer
-			// does not catch it
-			panic(err)
+			logs.Error(err)
 		}
 		return nil, err
 	}
-	// ensure resource version is set on the object we load from etcd
 	if err := versioner.UpdateObject(obj, uint64(rev)); err != nil {
 		return nil, fmt.Errorf("failure to version api object (%d) %#v: %v", rev, obj, err)
 	}

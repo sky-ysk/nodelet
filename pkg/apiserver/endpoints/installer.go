@@ -3,6 +3,7 @@ package endpoints
 import (
 	"fmt"
 	"github.com/emicklei/go-restful/v3"
+	"go.uber.org/zap"
 	"hit.edu/framework/pkg/apimachinery/conversion"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apis/meta"
@@ -10,6 +11,7 @@ import (
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/types"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"unicode"
 
@@ -34,13 +36,12 @@ type APIInstaller struct {
 	minRequestTimeout time.Duration
 }
 
-// TODO: 命名
-// TODO: 增加Namespace支持
 type action struct {
-	Verb   string               // Verb identifying the action ("GET", "POST", "WATCH", "PROXY", etc).
-	Path   string               // The path of the action
-	Namer  handler.ScopeNamer   // handles accessing names from requests and objects
-	Params []*restful.Parameter // List of parameters associated with the action.
+	Verb          string               // Verb 标识动词 ("GET", "POST", "WATCH", "PROXY", etc).
+	Path          string               // 动词路径
+	Namer         handler.ScopeNamer   // 从请求和runtime.object中获取名称
+	Params        []*restful.Parameter // 和动词关联的参数
+	AllNamespaces bool                 // 如果动词是命名空间的，但适用于所有命名空间的聚合结果，则为 true
 }
 
 var verbsMap = map[string]string{
@@ -77,11 +78,13 @@ func (a *APIInstaller) Install() (*restful.WebService, []error) {
 	sort.Strings(paths)
 
 	for _, path := range paths {
+		logs.Debug("register Resource Handlers", zap.String("resource path", a.prefix+"/"+path))
 		apiResource, err := a.registerResourceHandlers(path, a.group.Storage[path], ws)
 		if apiResource != nil {
 			apiResources = append(apiResources, *apiResource)
 		}
 		if err != nil {
+			logs.Error("register Resource Handlers failed", zap.String("resource path", path), zap.String("error", err.Error()))
 			errors = append(errors, fmt.Errorf("error in registering resource: %s, %v", path, err))
 		}
 	}
@@ -98,6 +101,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	//获取资源、子资源（资源的status等子资源）、组和版本名称
 	resource, subresource, err := splitSubresource(path)
 	if err != nil {
+		logs.Error("splitSubresource failed,path:"+path, zap.Error(err))
 		return nil, nil
 	}
 	isSubresource := len(subresource) > 0
@@ -106,14 +110,38 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	//创建特定Kind类型的对象实例
 	fqKindToRegister, err := GetResourceKind(a.group.GroupVersion, storage, a.group.Typer)
 	if err != nil {
+		logs.Error("get resource kind failed", zap.Error(err))
 		return nil, err
 	}
 	versionedPtr, err := a.group.Creater.New(fqKindToRegister)
 	if err != nil {
+		logs.Error("create new versionedPtr failed", zap.Error(err))
 		return nil, err
 	}
 	defaultVersionedObject := indirectArbitraryPointer(versionedPtr)
 	kind := fqKindToRegister.Kind
+
+	var apiResource meta.APIResource
+	// 如果存在子资源，则命名空间范围由父资源定义
+	var namespaceScoped bool
+
+	if isSubresource {
+		parentStorage, ok := a.group.Storage[resource]
+		if !ok {
+			return nil, fmt.Errorf("missing parent storage: %q", resource)
+		}
+		scoper, ok := parentStorage.(rest.NamespaceScopedStrategy)
+		if !ok {
+			return nil, fmt.Errorf("%q must implement scoper", resource)
+		}
+		namespaceScoped = scoper.NamespaceScoped()
+	} else {
+		scoper, ok := storage.(rest.NamespaceScopedStrategy)
+		if !ok {
+			return nil, fmt.Errorf("%q must implement scoper", resource)
+		}
+		namespaceScoped = scoper.NamespaceScoped()
+	}
 
 	//判断资源Storage实现了哪些操作接口，用来判断path路径支持哪些动词
 	creater, isCreater := storage.(rest.Creater)
@@ -135,10 +163,12 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		list := lister.NewList()
 		listGVKs, _, err := a.group.Typer.ObjectKinds(list)
 		if err != nil {
+			logs.Error("get resource kind failed", zap.Error(err))
 			return nil, err
 		}
 		versionedListPtr, err := a.group.Creater.New(a.group.GroupVersion.WithKind(listGVKs[0].Kind))
 		if err != nil {
+			logs.Error("create new versionedPtr failed", zap.Error(err))
 			return nil, err
 		}
 		versionedList = indirectArbitraryPointer(versionedListPtr)
@@ -146,18 +176,22 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 	versionedListOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("ListOptions"))
 	if err != nil {
+		logs.Error("create new ListOptions failed", zap.Error(err))
 		return nil, err
 	}
 	versionedCreateOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("CreateOptions"))
 	if err != nil {
+		logs.Error("create new CreateOptions failed", zap.Error(err))
 		return nil, err
 	}
 	versionedPatchOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("PatchOptions"))
 	if err != nil {
+		logs.Error("create new PatchOptions failed", zap.Error(err))
 		return nil, err
 	}
 	versionedUpdateOptions, err := a.group.Creater.New(optionsExternalVersion.WithKind("UpdateOptions"))
 	if err != nil {
+		logs.Error("create new UpdateOptions failed", zap.Error(err))
 		return nil, err
 	}
 
@@ -166,6 +200,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	if isDeleter {
 		versionedDeleteOptions, err = a.group.Creater.New(optionsExternalVersion.WithKind("DeleteOptions"))
 		if err != nil {
+			logs.Error("create new DeleteOptions failed", zap.Error(err))
 			return nil, err
 		}
 		versionedDeleterObject = indirectArbitraryPointer(versionedDeleteOptions)
@@ -180,6 +215,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 	versionedStatusPtr, err := a.group.Creater.New(optionsExternalVersion.WithKind("Status"))
 	if err != nil {
+		logs.Error("create new Status failed", zap.Error(err))
 		return nil, err
 	}
 	versionedStatus := indirectArbitraryPointer(versionedStatusPtr)
@@ -190,35 +226,81 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	params := []*restful.Parameter{}
 	actions := []action{}
 
-	//获取支持的action列表
-	resourcePath := resource
-	resourceParams := params
-	itemPath := resourcePath + "/{name}"
-	nameParams := append(params, nameParam)
-	proxyParams := append(params, pathParam)
-	suffix := ""
-	if isSubresource {
-		suffix = "/" + subresource
-		itemPath = itemPath + suffix
-		resourcePath = itemPath
-		resourceParams = nameParams
-	}
+	switch {
+	case !namespaceScoped:
+		//获取支持的action列表
+		resourcePath := resource
+		resourceParams := params
+		itemPath := resourcePath + "/{name}"
+		nameParams := append(params, nameParam)
+		proxyParams := append(params, pathParam)
+		suffix := ""
+		if isSubresource {
+			suffix = "/" + subresource
+			itemPath = itemPath + suffix
+			resourcePath = itemPath
+			resourceParams = nameParams
+		}
 
-	namer := handler.ContextBasedNaming{Namer: a.group.Namer}
+		apiResource.Namespaced = false
+		namer := handler.ContextBasedNaming{Namer: a.group.Namer, ClusterScoped: true}
 
-	//标准REST动词（GET、PUT、POST和DELETE）的处理
-	//在资源路径"resources/v1/resource"下添加动词
-	actions = appendIf(actions, action{"POST", resourcePath, namer, resourceParams}, isCreater)
-	actions = appendIf(actions, action{"LIST", resourcePath, namer, resourceParams}, isLister)
-	actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, namer, resourceParams}, isDeleter)
-	//在资源路径"resources/v1/resource/{name}"下添加动词
-	actions = appendIf(actions, action{"GET", itemPath, namer, nameParams}, isGetter)
-	if getSubpath {
-		actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", namer, proxyParams}, isGetter)
+		//标准REST动词（GET、PUT、POST和DELETE）的处理
+		//在资源路径"resources/v1/resource"下添加动词
+		actions = appendIf(actions, action{"POST", resourcePath, namer, resourceParams, false}, isCreater)
+		actions = appendIf(actions, action{"LIST", resourcePath, namer, resourceParams, false}, isLister)
+		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, namer, resourceParams, false}, isDeleter)
+		//在资源路径"resources/v1/resource/{name}"下添加动词
+		actions = appendIf(actions, action{"GET", itemPath, namer, nameParams, false}, isGetter)
+		if getSubpath {
+			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", namer, proxyParams, false}, isGetter)
+		}
+		actions = appendIf(actions, action{"PUT", itemPath, namer, nameParams, false}, isUpdater)
+		actions = appendIf(actions, action{"DELETE", itemPath, namer, nameParams, false}, isDeleter)
+		actions = appendIf(actions, action{"PATCH", itemPath, namer, nameParams, false}, isPatcher)
+	default:
+		namespaceParamName := "namespaces"
+		namespaceParam := ws.PathParameter("namespace", "object name and auth scope, such as for teams and projects").DataType("string")
+		namespacedPath := namespaceParamName + "/{namespace}/" + resource
+		namespaceParams := []*restful.Parameter{namespaceParam}
+
+		resourcePath := namespacedPath
+		resourceParams := namespaceParams
+		itemPath := namespacedPath + "/{name}"
+		nameParams := append(namespaceParams, nameParam)
+		proxyParams := append(nameParams, pathParam)
+		itemPathSuffix := ""
+		if isSubresource {
+			itemPathSuffix = "/" + subresource
+			itemPath = itemPath + itemPathSuffix
+			resourcePath = itemPath
+			resourceParams = nameParams
+		}
+
+		apiResource.Namespaced = true
+		namer := handler.ContextBasedNaming{Namer: a.group.Namer, ClusterScoped: false}
+
+		//标准REST动词（GET、PUT、POST和DELETE）的处理
+		//在资源路径"resources/v1/resource"下添加动词
+		actions = appendIf(actions, action{"POST", resourcePath, namer, resourceParams, false}, isCreater)
+		actions = appendIf(actions, action{"LIST", resourcePath, namer, resourceParams, false}, isLister)
+		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, namer, resourceParams, false}, isDeleter)
+		//在资源路径"resources/v1/resource/{name}"下添加动词
+		actions = appendIf(actions, action{"GET", itemPath, namer, nameParams, false}, isGetter)
+		if getSubpath {
+			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", namer, proxyParams, false}, isGetter)
+		}
+		actions = appendIf(actions, action{"PUT", itemPath, namer, nameParams, false}, isUpdater)
+		actions = appendIf(actions, action{"DELETE", itemPath, namer, nameParams, false}, isDeleter)
+		actions = appendIf(actions, action{"PATCH", itemPath, namer, nameParams, false}, isPatcher)
+
+		// list or post across namespace.
+		// For ex: LIST all pods in all namespaces by sending a LIST request at /api/apiVersion/pods.
+		// TODO: more strongly type whether a resource allows these actions on "all namespaces" (bulk delete)
+		if !isSubresource {
+			actions = appendIf(actions, action{"LIST", resource, namer, params, true}, isLister)
+		}
 	}
-	actions = appendIf(actions, action{"PUT", itemPath, namer, nameParams}, isUpdater)
-	actions = appendIf(actions, action{"DELETE", itemPath, namer, nameParams}, isDeleter)
-	actions = appendIf(actions, action{"PATCH", itemPath, namer, nameParams}, isPatcher)
 	//为每个动词创建路由
 	//为ws设置支持的媒体类型
 	//for _, s := range a.group.Serializer.SupportedMediaTypes() {
@@ -233,7 +315,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	//构造公共字段放入reqScope中
 	verbs := map[string]struct{}{}
 	reqScope := handler.RequestScope{
-		Namer:          namer,
 		Serializer:     a.group.Serializer,
 		ParameterCodec: a.group.ParameterCodec,
 		Creater:        a.group.Creater,
@@ -259,6 +340,26 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		//if strings.Contains(action.Path, "/{name}") || action.Verb == "POST" {
 		//	requestScope = "resource"
 		//}
+		//requestScope := "cluster"
+		var namespaced string
+		var operationSuffix string
+		if apiResource.Namespaced {
+			//requestScope = "namespace"
+			namespaced = "Namespaced"
+		}
+		if strings.HasSuffix(action.Path, "/{path:*}") {
+			//requestScope = "resource"
+			operationSuffix = operationSuffix + "WithPath"
+		}
+		//if strings.Contains(action.Path, "/{name}") || action.Verb == "POST" {
+		//	requestScope = "resource"
+		//}
+		if action.AllNamespaces {
+			//requestScope = "cluster"
+			operationSuffix = operationSuffix + "ForAllNamespaces"
+			namespaced = ""
+		}
+
 		routes := []*restful.RouteBuilder{}
 
 		if verb, found := verbsMap[action.Verb]; found {
@@ -296,6 +397,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			route := ws.GET(action.Path).To(handler).
 				Doc(doc).
+				Operation("list"+namespaced+kind+strings.Title(subresource)+operationSuffix).
 				Produces(mediaTypes...).
 				Returns(http.StatusOK, "OK", versionedList).
 				Writes(versionedList)
@@ -309,16 +411,16 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 					doc = "list or watch " + subresource + " of objects of kind " + kind
 				}
 				route.Doc(doc)
-				verbs["WATCHLIST"] = struct{}{}
-				verbs["WATCH"] = struct{}{}
+				verbs["watchlist"] = struct{}{}
+				verbs["watch"] = struct{}{}
 			case isWatcher:
 				doc := "watch objects of kind " + kind
 				if isSubresource {
 					doc = "watch " + subresource + "of objects of kind " + kind
 				}
 				route.Doc(doc)
-				verbs["WATCHLIST"] = struct{}{}
-				verbs["WATCH"] = struct{}{}
+				verbs["watchlist"] = struct{}{}
+				verbs["watch"] = struct{}{}
 			}
 			addParams(route, action.Params)
 			routes = append(routes, route)
@@ -331,6 +433,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			route := ws.GET(action.Path).To(handler).
 				Doc(doc).
+				Operation("read"+namespaced+kind+strings.Title(subresource)+operationSuffix).
 				Produces(mediaTypes...).
 				Returns(http.StatusOK, "OK", producedObject).
 				Writes(producedObject)
@@ -349,6 +452,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			route := ws.POST(action.Path).To(handler).
 				Doc(doc).
+				Operation("create"+namespaced+kind+strings.Title(subresource)+operationSuffix).
 				Produces(mediaTypes...).
 				Returns(http.StatusOK, "OK", producedObject).
 				Returns(http.StatusCreated, "Created", producedObject).
@@ -368,6 +472,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			route := ws.PUT(action.Path).To(handler).
 				Doc(doc).
+				Operation("replace"+namespaced+kind+strings.Title(subresource)+operationSuffix).
 				Produces(mediaTypes...).
 				Returns(http.StatusOK, "OK", producedObject).
 				Returns(http.StatusCreated, "Created", producedObject).
@@ -388,6 +493,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 			route := ws.DELETE(action.Path).To(handler).
 				Doc(doc).
+				Operation("delete"+namespaced+kind+strings.Title(subresource)+operationSuffix).
 				Produces(mediaTypes...).
 				Returns(http.StatusOK, "OK", producedObject).
 				Writes(producedObject)
@@ -408,6 +514,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			route := ws.DELETE(action.Path).To(handler).
 				Doc(doc).
+				Operation("deletecollection"+namespaced+kind+strings.Title(subresource)+operationSuffix).
 				Produces(mediaTypes...).
 				Writes(producedObject).
 				Returns(http.StatusOK, "OK", versionedStatus)
@@ -435,6 +542,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			route := ws.PATCH(action.Path).To(handler).
 				Doc(doc).
+				Operation("patch"+namespaced+kind+strings.Title(subresource)+operationSuffix).
 				Consumes(supportedTypes...).
 				Produces(mediaTypes...).
 				Returns(http.StatusOK, "OK", producedObject).
@@ -459,7 +567,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	}
 
 	//生成apiResource并返回
-	var apiResource meta.APIResource
+
 	apiResource.Name = path
 	apiResource.Group = group
 	apiResource.Version = version
@@ -473,7 +581,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 	//if shortNamesProvider, ok := storage.(rest.ShortNamesProvider); ok {
 	//	apiResource.ShortName = shortNamesProvider.ShortNames()
 	//}
-
+	logs.Debug("install restfulAPI for resource " + apiResource.Name + " done,supported verbs:" + apiResource.Verbs.String())
 	return &apiResource, nil
 }
 

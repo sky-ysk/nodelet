@@ -114,9 +114,12 @@ func main() {
 	}
 
 	patchNode, err := json.Marshal(map[string]interface{}{
-		"Spec": map[string]interface{}{
-			"NodeName": "patch-node-name",
-			"HostName": "master",
+		"objectMeta": map[string]interface{}{
+			"namespace": "test",
+		},
+		"spec": map[string]interface{}{
+			"nodeName": "patch-node-name",
+			"hostName": "master",
 		},
 	})
 
@@ -130,7 +133,7 @@ func main() {
 
 		watcher, err := nodesClient.Watch(context.TODO(), watchOptions)
 		if err != nil {
-			panic(err)
+			logs.Error(err)
 		}
 		defer watcher.Stop() // 确保 watcher 被停止
 
@@ -260,7 +263,29 @@ func main() {
 
 	fmt.Println("listing done")
 
-	select {}
+	//DeleteCollection 删除所有Spec.NodeName=demo-node的Node
+	logs.Info("deleting collection")
+	lstOpts = metav1.ListOptions{
+		FieldSelector: "Spec.NodeName=demo-node",
+	}
+	err = nodesClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	if err != nil {
+		logs.Error(err)
+	}
+	logs.Info("Deleted collection...")
+	prompt()
+
+	// DeleteCollection 之后再次 List所有Node
+	logs.Info("listing")
+	lstOpts = metav1.ListOptions{}
+	list, err = nodesClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		logs.Error(err)
+	}
+	for _, d := range list.Items {
+		logs.Info(d)
+	}
+	logs.Info("listing done")
 
 	//DeleteCollection 删除所有Spec.NodeName=demo-node的Node
 	fmt.Println("deleting collection")

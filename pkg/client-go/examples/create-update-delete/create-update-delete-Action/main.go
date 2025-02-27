@@ -27,7 +27,6 @@ import (
 func main() {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	fmt.Println(scheme)
 	//参数配置
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
@@ -45,11 +44,11 @@ func main() {
 		},
 		UserAgent: "defaultUserAgent",
 		Transport: &http.Transport{
-			MaxIdleConns:        100,              // 最大空闲连接数
+			MaxIdleConns:        10000,            // 最大空闲连接数
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 10 * time.Second,
+		Timeout: 1000 * time.Second,
 	}
 
 	//创建ClientSet
@@ -155,6 +154,30 @@ func main() {
 	fmt.Println("creating")
 	results, err := actionsClient.Create(context.TODO(), action, metav1.CreateOptions{})
 
+				// 打印事件类型和对象的相关信息
+				logs.Infof("接收到事件类型:", event.Type)
+				switch event.Type {
+				case watch.Added:
+					logs.Infof("资源被添加: ", event.Object)
+				case watch.Modified:
+					logs.Infof("资源被修改: ", event.Object)
+				case watch.Deleted:
+					logs.Infof("资源被删除: ", event.Object)
+				case watch.Error:
+					logs.Infof("发生错误: ", event.Object)
+				case watch.Bookmark:
+					logs.Infof("收到Bookmark", event.Object)
+
+				default:
+					logs.Infof("未识别的事件类型: ", event.Type)
+				}
+			}
+		}
+	}()
+
+	// Create三个Action
+	logs.Trace("creating")
+	result, err := actionsClient.Create(context.TODO(), action, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create action: %v", err)
 		panic(err)
@@ -167,26 +190,26 @@ func main() {
 
 	//Update一个Action
 
-	fmt.Println("updating")
+	logs.Info("updating")
 	// 部分更改一个参数
 	// 先Get一个Action ,更改Action的参数, UpdateAction
 
 	result, getErr := actionsClient.Get(context.TODO(), "demo-actions", metav1.GetOptions{})
 	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Error(fmt.Errorf("Failed to get : %v", getErr))
 	}
 
-	fmt.Println("get result", result)
-	fmt.Println("修改前的result.Spec.ActionName：", result.Spec.Name)
+	logs.Infof("get result", result)
+	logs.Infof("修改前的result.Spec.Name：", result.Spec.Name)
 
-	result.Spec.Name = "updatedActionName"
+	result.Spec.Name = "updatedName"
 	_, updateErr := actionsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
-		panic(fmt.Errorf("Update failed: %v", updateErr))
+		logs.Error(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	fmt.Println("修改后的result.Spec.ActionName：", result.Spec.Name)
-	fmt.Println("Updated action...")
+	logs.Infof("修改后的result.Spec.Name：", result.Spec.Name)
+	logs.Info("Updated action...")
 	prompt()
 
 	// List 所有Action
@@ -194,13 +217,33 @@ func main() {
 	lstOpts := metav1.ListOptions{}
 	list, err := actionsClient.List(context.TODO(), lstOpts)
 	if err != nil {
-		panic(err)
+		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		fmt.Println(d)
+		logs.Info(d)
 	}
 
-	fmt.Println("listing done")
+	logs.Info("listing done")
+	prompt()
+
+	//Patch 一个Action
+	logs.Info("patching")
+	patchResult, err := actionsClient.Patch(context.TODO(), "demo-actions", types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
+	logs.Infof("patchResult: ", patchResult)
+	logs.Info("patch Done")
+
+	// List 所有Action
+	logs.Info("listing")
+	lstOpts = metav1.ListOptions{}
+	list, err = actionsClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		logs.Error(err)
+	}
+	for _, d := range list.Items {
+		logs.Info(d)
+	}
+
+	logs.Info("listing done")
 	prompt()
 
 	//Patch 一个Action
@@ -224,12 +267,12 @@ func main() {
 	prompt()
 
 	// Delete一个Action
-	fmt.Println("deleting")
+	logs.Info("deleting")
 	err = actionsClient.Delete(context.TODO(), "demo-actions", metav1.DeleteOptions{})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Deleted action...")
+	logs.Info("Deleted action...")
 	prompt()
 
 	// Delete 之后再次 List所有Action
@@ -237,11 +280,12 @@ func main() {
 	lstOpts = metav1.ListOptions{}
 	list, err = actionsClient.List(context.TODO(), lstOpts)
 	if err != nil {
-		panic(err)
+		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		fmt.Println(d)
+		logs.Info(d)
 	}
+	logs.Info("listing done")
 
 	fmt.Println("listing done")
 

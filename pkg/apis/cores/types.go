@@ -4,6 +4,8 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apis/meta"
 	"time"
+
+	"hit.edu/framework/pkg/apis/meta"
 )
 
 const (
@@ -20,10 +22,106 @@ type Time struct {
 	time.Time `json:"time" yaml:"time"`
 }
 
+type WorkflowList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Workflow `json:"items" yaml:"items"`
+}
+
+type TaskList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Task `json:"items" yaml:"items"`
+}
+
+type GroupList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Group `json:"items" yaml:"items"`
+}
+
+type ActionList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Action `json:"items" yaml:"items"`
+}
+
+type DataList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Data `json:"items" yaml:"items"`
+}
+
+type SceneList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Scene `json:"items" yaml:"items"`
+}
+
+type DeviceList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Device `json:"items" yaml:"items"`
+}
+
+type Resource_NodeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Resource_Node `json:"items" yaml:"items"`
+}
+
 // TODO: 独立配置
 type Event struct {
 	//TODO: 定义Event
 	//TODO: ObjectReference设计
+	meta.TypeMeta
+	meta.ObjectMeta
+	InvolvedObject ObjectReference
+	// 事件产生原因，机器可读，供handler判断
+	Reason string
+	// 描述，应有用户可读性
+	Message string
+	// 事件产生来源
+	Source    EventSource
+	EventTime Time
+	Count     int32
+	Type      string // EventTypeNormal or EventTypeWarning
+	// todo: 补充 action、reporting controller 、 instance
+}
+
+type EventSource struct {
+	// 事件产生组件
+	Component string
+	// 事件产生节点
+	Host string
+}
+
+// event type 常量
+const (
+	EventTypeNormal  string = "Normal"
+	EventTypeWarning string = "Warning"
+)
+
+// todo:改objereference
+type ObjectReference struct {
+	// GVK
+	APIVersion string
+	Kind       string
+	// Name
+	Namespace       string
+	Name            string
+	UID             UID
+	ResourceVersion string
+	FieldPath       string
+}
+type UID string
+
+type EventList struct {
+	meta.TypeMeta
+
+	meta.ListMeta
+
+	Events []Event `json:"events" yaml:"events"`
 }
 
 // Node
@@ -575,7 +673,39 @@ type EnvVar struct {
 	// TODO: 动态获取相关字段
 }
 
+type Resource_Node struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec ResourceSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status ResourceStatus `json:"status,omitempty" yaml:"status"`
+}
+
+type Data struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec DataSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status DataStatus `json:"status,omitempty" yaml:"status"`
+}
+
+type Scene struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec SceneSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status SceneStatus `json:"status,omitempty" yaml:"status"`
+}
+
 // TODO: 后续补充完整
+
+// TODO:node字段
 type ResourceSpec struct {
 	// 描述期待占用多少资源 资源的单位是什么
 	ExpectedValue     float64
@@ -627,9 +757,10 @@ const (
 	Networkbps      ResourceUnit = "bps"
 )
 
+// 增加设备定义
 type Device struct {
 	//
-	runtime.TypeMeta
+	meta.TypeMeta
 
 	//
 	meta.ObjectMeta
@@ -739,7 +870,7 @@ type Lock struct {
 	Type LockType
 
 	// 调度时 ref为0时释放
-	IsLocked bool
+	Lock bool
 
 	// 资源引用数 部署时
 	Ref int
@@ -797,6 +928,20 @@ type DeviceStatus struct {
 	// 运行时中，设备的实际状态
 	// 当Phase与Status不一致时，机器人出现运行错误
 	Status string
+
+	// 设备的实际属性
+	Properties map[string]Property
+
+	// 设备资源锁状态
+	Lock Lock
+
+	// 设备事件描述
+	Events []DeviceEvent
+
+	// 上次成功获取设备状态的时间
+	// 如果长时间不能获取设备的状态，则认为设备离线
+	LastTime Time
+}
 
 	// 设备的实际属性
 	Properties map[string]Property
@@ -871,7 +1016,62 @@ type DataSpec struct {
 	// 文件大小
 	// SHA文件校验
 }
+
 type DataStatus struct{}
+
+// SceneSpec 描述scene的固有属性和期待属性
+type SceneSpec struct {
+	// 每一个scene的标识
+	SceneID string
+
+	// scene的类型 是一个地点还是一个物品
+	Type SceneType
+
+	// 期待属性
+	ExpectedProperty map[string]Property
+
+	// 场景的描述（不可变属性）
+	Desc SceneDesc
+}
+
+type SceneDesc struct {
+	Label []string
+	Value map[string]string
+}
+
+type SceneType string
+
+const (
+	ObjectType   SceneType = "Object"
+	PositionType SceneType = "Position"
+)
+
+/*
+	Object的位置信息存储在SceneStatus.Property中
+	Position的位置信息存储在SceneSpec.SceneDesc中
+*/
+
+// SceneStatus 描述scene的动态属性
+type SceneStatus struct {
+	// 更新的方式和时间
+	UpdateMethod string
+	UpdateTime   Time
+
+	// 关联的场景
+	AttachedScene string
+
+	// 关联的设备
+	AttachedDevice string
+
+	// 关联的任务
+	AttachedTask string
+
+	// 实时属性
+	Property map[string]Property
+
+	// 锁
+	Lock Lock
+}
 
 // Action所需执行环境
 type Runtime struct {

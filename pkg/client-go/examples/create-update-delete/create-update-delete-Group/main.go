@@ -64,6 +64,32 @@ func main() {
 
 	groupsClient := clientSet.Core().Groups("test")
 
+	action := apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-actions",
+			Namespace: "test",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "demo-action",
+			Runtimes: []apis.Runtime{
+				apis.Runtime{
+					Name: "demo-runtime",
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: []apis.RuntimeStatus{
+				apis.RuntimeStatus{
+					NodeName: "demo-runtime",
+					Phase:    "running",
+				},
+			},
+		},
+	}
 	group := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-groups",
@@ -178,15 +204,13 @@ func main() {
 	}
 
 	fmt.Println("get result", result)
-	fmt.Println("修改前的result.Spec.GroupName：", result.Spec.Name)
 
-	result.Spec.Name = "updatedGroupName"
+	result.Spec.Actions[0].Spec.Name = "updated action-runtime-Name"
 	_, updateErr := groupsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
 		panic(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	fmt.Println("修改后的result.Spec.GroupName：", result.Spec.Name)
 	fmt.Println("Updated group...")
 	prompt()
 

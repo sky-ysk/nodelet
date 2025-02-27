@@ -160,7 +160,7 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "demo-actions",
 		},
-		TypeMeta: runtime.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "Action",
 			APIVersion: "v1",
 		},

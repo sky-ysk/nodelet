@@ -3,17 +3,20 @@ package handler
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	jsonpatch "gopkg.in/evanphx/json-patch.v4"
 	"hit.edu/framework/pkg/apimachinery/errors"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apis/meta"
 	metainternalversionscheme "hit.edu/framework/pkg/apis/meta/internalversion/scheme"
+	"hit.edu/framework/pkg/apiserver/endpoints/handler/finisher"
 	negotiation "hit.edu/framework/pkg/apiserver/endpoints/handler/negotitation"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/types"
+	"hit.edu/framework/pkg/apiserver/endpoints/request"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
-
-	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/component-base/logs"
 
 	"net/http"
 )
@@ -37,34 +40,45 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 			}
 		}
 		if !supportPatchType {
+			logs.Error(negotiation.NewUnsupportedMediaTypeError(patchTypes))
 			scope.err(negotiation.NewUnsupportedMediaTypeError(patchTypes), w, req)
 		}
 
-		name, err := scope.Namer.Name(req)
+		namespace, name, err := scope.Namer.Name(req)
 		if err != nil {
+			logs.Error("get name from requestInfo failed", zap.Error(err))
 			scope.err(err, w, req)
+			return
 		}
+		ctx = request.WithNamespace(ctx, namespace)
+
 		ctx, cancel := context.WithTimeout(ctx, requestTimeoutUpperBound)
 		defer cancel()
 
 		body, err := limitedReadBody(req, 0)
 		if err != nil {
+			logs.Error("read limitedBody failed", zap.Error(err))
 			scope.err(err, w, req)
 			return
 		}
+		logs.Info("limitedReadBody succeed", zap.String("len(Body)", string(len(body))))
 
 		options := &meta.PatchOptions{}
 		if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), meta.SchemeGroupVersion, options); err != nil {
+			logs.Error("decode PatchOptions failed:", err.Error())
 			scope.err(err, w, req)
 			return
 		}
+		logs.Info("decode PatchOptions succeed,about to patch object in database")
 		//TODO:Options验证
 		options.TypeMeta.SetGroupVersionKind(meta.SchemeGroupVersion.WithKind("PatchOptions"))
 
 		baseContentType := runtime.ContentTypeJSON
 		s, ok := runtime.SerializerInfoForMediaType(scope.Serializer.SupportedMediaTypes(), baseContentType)
 		if !ok {
-			scope.err(fmt.Errorf("no serializer defined for %v", baseContentType), w, req)
+			err := fmt.Errorf("no serializer defined for %v", baseContentType)
+			logs.Error(zap.Error(err))
+			scope.err(err, w, req)
 			return
 		}
 		gv := scope.Kind.GroupVersion()
@@ -95,9 +109,10 @@ func PatchResource(r rest.Patcher, scope *RequestScope, patchTypes []string) htt
 
 		result, wasCreated, err := p.patchResource(ctx, scope)
 		if err != nil {
+			logs.Error("patch object in database failed:", err.Error())
 			scope.err(err, w, req)
 		}
-
+		logs.Info("patch object in database done", zap.String("kind", result.GetObjectKind().GroupVersionKind().Kind))
 		status := http.StatusOK
 		if wasCreated {
 			status = http.StatusCreated
@@ -129,6 +144,7 @@ type patcher struct {
 	patchType   types.PatchType
 	patchBytes  []byte
 
+	namespace         string
 	updatedObjectInfo rest.UpdatedObjectInfo
 	mechanism         patchMechanism
 	forceAllowCreate  bool
@@ -140,6 +156,7 @@ type patchMechanism interface {
 }
 
 func (p *patcher) patchResource(ctx context.Context, scope *RequestScope) (runtime.Object, bool, error) {
+	p.namespace = request.NamespaceValue(ctx)
 	switch p.patchType {
 	case types.JSONPatchType, types.MergePatchType:
 		p.mechanism = &jsonPatcher{
@@ -160,7 +177,7 @@ func (p *patcher) patchResource(ctx context.Context, scope *RequestScope) (runti
 		return updateObject, updateErr
 	}
 
-	result, err := requestFunc()
+	result, err := finisher.FinishRequest(ctx, requestFunc)
 	return result, wasCreated, err
 }
 
@@ -175,6 +192,7 @@ func (p *patcher) applyPatch(ctx context.Context, _, currentObject runtime.Objec
 	}
 
 	if patchErr != nil {
+		logs.Error(zap.Error(patchErr))
 		return nil, patchErr
 	}
 
@@ -187,10 +205,19 @@ func (p *patcher) applyPatch(ctx context.Context, _, currentObject runtime.Objec
 		if err != nil {
 			return nil, err
 		}
+		logs.Error(zap.Error(err))
 		return nil, errors.NewConflict(p.resource.GroupResource(), p.name, fmt.Errorf("uid mismatch: the provided object specified uid %s, and no existing object was found", accessor.GetUID()))
 	}
 
-	if err := checkName(objToUpdate, p.name, p.namer); err != nil {
+	if objectMeta, err := meta.Accessor(objToUpdate); err == nil {
+		// ensure namespace on the object is correct, or error if a conflicting namespace was set in the object
+		if err := EnsureObjectNamespaceMatchesRequestNamespace(ExpectedNamespaceForResource(p.namespace, p.resource), objectMeta); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := checkName(objToUpdate, p.name, p.namespace, p.namer); err != nil {
+		logs.Error("error occur while checking name", zap.Error(err))
 		return nil, err
 	}
 	return objToUpdate, nil
@@ -203,25 +230,26 @@ type jsonPatcher struct {
 func (p *jsonPatcher) applyPatchToCurrentObject(requestContext context.Context, currentObject runtime.Object) (runtime.Object, error) {
 	currentObjJS, err := runtime.Encode(p.codec, currentObject)
 	if err != nil {
+		logs.Error("error occur while encoding currentObj", zap.Error(err))
 		return nil, err
 	}
 
 	// Apply the patch.
 	patchedObjJS, _, err := p.applyJSPatch(currentObjJS)
 	if err != nil {
+		logs.Error("error occur while applying json patch", zap.Error(err))
 		return nil, err
 	}
 
 	objToUpdate := p.restPatcher.New()
 
 	if err := runtime.DecodeInto(p.codec, patchedObjJS, objToUpdate); err != nil {
+		logs.Error("error occur while decoding updatedObj", zap.Error(err))
 		return nil, err
 	}
 
 	if p.options == nil {
-		// Provide a more informative error for the crash that would
-		// happen on the next line
-		panic("PatchOptions required but not provided")
+		logs.Error("PatchOptions required but not provided")
 	}
 	return objToUpdate, nil
 }

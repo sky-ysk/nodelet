@@ -9,16 +9,24 @@ import (
 )
 
 // ObjectMetaFieldsSet 返回对象元数据的字段集合，目前仅包含name字段
-func ObjectMetaFieldsSet(objectMeta *meta.ObjectMeta) fields.Set {
-	return fields.Set{
-		"metadata.name": objectMeta.Name,
+func ObjectMetaFieldsSet(objectMeta *meta.ObjectMeta, hasNamespaceField bool) fields.Set {
+	if !hasNamespaceField {
+		return fields.Set{
+			"metadata.name": objectMeta.Name,
+		}
 	}
-	
+	return fields.Set{
+		"metadata.name":      objectMeta.Name,
+		"metadata.namespace": objectMeta.Namespace,
+	}
 }
 
 // AdObjectMetaField 向字段集合中添加name字段
-func AddObjectMetaFieldsSet(source fields.Set, objectMeta *meta.ObjectMeta) fields.Set {
+func AddObjectMetaFieldsSet(source fields.Set, objectMeta *meta.ObjectMeta, hasNamespaceField bool) fields.Set {
 	source["metadata.name"] = objectMeta.Name
+	if hasNamespaceField {
+		source["metadata.namespace"] = objectMeta.Namespace
+	}
 	return source
 }
 

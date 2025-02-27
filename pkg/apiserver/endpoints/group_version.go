@@ -3,16 +3,16 @@ package endpoints
 import (
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
+	"go.uber.org/zap"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apiserver/registry/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"path"
 	"strings"
 	"time"
 )
-
-// TODO: 替换K8s组件
 
 // 这里设置API访问路径
 // API Group配置
@@ -147,8 +147,6 @@ type APIGroupVersion struct {
 	Namer          runtime.Namer
 	Convertor      runtime.ObjectConvertor
 	Defaulter      runtime.ObjectDefaulter
-	// TODO: 序列化组件
-	// TODO: 反序列化组件
 
 	MinRequestTimeout time.Duration
 
@@ -164,10 +162,12 @@ func (g *APIGroupVersion) InstallREST(container *restful.Container) error {
 		prefix:            prefix,
 		minRequestTimeout: g.MinRequestTimeout,
 	}
+	logs.Debug("APIInstaller created", zap.String("prefix", installer.prefix))
 
 	// 注册所有资源及其Handler
 	ws, errs := installer.Install()
 	if errs != nil {
+		logs.Error("install APIInstaller failed", zap.String("error", utilerrors.NewAggregate(errs).Error()))
 		return utilerrors.NewAggregate(errs)
 	}
 
