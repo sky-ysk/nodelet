@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
+	"net/http"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -17,9 +21,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	"hit.edu/framework/pkg/scheduler/framework"
-	"math/rand"
-	"net/http"
-	"time"
 )
 
 type DefaultFilter struct {
@@ -193,8 +194,8 @@ func NewDefaultBindPlugin(ctx context.Context, f framework.Handle) (framework.Pl
 	if err != nil {
 		panic(err)
 	}
-	groupsClient := clientSet.Core().Groups("")
-	tasksClient := clientSet.Core().Tasks("")
+	groupsClient := clientSet.Core().Groups("test")
+	tasksClient := clientSet.Core().Tasks("test")
 	return &DefaultBindPlugin{
 		groupClient: groupsClient,
 		taskClient:  tasksClient,

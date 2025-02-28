@@ -2,6 +2,8 @@ package task
 
 import (
 	"context"
+	"time"
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
@@ -14,7 +16,6 @@ import (
 	_switch "hit.edu/framework/pkg/nodelet/task/switch"
 	"hit.edu/framework/pkg/nodelet/task/task"
 	"hit.edu/framework/pkg/nodelet/task/types"
-	"time"
 )
 
 type Exporter interface {
@@ -57,9 +58,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// Task Exporter配置 config
 
 	// Client-Go配置
-	nodeClient := clientset.Core().Nodes("")
-	taskClient := clientset.Core().Tasks("")
-	groupClient := clientset.Core().Groups("")
+	nodeClient := clientset.Core().Nodes("test")
+	taskClient := clientset.Core().Tasks("test")
+	groupClient := clientset.Core().Groups("test")
 	//事件配置
 	eb := eventbus.NewEventBus()
 	// Manager配置 group
