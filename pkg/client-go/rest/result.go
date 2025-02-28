@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/component-base/logs"
 	"k8s.io/apimachinery/pkg/util/net"
 	"mime"
 )
@@ -53,7 +54,7 @@ func (r Result) Into(obj runtime.Object) error {
 		//除StatusSuccess之外的任何状态都被视为错误。
 
 		if t.Status != metav1.StatusSuccess {
-			panic("出现了除StatusSuccess之外的状态")
+			logs.Info("出现了除StatusSuccess之外的状态")
 			//todo: 除StatusSuccess之外的任何状态 报错处理
 			//return errors.FromObject(t)
 		}

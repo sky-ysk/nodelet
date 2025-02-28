@@ -37,7 +37,6 @@ type Time struct {
 	time.Time `json:"time" yaml:"time"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type NodeList struct {
 	meta.TypeMeta
 	meta.ListMeta
@@ -45,71 +44,61 @@ type NodeList struct {
 	Items []Node `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type WorkflowList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Workflow `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TaskList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Task `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type GroupList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Group `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ActionList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Action `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type DataList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Data `json:"items" yaml:"items"`
+}
+
 type SceneList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Scene `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DeviceList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Device `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Resource_NodeList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Resource_Node `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type EventList struct {
-	meta.TypeMeta
-
-	meta.ListMeta
-
-	Events []Event `json:"events" yaml:"events"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// TODO: 独立配置
 type Event struct {
 	//TODO: 定义Event
 	//TODO: ObjectReference设计
 	meta.TypeMeta
 	meta.ObjectMeta
-	ObjectReference ObjectReference
+	InvolvedObject ObjectReference
 	// 事件产生原因，机器可读，供handler判断
 	Reason string
 	// 描述，应有用户可读性
@@ -145,8 +134,17 @@ type ObjectReference struct {
 	Name            string
 	UID             UID
 	ResourceVersion string
+	FieldPath       string
 }
 type UID string
+
+type EventList struct {
+	meta.TypeMeta
+
+	meta.ListMeta
+
+	Events []Event `json:"events" yaml:"events"`
+}
 
 // Node
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -692,15 +690,38 @@ type EnvVar struct {
 	// TODO: 动态获取相关字段
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Resource_Node struct {
 	meta.TypeMeta
+
 	meta.ObjectMeta
-	Spec   ResourceSpec   `json:"spec,omitempty" yaml:"spec"`
+
+	Spec ResourceSpec `json:"spec,omitempty" yaml:"spec"`
+
 	Status ResourceStatus `json:"status,omitempty" yaml:"status"`
 }
 
+type Data struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec DataSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status DataStatus `json:"status,omitempty" yaml:"status"`
+}
+
+type Scene struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec SceneSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status SceneStatus `json:"status,omitempty" yaml:"status"`
+}
+
 // TODO: 后续补充完整
+
 // TODO:node字段
 type ResourceSpec struct {
 	// 描述期待占用多少资源 资源的单位是什么
@@ -753,7 +774,6 @@ const (
 )
 
 // 增加设备定义
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Device struct {
 	//
 	meta.TypeMeta
@@ -948,21 +968,7 @@ type DataSpec struct {
 
 type DataStatus struct{}
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Scene struct {
-	//
-	meta.TypeMeta
-
-	//
-	meta.ObjectMeta
-
-	//
-	Spec SceneSpec
-
-	//
-	Status SceneStatus
-}
-
+// SceneSpec 描述scene的固有属性和期待属性
 type SceneSpec struct {
 	// 每一个scene的标识
 	SceneID string

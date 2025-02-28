@@ -1,10 +1,10 @@
 package rest
 
 import (
+	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/klog/v2"
 )
 
 // HTTPClientFor returns an http.Client that will provide the authentication
@@ -85,6 +85,6 @@ func tryCancelRequest(rt http.RoundTripper, req *http.Request) {
 	case utilnet.RoundTripperWrapper:
 		tryCancelRequest(rt.WrappedRoundTripper(), req)
 	default:
-		klog.Warningf("Unable to cancel request for %T", rt)
+		logs.Info("Unable to cancel request for %T", rt)
 	}
 }

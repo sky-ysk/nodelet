@@ -13,6 +13,11 @@ type CoreInterface interface {
 	TasksGetter
 	GroupsGetter
 	ActionsGetter
+	EventsGetter
+	DevicesGetter
+	DatasGetter
+	ScenesGetter
+	Resource_NodesGetter
 }
 
 type CoreClient struct {
@@ -38,6 +43,26 @@ func (c *CoreClient) Groups(namespace string) GroupInterface {
 
 func (c *CoreClient) Actions(namespace string) ActionInterface {
 	return newActions(c, namespace)
+}
+
+func (c *CoreClient) Events(namespace string) EventInterface {
+	return newEvents(c, namespace)
+}
+
+func (c *CoreClient) Devices(namespace string) DeviceInterface {
+	return newDevices(c, namespace)
+}
+
+func (c *CoreClient) Datas(namespace string) DataInterface {
+	return newDatas(c, namespace)
+}
+
+func (c *CoreClient) Scenes(namespace string) SceneInterface {
+	return newScenes(c, namespace)
+}
+
+func (c *CoreClient) Resource_Nodes(namespace string) Resource_NodeInterface {
+	return newResource_Nodes(c, namespace)
 }
 
 func (c *CoreClient) RESTClient() rest.Interface {

@@ -3,13 +3,15 @@ package workflow
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
-	
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
-	
-	"hit.edu/framework/pkg/apimachinery/runtime"
+
 	"hit.edu/framework/pkg/apimachinery/labels"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+
 	//"hit.edu/framework/pkg/apiserver/registry/core/rest"
 	"hit.edu/framework/pkg/apiserver/registry/generic"
 	genericregistry "hit.edu/framework/pkg/apiserver/registry/generic/registry"
@@ -72,7 +74,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("not a Workflow")
 	}
-	return labels.Set(Workflow.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Workflow.ObjectMeta), nil
+	return labels.Set(Workflow.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Workflow.ObjectMeta, true), nil
 }
 func Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
@@ -83,14 +85,14 @@ func Match(label labels.Selector, field fields.Selector) storage.SelectionPredic
 }
 
 func NewWorkflowStorage(optsGetter generic.RESTOptionsGetter) (WorkflowStorage, error) {
-	
+
 	store := &genericregistry.Store{
 		NewFunc:                   NewFunc,
 		NewListFunc:               NewListFunc,
 		PredicateFunc:             Match,
 		DefaultQualifiedResource:  apis.Resource("workflows"),
 		SingularQualifiedResource: apis.Resource("workflow"),
-		
+
 		CreateStrategy: thisStrategy,
 		UpdateStrategy: thisStrategy,
 		DeleteStrategy: thisStrategy,
@@ -105,10 +107,10 @@ func NewWorkflowStorage(optsGetter generic.RESTOptionsGetter) (WorkflowStorage, 
 	}
 	statusStore := *store
 	statusStore.UpdateStrategy = thisStrategy
-	
+
 	WorkflowREST := &REST{Store: store}
 	statusREST := &StatusREST{Store: &statusStore}
-	
+
 	specStore := *store
 	specStore.UpdateStrategy = thisStrategy
 	specREST := &SpecREST{Store: &specStore}

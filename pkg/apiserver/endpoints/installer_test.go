@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apis/legacyscheme"
 	"hit.edu/framework/pkg/apis/meta"
 	"reflect"
 	"runtime"
@@ -18,7 +19,7 @@ func TestRegisterResourceHandler(t *testing.T) {
 			Root:              "/apis",
 			GroupVersion:      schema.GroupVersion{Group: "resources", Version: "v1"},
 			MetaGroupVersion:  &meta.SchemeGroupVersion,
-			ParameterCodec:    meta.ParameterCodec,
+			ParameterCodec:    legacyscheme.ParameterCodec,
 			Serializer:        codecs,
 			Typer:             scheme,
 			Creater:           scheme,
@@ -40,13 +41,21 @@ func TestRegisterResourceHandler(t *testing.T) {
 		Path   string
 		Func   string
 	}{
-		{"POST", "/apis/resources/v1/nodes", "restfulCreateResource"},
-		{"DELETE", "/apis/resources/v1/nodes", "restfulDeleteCollection"},
-		{"GET", "/apis/resources/v1/nodes/{name}", "restfulGetResource"},
-		{"DELETE", "/apis/resources/v1/nodes/{name}", "restfulDeleteResource"},
-		{"PUT", "/apis/resources/v1/nodes/{name}", "restfulUpdateResource"},
-		{"PATCH", "/apis/resources/v1/nodes/{name}", "restfulPatchResource"},
-		{"GET", "/apis/resources/v1/nodes", "restfulListResource"},
+		//TODO:实现rest.Scoper后添加无命名空间的nodes
+		//{"POST", "/apis/resources/v1/nodes", "restfulCreateResource"},
+		//{"DELETE", "/apis/resources/v1/nodes", "restfulDeleteCollection"},
+		//{"GET", "/apis/resources/v1/nodes/{name}", "restfulGetResource"},
+		//{"DELETE", "/apis/resources/v1/nodes/{name}", "restfulDeleteResource"},
+		//{"PUT", "/apis/resources/v1/nodes/{name}", "restfulUpdateResource"},
+		//{"PATCH", "/apis/resources/v1/nodes/{name}", "restfulPatchResource"},
+		//{"GET", "/apis/resources/v1/nodes", "restfulListResource"},
+		{"POST", "/apis/resources/v1/namespaces/{namespace}/workflows", "restfulCreateResource"},
+		{"DELETE", "/apis/resources/v1/namespaces/{namespace}/workflows", "restfulDeleteCollection"},
+		{"GET", "/apis/resources/v1/namespaces/{namespace}/workflows/{name}", "restfulGetResource"},
+		{"DELETE", "/apis/resources/v1/namespaces/{namespace}/workflows/{name}", "restfulDeleteResource"},
+		{"PUT", "/apis/resources/v1/namespaces/{namespace}/workflows/{name}", "restfulUpdateResource"},
+		{"PATCH", "/apis/resources/v1/namespaces/{namespace}/workflows/{name}", "restfulPatchResource"},
+		{"GET", "/apis/resources/v1/namespaces/{namespace}/workflows", "restfulListResource"},
 	}
 
 	for _, expectedRoute := range expectedRoutes {
