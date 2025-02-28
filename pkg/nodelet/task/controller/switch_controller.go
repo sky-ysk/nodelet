@@ -1,20 +1,37 @@
 package controller
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/fields"
+	"hit.edu/framework/pkg/apimachinery/types"
+	"hit.edu/framework/pkg/apimachinery/util/wait"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/cache"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
+	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
+	_switch "hit.edu/framework/pkg/nodelet/task/switch"
+	"strconv"
 	"time"
 )
 
 const (
 	controllerName = "group-switch-controller"
 	resyncPeriod   = 30 * time.Second
+)
+const (
+	thresholdbattery float64 = 5
+	thresholdCPU     float64 = 70
+	thresholdGPU     float64 = 90
+	thresholdMemory  float64 = 80
+	thresholdNetWork float64 = 50
+	thresholdStorage float64 = 60
 )
 
 type queueItem struct {
@@ -29,8 +46,12 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	groupClient core.GroupInterface
 
 	// Group 相关组件
-	groupIndexer  cache.Indexer
+	groupIndexer  cache.Indexer    // 这个参数就是cache.Controller当中的Indexer缓存
 	groupInformer cache.Controller // cache.Controller当中包含了cache.Index ,这里我们将cache.Controller中的Indexer拎出来，是为了更好地编写代码而已，其实不要这个Indexer也是OK的，因为cache.Controller当中也是含有Indexer的
+
+	// Event 相关组件
+	eventIndexer  cache.Indexer    // 这个参数就是cache.Controller当中的Indexer缓存
+	eventInformer cache.Controller // cache.Controller当中包含了cache.Index ,这里我们将cache.Controller中的Indexer拎出来，是为了更好地编写代码而已，其实不要这个Indexer也是OK的，因为cache.Controller当中也是含有Indexer的
 
 	// Node 相关组件
 	nodeIndexer  cache.Indexer    // 本地缓存，提供关于资源的快速查询（索引查询）。 informer会调用Indexer的Add、update、delete方法来实现资源的同步于更新
@@ -43,33 +64,55 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	runtimeManager *runtime.RuntimeManager
 
 	groupQueues *group.GroupQueues
+	switchCheck *_switch.SwitchCheck
 }
 
 func NewMigrationController(clientSet *clients.ClientSet, nodeClient core.NodeInterface, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues) *MigrationController {
 	//创建Node资源的List Watcher
 	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "", fields.Everything())
+	eventpListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "events", "", fields.Everything())
 	groupListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "groups", "", fields.Everything())
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[queueItem]())
 	nodeOptions := cache.InformerOptions{
 		ListerWatcher: nodeListWatcher,
 		ObjectType:    &apis.Node{}, // 要监听的资源类型
-		Handler:       createEventHandler(queue, "node"),
-		ResyncPeriod:  0, // ResyncPeriod，0表示不定期重新同步
-		Indexers:      cache.Indexers{},
+		Handler: cache.ResourceEventHandlerFuncs{
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				key, _ := cache.MetaNamespaceKeyFunc(newObj)
+				queue.Add(queueItem{key: key, kind: "node"})
+			},
+		},
+		ResyncPeriod: 0, // ResyncPeriod，0表示不定期重新同步
+		Indexers:     cache.Indexers{},
 	}
 	groupOptions := cache.InformerOptions{
 		ListerWatcher: groupListWatcher,
 		ObjectType:    &apis.Group{},
-		Handler:       createEventHandler(queue, "group"),
+		Handler:       nil,
 		ResyncPeriod:  0,
-		Indexers: cache.Indexers{
+		Indexers: cache.Indexers{ // 通过Node名称，找到所有与之关联的Group
 			"ByNode": func(obj interface{}) ([]string, error) {
 				group := obj.(*apis.Group)
 				return []string{group.Status.Node}, nil
 			},
 		},
 	}
+	eventOptions := cache.InformerOptions{
+		ListerWatcher: eventpListWatcher,
+		ObjectType:    &apis.Event{},
+		Handler: cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				if event, ok := obj.(*apis.Event); ok && event.Reason == "MigrationTrigger" {
+					key, _ := cache.MetaNamespaceKeyFunc(obj)
+					queue.Add(queueItem{key: key, kind: "event"})
+				}
+			},
+		},
+		ResyncPeriod: 0,
+		Indexers:     cache.Indexers{},
+	}
 	nodeIndexer, nodeInformer := cache.NewInformerWithOptions(nodeOptions)
+	eventIndexer, eventInformer := cache.NewInformerWithOptions(eventOptions)
 	groupIndexer, groupInformer := cache.NewInformerWithOptions(groupOptions)
 	return &MigrationController{
 		clientSet:      clientSet,
@@ -77,11 +120,14 @@ func NewMigrationController(clientSet *clients.ClientSet, nodeClient core.NodeIn
 		groupClient:    groupClient,
 		nodeIndexer:    nodeIndexer,
 		nodeInformer:   nodeInformer,
+		eventIndexer:   eventIndexer,
+		eventInformer:  eventInformer,
 		groupIndexer:   groupIndexer,
 		groupInformer:  groupInformer,
 		queue:          queue,
 		runtimeManager: runtimeManager,
 		groupQueues:    groupQueues,
+		switchCheck:    _switch.NewSwitchCheck(nodeClient),
 	}
 }
 
@@ -107,129 +153,264 @@ func enqueueWithKind(queue workqueue.TypedRateLimitingInterface[queueItem], obj 
 	}
 }
 
-//
-//func (c *MigrationController) syncHandler(item queueItem) error {
-//	switch item.kind {
-//	case "node":
-//		return c.handleNodeEvent(item.key)
-//	case "group":
-//		return c.handleGroupEvent(item.key)
-//	default:
-//		return fmt.Errorf("unknown kind: %s", item.kind)
-//	}
-//}
-//
-//// 处理Node事件
-//func (c *MigrationController) handleNodeEvent(key string) error {
-//	obj, exists, err := c.nodeIndexer.GetByKey(key)
-//	if err != nil {
-//		return fmt.Errorf("error fetching object with key %s from store: %v", key, err)
-//	}
-//	if !exists {
-//		return c.handleDeleteNode(key)
-//	}
-//	node := obj.(*apis.Node)
-//	if c.shouldTriggerMigration(node) {
-//		return c.triggerNodeMigration(node)
-//	}
-//	return nil
-//}
-//
-//// 处理Group事件
-//func (c *MigrationController) handleGroupEvnet(key string) error {
-//	obj, exists, err := c.groupIndexer.GetByKey(key)
-//	if err != nil {
-//		return fmt.Errorf("error fetching object with key %s from store: %v", key, err)
-//	}
-//	if !exists {
-//		return c.handleDeleteGroup(key)
-//	}
-//	group := obj.(*apis.Group)
-//	return c.processGroupUpdate(group)
-//}
-//
-//func (c *MigrationController) triggerNodeMigration(node *apis.Node) error {
-//	// 通过索引获取关联的Groups
-//	groups, err := c.groupIndexer.ByIndex("byNode", node.Name)
-//	if err != nil {
-//		return fmt.Errorf("Failed to obtain the node association group:%v", err)
-//	}
-//	for _, obj := range groups {
-//		group := obj.(*apis.Group)
-//		if err := c.migrateGroup(group); err != nil {
-//			logs.Errorf("Failed to migrate group:%v, err:%v", group.Name, err)
-//			continue
-//		}
-//	}
-//	return nil
-//}
-//
-//func (c *MigrationController) migrateGroup(group *apis.Group) error {
-//	// 1、创建副本group
-//
-//	// 2、
-//
-//	// 3、
-//
-//}
-//
-//// 入队逻辑（带去重）
-//func (c *Controller) enqueueGroup(obj interface{}) {
-//	key, err := cache.MetaNamespaceKeyFunc(obj)
-//	if err != nil {
-//		logs.Errorf("Failed to get key for object: %v", err)
-//		return
-//	}
-//	c.workqueue.Add(key)
-//}
-//func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
-//	defer c.workqueue.ShutDown()
-//
-//	// 等待缓存同步
-//	if !cache.WaitForCacheSync(stopCh, c.groupsSynced) {
-//		logs.Error("Timed out waiting for caches to sync")
-//		return
-//	}
-//
-//	// 启动 Worker 处理队列
-//	for i := 0; i < workers; i++ {
-//		go wait.Until(c.runWorker, time.Second, stopCh)
-//	}
-//
-//	<-stopCh
-//}
-//
-//func (c *Controller) runWorker() {
-//	for c.processNextWorkItem() {
-//	}
-//}
-//
-//func (c *Controller) processNextWorkItem() bool {
-//	obj, shutdown := c.workqueue.Get()
-//	if shutdown {
-//		return false
-//	}
-//
-//	err := func(obj interface{}) error {
-//		defer c.workqueue.Done(obj)
-//		var key string
-//		var ok bool
-//		if key, ok = obj.(string); !ok {
-//			c.workqueue.Forget(obj)
-//			return fmt.Errorf("expected string in workqueue but got %#v", obj)
-//		}
-//
-//		if err := c.syncHandler(key); err != nil {
-//			c.workqueue.AddRateLimited(key)
-//			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
-//		}
-//
-//		c.workqueue.Forget(obj)
-//		return nil
-//	}(obj)
-//
-//	if err != nil {
-//		logs.Error(err)
-//	}
-//	return true
-//}
+// Run方法
+func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
+	defer mc.queue.ShutDown()
+
+	// 启动所有的Informer
+	go mc.nodeInformer.Run(stopCh)
+	go mc.groupInformer.Run(stopCh)
+	go mc.eventInformer.Run(stopCh)
+
+	// 等待缓存同步
+	if cache.WaitForCacheSync(stopCh, mc.nodeInformer.HasSynced, mc.groupInformer.HasSynced, mc.eventInformer.HasSynced) {
+		logs.Errorf("Timed out waiting for caches to sync")
+		return
+	}
+	for i := 0; i < workers; i++ {
+		go wait.Until(mc.runWorker, time.Second, stopCh)
+	}
+	<-stopCh
+}
+
+func (mc *MigrationController) runWorker() {
+	for mc.processNextItem() {
+
+	}
+}
+func (mc *MigrationController) processNextItem() bool {
+	// 获取队列项
+	item, quit := mc.queue.Get()
+	if quit {
+		return false
+	}
+	defer mc.queue.Done(item)
+
+	// 处理错误逻辑
+	if err := mc.syncHandler(item); err != nil {
+		// 使用指数退避的重试机制
+		if mc.queue.NumRequeues(item) < 5 {
+			mc.queue.AddRateLimited(item)
+		} else {
+			logs.Errorf("Error syncing item %v: %v", item, err)
+			mc.queue.Forget(item)
+		}
+	} else {
+		mc.queue.Forget(item)
+	}
+	return true
+}
+
+func (c *MigrationController) syncHandler(item queueItem) error {
+	switch item.kind {
+	case "node":
+		return c.handleNodeEvent(item.key)
+	case "event":
+		return c.handleEventEvent(item.key)
+	default:
+		return fmt.Errorf("unknown kind: %s", item.kind)
+	}
+}
+
+// 处理Node事件
+func (c *MigrationController) handleNodeEvent(key string) error {
+	obj, exists, err := c.nodeIndexer.GetByKey(key)
+	if err != nil {
+		return fmt.Errorf("error fetching object with key %s from store: %v", key, err)
+	}
+	// 情况1：Node已经删除---Node信息不在etcd当中
+	if !exists {
+		return c.handleDeleteNode(key)
+	}
+	node := obj.(*apis.Node)
+
+	// 情况2：检查是否需要迁移
+	if !c.shouldTriggerMigration(node) { // node的资源不需要切换
+		logs.Info("检测到节点资源不足，触发迁移", "node", node.Name)
+		return c.triggerNodeMigration(node.Name)
+	}
+	return nil
+}
+
+func (mc *MigrationController) handleDeleteNode(key string) error {
+	// 这块TODO 属于后期讨论和优化的地方，比如说Node信息被删了，那么是不是Node关联的所有Group要上报呢？
+	return nil
+}
+
+func (c *MigrationController) shouldTriggerMigration(node *apis.Node) bool {
+	cpuAveUtil := getFloatValue(node.Status.Usage["cpu"][0].Values["AveUtil"])
+	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
+	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
+	//logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
+
+	return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
+}
+
+func getFloatValue(s string) float64 {
+	value, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		logs.Errorf("Convert value failed, err:%v", err)
+		return 0
+	}
+	return value
+}
+
+// 处理Event事件
+func (c *MigrationController) handleEventEvent(key string) error {
+	obj, exists, err := c.eventIndexer.GetByKey(key)
+	if err != nil {
+		return fmt.Errorf("error fetching object with key %s from store: %v", key, err)
+	}
+	// 情况1：Evnet已删除
+	if !exists {
+		return c.handleDeleteEvent(key)
+	}
+	event := obj.(*apis.Event)
+	// 这里需要从Event当中获取到时那个Group、那个Node
+	nodeName := event.GenerateName // TODO 这个参数记得要改
+	return c.triggerNodeMigration(nodeName)
+}
+func (mc *MigrationController) handleDeleteEvent(key string) error {
+	// 这块TODO 如果Event删除了
+	return nil
+}
+
+func (c *MigrationController) triggerNodeMigration(nodeName string) error {
+	// 标记节点为迁移状态，这样就不要调度到本节点---这个好像没有必要？
+
+	// 通过索引获取关联的Groups
+	groups, err := c.groupIndexer.ByIndex("byNode", nodeName)
+	if err != nil {
+		return fmt.Errorf("Failed to obtain the node association group:%v", err)
+	}
+	// 迁移节点上的Group
+	var migrationErrors []error
+	for _, obj := range groups {
+		group := obj.(*apis.Group)
+		if err := c.migrateGroup(group); err != nil {
+			migrationErrors = append(migrationErrors, err)
+			logs.Errorf("Failed to migrate group:%v, err:%v", group.Name, err)
+			continue
+		}
+	}
+	// 处理迁移结果
+	if len(migrationErrors) > 0 {
+		return fmt.Errorf("部分任务迁移失败:%v", migrationErrors)
+	}
+	// 如果刚开始标记了节点迁移，那么还需要标记节点迁移完成
+	return nil
+}
+
+// 任务组迁移核心逻辑---我感觉这里的核心是要改成如果这个方法当中有一步没执行成功，那么如何再次执行，让其成功
+func (mc *MigrationController) migrateGroup(group *apis.Group) error {
+	// 增加一条规则：如果Group不是细粒度控制的，那么就不进行迁移---可能
+	// 1、检查当前状态
+	if group.Status.Phase == apis.Migrating || group.Status.Phase == apis.Migrated {
+		logs.Infof("Group:%v has Migrated", group.Name)
+		return nil
+	}
+	// 2、创建副本group
+	logs.Infof("Group:%v migration start", group.Name) //此处作为迁移的开始
+	var groupCopyName string
+	if group.Spec.Replicas > 0 {
+		// 说明当前group已经提前往etcd里写入了副本group，那么此处就不用再写入了，只需要将原先写的副本group信息当中的groupCopy.Status.CopyStatus 改为"Starting"即可-采用patch
+		patchGroup, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"copy_status": "Starting",
+			},
+		})
+		if err != nil {
+			logs.Errorf("Json Marshal failed, err:%v", err)
+		}
+		// 这里还没想好怎么解决副本group的名字问题----待解决
+		groupCopyName = "Reason-Copy"
+		_, err = mc.groupClient.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+		if err != nil {
+			logs.Errorf("Patch group error-6:%v", err)
+		}
+		logs.Info("Change the copy_Status of the copy task to Starting")
+	} else {
+		// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
+		groupCopy := NewGroupInfoCopy(group, false) //第二个参数表示是否为提前写入etcd，这里为否
+		groupCopyName = groupCopy.Name
+		// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
+		logs.Infof("group:%v######################################", groupCopy.Name)
+		_, err := mc.groupClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+		if err != nil {
+			logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
+		}
+	}
+
+	// 修改源group的Status.phase为Migrating
+	patchGroup, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase": apis.Migrating,
+		},
+	})
+	if err != nil {
+		logs.Errorf("Json Marshal failed, err:%v", err)
+	}
+	patchResult, err := mc.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	if err != nil {
+		logs.Errorf("Patch group error-2:%v", err)
+	}
+	logs.Infof("Source groupStatus.Phase:%v", patchResult.Status.Phase)
+	// 获取任务group中需要迁移的runtime的当前的执行状态，并将该状态写入到副本group上的runtimeStatus中的keyStatus，并关闭源group中Running的runtime   注意对于DeployCheck的任务，就不采用这种读取状态并写入的方式
+	// 注意：如果说Runtime本身没有细粒度控制的话，就不用再保存任务状态以及写入到副本任务上去
+	for i := range group.Spec.Actions {
+		action := &group.Spec.Actions[i]
+		actionStatus := group.Spec.Actions[i].Status
+		if actionStatus.Phase == apis.Successed {
+			continue
+		}
+		if actionStatus.Phase == apis.Running {
+			for j := range actionStatus.RuntimeStatus {
+				runtime := &action.Spec.Runtimes[j]
+				runtimeStatus := actionStatus.RuntimeStatus[j]
+				if runtimeStatus.Phase == apis.Successed {
+					continue
+				}
+				if runtimeStatus.Phase == apis.Running && action.Spec.Runtimes[j].EnableFineGrainedControl { // runtime正在运行，且runtime是细粒度控制的
+					//logs.Info("!!!!!!!!!!!!!!!!!!!!!!!!!")
+					data := mc.runtimeManager.StoreData(group, action, runtime, i, j) // 获取group下的正在执行runtime的关键数据
+					err := mc.runtimeManager.StopRuntime(group, action, runtime, i, j)
+					if err != nil {
+						logs.Errorf("Stop runtime error:%v", err)
+					}
+					// 将获取到的任务关键装填数据写入到本域的etcd上的副本group当中
+					patchGroup, err := json.Marshal([]map[string]interface{}{
+						{
+							"op":    "replace",
+							"path":  "/status/action_status/" + strconv.Itoa(i) + "/status/" + strconv.Itoa(j) + "/key_status",
+							"value": data, // 这里替换为你需要的 Phase 值
+						},
+					})
+					if err != nil {
+						logs.Errorf("Json Marshal failed, err:%v", err)
+					}
+					patchResult, err = mc.groupClient.Patch(context.TODO(), groupCopyName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+					if err != nil {
+						logs.Errorf("Patch group error-5:%v", err)
+					}
+					//logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[i].RuntimeStatus[j].KeyStatus)
+					// 关闭源任务当中的runtime
+					logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+					//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
+					time.Sleep(1 * time.Second)
+					err = mc.runtimeManager.Kill(group, action, runtime)
+					if err != nil {
+						logs.Errorf("Stop group error:%v", err)
+					}
+				}
+			}
+		}
+		// 将源group从Running队列迁移到Completed队列
+		logs.Info("--------------DeleteFromRunningAndAddToMigratedQueue=====================")
+		ok := mc.groupQueues.DeleteFromRunningAndAddToMigrated(group.Status.GroupID)
+		if !ok {
+			logs.Error("Delete group from running queue and add to completed queue failed-2")
+		}
+	}
+
+	return nil
+}

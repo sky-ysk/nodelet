@@ -164,13 +164,6 @@ func (sw *GroupSwitch) groupMigration(g *apis.Group) {
 						logs.Errorf("Stop group error:%v", err)
 					}
 				}
-				// 跟python任务建立grpc连接--先隐藏测试
-				//port := runtime.EnableFineGrainedControlPort
-				//client := grpc_client.NewRuntimeClient(port, runtimeStatus.RuntimeID)
-				//success := sw.grpcClientsManager.AddRuntimeClientConnection(client)
-				//if !success {
-				//	logs.Errorf("GrpcClientManager AddRuntimeClientConnection error:%v", err)
-				//}
 			}
 		}
 		// 将源group从Running队列迁移到Completed队列
