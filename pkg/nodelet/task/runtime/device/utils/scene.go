@@ -26,16 +26,16 @@ type TemporaryMap struct {
 func CheckScene(runtime *apis.Runtime, action *apis.Action) error {
 	// TODO:确认action中scene的key
 	scenes := runtime.Scenes
-	for _, scene := range scenes {
+	for index, scene := range scenes {
 		switch scene.Type {
 		case apis.ObjectType:
-			if CheckObjectScene(scene, action.Status.Scenes[scene.SceneID]) {
+			if CheckObjectScene(scene, action.Status.Scenes[index]) {
 				return nil
 			} else {
 				return fmt.Errorf("object %s not satisfied\n", scene.SceneID)
 			}
 		case apis.PositionType:
-			if CheckPositionScene(scene, action.Status.Scenes[scene.SceneID]) {
+			if CheckPositionScene(scene, action.Status.Scenes[index]) {
 				return nil
 			} else {
 				return fmt.Errorf("position %s not satisfied\n", scene.SceneID)
@@ -111,7 +111,7 @@ func UpdateSceneStatus(runtime *apis.Runtime, action *apis.Action, deviceNumber 
 	// 只有一个设备
 	temporaryMap := GetSceneStatusUpdateMap(runtime, taskId, action)
 	if deviceNumber == 1 {
-		for _, scene := range scenes {
+		for index, scene := range scenes {
 			switch scene.Type {
 			// object类
 			case apis.ObjectType:
@@ -121,27 +121,27 @@ func UpdateSceneStatus(runtime *apis.Runtime, action *apis.Action, deviceNumber 
 					AttachedTask:   temporaryMap[scene.SceneID].AttachedTask,
 					AttachedDevice: temporaryMap[scene.SceneID].AttachedDevice,
 					Property:       map[string]apis.Property{"location": apis.Property{Name: "location"}},
-					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref + 1},
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[index].Lock.Ref + 1},
 
-					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
-					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
+					UpdateMethod:  action.Status.Scenes[index].UpdateMethod,
+					AttachedScene: action.Status.Scenes[index].AttachedScene,
 				}
-				action.Status.Scenes[scene.SceneID] = status
+				action.Status.Scenes[index] = status
 
 			// position类型
 			case apis.PositionType:
 				// TODO:SceneId
 				status := apis.SceneStatus{
-					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref + 1},
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[index].Lock.Ref + 1},
 					UpdateTime:     temporaryMap[scene.SceneID].Time,
 					AttachedTask:   temporaryMap[scene.SceneID].AttachedTask,
 					AttachedDevice: temporaryMap[scene.SceneID].AttachedDevice,
 					Property:       map[string]apis.Property{"isOccupied": apis.Property{Name: "isOccupied", Value: "true", Type: apis.BoolType}},
 
-					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
-					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
+					UpdateMethod:  action.Status.Scenes[index].UpdateMethod,
+					AttachedScene: action.Status.Scenes[index].AttachedScene,
 				}
-				action.Status.Scenes[scene.SceneID] = status
+				action.Status.Scenes[index] = status
 			}
 		}
 	} else { // TODO:多个设备
@@ -158,7 +158,7 @@ func RecoverSceneStatus(runtime *apis.Runtime, action *apis.Action, deviceNumber
 	// 只有一个设备
 	temporaryMap := GetSceneStatusUpdateMap(runtime, taskId, action)
 	if deviceNumber == 1 {
-		for _, scene := range scenes {
+		for index, scene := range scenes {
 			switch scene.Type {
 			// object类
 			case apis.ObjectType:
@@ -168,27 +168,27 @@ func RecoverSceneStatus(runtime *apis.Runtime, action *apis.Action, deviceNumber
 					AttachedTask:   "",
 					AttachedDevice: "",
 					Property:       map[string]apis.Property{"location": apis.Property{Name: "location"}},
-					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: false, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref - 1},
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: false, Ref: action.Status.Scenes[index].Lock.Ref - 1},
 
-					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
-					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
+					UpdateMethod:  action.Status.Scenes[index].UpdateMethod,
+					AttachedScene: action.Status.Scenes[index].AttachedScene,
 				}
-				action.Status.Scenes[scene.SceneID] = status
+				action.Status.Scenes[index] = status
 
 			// position类型
 			case apis.PositionType:
 				// TODO:SceneId
 				status := apis.SceneStatus{
-					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[scene.SceneID].Lock.Ref + 1},
+					Lock:           apis.Lock{Type: apis.MutexLock, IsLocked: true, Ref: action.Status.Scenes[index].Lock.Ref + 1},
 					UpdateTime:     temporaryMap[scene.SceneID].Time,
 					AttachedTask:   temporaryMap[scene.SceneID].AttachedTask,
 					AttachedDevice: temporaryMap[scene.SceneID].AttachedDevice,
 					Property:       map[string]apis.Property{"isOccupied": apis.Property{Name: "isOccupied", Value: "true", Type: apis.BoolType}},
 
-					UpdateMethod:  action.Status.Scenes[scene.SceneID].UpdateMethod,
-					AttachedScene: action.Status.Scenes[scene.SceneID].AttachedScene,
+					UpdateMethod:  action.Status.Scenes[index].UpdateMethod,
+					AttachedScene: action.Status.Scenes[index].AttachedScene,
 				}
-				action.Status.Scenes[scene.SceneID] = status
+				action.Status.Scenes[index] = status
 			}
 		}
 	} else { // TODO:多个设备
@@ -205,7 +205,7 @@ func GetSceneStatusUpdateMap(runtime *apis.Runtime, taskId string, action *apis.
 		temporaryMap[scene.SceneID] = TemporaryMap{
 			// TODO:sceneId
 			// TODO:location
-			AttachedDevice: action.Status.Devices[runtime.Devices[0].Name].DeviceID,
+			AttachedDevice: action.Status.Devices[0].DeviceID,
 			AttachedTask:   taskId,
 			Time:           apis.Time{Time: time.Now()},
 		}

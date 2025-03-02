@@ -1,11 +1,8 @@
 package apis
 
 import (
-	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apis/meta"
 	"time"
-
-	"hit.edu/framework/pkg/apis/meta"
 )
 
 const (
@@ -723,6 +720,7 @@ type ResourceDetail struct {
 	Type string
 }
 type ResourceStatus struct {
+	Name string
 	// 资源的使用量和他的单位
 	Usage     float64
 	UsageUnit ResourceUnit
@@ -870,7 +868,7 @@ type Lock struct {
 	Type LockType
 
 	// 调度时 ref为0时释放
-	Lock bool
+	IsLocked bool
 
 	// 资源引用数 部署时
 	Ref int
@@ -928,20 +926,6 @@ type DeviceStatus struct {
 	// 运行时中，设备的实际状态
 	// 当Phase与Status不一致时，机器人出现运行错误
 	Status string
-
-	// 设备的实际属性
-	Properties map[string]Property
-
-	// 设备资源锁状态
-	Lock Lock
-
-	// 设备事件描述
-	Events []DeviceEvent
-
-	// 上次成功获取设备状态的时间
-	// 如果长时间不能获取设备的状态，则认为设备离线
-	LastTime Time
-}
 
 	// 设备的实际属性
 	Properties map[string]Property
@@ -1018,60 +1002,6 @@ type DataSpec struct {
 }
 
 type DataStatus struct{}
-
-// SceneSpec 描述scene的固有属性和期待属性
-type SceneSpec struct {
-	// 每一个scene的标识
-	SceneID string
-
-	// scene的类型 是一个地点还是一个物品
-	Type SceneType
-
-	// 期待属性
-	ExpectedProperty map[string]Property
-
-	// 场景的描述（不可变属性）
-	Desc SceneDesc
-}
-
-type SceneDesc struct {
-	Label []string
-	Value map[string]string
-}
-
-type SceneType string
-
-const (
-	ObjectType   SceneType = "Object"
-	PositionType SceneType = "Position"
-)
-
-/*
-	Object的位置信息存储在SceneStatus.Property中
-	Position的位置信息存储在SceneSpec.SceneDesc中
-*/
-
-// SceneStatus 描述scene的动态属性
-type SceneStatus struct {
-	// 更新的方式和时间
-	UpdateMethod string
-	UpdateTime   Time
-
-	// 关联的场景
-	AttachedScene string
-
-	// 关联的设备
-	AttachedDevice string
-
-	// 关联的任务
-	AttachedTask string
-
-	// 实时属性
-	Property map[string]Property
-
-	// 锁
-	Lock Lock
-}
 
 // Action所需执行环境
 type Runtime struct {
@@ -1219,13 +1149,13 @@ type ActionStatus struct {
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 	// 当前资源使用情况
-	Resources map[string]ResourceStatus `json:"resources,omitempty" yaml:"resources"`
+	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"`
 	// 当前设备使用情况
-	Devices map[string]DeviceStatus `json:"devices,omitempty" yaml:"devices"`
+	Devices []DeviceStatus `json:"devices,omitempty" yaml:"devices"`
 	// 当前数据使用情况
-	Data map[string]DataStatus `json:"data,omitempty" yaml:"data"`
+	Data []DataStatus `json:"data,omitempty" yaml:"data"`
 	// 当前场景更新情况
-	Scenes map[string]SceneStatus `json:"scenes,omitempty" yaml:"scenes"`
+	Scenes []SceneStatus `json:"scenes,omitempty" yaml:"scenes"`
 	// 当前Runtime执行状态
 	RuntimeStatus []RuntimeStatus `json:"status,omitempty" yaml:"status"`
 	// 任务执行结果

@@ -10,7 +10,7 @@ import (
 // move指令的测试
 func TestRmfPublishMoveInst(t *testing.T) {
 	// 构造示例
-	logs.V2().Infof("start to test move inst......\n")
+	logs.Infof("start to test move inst......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -37,13 +37,13 @@ func TestRmfPublishMoveInst(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Log(taskId)
-		logs.V2().Infof("taskId: %s\n", taskId)
+		logs.Infof("taskId: %s\n", taskId)
 	}
 }
 
 // grab指令的测试
 func TestRmfPublishArmInst(t *testing.T) {
-	logs.V2().Infof("start to test grab inst......\n")
+	logs.Infof("start to test grab inst......\n")
 	// 构造示例
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
@@ -80,7 +80,7 @@ func TestRmfPublishArmInst(t *testing.T) {
 }
 
 func TestRmfPublishLiftInst(t *testing.T) {
-	logs.V2().Infof("start to test lift inst......\n")
+	logs.Infof("start to test lift inst......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -110,7 +110,7 @@ func TestRmfPublishLiftInst(t *testing.T) {
 
 func TestPublishCancelTaskInstruction(t *testing.T) {
 	// 保存旧的标准输入
-	logs.V2().Infof("start to test cancel task inst......\n")
+	logs.Infof("start to test cancel task inst......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -125,17 +125,17 @@ func TestPublishCancelTaskInstruction(t *testing.T) {
 	isSuccessful, err := PublishCancelTaskInstruction(device, taskId)
 	if err != nil {
 		t.Error(err)
-		logs.V2().Errorf("PublishCancelTaskInstruction err: %s\n", err.Error())
+		logs.Errorf("PublishCancelTaskInstruction err: %s\n", err.Error())
 	}
 	if !isSuccessful {
-		logs.V2().Errorf("PublishCancelTaskInstruction is not successful: %s \n", taskId)
+		logs.Errorf("PublishCancelTaskInstruction is not successful: %s \n", taskId)
 		t.Error("PublishCancelTaskInstruction is not successful\n")
 	}
-	logs.V2().Info("publish cancel task inst is successful\n")
+	logs.Info("publish cancel task inst is successful\n")
 }
 
 func TestPublishCancelPhaseInstruction(t *testing.T) {
-	logs.V2().Infof("start to test cancel phase inst......\n")
+	logs.Infof("start to test cancel phase inst......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -153,17 +153,17 @@ func TestPublishCancelPhaseInstruction(t *testing.T) {
 	isSuccessful, err := PublishCancelPhaseInstruction(device, phaseId, taskId)
 	if err != nil {
 		t.Error(err)
-		logs.V2().Errorf("PublishCancelPhaseInstruction err: %s\n", err.Error())
+		logs.Errorf("PublishCancelPhaseInstruction err: %s\n", err.Error())
 	}
 	if !isSuccessful {
-		logs.V2().Errorf("PublishCancelPhaseInstruction is not successful: %s \n", taskId)
+		logs.Errorf("PublishCancelPhaseInstruction is not successful: %s \n", taskId)
 		t.Error("PublishCancelPhaseInstruction is not successful\n")
 	}
-	logs.V2().Info("publish cancel phase inst is successful\n")
+	logs.Info("publish cancel phase inst is successful\n")
 }
 
 func TestGetTaskState(t *testing.T) {
-	logs.V2().Infof("start to test get task state......\n")
+	logs.Infof("start to test get task state......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -177,7 +177,7 @@ func TestGetTaskState(t *testing.T) {
 	taskStateResponse, err := GetTaskState(device, taskId)
 	if err != nil {
 		t.Error(err)
-		logs.V2().Errorf("GetTaskState err: %s\n", err.Error())
+		logs.Errorf("GetTaskState err: %s\n", err.Error())
 	}
-	logs.V2().Infof("taskStateResponse: %+v\n", taskStateResponse)
+	logs.Infof("taskStateResponse: %+v\n", taskStateResponse)
 }

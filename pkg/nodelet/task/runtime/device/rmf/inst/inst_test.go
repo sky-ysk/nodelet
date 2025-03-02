@@ -1,6 +1,7 @@
 package inst
 
 import (
+	"fmt"
 	"hit.edu/framework/pkg/component-base/logs"
 	"testing"
 )
@@ -342,7 +343,7 @@ func TestParseAbilitySuccessResponse(t *testing.T) {
 		logs.Errorf("Parse AbilitySuccessResponseStr err:%v", err)
 		t.Error(err)
 	}
-	logs.Infof("%+v", abilitySuccessResponse)
+	fmt.Println("abilitySuccessResponse ", abilitySuccessResponse.State.Interruptions["additionalProp1"].UnixMillisRequestTime)
 }
 
 func TestParseAbilityValidationErrorResponse(t *testing.T) {
@@ -359,5 +360,5 @@ func TestParseAbilityValidationErrorResponse(t *testing.T) {
 		logs.Errorf("Parse AbilityValidationErrorResponse err:%v", err)
 		t.Error(err)
 	}
-	logs.Infof("%+v", AbilityValidationError)
+	fmt.Println("AbilityValidationError is ", AbilityValidationError.Detail[0].Type)
 }

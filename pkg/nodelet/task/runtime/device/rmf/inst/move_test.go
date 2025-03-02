@@ -11,7 +11,7 @@ func TestMove(t *testing.T) {
 	group := "tinyRobot"
 	dest := "R201"
 	orientation := -3.12
-	isDock := false
+	isDock := true
 	timeout := 100
 	jsonstr, err := NewMoveInst(robot, group, dest, orientation, isDock, timeout)
 	if err != nil {

@@ -55,7 +55,10 @@ func NewMoveInst(robot string, group string, dest string, orientation float64, i
 			Orientation: orientation,
 		},
 	}
-
+	waitInActivities := Wait{
+		Category:    "wait_for",
+		Description: WaitDesc{Duration: 100},
+	}
 	phase1.Activity.Description.Activities = append(phase1.Activity.Description.Activities, goToPlace)
 
 	if isDock {
@@ -79,6 +82,7 @@ func NewMoveInst(robot string, group string, dest string, orientation float64, i
 		}
 		phase1.Activity.Description.Activities = append(phase1.Activity.Description.Activities, dock)
 	}
+
 	phases = append(phases, phase1)
 
 	if timeout >= 0 {
@@ -92,14 +96,24 @@ func NewMoveInst(robot string, group string, dest string, orientation float64, i
 			},
 		}
 
-		wait := Wait{
+		waitInPhase := Wait{
 			Category:    "wait_for",
 			Description: WaitDesc{Duration: timeout * 1000},
 		}
-		phase2.Activity.Description.Activities = append(phase2.Activity.Description.Activities, wait)
-		phases = append(phases, phase2)
-	}
+		phase2.Activity.Description.Activities = append(phase2.Activity.Description.Activities, waitInPhase)
+		//phases = append(phases, phase2)
 
+		waitInActivities = Wait{
+			Category:    "wait_for",
+			Description: WaitDesc{Duration: timeout},
+		}
+		phase1.Activity.Description.Activities = append(phase1.Activity.Description.Activities, waitInActivities)
+		phases[0] = phase1
+		phases = append(phases, phase2)
+	} else {
+		phase1.Activity.Description.Activities = append(phase1.Activity.Description.Activities, waitInActivities)
+		phases[0] = phase1
+	}
 	inst := Instruction{
 		Type:  "robot_task_request",
 		Fleet: group,
@@ -107,7 +121,7 @@ func NewMoveInst(robot string, group string, dest string, orientation float64, i
 		Request: Request{
 			Category: "compose",
 			Description: RequestDesc{
-				Category: "move",
+				Category: "go_to_place",
 				Phases:   phases,
 			},
 			UnixMillisEarliestStartTime: 0,
@@ -117,6 +131,13 @@ func NewMoveInst(robot string, group string, dest string, orientation float64, i
 			},
 		},
 	}
+	if timeout > 0 {
+		inst.Request.Description.Category = "go_to_place_and_wait"
+	}
+	if isDock && timeout > 0 {
+		inst.Request.Description.Category = "go_to_place_and_dock_wait"
+	}
+
 	instStr, err := json.Marshal(inst)
 	if err != nil {
 		return "", fmt.Errorf("marshal instruction failed: %v", err)

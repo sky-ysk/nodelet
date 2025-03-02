@@ -20,7 +20,7 @@ func TestArm(t *testing.T) {
 		"rz":    -137.505,
 		"speed": 30.000,
 	}
-	armOperator := []string{"grab", "loosen", "go_up_and_down"}
+	armOperator := []string{"grab", "loosen"}
 	robotId := "105"
 	for _, operator := range armOperator {
 		JsonStr, err := NewArmInst(robotName, group, dest, armMap, robotId, operator)

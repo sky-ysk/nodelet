@@ -56,6 +56,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	nodeClient := clientset.Core().Nodes("")
 	taskClient := clientset.Core().Tasks("")
 	groupClient := clientset.Core().Groups("")
+	deviceClient := clientset.Core().Devices("")
 	//事件配置
 	eb := eventbus.NewEventBus()
 	// Manager配置 group
@@ -65,7 +66,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb)
+	runtimeManager := runtime.NewRuntimeManager(eb, deviceClient)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers

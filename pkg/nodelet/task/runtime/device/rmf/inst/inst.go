@@ -77,10 +77,12 @@ func NewAbilityInstruction(device apis.Device, ability string) (string, error) {
 	switch ability {
 	case "Move":
 		return GetMoveInst(device, ability)
-	case "Arm":
-		return GetArmInst(device, ability)
 	case "Lift":
 		return GetLiftInst(device, ability)
+	case "Grab":
+		return GetArmInst(device, ability)
+	case "Loosen":
+		return GetArmInst(device, ability)
 	}
 	return "", fmt.Errorf("framework %s does not support ability %s", device.Name, ability)
 }

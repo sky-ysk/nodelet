@@ -48,12 +48,18 @@ func PublishAbilityInstruction(device apis.Device, ability string) (string, erro
 	// 构造并发布指令
 	instruction, err := inst.NewAbilityInstruction(device, ability)
 	if err != nil {
+		logs.Errorf(err.Error())
+		logs.Errorf("Ability instruction create failed\n")
 		return "", err
 	}
 	logs.Infof("Ability instruction has been created\n")
+
+	// 发布指令
 	requestForPost := NewPostRequest(fmt.Sprintf("%s/tasks/robot_task", device.Spec.AccessMethod.URL), instruction)
 	client := &http.Client{}
 	fmt.Println(requestForPost.Payload)
+
+	logs.Info("publishing ability instruction")
 	response, err := client.Post(requestForPost.Url, "application/json", bytes.NewBuffer([]byte(requestForPost.Payload)))
 	if err != nil {
 		logs.Errorf("Error client post :%v\n", err)
@@ -92,10 +98,12 @@ func PublishAbilityInstruction(device apis.Device, ability string) (string, erro
 		}
 		//TODO: ValidationError的处理
 		return string(body), err
-	}
 
-	logs.Errorf("Error response code: %v\n", response.StatusCode)
-	return "", nil
+	default:
+		logs.Infof("The http's status code is %v\n", response.StatusCode)
+		return string(body), fmt.Errorf("http status code is %v\n", response.StatusCode)
+
+	}
 }
 
 // PublishCancelTaskInstruction 发布取消任务的指令，返回是否成功
@@ -107,7 +115,7 @@ func PublishCancelTaskInstruction(device apis.Device, taskId string) (bool, erro
 		logs.Errorf("Error new cancel task inst: %v\n", err)
 		return false, err
 	}
-	
+
 	requestForPost := NewPostRequest(fmt.Sprintf("%s/tasks/cancel_task", device.Spec.AccessMethod.URL), instruction)
 	// 创建HTTP client
 	client := &http.Client{}
@@ -253,6 +261,8 @@ func GetTaskState(device apis.Device, taskId string) (*TaskStateSuccessResponse,
 			logs.Errorf("Error parse response body: %v\n", err)
 			return &TaskStateSuccessResponse{}, err
 		}
+	default:
+		logs.Infof("Error response code: %v\n", response.StatusCode)
 	}
 	logs.Errorf("Error response code: %v\n", response.StatusCode)
 	return &TaskStateSuccessResponse{}, err

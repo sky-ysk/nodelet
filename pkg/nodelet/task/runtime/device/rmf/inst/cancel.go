@@ -79,6 +79,7 @@ func NewCancelTaskInst(taskId string) (string, error) {
 	cancelTask := CancelTaskRequest{
 		TaskId: taskId,
 		Type:   "cancel_task_request",
+		Label:  []string{"string"},
 	}
 	cancelTaskStr, err := json.Marshal(cancelTask)
 	if err != nil {

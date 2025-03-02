@@ -18,23 +18,23 @@ type ResourceWorker interface {
 func CheckResource(runtime *apis.Runtime, action *apis.Action) error {
 	// TODO:确认action中resource的key
 	resources := runtime.Resources
-	for _, resource := range resources {
+	for index, resource := range resources {
 		logs.Infof("checking resource: %s\n", resource.Name)
 		switch resource.Type {
 		case apis.Storage:
-			if CheckStorageResource(resource, action.Status.Resources[resource.Name]) {
+			if CheckStorageResource(resource, action.Status.Resources[index]) {
 
 			} else {
 				return fmt.Errorf("storage resource %s is not satisfied", resource.Name)
 			}
 		case apis.Network:
-			if CheckNetworkResource(resource, action.Status.Resources[resource.Name]) {
+			if CheckNetworkResource(resource, action.Status.Resources[index]) {
 
 			} else {
 				return fmt.Errorf("network resource %s is not satisfied", resource.Name)
 			}
 		case apis.Compute:
-			if CheckComputeResource(resource, action.Status.Resources[resource.Name]) {
+			if CheckComputeResource(resource, action.Status.Resources[index]) {
 
 			} else {
 				return fmt.Errorf("compute resource %s is not satisfied", resource.Name)
@@ -133,66 +133,66 @@ func ConvertComputeUnit(value float64, unit apis.ResourceUnit) float64 {
 // UpdateResourceStatus 更新Resource状态
 func UpdateResourceStatus(runtime *apis.Runtime, action *apis.Action) error {
 	resources := runtime.Resources
-	for _, resource := range resources {
+	for index, resource := range resources {
 		switch resource.Type {
 		case apis.Storage:
 			// TODO:更新usage 考虑unit
 			r := apis.ResourceStatus{
-				Reserved:     action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue,
-				Usage:        action.Status.Resources[resource.Name].Usage,
-				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
-				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+				Reserved:     action.Status.Resources[index].Reserved - resource.ExpectedValue,
+				Usage:        action.Status.Resources[index].Usage,
+				UsageUnit:    action.Status.Resources[index].UsageUnit,
+				ReservedUnit: action.Status.Resources[index].ReservedUnit,
 			}
-			action.Status.Resources[resource.Name] = r
+			action.Status.Resources[index] = r
 		case apis.Network:
 			r := apis.ResourceStatus{
-				Reserved:     action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue,
-				Usage:        action.Status.Resources[resource.Name].Usage,
-				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
-				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+				Reserved:     action.Status.Resources[index].Reserved - resource.ExpectedValue,
+				Usage:        action.Status.Resources[index].Usage,
+				UsageUnit:    action.Status.Resources[index].UsageUnit,
+				ReservedUnit: action.Status.Resources[index].ReservedUnit,
 			}
-			action.Status.Resources[resource.Name] = r
+			action.Status.Resources[index] = r
 		case apis.Compute:
 			r := apis.ResourceStatus{
-				Reserved:     action.Status.Resources[resource.Name].Reserved - resource.ExpectedValue,
-				Usage:        action.Status.Resources[resource.Name].Usage,
-				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
-				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+				Reserved:     action.Status.Resources[index].Reserved - resource.ExpectedValue,
+				Usage:        action.Status.Resources[index].Usage,
+				UsageUnit:    action.Status.Resources[index].UsageUnit,
+				ReservedUnit: action.Status.Resources[index].ReservedUnit,
 			}
-			action.Status.Resources[resource.Name] = r
+			action.Status.Resources[index] = r
 		}
 	}
 	return nil
 }
 func RecoverResourceStatus(runtime *apis.Runtime, action *apis.Action) error {
 	resources := runtime.Resources
-	for _, resource := range resources {
+	for index, resource := range resources {
 		switch resource.Type {
 		case apis.Storage:
 			// TODO:更新usage 考虑unit
 			r := apis.ResourceStatus{
-				Reserved:     action.Status.Resources[resource.Name].Reserved + resource.ExpectedValue,
-				Usage:        action.Status.Resources[resource.Name].Usage,
-				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
-				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+				Reserved:     action.Status.Resources[index].Reserved + resource.ExpectedValue,
+				Usage:        action.Status.Resources[index].Usage,
+				UsageUnit:    action.Status.Resources[index].UsageUnit,
+				ReservedUnit: action.Status.Resources[index].ReservedUnit,
 			}
-			action.Status.Resources[resource.Name] = r
+			action.Status.Resources[index] = r
 		case apis.Network:
 			r := apis.ResourceStatus{
-				Reserved:     action.Status.Resources[resource.Name].Reserved + resource.ExpectedValue,
-				Usage:        action.Status.Resources[resource.Name].Usage,
-				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
-				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+				Reserved:     action.Status.Resources[index].Reserved + resource.ExpectedValue,
+				Usage:        action.Status.Resources[index].Usage,
+				UsageUnit:    action.Status.Resources[index].UsageUnit,
+				ReservedUnit: action.Status.Resources[index].ReservedUnit,
 			}
-			action.Status.Resources[resource.Name] = r
+			action.Status.Resources[index] = r
 		case apis.Compute:
 			r := apis.ResourceStatus{
-				Reserved:     action.Status.Resources[resource.Name].Reserved + resource.ExpectedValue,
-				Usage:        action.Status.Resources[resource.Name].Usage,
-				UsageUnit:    action.Status.Resources[resource.Name].UsageUnit,
-				ReservedUnit: action.Status.Resources[resource.Name].ReservedUnit,
+				Reserved:     action.Status.Resources[index].Reserved + resource.ExpectedValue,
+				Usage:        action.Status.Resources[index].Usage,
+				UsageUnit:    action.Status.Resources[index].UsageUnit,
+				ReservedUnit: action.Status.Resources[index].ReservedUnit,
 			}
-			action.Status.Resources[resource.Name] = r
+			action.Status.Resources[index] = r
 		}
 	}
 	return nil

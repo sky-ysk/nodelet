@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"time"
 )
@@ -17,8 +20,8 @@ type DeviceWorker interface {
 // CheckDevice 检查设备情况
 func CheckDevice(runtime *apis.Runtime, action *apis.Action) (error, map[string]apis.Device) {
 	devices := make(map[string]apis.Device)
-	for _, spec := range runtime.Devices {
-		status := action.Status.Devices[spec.Name]
+	for index, spec := range runtime.Devices {
+		status := action.Status.Devices[index]
 		// device必须已经被上锁（已经经过检查)
 		//TODO:
 		err := CheckDeviceLock(&status)
@@ -46,8 +49,8 @@ func CheckDevice(runtime *apis.Runtime, action *apis.Action) (error, map[string]
 // GetDevices 获取所有设备
 func GetDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Device) {
 	devices := make([]apis.Device, 0)
-	for _, spec := range runtime.Devices {
-		status := action.Status.Devices[spec.Name]
+	for index, spec := range runtime.Devices {
+		status := action.Status.Devices[index]
 		// device必须已经被上锁（已经经过检查)
 		//TODO:
 		if !status.Lock.IsLocked {
@@ -74,10 +77,12 @@ func GetDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Devic
 }
 
 // UpdateDeviceStatus 更新DeviceStatus
-func UpdateDeviceStatus(action *apis.Action, taskId string) error {
+func UpdateDeviceStatus(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]apis.Device, deviceClient core.DeviceInterface) error {
 
 	devices := action.Status.Devices
-	for name, device := range devices {
+	for index, spec := range runtime.Devices {
+		status := action.Status.Devices[index]
+		name := spec.Name
 		logs.Infof("device name is %s\n", name)
 		ds := apis.DeviceStatus{
 			// 更新device的相应字段
@@ -85,15 +90,24 @@ func UpdateDeviceStatus(action *apis.Action, taskId string) error {
 			InstanceID: taskId,
 			Status:     "running",
 			ActionID:   action.Status.ActionID,
-			Lock:       apis.Lock{Type: device.Lock.Type, IsLocked: true, Ref: device.Lock.Ref + 1},
+			Lock:       apis.Lock{Type: status.Lock.Type, IsLocked: true, Ref: status.Lock.Ref + 1},
 			LastTime:   apis.Time{Time: time.Now()},
 
 			// 不需要更新的字段直接复制
-			DeviceID:   device.DeviceID,
-			Events:     device.Events,
-			Properties: device.Properties,
+			DeviceID:   status.DeviceID,
+			Events:     status.Events,
+			Properties: status.Properties,
 		}
-		action.Status.Devices[name] = ds
+
+		// 在etcd中更新数据内容
+		newDevice := &apis.Device{Spec: deviceMap[name].Spec, Status: ds}
+		deviceMap[name] = *newDevice
+		action.Status.Devices[index] = ds
+		_, err := deviceClient.Update(context.TODO(), newDevice, metav1.UpdateOptions{})
+		if err != nil {
+			logs.Errorf("update device %s status failed, %s", name, err)
+			return err
+		}
 		logs.Infof("update device %s's status\n", name)
 	}
 	action.Status.Devices = devices

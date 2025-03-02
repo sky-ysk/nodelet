@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"sync"
 
@@ -26,12 +27,14 @@ type RuntimeManager struct {
 	runtimes map[apis.RuntimeType]Runtime
 	eventbus *eventbus.EventBus
 	mu       sync.Mutex
+	deviceClient core.DeviceInterface
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, deviceClient core.DeviceInterface) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
+		deviceClient: deviceClient,
 	}
 }
 
@@ -63,7 +66,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			runtime = device.NewDeviceRuntime()
+			runtime = device.NewDeviceRuntime(rm.deviceClient)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

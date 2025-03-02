@@ -34,13 +34,19 @@ func ReleaseSceneLock(status *apis.SceneStatus) error {
 }
 
 // ReleaseDeviceLock 释放一次引用 Ref为0解锁
-func ReleaseDeviceLock(device *apis.Device, action *apis.Action) error {
+func ReleaseDeviceLock(device *apis.Device, action *apis.Action, runtime *apis.Runtime) error {
 	device.Status.Lock.Ref -= 1
-	if device.Status.Lock.Ref == 0 {
-		// 查看父设备的Ref
-		if action.Status.Devices[device.Spec.AttachedDevice].Lock.Ref == 0 {
-			device.Status.Lock.IsLocked = false
+	for index, spec := range runtime.Devices {
+		if device.Name == spec.Name {
+			if device.Status.Lock.Ref == 0 {
+				// 查看父设备的Ref
+				if action.Status.Devices[index].Lock.Ref == 0 {
+					device.Status.Lock.IsLocked = false
+				}
+			}
 		}
+
 	}
+
 	return nil
 }
