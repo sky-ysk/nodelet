@@ -1,18 +1,17 @@
-// util.go定义了与对象的生命周期管理相关的工具函数
-// 目前基本上是从apiserver中照搬过来的，可能需要进行部分修改
 package storage
 
 import (
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/apimachinery/fields"
-	"hit.edu/framework/pkg/apimachinery/labels"
 	"strconv"
 	"sync/atomic"
-	
+
+	"hit.edu/framework/pkg/apimachinery/fields"
+	"hit.edu/framework/pkg/apimachinery/labels"
+
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apiserver/registry/storage/helper"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 )
 
@@ -82,7 +81,7 @@ func GetCurrentResourceVersionFromStorage(ctx context.Context, storage Interface
 		Field: fields.Everything(),
 		Limit: 1, // just in case we actually hit something
 	}
-	
+
 	err := storage.GetList(ctx, resourcePrefix, ListOptions{Predicate: pred}, emptyList)
 	if err != nil {
 		return 0, err
@@ -94,12 +93,12 @@ func GetCurrentResourceVersionFromStorage(ctx context.Context, storage Interface
 	if emptyListAccessor == nil {
 		return 0, fmt.Errorf("unable to extract a list accessor from %T", emptyList)
 	}
-	
+
 	currentResourceVersion, err := strconv.Atoi(emptyListAccessor.GetResourceVersion())
 	if err != nil {
 		return 0, err
 	}
-	
+
 	if currentResourceVersion == 0 {
 		return 0, fmt.Errorf("the current resource version must be greater than 0")
 	}

@@ -24,6 +24,9 @@ func (t Strategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) f
 	return nil
 }
 func (t Strategy) Canonicalize(obj runtime.Object) {}
+
+// 资源的命名空间级别
 func (t Strategy) NamespaceScoped() bool {
+	// true表示资源必须配备命名空间信息
 	return true
 }

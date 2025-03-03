@@ -8,7 +8,7 @@ import (
 	"path"
 	"sync"
 	"time"
-	
+
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -118,11 +118,11 @@ func PollUntil(interval time.Duration, condition func() (bool, error), stopCh <-
 }
 
 func newETCD3Check(c Config, timeout time.Duration, stopCh <-chan struct{}) (func() error, error) {
-	
+
 	lock := sync.RWMutex{}
 	var prober *etcd3ProberMonitor
 	clientErr := fmt.Errorf("etcd client connection not yet established")
-	
+
 	//每秒执行轮询
 	go PollUntil(time.Second, func() (bool, error) {
 		lock.Lock()
@@ -145,13 +145,10 @@ func newETCD3Check(c Config, timeout time.Duration, stopCh <-chan struct{}) (fun
 		clientErr = nil
 		return true, nil
 	}, stopCh)
-	
+
 	// 等待关闭信号并关闭客户端
 	go func() {
-		//捕获并处理协程的恐慌
-		//defer utilruntime.HandleCrash()
 		<-stopCh
-		
 		lock.Lock()
 		defer lock.Unlock()
 		if prober != nil {
@@ -159,16 +156,15 @@ func newETCD3Check(c Config, timeout time.Duration, stopCh <-chan struct{}) (fun
 			clientErr = fmt.Errorf("server is shutting down")
 		}
 	}()
-	
-	// 限流器，限制健康检查频率和最多发送数量
+
+	// 限流器
 	limiter := rate.NewLimiter(rate.Every(timeout/2), 1)
 	// 初始状态设置
 	lastError := &atomicLastError{err: fmt.Errorf("etcd client connection not yet established")}
-	// 返回用于健康检查的函数
 	return func() error {
 		lock.RLock()
 		defer lock.RUnlock()
-		
+
 		if clientErr != nil {
 			return clientErr
 		}
@@ -199,7 +195,7 @@ func newETCD3ProberMonitor(c Config) (*etcd3ProberMonitor, error) {
 type etcd3ProberMonitor struct {
 	prefix    string
 	endpoints []string
-	
+
 	mux    sync.RWMutex
 	client *clientv3.Client
 	closed bool
@@ -227,22 +223,6 @@ func (t *etcd3ProberMonitor) Probe(ctx context.Context) error {
 	}
 	return nil
 }
-
-//TODO: metrics 指标监测
-// func (t *etcd3ProberMonitor) Monitor(ctx context.Context) (metrics.StorageMetrics, error) {
-// 	t.mux.RLock()
-// 	defer t.mux.RUnlock()
-// 	if t.closed {
-// 		return metrics.StorageMetrics{}, fmt.Errorf("closed")
-// 	}
-// 	status, err := t.client.Status(ctx, t.endpoints[rand.Int()%len(t.endpoints)])
-// 	if err != nil {
-// 		return metrics.StorageMetrics{}, err
-// 	}
-// 	return metrics.StorageMetrics{
-// 		Size: status.DbSize,
-// 	}, nil
-// }
 
 func NewETCD3Client(c TransportConfig) (*clientv3.Client, error) {
 	tlsInfo := transport.TLSInfo{
@@ -273,23 +253,10 @@ func NewETCD3Client(c TransportConfig) (*clientv3.Client, error) {
 		TLS:         tlsConfig,
 		Logger:      etcd3ClientLogger,
 	}
-	
+
 	return clientv3.New(cfg)
 }
 
-// func New(cfg clientv3.Config) (*Client, error) {
-// 	c, err := clientv3.New(cfg)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	kc := &Client{
-// 		Client: c,
-// 	}
-// 	kc.ViewsOptions = kc
-// 	return kc, nil
-// }
-
-// TODO: etcd compact DBMonitor
 type runningCompactor struct {
 	interval time.Duration
 	cancel   context.CancelFunc
@@ -306,36 +273,72 @@ var (
 	dbMetricsMonitors   map[string]struct{}
 )
 
-// TODO: 修改补充newStorage
+func startCompactorOnce(c TransportConfig, interval time.Duration) (func(), error) {
+	compactorsMu.Lock()
+	defer compactorsMu.Unlock()
+
+	key := fmt.Sprintf("%v", c)
+	if compactor, foundBefore := compactors[key]; !foundBefore || compactor.interval > interval {
+		compactorClient, err := NewETCD3Client(c)
+		if err != nil {
+			return nil, err
+		}
+
+		if foundBefore {
+			compactor.cancel()
+			compactor.client.Close()
+		} else {
+			compactor = &runningCompactor{}
+			compactors[key] = compactor
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		compactor.interval = interval
+		compactor.cancel = cancel
+		compactor.client = compactorClient
+
+		etcd3.StartCompactor(ctx, compactorClient, interval)
+	}
+
+	compactors[key].refs++
+
+	return func() {
+		compactorsMu.Lock()
+		defer compactorsMu.Unlock()
+
+		compactor := compactors[key]
+		compactor.refs--
+		if compactor.refs == 0 {
+			compactor.cancel()
+			compactor.client.Close()
+			delete(compactors, key)
+		}
+	}, nil
+}
 
 func newETCD3Storage(c ConfigForResource, newFunc, newListFunc func() runtime.Object, resourcePrefix string) (storage.Interface, DestroyFunc, error) {
-	// stopCompactor, err := startCompactorOnce(c.Transport, c.CompactionInterval)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
-	
+	stopCompactor, err := startCompactorOnce(c.Transport, c.CompactionInterval)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	client, err := NewETCD3Client(c.Transport)
 	if err != nil {
-		//stopCompactor()
+		stopCompactor()
 		return nil, nil, err
 	}
-	
-	// decorate the KV instance so we can track etcd latency per request.
+
 	client.KV = etcd3.NewETCDLatencyTracker(client.KV)
-	
-	//stopDBSizeMonitor, err := startDBSizeMonitorPerEndpoint(client, c.DBMetricPollInterval)
+
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	var once sync.Once
 	destroyFunc := func() {
-		// we know that storage destroy funcs are called multiple times (due to reuse in subresources).
-		// Hence, we only destroy once.
-		// TODO: fix duplicated storage destroy calls higher level
 		once.Do(func() {
-			//stopCompactor()
-			//stopDBSizeMonitor()
+			stopCompactor()
 			client.Close()
 		})
 	}

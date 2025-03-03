@@ -1,4 +1,4 @@
-package node
+package group
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"hit.edu/framework/pkg/apis/meta"
-	storagetesting "hit.edu/framework/pkg/apiserver/registry/generic/registry/testing"
 	"hit.edu/framework/pkg/component-base/logs"
 	"k8s.io/apimachinery/pkg/selection"
 
@@ -43,14 +42,14 @@ var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1"}
 
 func init() {
 	logs.Init("etcd")
-	logs.Info("this is a test in node")
+	logs.Info("this is a test in Group")
 	//meta.AddToGroupVersion(scheme, meta.SchemeGroupVersion)
-	NodeObject := []runtime.Object{
-		&apis.Node{},
-		&apis.NodeList{},
+	GroupObject := []runtime.Object{
+		&apis.Group{},
+		&apis.GroupList{},
 	}
 	addKnownTypes := func(scheme *runtime.Scheme) error {
-		scheme.AddKnownTypes(SchemeGroupVersion, NodeObject...)
+		scheme.AddKnownTypes(SchemeGroupVersion, GroupObject...)
 
 		if err := meta.RegisterConversions(scheme); err != nil {
 			panic(err)
@@ -59,7 +58,7 @@ func init() {
 	}
 
 	addUnversionedTypes := func(scheme *runtime.Scheme) error {
-		scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
+		scheme.AddUnversionedTypes(SchemeGroupVersion, GroupObject...)
 		return nil
 	}
 
@@ -67,7 +66,7 @@ func init() {
 	AddToScheme := SchemeBuilder.AddToScheme
 	utilruntime.Must(AddToScheme(scheme))
 
-	// scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
+	// scheme.AddUnversionedTypes(SchemeGroupVersion, GroupObject...)
 	// meta.AddToScheme(scheme)
 	thisStrategy = &Strategy{scheme}
 }
@@ -89,18 +88,18 @@ func NewEtcdStorageForResource(t *testing.T, resource schema.GroupResource) (*st
 	return resourceConfig, server
 }
 
-func newStorage(t *testing.T) (*NodeStorage, *EtcdTestServer) {
+func newStorage(t *testing.T) (*GroupStorage, *EtcdTestServer) {
 	//启动etcd服务器
 	etcdStorage, server := NewEtcdStorage(t, "")
 	restOptions := generic.RESTOptions{
 		StorageConfig:           etcdStorage,
 		Decorator:               generic.UndecoratedStorage,
 		DeleteCollectionWorkers: 3,
-		ResourcePrefix:          "nodes",
+		ResourcePrefix:          "Groups",
 	}
-	storage, err := NewNodeStorage(restOptions)
-	storage1, _, _ := generic.NewRawStorage(etcdStorage, nil, nil, "nodes")
-	storage.Node.Storage = storage1
+	storage, err := NewGroupStorage(restOptions)
+	storage1, _, _ := generic.NewRawStorage(etcdStorage, nil, nil, "Groups")
+	storage.Group.Storage = storage1
 	if err != nil {
 		t.Fatalf("unexpected error from REST storage: %v", err)
 	}
@@ -108,9 +107,9 @@ func newStorage(t *testing.T) (*NodeStorage, *EtcdTestServer) {
 
 }
 
-func getNodeapp(obj runtime.Object) (labels.Set, fields.Set, error) {
-	node := obj.(*apis.Node)
-	return labels.Set{"app": node.Labels["app"]}, nil, nil
+func getGroupapp(obj runtime.Object) (labels.Set, fields.Set, error) {
+	Group := obj.(*apis.Group)
+	return labels.Set{"app": Group.Labels["app"]}, nil, nil
 }
 
 func matchapp(names ...string) storage.SelectionPredicate {
@@ -121,98 +120,36 @@ func matchapp(names ...string) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
 		Label:    labels.Everything().Add(*l),
 		Field:    fields.Everything(),
-		GetAttrs: getNodeapp,
-	}
-}
-
-func TestLabels(t *testing.T) {
-	nodestorage, server := newStorage(t)
-	defer server.Terminate(t)
-	defer nodestorage.Node.Store.DestroyFunc()
-	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
-	nodeA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "fooA", Namespace: "aaa", Labels: map[string]string{"app": "myapp"}},
-		Spec:       apis.NodeSpec{NodeName: "testA", HostName: "testhost", Unschedulable: false},
-		Status:     apis.NodeStatus{},
-	}
-	nodeA1 := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "fooA1", Namespace: "aaa", Labels: map[string]string{"app": "myapp"}},
-		Spec:       apis.NodeSpec{NodeName: "testA1", HostName: "testhost1", Unschedulable: false},
-		Status:     apis.NodeStatus{},
-	}
-	nodeB := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "fooB", Namespace: "aaa", Labels: map[string]string{"app": "myapp1"}},
-		Spec:       apis.NodeSpec{NodeName: "testB", HostName: "testhost", Unschedulable: false},
-		Status:     apis.NodeStatus{},
-	}
-	nodeB1 := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "fooB1", Namespace: "aaa", Labels: map[string]string{"app": "myapp1"}},
-		Spec:       apis.NodeSpec{NodeName: "testB1", HostName: "testhost1", Unschedulable: false},
-		Status:     apis.NodeStatus{},
-	}
-
-	in := &apis.NodeList{Items: []apis.Node{*nodeA, *nodeA1, *nodeB, *nodeB1}}
-
-	if err := storagetesting.CreateList("/nodes", nodestorage.Node.Storage, in); err != nil {
-		t.Fatalf("Unexpected error %v", err)
-	}
-
-	table := map[string]struct {
-		m       storage.SelectionPredicate
-		out     runtime.Object
-		context context.Context
-	}{
-		"notFound": {
-			m:   matchapp("myapp2"),
-			out: &apis.NodeList{Items: []apis.Node{}},
-		},
-		"matchmyapp": {
-			m:   matchapp("myapp"),
-			out: &apis.NodeList{Items: []apis.Node{*nodeA, *nodeA1}},
-		},
-		"matchmyapp1": {
-			m:   matchapp("myapp1"),
-			out: &apis.NodeList{Items: []apis.Node{*nodeB, *nodeB1}},
-		},
-	}
-	for name, item := range table {
-		t.Run(name, func(t *testing.T) {
-			list, err := nodestorage.Node.ListPredicate(testContext, item.m, nil)
-			if err != nil {
-				t.Fatalf("Unexpected error %v", err)
-			}
-			if list != item.out {
-			}
-		})
+		GetAttrs: getGroupapp,
 	}
 }
 
 func TestCreate(t *testing.T) {
-	nodestorage, server := newStorage(t)
+	Groupstorage, server := newStorage(t)
 	defer server.Terminate(t)
-	defer nodestorage.Node.Store.DestroyFunc()
-	nodeA := &apis.Node{
+	defer Groupstorage.Group.Store.DestroyFunc()
+	GroupA := &apis.Group{
 		ObjectMeta: meta.ObjectMeta{Name: "foo"},
-		Spec:       apis.NodeSpec{NodeName: "test", HostName: "testhost", Unschedulable: false},
-		Status:     apis.NodeStatus{},
+		Spec:       apis.GroupSpec{Name: "test", SchedulerName: "testhost"},
+		Status:     apis.GroupStatus{},
 	}
-	nodeA1 := &apis.Node{
+	GroupA1 := &apis.Group{
 		ObjectMeta: meta.ObjectMeta{Name: "foo"},
-		Spec:       apis.NodeSpec{NodeName: "test1", HostName: "testhost1", Unschedulable: false},
-		Status:     apis.NodeStatus{},
+		Spec:       apis.GroupSpec{Name: "test1", SchedulerName: "testhost1"},
+		Status:     apis.GroupStatus{},
 	}
 	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "aaa")
 
-	_, err := nodestorage.Node.Create(testContext, nodeA, registryrest.ValidateAllObjectFunc)
+	_, err := Groupstorage.Group.Create(testContext, GroupA, registryrest.ValidateAllObjectFunc)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	_, _, err = nodestorage.Node.Update(testContext, nodeA.Name, rest.DefaultUpdatedObjectInfo(nodeA1), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &meta.UpdateOptions{})
+	_, _, err = Groupstorage.Group.Update(testContext, GroupA.Name, rest.DefaultUpdatedObjectInfo(GroupA1), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &meta.UpdateOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	obj, err := nodestorage.Node.Get(testContext, nodeA.Name, &meta.GetOptions{})
+	obj, err := Groupstorage.Group.Get(testContext, GroupA.Name, &meta.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}

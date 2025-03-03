@@ -44,10 +44,6 @@ func validateCommonFields(obj, old runtime.Object, strategy RESTUpdateStrategy) 
 	return allErrs, nil
 }
 
-// BeforeUpdate ensures that common operations for all resources are performed on update. It only returns
-// errors that can be converted to api.Status. It will invoke update validation with the provided existing
-// and updated objects.
-// It sets zero values only if the object does not have a zero value for the respective field.
 func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old runtime.Object) error {
 	objectMeta, kind, kerr := objectMetaAndKind(strategy, obj)
 	if kerr != nil {

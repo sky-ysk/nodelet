@@ -1,8 +1,6 @@
 package apis
 
 import (
-	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apis/meta"
 	"time"
 
 	"hit.edu/framework/pkg/apis/meta"
@@ -943,73 +941,6 @@ type DeviceStatus struct {
 	LastTime Time
 }
 
-	// 设备的实际属性
-	Properties map[string]Property
-
-	// 设备资源锁状态
-	Lock Lock
-
-	// 设备事件描述
-	Events []DeviceEvent
-
-	// 上次成功获取设备状态的时间
-	// 如果长时间不能获取设备的状态，则认为设备离线
-	LastTime Time
-}
-
-// SceneSpec 描述scene的固有属性和期待属性
-type SceneSpec struct {
-	// 每一个scene的标识
-	SceneID string
-
-	// scene的类型 是一个地点还是一个物品
-	Type SceneType
-
-	// 期待属性
-	ExpectedProperty map[string]Property
-
-	// 场景的描述（不可变属性）
-	Desc SceneDesc
-}
-
-type SceneDesc struct {
-	Label []string
-	Value map[string]string
-}
-
-type SceneType string
-
-const (
-	ObjectType   SceneType = "Object"
-	PositionType SceneType = "Position"
-)
-
-/*
-	Object的位置信息存储在SceneStatus.Property中
-	Position的位置信息存储在SceneSpec.SceneDesc中
-*/
-
-// SceneStatus 描述scene的动态属性
-type SceneStatus struct {
-	// 更新的方式和时间
-	UpdateMethod string
-	UpdateTime   Time
-
-	// 关联的场景
-	AttachedScene string
-
-	// 关联的设备
-	AttachedDevice string
-
-	// 关联的任务
-	AttachedTask string
-
-	// 实时属性
-	Property map[string]Property
-
-	// 锁
-	Lock Lock
-}
 type DataSpec struct {
 	// 对于文件类型的Data
 	// 文件格式
