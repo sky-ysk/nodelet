@@ -76,6 +76,18 @@ func GetDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Devic
 	return nil, devices
 }
 
+// GetDevices 获取所有设备
+func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Device) {
+	devices := make([]apis.Device, 0)
+	for index, spec := range runtime.Devices {
+		status := action.Status.Devices[index]
+		device := apis.Device{Spec: spec, Status: status}
+		devices = append(devices, device)
+	}
+
+	return nil, devices
+}
+
 // UpdateDeviceStatus 更新DeviceStatus
 func UpdateDeviceStatus(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]apis.Device, deviceClient core.DeviceInterface) error {
 

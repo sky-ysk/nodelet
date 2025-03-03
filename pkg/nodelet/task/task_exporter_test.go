@@ -8,6 +8,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
 	"net/http"
 	"testing"
@@ -265,7 +266,7 @@ func simpleTaskGroup() []*apis.Group {
 	return groups
 }
 
-func testTaskGroupDevice() *apis.Group {
+func testTaskDeviceGroupCreate() *apis.Group {
 	// 测试任务是否正确部署
 	// 创建一个任务
 	newGroup := apis.Group{
@@ -383,6 +384,20 @@ func InitClient() (*clients.ClientSet, error) {
 	return clientSet, nil
 }
 
+func testTaskDeviceGroupKill(ctx context.Context, groupClient core.GroupInterface, group apis.Group) (*apis.Group, error) {
+	g, err := groupClient.Get(ctx, group.Spec.Name, meta.GetOptions{})
+	if err != nil {
+		logs.Error(err)
+		return nil, err
+	}
+	g.Status.Phase = apis.ReadyToKill
+	_, err = groupClient.Update(ctx, g, meta.UpdateOptions{})
+	if err != nil {
+		logs.Error(err)
+		return nil, err
+	}
+	return g, nil
+}
 func TestTaskExporter(t *testing.T) {
 
 	// 初始化logs
@@ -400,7 +415,7 @@ func TestTaskExporter(t *testing.T) {
 	}
 
 	// 创建测试用的group
-	testGroup := testTaskGroupDevice()
+	testGroup := testTaskDeviceGroupCreate()
 
 	// 将group存到数据总线中
 	_, err = te.gropsClient.Create(ctx, testGroup, metav1.CreateOptions{})
@@ -408,7 +423,7 @@ func TestTaskExporter(t *testing.T) {
 		logs.Errorf("Create group failed: %v", err)
 		return
 	}
-	
+
 	// 部署一个任务
 	go func() {
 		err2 := te.Run(ctx)

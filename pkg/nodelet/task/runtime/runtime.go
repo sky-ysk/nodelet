@@ -24,17 +24,19 @@ type Runtime interface {
 }
 
 type RuntimeManager struct {
-	runtimes map[apis.RuntimeType]Runtime
-	eventbus *eventbus.EventBus
-	mu       sync.Mutex
+	runtimes     map[apis.RuntimeType]Runtime
+	eventbus     *eventbus.EventBus
+	mu           sync.Mutex
 	deviceClient core.DeviceInterface
+	groupClient  core.GroupInterface
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, deviceClient core.DeviceInterface) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, deviceClient core.DeviceInterface, groupClient core.GroupInterface) *RuntimeManager {
 	return &RuntimeManager{
-		runtimes: make(map[apis.RuntimeType]Runtime),
-		eventbus: bus,
+		runtimes:     make(map[apis.RuntimeType]Runtime),
+		eventbus:     bus,
 		deviceClient: deviceClient,
+		groupClient:  groupClient,
 	}
 }
 
@@ -66,7 +68,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			runtime = device.NewDeviceRuntime(rm.deviceClient)
+			runtime = device.NewDeviceRuntime(rm.deviceClient, rm.groupClient)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

@@ -66,7 +66,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, deviceClient)
+	runtimeManager := runtime.NewRuntimeManager(eb, deviceClient, groupClient)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers

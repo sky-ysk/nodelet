@@ -115,7 +115,9 @@ func PublishCancelTaskInstruction(device apis.Device, taskId string) (bool, erro
 		logs.Errorf("Error new cancel task inst: %v\n", err)
 		return false, err
 	}
-
+	logs.Info("cancel instruction has been created\n")
+	fmt.Println(instruction)
+	logs.Info(instruction)
 	requestForPost := NewPostRequest(fmt.Sprintf("%s/tasks/cancel_task", device.Spec.AccessMethod.URL), instruction)
 	// 创建HTTP client
 	client := &http.Client{}

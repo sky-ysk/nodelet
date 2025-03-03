@@ -1,8 +1,10 @@
 package device
 
 import (
+	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/rmf"
@@ -11,11 +13,13 @@ import (
 
 type DeviceRuntime struct {
 	deviceClient core.DeviceInterface
+	groupClient  core.GroupInterface
 }
 
-func NewDeviceRuntime(deviceClient core.DeviceInterface) DeviceRuntime {
+func NewDeviceRuntime(deviceClient core.DeviceInterface, groupClient core.GroupInterface) DeviceRuntime {
 	return DeviceRuntime{
 		deviceClient: deviceClient,
+		groupClient:  groupClient,
 	}
 }
 
@@ -63,6 +67,7 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 		//TODO:区分是rmf还是ability
 		logs.Infof("device %s execute %s task\n", name, runtime.Image)
 		taskId, err := rmf.PublishAbilityInstruction(device, runtime.Image)
+		taskId = "this is a test id"
 		device = apis.Device{Spec: device.Spec}
 		//TODO: 错误处理
 		if err != nil {
@@ -77,6 +82,7 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 			Type:      apis.ResultsData,
 		}
 		runtime.Outputs = append(runtime.Outputs, output)
+		action.Spec.Runtimes[0] = *runtime
 	}
 
 	//修改Device状态
@@ -89,6 +95,14 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 	}
 	logs.Infof("Action[%s] Runtime[%s] update device status is finished\n", action.Spec.Name, runtime.Name)
 
+	// 更新group
+	group.Status.ActionStatus[actionIndex] = action.Status
+	_, err = dr.groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Errorf(err.Error())
+		logs.Errorf("Action[%s] Runtime[%s] update group status failed", action.Spec.Name, runtime.Name)
+		return fmt.Errorf("Action[%s] Runtime[%s] update group status failed ", action.Spec.Name, runtime.Name)
+	}
 	////修改Resource状态
 	//logs.Infof("Action[%s] Runtime[%s] update resource status start\n", action.Spec.Name, runtime.Name)
 	//err = utils.UpdateResourceStatus(runtime, action)
@@ -115,13 +129,14 @@ func (dr DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *ap
 	// 检查action的运行状态，只有处在running状态时才能取消
 	if action.Status.Phase == apis.Running {
 		// 一个runtime可能涉及到多个或一个 device 获取全部的device
-		err, devices := utils.GetDevices(runtime, action)
+		err, devices := utils.ObtainDevices(runtime, action)
 		if err != nil {
 			logs.Errorf("Action[%s] Runtime[%s] CheckDevice failed\n", action.Spec.Name, runtime.Name)
 			return err
 		}
 		// 遍历全部的device
 		for index, device := range devices {
+			fmt.Println("this is a string")
 			// device的taskId存储在output中，同时取出
 			output := runtime.Outputs[index]
 			// 发布指令

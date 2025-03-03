@@ -45,23 +45,6 @@ func InitClient() (*clients.ClientSet, error) {
 	return clientSet, nil
 }
 
-func TestRun(t *testing.T) {
-	moduleName := "testModule"
-	logs.Init(moduleName)
-	logs.Infof("[test] testing run.....\n")
-	clientSet, err := InitClient()
-	if err != nil {
-		logs.Errorf("[test] init clientSet failed: %v", err)
-	}
-	deviceClient := clientSet.Core().Devices("")
-	dr := NewDeviceRuntime(deviceClient)
-	action, runtimeForTest := NewActionAndRuntime()
-	err = dr.Run(&apis.Group{}, action, runtimeForTest, 0, 0)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
 func NewActionAndRuntime() (*apis.Action, *apis.Runtime) {
 	action := apis.Action{
 		Spec: apis.ActionSpec{
@@ -195,4 +178,133 @@ func NewActionAndRuntime() (*apis.Action, *apis.Runtime) {
 	}
 	action.Spec.Runtimes = []apis.Runtime{runtime}
 	return &action, &runtime
+}
+
+func TestRun(t *testing.T) {
+	moduleName := "testModule"
+	logs.Init(moduleName)
+	logs.Infof("[test] testing run.....\n")
+	clientSet, err := InitClient()
+	if err != nil {
+		logs.Errorf("[test] init clientSet failed: %v", err)
+	}
+	deviceClient := clientSet.Core().Devices("")
+	groupClient := clientSet.Core().Groups("")
+	dr := NewDeviceRuntime(deviceClient, groupClient)
+	action, runtimeForTest := NewActionAndRuntime()
+	err = dr.Run(&apis.Group{}, action, runtimeForTest, 0, 0)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func NewActionAndRuntimeForKill() (*apis.Action, *apis.Runtime) {
+	taskId := ""
+	action := apis.Action{
+		Spec: apis.ActionSpec{
+			Name: "ActionTest",
+		},
+		Status: apis.ActionStatus{
+			Phase:    apis.Running,
+			ActionID: "Action1",
+			Resources: []apis.ResourceStatus{
+				apis.ResourceStatus{
+					Name:         "cpu",
+					Reserved:     10,
+					ReservedUnit: apis.ComputeCPU,
+				},
+				apis.ResourceStatus{
+					Name:         "memory",
+					Reserved:     4096,
+					ReservedUnit: apis.StorageMB,
+				},
+				apis.ResourceStatus{
+					Name:         "disk",
+					Reserved:     200,
+					ReservedUnit: apis.StorageGB,
+				},
+			},
+
+			Devices: []apis.DeviceStatus{
+				apis.DeviceStatus{
+					Lock: apis.Lock{
+						IsLocked: true,
+					},
+					Status:     "idle",
+					Phase:      apis.DeviceRunning,
+					InstanceID: "",
+					ActionID:   "",
+					DeviceID:   "transferRobot",
+				},
+			},
+		},
+	}
+
+	runtime := apis.Runtime{
+		Image: "Move",
+		Name:  "RuntimeTest",
+
+		Devices: []apis.DeviceSpec{
+			apis.DeviceSpec{
+				Name:               "transferRobot",
+				ExpectedProperties: map[string]apis.Property{},
+				AccessMethod: apis.AccessMethod{
+					Type:  apis.AccessByRmf,
+					URL:   "http://192.168.1.225:8000",
+					Group: "tinyRobot",
+					Alias: "transferRobot",
+				},
+				Desc: apis.DeviceDesc{
+					Label: []string{"Move"},
+				},
+			},
+		},
+		Outputs: []apis.Output{
+			apis.Output{
+				Type:  apis.LocalData,
+				Name:  "taskId",
+				Value: taskId,
+			},
+		},
+		Inputs: []apis.Input{
+			apis.Input{
+				Type:      apis.LocalData,
+				Name:      "dest",
+				Value:     "R201",
+				ValueType: "string",
+			},
+			apis.Input{
+				Type:      apis.LocalData,
+				Name:      "orientation",
+				Value:     "-3.12",
+				ValueType: "double",
+			},
+			apis.Input{
+				Type:      apis.LocalData,
+				Name:      "dock",
+				Value:     "true",
+				ValueType: "bool",
+			},
+		},
+	}
+	action.Spec.Runtimes = []apis.Runtime{runtime}
+	return &action, &runtime
+}
+
+func TestKill(t *testing.T) {
+	moduleName := "testModule"
+	logs.Init(moduleName)
+	logs.Infof("[test] testing kill.....\n")
+	clientSet, err := InitClient()
+	if err != nil {
+		logs.Errorf("[test] init clientSet failed: %v", err)
+	}
+	deviceClient := clientSet.Core().Devices("")
+	groupClient := clientSet.Core().Groups("")
+	dr := NewDeviceRuntime(deviceClient, groupClient)
+	action, runtimeForTest := NewActionAndRuntimeForKill()
+	err = dr.Kill(&apis.Group{}, action, runtimeForTest)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
