@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -50,10 +49,10 @@ func (c *Controller) Run(workers int, stopCh chan struct{}) {
 	//轮询是否已经 同步缓存
 	// Wait for all involved caches to be synced, before processing items from the queue is started
 	if !cache.WaitForCacheSync(stopCh, c.informer.HasSynced) {
-		panic(fmt.Errorf("Timed out waiting for caches to sync"))
+		logs.Infof("Timed out waiting for caches to sync")
 		return
 	}
-	fmt.Println("缓存同步完成")
+	logs.Trace("缓存同步完成")
 
 	//启动worker
 	for i := 0; i < workers; i++ {
@@ -82,7 +81,7 @@ func (c *Controller) processNextItem() bool {
 	//调用包含业务逻辑的方法
 	err := c.syncToStdout(key)
 	if err != nil {
-		panic(err)
+		logs.Info(err)
 	}
 	return true
 }
@@ -92,27 +91,27 @@ func (c *Controller) processNextItem() bool {
 func (c *Controller) syncToStdout(key string) error {
 	obj, exists, err := c.indexer.GetByKey(key)
 	if err != nil {
-		fmt.Sprintf("Fetching object with key %s from store failed with %v", key, err)
+		logs.Infof("Fetching object with key %s from store failed with %v", key, err)
 		return err
 	}
 
 	if !exists {
 		// Below we will warm up our cache with a Pod, so that we will see a delete for one pod
-		fmt.Printf("Source %s does not exist anymore\n", key)
+		logs.Infof("Source %s does not exist anymore\n", key)
 	} else {
 		// Note that you also have to check the uid if you have a local controlled resource, which
 		// is dependent on the actual instance, to detect that a Pod was recreated with the same name
-		fmt.Println("Sync/Add/Update for source:", obj)
+		logs.Infof("Sync/Add/Update for source:", obj)
 	}
 	return nil
 }
 
 func main() {
-	logs.Init("Client-Go")
+	logs.Init("workqueue-main")
 	//注册资源
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	//fmt.Println(scheme)
+	logs.Trace(scheme)
 
 	// 参数配置
 	c := &rest.Config{
@@ -133,16 +132,16 @@ func main() {
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 10 * time.Second,
+		Timeout: 1000 * time.Second,
 	}
 
 	// 创建ClientSet
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
-		panic(err)
+		logs.Error(err)
 	}
 
-	nodesClient := clientSet.Core().Nodes("")
+	nodesClient := clientSet.Core().Nodes("Test")
 
 	node := &apis.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -187,7 +186,7 @@ func main() {
 	}
 
 	//创建Node资源的List Watcher
-	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", apis.NamespaceAll, fields.Everything())
+	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "Test", fields.Everything())
 
 	// 创建WorkQueue
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
@@ -246,54 +245,53 @@ func main() {
 	go controller.Run(1, stop)
 
 	// Create一个Node
-	fmt.Println("creating")
+	logs.Trace("creating")
 	_, err = nodesClient.Create(context.TODO(), node, metav1.CreateOptions{})
 	_, _ = nodesClient.Create(context.TODO(), node2, metav1.CreateOptions{})
 	_, _ = nodesClient.Create(context.TODO(), node3, metav1.CreateOptions{})
 
 	if err != nil {
-		//panic(err)
-		logs.Errorf("Failed to create node: %v", err)
+		logs.Infof("Failed to create node: %v", err)
 	}
-	fmt.Println("Created node 1")
+	logs.Trace("Created node 1")
 
 	//Update一个Node
-	fmt.Println("updating node 1")
+	logs.Trace("updating node 1")
 	// 部分更改一个参数
 	// 先Get一个Node ,更改Node的参数, UpdateNode
 	result, getErr := nodesClient.Get(context.TODO(), "demo-nodes", metav1.GetOptions{})
 	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Errorf("Failed to get : %v", getErr)
 	}
 
 	result.Spec.NodeName = "updatedNodeName"
 	_, updateErr := nodesClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
-		panic(fmt.Errorf("Update failed: %v", updateErr))
+		logs.Infof("Update failed: %v", updateErr)
 	}
-	fmt.Println("1 node Updated node...")
+	logs.Trace("1 node Updated node...")
 
 	// List 所有Node
-	fmt.Println("listing")
+	logs.Trace("listing")
 	lstOpts := metav1.ListOptions{}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
-		panic(err)
+		logs.Info(err)
 	}
 	for _, d := range list.Items {
-		fmt.Println(d)
+		logs.Trace(d)
 	}
 
-	fmt.Println("listing done")
+	logs.Trace("listing done")
 
 	// Delete一个Node
 	// 删除Node后，Indexer就查询不到结点了
-	fmt.Println("deleting")
+	logs.Trace("deleting")
 	err = nodesClient.Delete(context.TODO(), "demo-nodes", metav1.DeleteOptions{})
 	if err != nil {
-		panic(err)
+		logs.Info(err)
 	}
-	fmt.Println("Deleted node...")
+	logs.Trace("Deleted node...")
 
 	//为了验证功能，每5秒删一个Node
 	time.Sleep(5 * time.Second)

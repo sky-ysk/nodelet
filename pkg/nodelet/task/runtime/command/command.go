@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
@@ -19,16 +20,18 @@ import (
 type CommandRuntime struct {
 	processManager *process.ProcessManager
 	eventBus       *eventbus.EventBus
+	recorder       recorder.EventRecorder
 
 	client      *grpc_client.RuntimeClient
 	stopSignals map[string]chan struct{} // 用于标记进程是否被外部停止
 }
 
-func NewCommandRuntime(eventBus *eventbus.EventBus) *CommandRuntime {
+func NewCommandRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecorder) *CommandRuntime {
 	pm := process.NewProcessManager()
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
+		recorder:       recorder,
 		stopSignals:    make(map[string]chan struct{}),
 	}
 }
@@ -59,11 +62,13 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	if err != nil {
 
 		logs.Error("Failed to start action:\t", action.Spec.Name)
+		cr.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Failed to start action:%s", action.Spec.Name))
 		return err
 		// TODO: 输出Action的详细信息
 	}
 	// TODO: 输出Action的详细信息，等级为Debug
 	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
+	cr.recorder.Event(action, apis.EventTypeNormal, events.CreatedCommand, fmt.Sprintf("Action Name:\t %s is Running", action.Spec.Name))
 
 	return nil
 }
@@ -252,6 +257,8 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 		logs.Errorf("任务保存状态失败: %e", error)
 	}
 	// logs.Infof("********************【模拟】成功保存了任务状态：ABCDEFG")
+	cr.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Action Name:\t %s rpc RunAppStore()", action.Spec.Name))
+
 	return "ABCDEFG"
 }
 
@@ -273,6 +280,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	if error != nil {
 		logs.Errorf("任务恢复状态失败: %e", error)
 	}
+	cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Action Name:\t %s rpc RunAppRestore()", action.Spec.Name))
 
 	return error
 }
@@ -290,6 +298,7 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 	if error != nil {
 		logs.Errorf("任务启动失败: %e", error)
 	}
+	cr.recorder.Event(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Action Name:\t %s rpc RunAppStart()", action.Spec.Name))
 
 	//logs.Info("runtime has started =====================")
 

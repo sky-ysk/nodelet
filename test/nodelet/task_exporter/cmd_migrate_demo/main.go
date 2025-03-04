@@ -9,6 +9,7 @@ import (
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
@@ -25,7 +26,7 @@ func main() {
 }
 
 func runtime_test() {
-	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus())
+	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus(), &recorder.FakeRecorder{})
 
 	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
 	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)

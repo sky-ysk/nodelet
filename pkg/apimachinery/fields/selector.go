@@ -391,12 +391,13 @@ func splitTerms(fieldSelector string) []string {
 		case c == '\\':
 			inSlash = true
 		case c == ',':
-			terms = append(terms, fieldSelector[startIndex:i])
+			terms = append(terms, strings.TrimSpace(fieldSelector[startIndex:i]))
 			startIndex = i + 1
 		}
 	}
 
-	terms = append(terms, fieldSelector[startIndex:])
+	//去除所有空格
+	terms = append(terms, strings.TrimSpace(fieldSelector[startIndex:]))
 
 	return terms
 }
@@ -420,7 +421,11 @@ func splitTerm(term string) (lhs, op, rhs string, ok bool) {
 		remaining := term[i:]
 		for _, op := range termOperators {
 			if strings.HasPrefix(remaining, op) {
-				return term[0:i], op, term[i+len(op):], true
+				// 截取 lhs 和 rhs 后，使用 TrimSpace 去掉两侧的空格
+				lhs = strings.TrimSpace(term[0:i])
+				op = strings.TrimSpace(op)
+				rhs = strings.TrimSpace(term[i+len(op):])
+				return lhs, op, rhs, true
 			}
 		}
 	}

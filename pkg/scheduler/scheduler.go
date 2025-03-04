@@ -29,6 +29,8 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"time"
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -37,9 +39,10 @@ import (
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/internal"
-	"time"
 
 	// extension "hit.edu/framework/pkg/scheduler/schedulechain"
+	"net/http"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -48,7 +51,6 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	schedRuntime "hit.edu/framework/pkg/scheduler/framework/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"net/http"
 )
 
 // TODO: 将K8s相关组件替换为我们自己的
@@ -250,7 +252,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	groupClient := clientSet.Core().Groups("")
+	groupClient := clientSet.Core().Groups("test")
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
 	var watchTimeout int64 = 3600

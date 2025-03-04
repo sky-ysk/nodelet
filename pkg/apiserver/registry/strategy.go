@@ -19,16 +19,17 @@ limitations under the License.
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
 	"hit.edu/framework/pkg/apiserver/registry/storage/field"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage/names"
-	
-	"hit.edu/framework/pkg/apimachinery/runtime
+
+	"hit.edu/framework/pkg/apimachinery/runtime"
 	"k8s.io/apiserver/pkg/registry/generic"
-	
+
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration/validation"
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
@@ -61,14 +62,14 @@ func (apiServerStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Se
 			fieldpath.MakePathOrDie("status"),
 		),
 	}
-	
+
 	return fields
 }
 
 func (apiServerStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	apiservice := obj.(*apiregistration.APIService)
 	apiservice.Status = apiregistration.APIServiceStatus{}
-	
+
 	// mark local API services as immediately available on create
 	if apiservice.Spec.Service == nil {
 		apiregistration.SetAPIServiceCondition(apiservice, apiregistration.NewLocalAvailableAPIServiceCondition())
@@ -135,7 +136,7 @@ func (apiServerStatusStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldp
 			fieldpath.MakePathOrDie("metadata"),
 		),
 	}
-	
+
 	return fields
 }
 

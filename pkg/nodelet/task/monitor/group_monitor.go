@@ -3,10 +3,15 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	"reflect"
+	"strconv"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
@@ -14,9 +19,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
 	"hit.edu/framework/pkg/nodelet/task/task"
-	"reflect"
-	"strconv"
-	"time"
 )
 
 // /* TODO
@@ -36,6 +38,8 @@ type GroupMonitor struct {
 	// 存储任务队列
 	groupQueues *group.GroupQueues
 	eventBus    *eventbus.EventBus
+	// eventRecorder 记录事件
+	recorder recorder.EventRecorder
 	// 管理运行所需的Runtime
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
@@ -46,12 +50,13 @@ type GroupMonitor struct {
 	stopCh      chan struct{}
 }
 
-func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface) *GroupMonitor {
+func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:   groupManager,
 		taskManager:    taskManager,
 		groupQueues:    groupQueues,
 		eventBus:       eventbus,
+		recorder:       recorder,
 		runtimeManager: runtimeManager,
 		nodesClient:    nodeClient,
 		groupClient:    groupClient,

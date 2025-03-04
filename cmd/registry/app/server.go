@@ -13,7 +13,7 @@ import (
 const RegistryName = "registry"
 
 func NewRegistryCommand() *cobra.Command {
-	
+
 	cmd := &cobra.Command{
 		Use:  "registry",
 		Long: `资源仓库`,
@@ -29,7 +29,7 @@ func NewRegistryCommand() *cobra.Command {
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -41,7 +41,7 @@ func runCommand(cmd *cobra.Command) error {
 		<-stopCh
 		cancel()
 	}()
-	
+
 	r, err := Setup(ctx)
 	if err != nil {
 		return err
@@ -53,9 +53,9 @@ func Run(ctx context.Context, r *registry.Registry) error {
 	// 初始化日志模块
 	logs.Init(RegistryName)
 	logs.Infof("Starting Registry, version %s", version.Get())
-	
+
 	r.Run(ctx)
-	
+
 	logs.Error("Failed to start Registry")
 	return fmt.Errorf("")
 }

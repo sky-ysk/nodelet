@@ -85,3 +85,58 @@ type RuntimeEndPhaseEvent1 struct {
 	FinishAt     apis.Time
 	LastTime     apis.Time // 可选字段，表示最后更新时间
 }
+
+// Wasm event reason list
+const (
+	CreatedWasm         = "Created"
+	StartedWasm         = "Started"
+	FailedToCreateWasm  = "Failed"
+	FailedToStartWasm   = "Failed"
+	KillingWasm         = "Killing"
+	PreemptWasm         = "Preempting"
+	BackOffStartWasm    = "BackOff"
+	ExceededGracePeriod = "ExceededGracePeriod"
+)
+
+// Command event reason list
+const (
+	CreatedCommand        = "Created"
+	StartedCommand        = "Started"
+	StoredCommand         = "Stored"
+	RestoredCommand       = "Restored"
+	FailedToCreateCommand = "Failed"
+	FailedToStartCommand  = "Failed"
+	KillingCommand        = "Killing"
+	PreemptCommand        = "Preempting"
+	BackOffStartCommand   = "BackOff"
+)
+
+const (
+	// FailedCreateWasmReason is added in an event and in a replica set condition
+	// when a Wasm for a replica set is failed to be created.
+	FailedCreateWasmReason = "FailedCreate"
+	// SuccessfulCreateWasmReason is added in an event when a Wasm for a replica set
+	// is successfully created.
+	SuccessfulCreateWasmReason = "SuccessfulCreate"
+	// FailedDeleteWasmReason is added in an event and in a replica set condition
+	// when a Wasm for a replica set is failed to be deleted.
+	FailedDeleteWasmReason = "FailedDelete"
+	// SuccessfulDeleteWasmReason is added in an event when a Wasm for a replica set
+	// is successfully deleted.
+	SuccessfulDeleteWasmReason = "SuccessfulDelete"
+)
+
+// const (
+// 	// FailedCreatePodReason is added in an event and in a replica set condition
+// 	// when a pod for a replica set is failed to be created.
+// 	FailedCreatePodReason = "FailedCreate"
+// 	// SuccessfulCreatePodReason is added in an event when a pod for a replica set
+// 	// is successfully created.
+// 	SuccessfulCreatePodReason = "SuccessfulCreate"
+// 	// FailedDeletePodReason is added in an event and in a replica set condition
+// 	// when a pod for a replica set is failed to be deleted.
+// 	FailedDeletePodReason = "FailedDelete"
+// 	// SuccessfulDeletePodReason is added in an event when a pod for a replica set
+// 	// is successfully deleted.
+// 	SuccessfulDeletePodReason = "SuccessfulDelete"
+// )

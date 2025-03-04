@@ -4,7 +4,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/pflag"
 	noopoteltrace "go.opentelemetry.io/otel/trace/noop"
-	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/legacyscheme"
 	"hit.edu/framework/pkg/apiserver/registry/storage/etcd3"
 	"hit.edu/framework/pkg/apiserver/registry/storage/storagebackend"
@@ -48,7 +47,7 @@ func TestAddFlags(t *testing.T) {
 					TrustedCAFile:  "/var/run/kubernetes/etcdca.crt",
 					TracerProvider: noopoteltrace.NewTracerProvider(),
 				},
-				Codec:                legacyscheme.Codecs.CodecForVersions(legacyscheme.Codecs.SupportedMediaTypes()[0].Serializer, legacyscheme.Codecs.SupportedMediaTypes()[0].Serializer, apis.SchemeGroupVersion, apis.SchemeGroupVersion),
+				Codec:                legacyscheme.Codecs.LegacyCodec(),
 				CompactionInterval:   storagebackend.DefaultCompactInterval,
 				DBMetricPollInterval: storagebackend.DefaultDBMetricPollInterval,
 				HealthcheckTimeout:   storagebackend.DefaultHealthcheckTimeout,

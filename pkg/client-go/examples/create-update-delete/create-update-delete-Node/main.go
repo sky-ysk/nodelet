@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -15,9 +19,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"os"
-	"time"
 )
 
 // 创建一个Rest Client
@@ -114,9 +115,12 @@ func main() {
 	}
 
 	patchNode, err := json.Marshal(map[string]interface{}{
-		"Spec": map[string]interface{}{
-			"NodeName": "patch-node-name",
-			"HostName": "master",
+		"objectMeta": map[string]interface{}{
+			"namespace": "test",
+		},
+		"spec": map[string]interface{}{
+			"nodeName": "patch-node-name",
+			"hostName": "master",
 		},
 	})
 
@@ -130,7 +134,7 @@ func main() {
 
 		watcher, err := nodesClient.Watch(context.TODO(), watchOptions)
 		if err != nil {
-			panic(err)
+			logs.Error(err)
 		}
 		defer watcher.Stop() // 确保 watcher 被停止
 
@@ -141,12 +145,12 @@ func main() {
 			select {
 			case event, ok := <-watchChan:
 				if !ok {
-					fmt.Println("watchChan closed")
+					logs.Info("watchChan closed")
 					return
 				}
 
 				// 打印事件类型和对象的相关信息
-				fmt.Println("接收到事件类型:", event.Type)
+				logs.Infof("接收到事件类型:", event.Type)
 				switch event.Type {
 				case watch.Added:
 					fmt.Println("资源被添加: ", event.Object)
@@ -155,9 +159,9 @@ func main() {
 				case watch.Deleted:
 					fmt.Println("资源被删除: ", event.Object)
 				case watch.Error:
-					fmt.Println("发生错误: ", event.Object)
+					logs.Infof("发生错误: ", event.Object)
 				case watch.Bookmark:
-					fmt.Println("收到Bookmark", event.Object)
+					logs.Infof("收到Bookmark", event.Object)
 
 				default:
 					fmt.Println("未识别的事件类型: ", event.Type)
@@ -172,7 +176,7 @@ func main() {
 	if err != nil {
 		logs.Errorf("Failed to create node: %v", err)
 	} else {
-		logs.Trace("created node", result)
+		logs.Infof("created node", result)
 	}
 	_, err = nodesClient.Create(context.TODO(), node2, metav1.CreateOptions{})
 	_, err = nodesClient.Create(context.TODO(), node3, metav1.CreateOptions{})
@@ -186,7 +190,7 @@ func main() {
 
 	result, getErr := nodesClient.Get(context.TODO(), "demo-nodes", metav1.GetOptions{})
 	if getErr != nil {
-		logs.Info(fmt.Errorf("Failed to get : %v", getErr))
+		logs.Error(fmt.Errorf("Failed to get : %v", getErr))
 	}
 
 	fmt.Println("get result", result)
@@ -203,7 +207,7 @@ func main() {
 	prompt()
 
 	// List 所有Node
-	fmt.Println("listing 筛选的node")
+	logs.Info("listing 筛选的node")
 	lstOpts := metav1.ListOptions{
 		LabelSelector: "environment",
 	}
@@ -215,14 +219,14 @@ func main() {
 		logs.Trace(d)
 	}
 
-	logs.Trace("listing done")
+	logs.Info("listing done")
 	prompt()
 
 	//Patch 一个Node
-	logs.Trace("patching")
+	logs.Info("patching")
 	patchResult, err := nodesClient.Patch(context.TODO(), "demo-nodes", types.StrategicMergePatchType, patchNode, metav1.PatchOptions{})
-	logs.Trace("patchResult: ", patchResult)
-	logs.Trace("patch Done")
+	logs.Infof("patchResult: ", patchResult)
+	logs.Info("patch Done")
 
 	// List 所有Node
 	logs.Trace("listing")
@@ -235,7 +239,7 @@ func main() {
 		logs.Trace(d)
 	}
 
-	logs.Trace("listing done")
+	logs.Info("listing done")
 	prompt()
 
 	// Delete一个Node
@@ -258,12 +262,10 @@ func main() {
 		logs.Trace(d)
 	}
 
-	fmt.Println("listing done")
-
-	select {}
+	logs.Info("listing done")
 
 	//DeleteCollection 删除所有Spec.NodeName=demo-node的Node
-	fmt.Println("deleting collection")
+	logs.Info("deleting collection")
 	lstOpts = metav1.ListOptions{
 		FieldSelector: "Spec.NodeName=demo-node",
 	}
@@ -271,20 +273,22 @@ func main() {
 	if err != nil {
 		logs.Error(err)
 	}
-	fmt.Println("Deleted collection...")
+	logs.Info("Deleted collection...")
 	prompt()
 
 	// DeleteCollection 之后再次 List所有Node
-	logs.Trace("listing")
+	logs.Info("listing")
 	lstOpts = metav1.ListOptions{}
 	list, err = nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err)
 	}
 	for _, d := range list.Items {
-		logs.Trace(d)
+		logs.Info(d)
 	}
-	logs.Trace("listing done")
+	logs.Info("listing done")
+
+	select {}
 }
 
 // From K8s

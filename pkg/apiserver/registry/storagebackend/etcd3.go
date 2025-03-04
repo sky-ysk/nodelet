@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
+	"hit.edu/framework/pkg/component-base/logs"
 	//utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
@@ -270,7 +271,7 @@ func NewETCD3Client(c TransportConfig) (*Client, error) {
 		TLS:         tlsConfig,
 		Logger:      etcd3ClientLogger,
 	}
-
+	logs.Info("etcd3 client create successfully")
 	return New(cfg)
 }
 

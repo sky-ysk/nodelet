@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -31,13 +32,16 @@ type Runtime interface {
 type RuntimeManager struct {
 	runtimes map[apis.RuntimeType]Runtime
 	eventbus *eventbus.EventBus
-	mu       sync.Mutex
+	recorder recorder.EventRecorder
+
+	mu sync.Mutex
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
+		recorder: recorder,
 	}
 }
 
@@ -63,7 +67,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = wasm.NewWasmRuntime()
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.eventbus)
+			runtime = command.NewCommandRuntime(rm.eventbus, rm.recorder)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime()

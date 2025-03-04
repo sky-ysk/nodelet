@@ -61,12 +61,12 @@ func (c *ClientSetConfig) GetRestConfig() *rest.Config {
 		},
 		UserAgent: "defaultUserAgent",
 		Transport: &http.Transport{
-			MaxIdleConns:        100,              // 最大空闲连接数
+			MaxIdleConns:        1000,             // 最大空闲连接数
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
 		Timeout: 10 * time.Second,
 	}
-	
+
 	return r
 }

@@ -13,12 +13,19 @@ import (
 	"strings"
 )
 
+// namespaceSubresources 包含 namespace 的子资源 此列表允许解析器区分命名空间子资源和命名空间资源
+var namespaceSubresources = sets.NewString("status")
+
+// verbsWithSelectors 是支持 fieldSelector 和 labelSelector 参数的动词列表
+var verbsWithSelectors = sets.NewString("list", "watch", "deletecollection")
+
 type RequestInfoResolver interface {
 	NewRequestInfo(req *http.Request) (*RequestInfo, error)
 }
 
 // RequestInfo 保存从http请求解析的信息。
 type RequestInfo struct {
+	// Namespace 命名空间
 	Namespace string
 	// IsResourceRequest 指示请求是不是针对API资源（或子资源）
 	IsResourceRequest bool
@@ -26,7 +33,7 @@ type RequestInfo struct {
 	Path string
 	// Verb 是与API请求关联的动词，而不是http方法。
 	Verb string
-	
+
 	APIPrefix  string
 	APIGroup   string
 	APIVersion string
@@ -38,6 +45,11 @@ type RequestInfo struct {
 	Name string
 	// Parts 是请求的路径部分，总是以/{resource}/{name}开头
 	Parts []string
+
+	// FieldSelector 包含请求中未解析的字段选择器。 它仅在 apiserver 遵循与此请求关联的谓词的字段选择器。
+	FieldSelector string
+	// LabelSelector 包含请求中未解析的字段选择器。 它仅在 apiserver 遵循与此请求关联的谓词的字段选择器。
+	LabelSelector string
 }
 
 type RequestInfoFactory struct {
@@ -49,13 +61,17 @@ type RequestInfoFactory struct {
 // /apis/{api-group}/{version}/{resource}
 // /apis/{api-group}/{version}/{resource}/{resourceName}
 // /apis/{api-group}/{version}/{resource}/{resourceName}/{subresourceName}
+// /apis/{api-group}/{version}/namespaces/{namespace}/{resource}
+// /apis/{api-group}/{version}/namespaces/{namespace}/{resource}/{resourceName}
+// /apis/{api-group}/{version}/namespaces/{namespace}/{resource}/{resourceName}/{subresourceName}
+
 func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, error) {
 	requestInfo := RequestInfo{
 		IsResourceRequest: false,
 		Path:              req.URL.Path,
 		Verb:              strings.ToLower(req.Method),
 	}
-	
+
 	currentParts := splitPath(req.URL.Path)
 	if len(currentParts) < 4 {
 		return &requestInfo, nil
@@ -63,17 +79,17 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 	if !r.APIPrefixes.Has(currentParts[0]) {
 		return &requestInfo, nil
 	}
-	
+
 	requestInfo.APIPrefix = currentParts[0]
 	currentParts = currentParts[1:]
-	
+
 	requestInfo.APIGroup = currentParts[0]
 	currentParts = currentParts[1:]
-	
+
 	requestInfo.IsResourceRequest = true
 	requestInfo.APIVersion = currentParts[0]
 	currentParts = currentParts[1:]
-	
+
 	switch req.Method {
 	case "POST":
 		requestInfo.Verb = "create"
@@ -88,7 +104,22 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 	default:
 		requestInfo.Verb = ""
 	}
-	
+
+	// URL forms: /namespaces/{namespace}/{kind}/*, where parts are adjusted to be relative to kind
+	if currentParts[0] == "namespaces" {
+		if len(currentParts) > 1 {
+			requestInfo.Namespace = currentParts[1]
+
+			// if there is another step after the namespace name and it is not a known namespace subresource
+			// move currentParts to include it as a resource in its own right
+			if len(currentParts) > 2 && !namespaceSubresources.Has(currentParts[2]) {
+				currentParts = currentParts[2:]
+			}
+		}
+	} else {
+		requestInfo.Namespace = meta.NamespaceNone
+	}
+
 	requestInfo.Parts = currentParts
 	switch {
 	case len(requestInfo.Parts) >= 3:
@@ -100,7 +131,7 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 	case len(requestInfo.Parts) >= 1:
 		requestInfo.Resource = requestInfo.Parts[0]
 	}
-	
+
 	if len(requestInfo.Name) == 0 && requestInfo.Verb == "get" {
 		opts := metainternalversion.ListOptions{}
 		if err := metainternalversionscheme.ParameterCodec.DecodeParameters(req.URL.Query(), meta.SchemeGroupVersion, &opts); err != nil {
@@ -114,13 +145,13 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 				}
 			}
 		}
-		
+
 		if opts.Watch {
 			requestInfo.Verb = "watch"
 		} else {
 			requestInfo.Verb = "list"
 		}
-		
+
 		if opts.FieldSelector != nil {
 			if name, ok := opts.FieldSelector.RequiresExactMatch("metadata.name"); ok {
 				if len(path.IsValidPathSegmentName(name)) == 0 {
@@ -129,9 +160,21 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 			}
 		}
 	}
-	
+
 	if len(requestInfo.Name) == 0 && requestInfo.Verb == "delete" {
 		requestInfo.Verb = "deletecollection"
+	}
+
+	if verbsWithSelectors.Has(requestInfo.Verb) {
+		// interestingly these are parsed above, but the current structure there means that if one (or anything) in the
+		// listOptions fails to decode, the field and label selectors are lost.
+		// therefore, do the straight query param read here.
+		if vals := req.URL.Query()["fieldSelector"]; len(vals) > 0 {
+			requestInfo.FieldSelector = vals[0]
+		}
+		if vals := req.URL.Query()["labelSelector"]; len(vals) > 0 {
+			requestInfo.LabelSelector = vals[0]
+		}
 	}
 	return &requestInfo, nil
 }

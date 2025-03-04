@@ -13,7 +13,7 @@ type TypeMeta struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	// +optional
 	Kind string `json:"kind,omitempty" protobuf:"bytes,1,opt,name=kind"`
-	
+
 	// APIVersion defines the versioned schema of this representation of an object.
 	// Servers should convert recognized schemas to the latest internal value, and
 	// may reject unrecognized values.
@@ -28,7 +28,7 @@ type ListMeta struct {
 	// Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.
 	// +optional
 	SelfLink string `json:"selfLink,omitempty" protobuf:"bytes,1,opt,name=selfLink"`
-	
+
 	// String that identifies the server's internal version of this object that
 	// can be used by clients to determine when objects have changed.
 	// Value must be treated as opaque by clients and passed unmodified back to the server.
@@ -37,7 +37,7 @@ type ListMeta struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
 	// +optional
 	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,2,opt,name=resourceVersion"`
-	
+
 	// continue may be set if the user set a limit on the number of items returned, and indicates that
 	// the server has more data available. The value is opaque and may be used to issue another request
 	// to the endpoint that served this list to retrieve the next set of available objects. Continuing a
@@ -46,7 +46,7 @@ type ListMeta struct {
 	// identical to the value in the first response, unless you have received this token from an error
 	// message.
 	Continue string `json:"continue,omitempty" protobuf:"bytes,3,opt,name=continue"`
-	
+
 	// remainingItemCount is the number of subsequent items in the list which are not included in this
 	// list response. If the list request contained label or field selectors, then the number of
 	// remaining items is unknown and the field will be left unset and omitted during serialization.
@@ -63,34 +63,78 @@ type ListMeta struct {
 type ObjectMeta struct {
 	// Name 创建资源时需要，在同一命名空间内必须唯一
 	Name string `json:"name,omitempty"`
-	
+
 	// GenerateName 当未指定Name时由服务器使用，生成name
 	GenerateName string `json:"generateName,omitempty"`
-	
+
 	// Namespace 命名空间
 	Namespace string `json:"namespace,omitempty"`
-	
+
 	// UID 资源全局唯一标识符（时间和空间），由系统填充使用
 	UID UID `json:"uid,omitempty"`
-	
+
 	// ResourceVersion 资源版本，由存储后端填充
 	ResourceVersion string `json:"resourceVersion,omitempty"`
-	
+
 	// 表示所需状态的特定生成的序列号。由系统填充。只读。
 	Generation int64 `json:"generation,omitempty"`
-	
+
 	// CreationTimestamp 创建资源的时间戳，由系统填充
 	CreationTimestamp Time `json:"creationTimestamp,omitempty"`
-	
+
 	// DeletionTimestamp 删除资源的时间戳，由系统填充
 	DeletionTimestamp *Time `json:"deletionTimestamp,omitempty"`
-	
+
 	// DeletionGracePeriodSeconds 在从系统中删除该对象之前，允许该对象优雅终止的秒数。仅当设置了deletionTimestamp时设置。
 	DeletionGracePeriodSeconds *int64 `json:"deletionGracePeriodSeconds,omitempty"`
-	
+
 	// Labels 可用于组织和分类（作用域和选择）对象的字符串键和值的映射。
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Annotations is an unstructured key value map stored with a resource that may be
+	// set by external tools to store and retrieve arbitrary metadata. They are not
+	// queryable and should be preserved when modifying objects.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,12,rep,name=annotations"`
 }
+
+const (
+	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
+	NamespaceDefault = "default"
+	// NamespaceAll 是要在上下文中指定（要列出或筛选所有命名空间中的资源时）的默认参数
+	NamespaceAll = ""
+	// NamespaceNone 没有命名空间时的上下文的参数。
+	NamespaceNone = ""
+	// NamespaceSystem is the system namespace where we place system components.
+	NamespaceSystem = "kube-system"
+	// NamespacePublic is the namespace where we place public info (ConfigMaps)
+	NamespacePublic = "kube-public"
+)
+
+// from k8s
+const (
+	// InitialEventsAnnotationKey the name of the key
+	// under which an annotation marking the end of
+	// a watchlist stream is stored.
+	//
+	// The annotation is added to a "Bookmark" event.
+	InitialEventsAnnotationKey = "k8s.io/initial-events-end"
+
+	// InitialEventsListBlueprintAnnotationKey is the name of the key
+	// where an empty, versioned list is encoded in the requested format
+	// (e.g., protobuf, JSON, CBOR), then base64-encoded and stored as a string.
+	//
+	// This encoding matches the request encoding format, which may be
+	// protobuf, JSON, CBOR, or others, depending on what the client requested.
+	// This ensures that the reconstructed list can be processed through the
+	// same decoder chain that would handle a standard LIST call response.
+	//
+	// The annotation is added to a "Bookmark" event and is used by clients
+	// to guarantee the format consistency when reconstructing
+	// the list during WatchList processing.
+	InitialEventsListBlueprintAnnotationKey = "kubernetes.io/initial-events-list-blueprint"
+)
 
 type UID string
 
@@ -111,17 +155,19 @@ const (
 // 输出单个资源
 type APIResource struct {
 	Name string
-	
+
+	Namespaced bool
+
 	Group string
-	
+
 	Version string
-	
+
 	Kind string
-	
+
 	Verbs Verbs
-	
+
 	ShortName []string
-	
+
 	// TODO: 数据一致性相关字段
 }
 
@@ -133,7 +179,7 @@ func (vs Verbs) String() string {
 
 type APIResourceList struct {
 	runtime.TypeMeta
-	
+
 	//
 	GroupVersion string
 	//
@@ -153,7 +199,7 @@ type Status struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	// +optional
 	ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	
+
 	// Status of the operation.
 	// One of: "Success" or "Failure".
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
@@ -223,14 +269,14 @@ const (
 	// The details field may contain other information about this error.
 	// Status code 500.
 	StatusReasonUnknown StatusReason = ""
-	
+
 	// StatusReasonUnauthorized means the server can be reached and understood the request, but requires
 	// the user to present appropriate authorization credentials (identified by the WWW-Authenticate header)
 	// in order for the action to be completed. If the user has specified credentials on the request, the
 	// server considers them insufficient.
 	// Status code 401
 	StatusReasonUnauthorized StatusReason = "Unauthorized"
-	
+
 	// StatusReasonForbidden means the server can be reached and understood the request, but refuses
 	// to take any further action.  It is the result of the server being configured to deny access for some reason
 	// to the requested resource by the client.
@@ -241,7 +287,7 @@ const (
 	//   "id"   string - the identifier of the forbidden resource
 	// Status code 403
 	StatusReasonForbidden StatusReason = "Forbidden"
-	
+
 	// StatusReasonNotFound means one or more resources required for this operation
 	// could not be found.
 	// Details (optional):
@@ -251,26 +297,26 @@ const (
 	//   "id"   string - the identifier of the missing resource
 	// Status code 404
 	StatusReasonNotFound StatusReason = "NotFound"
-	
+
 	// StatusReasonAlreadyExists means the resource you are creating already exists.
 	// Details (optional):
 	//   "kind" string - the kind attribute of the conflicting resource
 	//   "id"   string - the identifier of the conflicting resource
 	// Status code 409
 	StatusReasonAlreadyExists StatusReason = "AlreadyExists"
-	
+
 	// StatusReasonConflict means the requested operation cannot be completed
 	// due to a conflict in the operation. The client may need to alter the
 	// request. Each resource may define custom details that indicate the
 	// nature of the conflict.
 	// Status code 409
 	StatusReasonConflict StatusReason = "Conflict"
-	
+
 	// StatusReasonGone means the item is no longer available at the server and no
 	// forwarding address is known.
 	// Status code 410
 	StatusReasonGone StatusReason = "Gone"
-	
+
 	// StatusReasonInvalid means the requested create or update operation cannot be
 	// completed due to invalid data provided as part of the request. The client may
 	// need to alter the request. When set, the client may use the StatusDetails
@@ -283,7 +329,7 @@ const (
 	//                   field attributes will be set.
 	// Status code 422
 	StatusReasonInvalid StatusReason = "Invalid"
-	
+
 	// StatusReasonServerTimeout means the server can be reached and understood the request,
 	// but cannot complete the action in a reasonable time. The client should retry the request.
 	// This is may be due to temporary server load or a transient communication issue with
@@ -295,7 +341,7 @@ const (
 	//   "retryAfterSeconds" int32 - the number of seconds before the operation should be retried
 	// Status code 500
 	StatusReasonServerTimeout StatusReason = "ServerTimeout"
-	
+
 	// StatusReasonTimeout means that the request could not be completed within the given time.
 	// Clients can get this response only when they specified a timeout param in the request,
 	// or if the server cannot complete the operation within a reasonable amount of time.
@@ -305,7 +351,7 @@ const (
 	//   "retryAfterSeconds" int32 - the number of seconds before the operation should be retried
 	// Status code 504
 	StatusReasonTimeout StatusReason = "Timeout"
-	
+
 	// StatusReasonTooManyRequests means the server experienced too many requests within a
 	// given window and that the client must wait to perform the action again. A client may
 	// always retry the request that led to this error, although the client should wait at least
@@ -314,49 +360,49 @@ const (
 	//   "retryAfterSeconds" int32 - the number of seconds before the operation should be retried
 	// Status code 429
 	StatusReasonTooManyRequests StatusReason = "TooManyRequests"
-	
+
 	// StatusReasonBadRequest means that the request itself was invalid, because the request
 	// doesn't make any sense, for example deleting a read-only object.  This is different than
 	// StatusReasonInvalid above which indicates that the API call could possibly succeed, but the
 	// data was invalid.  API calls that return BadRequest can never succeed.
 	// Status code 400
 	StatusReasonBadRequest StatusReason = "BadRequest"
-	
+
 	// StatusReasonMethodNotAllowed means that the action the client attempted to perform on the
 	// resource was not supported by the code - for instance, attempting to delete a resource that
 	// can only be created. API calls that return MethodNotAllowed can never succeed.
 	// Status code 405
 	StatusReasonMethodNotAllowed StatusReason = "MethodNotAllowed"
-	
+
 	// StatusReasonNotAcceptable means that the accept types indicated by the client were not acceptable
 	// to the server - for instance, attempting to receive protobuf for a resource that supports only json and yaml.
 	// API calls that return NotAcceptable can never succeed.
 	// Status code 406
 	StatusReasonNotAcceptable StatusReason = "NotAcceptable"
-	
+
 	// StatusReasonRequestEntityTooLarge means that the request entity is too large.
 	// Status code 413
 	StatusReasonRequestEntityTooLarge StatusReason = "RequestEntityTooLarge"
-	
+
 	// StatusReasonUnsupportedMediaType means that the content type sent by the client is not acceptable
 	// to the server - for instance, attempting to send protobuf for a resource that supports only json and yaml.
 	// API calls that return UnsupportedMediaType can never succeed.
 	// Status code 415
 	StatusReasonUnsupportedMediaType StatusReason = "UnsupportedMediaType"
-	
+
 	// StatusReasonInternalError indicates that an internal error occurred, it is unexpected
 	// and the outcome of the call is unknown.
 	// Details (optional):
 	//   "causes" - The original error
 	// Status code 500
 	StatusReasonInternalError StatusReason = "InternalError"
-	
+
 	// StatusReasonExpired indicates that the request is invalid because the content you are requesting
 	// has expired and is no longer available. It is typically associated with watches that can't be
 	// serviced.
 	// Status code 410 (gone)
 	StatusReasonExpired StatusReason = "Expired"
-	
+
 	// StatusReasonServiceUnavailable means that the request itself was valid,
 	// but the requested service is unavailable at this time.
 	// Retrying the request after some time might succeed.
@@ -445,39 +491,39 @@ const (
 // ListOptions 是标准REST列表调用的查询选项。
 type ListOptions struct {
 	TypeMeta `json:",inline"`
-	
+
 	// 字段选择器
 	LabelSelector string `json:"labelSelector,omitempty"`
 	// 字段选择器
 	FieldSelector string `json:"fieldSelector,omitempty"`
-	
+
 	// Watch 指定是否为Watch方法
 	Watch bool `json:"watch,omitempty"`
-	
+
 	AllowWatchBookmarks bool `json:"allowWatchBookmarks,omitempty"`
-	
+
 	// 资源版本
 	ResourceVersion string `json:"resourceVersion,omitempty"`
-	
+
 	ResourceVersionMatch ResourceVersionMatch `json:"resourceVersionMatch,omitempty"`
-	
+
 	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty"`
-	
+
 	// 分页查询,用于指定每次返回的资源数量的上限
 	// Watch为True时，此字段不适用
 	Limit int64 `json:"limit,omitempty"`
-	
+
 	// 表示分页查询的上下文，用于从上一次查询结束的地方继续获取资源，由服务器生成
 	// Watch为True时，此字段不适用
 	Continue string `json:"continue,omitempty"`
-	
+
 	//SendInitialEvents 控制在 watch=true 时是否发送资源的初始状态快照：
 	//	true：启动 Watch 流时，先发送当前资源集合的合成事件，随后发送变更事件；
 	//	false：直接从指定的 resourceVersion 开始发送变更事件。
 	//需与 resourceVersionMatch=NotOlderThan 配合使用。
 	//默认值：若 resourceVersion="" 或 "0"，默认 true；否则为 false。
 	SendInitialEvents *bool `json:"sendInitialEvents,omitempty"`
-	
+
 	ProgressNotify bool `json:"progressNotify,omitempty"`
 }
 
@@ -488,27 +534,27 @@ type GetOptions struct {
 
 type DeleteOptions struct {
 	TypeMeta `json:",inline"`
-	
+
 	// The duration in seconds before the object should be deleted. Value must be non-negative integer.
 	// The value zero indicates delete immediately. If this value is nil, the default grace period for the
 	// specified type will be used.
 	// Defaults to a per object value if not specified. zero means delete immediately.
 	// +optional
 	GracePeriodSeconds *int64 `json:"gracePeriodSeconds,omitempty"`
-	
+
 	// Must be fulfilled before a deletion is carried out. If not possible, a 409 Conflict status will be
 	// returned.
 	// +k8s:conversion-gen=false
 	// +optional
 	Preconditions *Preconditions `json:"preconditions,omitempty"`
-	
+
 	// Deprecated: please use the PropagationPolicy, this field will be deprecated in 1.7.
 	// Should the dependent objects be orphaned. If true/false, the "orphan"
 	// finalizer will be added to/removed from the object's finalizers list.
 	// Either this field or PropagationPolicy may be set, but not both.
 	// +optional
 	OrphanDependents *bool `json:"orphanDependents,omitempty"`
-	
+
 	// Whether and how garbage collection will be performed.
 	// Either this field or OrphanDependents may be set, but not both.
 	// The default policy is decided by the existing finalizer set in the
@@ -519,7 +565,7 @@ type DeleteOptions struct {
 	// foreground.
 	// +optional
 	PropagationPolicy *DeletionPropagation `json:"propagationPolicy,omitempty"`
-	
+
 	// 干运行
 	DryRun []string `json:"dryRun,omitempty"`
 }
@@ -543,7 +589,7 @@ const (
 
 type CreateOptions struct {
 	TypeMeta `json:",inline"`
-	
+
 	// When present, indicates that modifications should not be
 	// persisted. An invalid or unrecognized dryRun directive will
 	// result in an error response and no further processing of the
@@ -553,14 +599,14 @@ type CreateOptions struct {
 	// +listType=atomic
 	DryRun []string `json:"dryRun,omitempty"`
 	// +k8s:deprecated=includeUninitialized,protobuf=2
-	
+
 	// fieldManager is a name associated with the actor or entity
 	// that is making these changes. The value must be less than or
 	// 128 characters long, and only contain printable characters,
 	// as defined by https://golang.org/pkg/unicode/#IsPrint.
 	// +optional
 	FieldManager string `json:"fieldManager,omitempty"`
-	
+
 	// fieldValidation instructs the server on how to handle
 	// objects in the request (POST/PUT/PATCH) containing unknown
 	// or duplicate fields. Valid values are:
@@ -585,7 +631,7 @@ type CreateOptions struct {
 // All fields in UpdateOptions should also be present in PatchOptions.
 type UpdateOptions struct {
 	TypeMeta `json:",inline"`
-	
+
 	// When present, indicates that modifications should not be
 	// persisted. An invalid or unrecognized dryRun directive will
 	// result in an error response and no further processing of the
@@ -594,14 +640,14 @@ type UpdateOptions struct {
 	// +optional
 	// +listType=atomic
 	DryRun []string `json:"dryRun,omitempty"`
-	
+
 	// fieldManager is a name associated with the actor or entity
 	// that is making these changes. The value must be less than or
 	// 128 characters long, and only contain printable characters,
 	// as defined by https://golang.org/pkg/unicode/#IsPrint.
 	// +optional
 	FieldManager string `json:"fieldManager,omitempty"`
-	
+
 	// fieldValidation instructs the server on how to handle
 	// objects in the request (POST/PUT/PATCH) containing unknown
 	// or duplicate fields. Valid values are:
@@ -630,7 +676,7 @@ type Preconditions struct {
 }
 type PatchOptions struct {
 	TypeMeta `json:",inline"`
-	
+
 	// When present, indicates that modifications should not be
 	// persisted. An invalid or unrecognized dryRun directive will
 	// result in an error response and no further processing of the
@@ -639,7 +685,7 @@ type PatchOptions struct {
 	// +optional
 	// +listType=atomic
 	DryRun []string `json:"dryRun,omitempty"`
-	
+
 	// fieldValidation instructs the server on how to handle
 	// objects in the request (POST/PUT/PATCH) containing unknown
 	// or duplicate fields. Valid values are:
@@ -787,17 +833,17 @@ type ManagedFieldsEntry struct {
 	// because another manager took it over.
 	// +optional
 	Time *Time `json:"time,omitempty" protobuf:"bytes,4,opt,name=time"`
-	
+
 	// Fields is tombstoned to show why 5 is a reserved protobuf tag.
 	//Fields *Fields `json:"fields,omitempty" protobuf:"bytes,5,opt,name=fields,casttype=Fields"`
-	
+
 	// FieldsType is the discriminator for the different fields format and version.
 	// There is currently only one possible value: "FieldsV1"
 	FieldsType string `json:"fieldsType,omitempty" protobuf:"bytes,6,opt,name=fieldsType"`
 	// FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.
 	// +optional
 	FieldsV1 *FieldsV1 `json:"fieldsV1,omitempty" protobuf:"bytes,7,opt,name=fieldsV1"`
-	
+
 	// Subresource is the name of the subresource used to update that object, or
 	// empty string if the object was updated through the main resource. The
 	// value of this field is used to distinguish between managers, even if they

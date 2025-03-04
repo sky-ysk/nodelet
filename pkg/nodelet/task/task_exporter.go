@@ -2,10 +2,14 @@ package task
 
 import (
 	"context"
+	"time"
+
+	scheme "hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/group"
@@ -14,7 +18,6 @@ import (
 	_switch "hit.edu/framework/pkg/nodelet/task/switch"
 	"hit.edu/framework/pkg/nodelet/task/task"
 	"hit.edu/framework/pkg/nodelet/task/types"
-	"time"
 )
 
 type Exporter interface {
@@ -26,7 +29,8 @@ type TaskExporter struct {
 	nodesClient core.NodeInterface
 	gropsClient core.GroupInterface
 	tasksClient core.TaskInterface
-	// TODO: 增加Event Recorder
+	// TODO: 增加Event Broadcaster Recorder
+	eventBroadcaster recorder.EventBroadcaster
 
 	// TODO: 增加Group Lister
 	groupLister []*apis.Group
@@ -57,11 +61,17 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// Task Exporter配置 config
 
 	// Client-Go配置
-	nodeClient := clientset.Core().Nodes("")
-	taskClient := clientset.Core().Tasks("")
-	groupClient := clientset.Core().Groups("")
+	nodeClient := clientset.Core().Nodes("test")
+	taskClient := clientset.Core().Tasks("test")
+	groupClient := clientset.Core().Groups("test")
 	//事件配置
 	eb := eventbus.NewEventBus()
+	eventBroadcaster := recorder.NewBroadcaster()
+	eventsClient := clientset.Core().Events("test")
+	eventBroadcaster.StartRecordingToSink(context.Background(), &core.EventSinkImpl{Interface: eventsClient})
+	scheme := scheme.NewScheme()
+	apis.AddToScheme(scheme)
+	recorder := eventBroadcaster.NewRecorder(scheme, "TaskExporter")
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
 	// Manager 配置Task
@@ -69,7 +79,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb)
+	runtimeManager := runtime.NewRuntimeManager(eb, recorder)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -77,17 +87,18 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 
 	taskExporter := &TaskExporter{
 		// Monitor配置
-		nodesClient:   nodeClient,
-		tasksClient:   taskClient,
-		gropsClient:   groupClient,
-		groupManager:  groupManager,
-		taskManager:   taskManager,
-		groupLister:   lister,
-		groupWorkers:  workers,
-		groupMonitor:  monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, runtimeManager, nodeClient, groupClient, taskClient),
-		groupHandler:  monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient),
-		groupSwitcher: _switch.NewSwitchManager(groupQueues, nodeClient, groupClient, runtimeManager),
-		updateCh:      make(chan types.GroupUpdate),
+		nodesClient:      nodeClient,
+		tasksClient:      taskClient,
+		gropsClient:      groupClient,
+		eventBroadcaster: eventBroadcaster,
+		groupManager:     groupManager,
+		taskManager:      taskManager,
+		groupLister:      lister,
+		groupWorkers:     workers,
+		groupMonitor:     monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient),
+		groupHandler:     monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient),
+		groupSwitcher:    _switch.NewSwitchManager(groupQueues, nodeClient, groupClient, runtimeManager),
+		updateCh:         make(chan types.GroupUpdate),
 	}
 
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy

@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// fmt.Println("abc")
-	moduleName := "testModule"
+	moduleName := "testWasmModule"
 	logs.Init(moduleName)
 	logs.Info("---TestForAIWasm---")
 
@@ -26,14 +26,11 @@ func main() {
 	time.Sleep(5 * time.Second)
 	wasm_runtime.Destory()
 
-	// wasm_cmd()
+	// wasm_bycmd()
 }
 
-func wasm_cmd() {
+func wasm_bycmd() {
 	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus())
-
-	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
-	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
 
 	commandRuntime.Run(&group, &action, &runtimeCommand, 0, 0)
 	defer commandRuntime.Kill(&group, &action, &runtimeCommand)

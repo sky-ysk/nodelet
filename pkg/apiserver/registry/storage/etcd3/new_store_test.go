@@ -3,18 +3,21 @@ package etcd3
 import (
 	"context"
 	"testing"
-	
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apis/meta"
+
 	//"hit.edu/framework/pkg/apiserver/registry/storage"
 	"hit.edu/framework/pkg/apiserver/registry/storage"
 	"hit.edu/framework/pkg/apiserver/registry/storage/etcd3/testserver"
 	"hit.edu/framework/pkg/apiserver/registry/storage/value"
-	"k8s.io/apimachinery/pkg/api/apitesting"
+
+	//utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
@@ -23,29 +26,29 @@ const GroupName = "etcd3test"
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1"}
 
 func init() {
-	//metav1.AddToGroupVersion(scheme, metav1.SchemeGroupVersion)
+	//meta.AddToGroupVersion(scheme, meta.SchemeGroupVersion)
 	NodeObject := []runtime.Object{
 		&apis.Node{},
 		&apis.NodeList{},
 	}
 	addKnownTypes := func(scheme *runtime.Scheme) error {
 		scheme.AddKnownTypes(SchemeGroupVersion, NodeObject...)
-		
+
 		if err := meta.RegisterConversions(scheme); err != nil {
 			panic(err)
 		}
 		return nil
 	}
-	
+
 	addUnversionedTypes := func(scheme *runtime.Scheme) error {
 		scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
 		return nil
 	}
-	
+
 	SchemeBuilder := runtime.NewSchemeBuilder(addKnownTypes, addUnversionedTypes)
 	AddToScheme := SchemeBuilder.AddToScheme
 	utilruntime.Must(AddToScheme(scheme))
-	
+
 	// scheme.AddUnversionedTypes(SchemeGroupVersion, NodeObject...)
 	// meta.AddToScheme(scheme)
 }
@@ -67,7 +70,7 @@ type setupOptions struct {
 	groupResource  schema.GroupResource
 	transformer    value.Transformer
 	leaseConfig    LeaseManagerConfig
-	
+
 	recorderEnabled bool
 }
 
@@ -75,7 +78,8 @@ func withDefaults(options *setupOptions) {
 	options.client = func(t testing.TB) *clientv3.Client {
 		return testserver.RunEtcd(t, nil)
 	}
-	options.codec = apitesting.TestCodec(codecs, schema.GroupVersion{Group: GroupName, Version: "v1"})
+	options.codec = serializer.NewCodecFactory(scheme).LegacyCodec()
+	//options.codec = apitesting.TestCodec(codecs, schema.GroupVersion{Group: GroupName, Version: "v1"})
 	options.newFunc = newNode
 	options.newListFunc = newNodeList
 	options.prefix = ""

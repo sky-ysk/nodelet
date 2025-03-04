@@ -3,12 +3,13 @@ package action
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
-	
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	//"hit.edu/framework/pkg/apiserver/registry/core/rest"
 	"hit.edu/framework/pkg/apiserver/registry/generic"
@@ -72,7 +73,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("not a Action")
 	}
-	return labels.Set(Action.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Action.ObjectMeta), nil
+	return labels.Set(Action.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Action.ObjectMeta, true), nil
 }
 func Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
@@ -83,14 +84,14 @@ func Match(label labels.Selector, field fields.Selector) storage.SelectionPredic
 }
 
 func NewActionStorage(optsGetter generic.RESTOptionsGetter) (ActionStorage, error) {
-	
+
 	store := &genericregistry.Store{
 		NewFunc:                   NewFunc,
 		NewListFunc:               NewListFunc,
 		PredicateFunc:             Match,
 		DefaultQualifiedResource:  apis.Resource("actions"),
 		SingularQualifiedResource: apis.Resource("action"),
-		
+
 		CreateStrategy: thisStrategy,
 		UpdateStrategy: thisStrategy,
 		DeleteStrategy: thisStrategy,
@@ -107,7 +108,7 @@ func NewActionStorage(optsGetter generic.RESTOptionsGetter) (ActionStorage, erro
 	statusStore.UpdateStrategy = thisStrategy
 	specStore := *store
 	specStore.UpdateStrategy = thisStrategy
-	
+
 	ActionREST := &REST{Store: store}
 	statusREST := &StatusREST{Store: &statusStore}
 	specREST := &SpecREST{Store: &specStore}

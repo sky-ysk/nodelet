@@ -1,13 +1,13 @@
 // selection_predicate.go文件定义了与对象选择、筛选的操作，用于支持复杂的查询
-// 目前基本上是从apiserver中照搬过来的，可能需要进行部分修改
 package storage
 
 import (
 	"context"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/labels"
 	"hit.edu/framework/pkg/apiserver/endpoints/request"
-	
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apis/meta"
 )
@@ -27,11 +27,9 @@ func DefaultClusterScopedAttr(obj runtime.Object) (labels.Set, fields.Set, error
 	fieldSet := fields.Set{
 		"metadata.name": metadata.GetName(),
 	}
-	
+
 	return labels.Set(metadata.GetLabels()), fieldSet, nil
 }
-
-// TODO:根据实际情况修改默认的属性选择函数
 
 // 默认的命名空间级别对象属性选择函数，提取name和namespace
 func DefaultNamespaceScopedAttr(obj runtime.Object) (labels.Set, fields.Set, error) {
@@ -43,7 +41,7 @@ func DefaultNamespaceScopedAttr(obj runtime.Object) (labels.Set, fields.Set, err
 		"metadata.name":      metadata.GetName(),
 		"metadata.namespace": metadata.GetNamespace(),
 	}
-	
+
 	return labels.Set(metadata.GetLabels()), fieldSet, nil
 }
 
@@ -118,7 +116,6 @@ func (s *SelectionPredicate) MatchesSingle() (string, bool) {
 	if len(s.Continue) > 0 || s.Field == nil {
 		return "", false
 	}
-	// TODO: should be namespace.name
 	if name, ok := s.Field.RequiresExactMatch("metadata.name"); ok {
 		return name, true
 	}
@@ -137,7 +134,6 @@ func (s *SelectionPredicate) MatcherIndex(ctx context.Context) []MatchValue {
 		if value, ok := s.Field.RequiresExactMatch(field); ok {
 			result = append(result, MatchValue{IndexName: FieldIndex(field), Value: value})
 		} else if field == "metadata.namespace" {
-			// list pods in the namespace. i.e. /api/v1/namespaces/default/pods
 			if namespace, isNamespaceScope := isNamespaceScopedRequest(ctx); isNamespaceScope {
 				result = append(result, MatchValue{IndexName: FieldIndex(field), Value: namespace})
 			}

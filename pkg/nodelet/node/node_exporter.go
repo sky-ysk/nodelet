@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -11,9 +15,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/node/collector"
-	"strings"
-	"sync"
-	"time"
 )
 
 // TODO 11.14 node-exporter后续需要实现的功能，数据处理并填入nodestatus字段，通过client-go定期写入api-server中 --完成
@@ -50,7 +51,7 @@ func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, 
 		return nil, err
 	}
 	// Client-Go配置
-	nodeClient := clientset.Core().Nodes("")
+	nodeClient := clientset.Core().Nodes("test")
 	return &NodeExporter{
 		nodeCollector: nc,
 		staticCache:   make(map[string]collector.Metric),

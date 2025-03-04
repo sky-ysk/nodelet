@@ -114,7 +114,7 @@ func (d *decoder) Decode(defaults *schema.GroupVersionKind, into runtime.Object)
 	if err := json.Unmarshal(d.buf[:base], &rawMap); err != nil {
 		logs.Fatalf("Error unmarshaling JSON: %v", err)
 	}
-	logs.Info("rawMap:", rawMap)
+	logs.Trace("rawMap:", rawMap)
 	// Step 2: 提取 Type
 	typeValue, ok := rawMap["type"].(string)
 	if !ok {
