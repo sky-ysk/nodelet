@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	rt "runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -83,40 +82,23 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 
 	// TODO: 不同系统平台下的CMD，根据运行平台选择对应路径下的解释器等
 	//判断程序所在Linux还是Windows环境，决定python等解释器路径
-	sysType := rt.GOOS
-	pyPath := "/home/public/anaconda3/yolo/bin/python" //默认linux
-	if sysType == "linux" {
-		//可能有其他执行器路径需要指定，后续可加
-	} else if sysType == "windows" {
-		pyPath = "D:\\Programming\\Anaconda\\envs\\yolo\\python.exe"
-	}
-
-	//根据cmd执行类型变更cmd
+	// 创建命令
 	if cmd == "python" {
-		cmd = pyPath
+		envVars := runtime.EnvVar
+		for _, value := range envVars {
+			if value.Name == "" {
+				continue
+			}
+			logs.Infof("path:%v, value:%v", value.Name, value.Value)
+			cmd = value.Value
+		}
 	}
-
-	//执行参数里注入环境变量
-	// args +=
 
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
-
-	//注入环境变量，完成指定python的环境变量地址的功能
-	//TODO （在runtime检查依赖的时候增加action的envs，指定python等地址）
-	envVars := runtime.EnvVar
 	env := os.Environ() //获取当前环境的环境变量
-	for key, value := range envVars {
-		env = append(env, fmt.Sprintf("%s=%s", key, value))
-	}
 	CMD.Env = env
 
-	// 将子进程的标准输出和标准错误直接重定向到当前程序的输出----后续需要根据group中提供的输出位置重定向？（例如输出到指定文件内）
-	//outfile, err := os.Create("/home/ysk/Desktop/outfolder/" + runtime.Name + "out.txt")
-	//outfile, err := os.Create("/home/ysk/Desktop/outfolder/out.txt")
-	//if err != nil {
-	//	panic(err)
-	//}
 	//defer outfile.Close()
 	CMD.Stdout = os.Stdout
 	//CMD.Stdout = outfile
@@ -142,21 +124,6 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	logs.Infof("process id:\t %d is Running", CMD.Process.Pid)
 
 	// return nil
-	go cr.monitorCMD(groupName, actionIndex, runtimeIndex, runtime, CMD)
-
-	// TODO: 使用进程启动CMD, 异步操作
-	// TODO: 返回进程对应的ProcessID
-	// TODO: 多个Command拼接---ysk  action包含多个command拼接指？如果一个cmd比较复杂（例如：python predict.py 10 100  data.json）
-	//我们如何区分其中的参数和路径（因为执行需要predict.py  data.json的路径，（可以采取固定下载到的数据的路径，采取相对路径的方式？））
-	// TODO：注入环境变量---ysk  暂时未确定环境变量的例子
-	// TODO: 重定向stdout和stdin, 每个进程都有标准输出，任务监控相关组件需要重定向该输入输出--ysk  目前暂时以文件形式输出
-	// TODO: 处理Action的Input和Output---ysk  output的结构后续可能需要调整，目前暂时以文件.txt的输出形式
-	// 检查依赖requirements是否满足本地的环境
-	return nil
-}
-
-// 监控任务的执行状态，并修改Runtime信息并上传（这里是使用事件上传，后续可能要对比传入group_manager，来修改任务信息）
-func (cr *CommandRuntime) monitorCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, CMD *exec.Cmd) {
 	if err := CMD.Wait(); err != nil {
 		// 检查 stopSignal 通道是否被关闭，判断进程是否是外部停止的
 		if _, ok := <-cr.stopSignals[runtime.Name]; !ok {
@@ -170,13 +137,23 @@ func (cr *CommandRuntime) monitorCMD(groupName string, actionIndex, runtimeIndex
 		}
 		cr.processManager.RemoveProcess(runtime.Name)
 		delete(cr.stopSignals, runtime.Name)
-		return
+		return err
 	}
 	logs.Infof("command %s completed", runtime.Name)
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
 	cr.processManager.MoveProcessToSucess(runtime.Name) //移入successProcess，同时移出process
 	// 修改RuntimeStatus的Phase为Successed，ActionStatus的Phase也为Successed
 	cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+
+	// TODO: 使用进程启动CMD, 异步操作
+	// TODO: 返回进程对应的ProcessID
+	// TODO: 多个Command拼接---ysk  action包含多个command拼接指？如果一个cmd比较复杂（例如：python predict.py 10 100  data.json）
+	//我们如何区分其中的参数和路径（因为执行需要predict.py  data.json的路径，（可以采取固定下载到的数据的路径，采取相对路径的方式？））
+	// TODO：注入环境变量---ysk  暂时未确定环境变量的例子
+	// TODO: 重定向stdout和stdin, 每个进程都有标准输出，任务监控相关组件需要重定向该输入输出--ysk  目前暂时以文件形式输出
+	// TODO: 处理Action的Input和Output---ysk  output的结构后续可能需要调整，目前暂时以文件.txt的输出形式
+	// 检查依赖requirements是否满足本地的环境
+	return nil
 }
 
 // 停止某个CMD对应的进程

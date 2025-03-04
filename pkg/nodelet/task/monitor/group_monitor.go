@@ -16,6 +16,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	group "hit.edu/framework/pkg/nodelet/task/group"
+	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
 	"hit.edu/framework/pkg/nodelet/task/task"
 )
@@ -1152,81 +1153,131 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 	if len(group.Spec.Parents) == 0 {
 		return true
 	} else {
-		//检查父亲group是否执行完成
-		for i := range group.Spec.Parents {
-			//parentGroupID := group.Spec.Parents[i]
-			parentName := group.Spec.Parents[i]
-			//var parentGroupName string
-			//// 去client-go当中查group
-			//groupList, err := gmo.groupClient.List(context.TODO(), metav1.ListOptions{})
-			//if err != nil {
-			//	logs.Error("get list group from etcd err:", err.Error())
-			//}
-			//for _, g := range groupList.Items {
-			//	if g.Status.GroupID == parentGroupID {
-			//		parentGroupName = g.Name
-			//		break
-			//	}
-			//}
-			// TODO 这里得判断这个group和当前的group是否属于同一个Task---这里还有一个问题，就是做一个转换（将一致的parentName转换为不一致的Name进行查询）
-			// TODO 需要做一个转换
-			result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{}) //这里查父亲group的状态，得去etcd当中查
-			if err != nil {
-				logs.Errorf("Failed to get parent group:%s form etcd, err:%v", parentName, err)
-			}
-			if result.Status.Phase != apis.Successed {
-				if result.Status.Phase == apis.Migrated { // 原任务迁移了，会在Migrated队列去轮询检查副本任务是否完成，如果完成，会标记源任务Status当中的copyStatus属性
-					if result.Status.CopyStatus == "Successed" {
-						continue
-					}
+		////检查父亲group是否执行完成
+		//for i := range group.Spec.Parents {
+		//	//parentGroupID := group.Spec.Parents[i]
+		//	parentName := group.Spec.Parents[i]
+		//	//var parentGroupName string
+		//	//// 去client-go当中查group
+		//	//groupList, err := gmo.groupClient.List(context.TODO(), metav1.ListOptions{})
+		//	//if err != nil {
+		//	//	logs.Error("get list group from etcd err:", err.Error())
+		//	//}
+		//	//for _, g := range groupList.Items {
+		//	//	if g.Status.GroupID == parentGroupID {
+		//	//		parentGroupName = g.Name
+		//	//		break
+		//	//	}
+		//	//}
+		//	// TODO 这里得判断这个group和当前的group是否属于同一个Task---这里还有一个问题，就是做一个转换（将一致的parentName转换为不一致的Name进行查询）
+		//	// TODO 需要做一个转换
+		//	result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{}) //这里查父亲group的状态，得去etcd当中查
+		//	if err != nil {
+		//		logs.Errorf("Failed to get parent group:%s form etcd, err:%v", parentName, err)
+		//	}
+		//	if result.Status.Phase != apis.Successed {
+		//		if result.Status.Phase == apis.Migrated { // 原任务迁移了，会在Migrated队列去轮询检查副本任务是否完成，如果完成，会标记源任务Status当中的copyStatus属性
+		//			if result.Status.CopyStatus == "Successed" {
+		//				continue
+		//			}
+		//		}
+		//		return false //说明当前group的付钱group还没完成，直接返回false即可
+		//	}
+		//}
+		for index, i := range group.Spec.Conditions.Formulas {
+			if i.LeftValue.Name == "NodeDependency" {
+				parentName := i.LeftValue.From // 这里要考虑父亲节点有两个的情况吧，还是说弄两个Formulas
+				result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
+				if err != nil {
+					logs.Errorf("Failed to get parent group:%v form etcd, err:%v", parentName, err)
 				}
-				return false //说明当前group的付钱group还没完成，直接返回false即可
+				if result.Status.Phase != apis.Successed {
+					if result.Status.Phase == apis.Migrated {
+						if result.Status.CopyStatus == "Successed" {
+							i.LeftValue.Value = "1"
+						}
+					} else {
+						i.LeftValue.Value = "0"
+					}
+				} else {
+					i.LeftValue.Value = "1"
+				}
+				if i.LeftValue.Value == i.RightValue.Value {
+					i.Result = true
+				}
+			}
+			if !i.Result {
+				logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+				return false
+			} else {
+				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
 		}
 	}
 	return true
 }
 
-// 检查Group的依赖是否满足--存的是Parents的Name
-func (gmo *GroupMonitor) checkGroupDepencies(group *apis.Group) bool {
-	//TODO：实现依赖检查逻辑
-	// 目前只是检查Spec当中的Parents选项
-	if len(group.Spec.Parents) == 0 {
-		return true
-	} else {
-		//检查父亲group是否执行完成
-		for i := range group.Spec.Parents {
-			parentName := group.Spec.Parents[i]
-			// 去client-go当中查group
-			result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
-			if err != nil {
-				logs.Errorf("Failed to get group:%s", parentName)
-			}
-			if result.Status.Phase != apis.Successed {
-				return false //说明当前group的付钱group还没完成，直接返回false即可
-			}
-		}
-	}
-	return true
-}
+//// 检查Group的依赖是否满足--存的是Parents的Name
+//func (gmo *GroupMonitor) checkGroupDepencies(group *apis.Group) bool {
+//	//TODO：实现依赖检查逻辑
+//	// 目前只是检查Spec当中的Parents选项
+//	if len(group.Spec.Parents) == 0 {
+//		return true
+//	} else {
+//		//检查父亲group是否执行完成
+//		for i := range group.Spec.Parents {
+//			parentName := group.Spec.Parents[i]
+//			// 去client-go当中查group
+//			result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
+//			if err != nil {
+//				logs.Errorf("Failed to get group:%s", parentName)
+//			}
+//			if result.Status.Phase != apis.Successed {
+//				return false //说明当前group的付钱group还没完成，直接返回false即可
+//			}
+//		}
+//	}
+//	return true
+//}
 
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) bool {
-	// 得去etcd当中查稳妥一些，还是查action的parents是否完成
-	//group, err := gmo.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-	//if err != nil {
-	//	logs.Errorf("get group err:%v", err)
+	//actionSpec := &group.Spec.Actions[actionIndex].Spec
+	//for i := range actionSpec.Parents { // 遍历当前Action的所有父亲Action
+	//	//actionParentID := actionSpec.Parents[i]
+	//	actionParentName := actionSpec.Parents[i]
+	//	for j := range group.Status.ActionStatus { // 遍历group当中所有的action，先对actionID，然后看这个action的Phase如何
+	//		as := &group.Status.ActionStatus[j]
+	//		a := &group.Spec.Actions[j]
+	//		if a.Name == actionParentName && as.Phase != apis.Successed { //目前定义，Action的父亲Action必须是成功状态
+	//			return false
+	//		}
+	//	}
 	//}
 	actionSpec := &group.Spec.Actions[actionIndex].Spec
-	for i := range actionSpec.Parents { // 遍历当前Action的所有父亲Action
-		//actionParentID := actionSpec.Parents[i]
-		actionParentName := actionSpec.Parents[i]
-		for j := range group.Status.ActionStatus { // 遍历group当中所有的action，先对actionID，然后看这个action的Phase如何
-			as := &group.Status.ActionStatus[j]
-			a := &group.Spec.Actions[j]
-			if a.Name == actionParentName && as.Phase != apis.Successed { //目前定义，Action的父亲Action必须是成功状态
-				return false
+	for index, i := range actionSpec.Conditions.Formulas {
+		if i.LeftValue.Name == "NodeDependency" {
+			actionParentName := i.LeftValue.From
+			for j := range group.Status.ActionStatus {
+				as := &group.Status.ActionStatus[j]
+				a := &group.Spec.Actions[j]
+				if a.Name == actionParentName { //目前定义，Action的父亲Action必须是成功状态.更新action的conditions
+					if as.Phase != apis.Successed {
+						i.LeftValue.Value = "0"
+					} else {
+						i.LeftValue.Value = "1"
+					}
+				}
 			}
+			if i.LeftValue.Value == i.RightValue.Value {
+				i.Result = true
+			}
+		}
+		if !i.Result {
+			logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+			return false
+		} else {
+			// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 		}
 	}
 	return true
@@ -1235,21 +1286,91 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 // 检查Runtime的依赖是否满足
 func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, group *apis.Group) bool {
 	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
-	// 得去etcd当中查稳妥一些，还是查action的parents是否完成
-	//group, err := gmo.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-	//if err != nil {
-	//	logs.Errorf("get group err:%v", err)
+	//runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
+	//for i := range runtime.Parents { // 遍历当前runtime的父亲
+	//	//runtimeParentID := runtime.Parents[i]
+	//	runtimeParentName := runtime.Parents[i]
+	//	for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
+	//		rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
+	//		r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
+	//		if r.Name == runtimeParentName && rs.Phase != apis.Successed {
+	//			return false
+	//		}
+	//	}
 	//}
+
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
-	for i := range runtime.Parents { // 遍历当前runtime的父亲
-		//runtimeParentID := runtime.Parents[i]
-		runtimeParentName := runtime.Parents[i]
-		for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
-			rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
-			r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
-			if r.Name == runtimeParentName && rs.Phase != apis.Successed {
+	for index, i := range runtime.Conditions.Formulas {
+		if i.LeftValue.Name == "NodeDependency" {
+			runtimeParentName := i.LeftValue.From
+			for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
+				rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
+				r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
+				if r.Name == runtimeParentName { //目前定义，Action的父亲Action必须是成功状态.更新action的conditions
+					if rs.Phase != apis.Successed {
+						i.LeftValue.Value = "0"
+					} else {
+						i.LeftValue.Value = "1"
+					}
+				}
+			}
+			if i.LeftValue.Value == i.RightValue.Value {
+				i.Result = true
+			}
+			if !i.Result {
+				logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+				return false
+			} else {
+				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+			}
+		} else if i.LeftValue.Name == "ProgramDependency" {
+			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
+			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
+			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
+			var dependencyFile = i.LeftValue.From
+			envName, err := dependency.CheckEnvironmentSatisfy(dependencyFile)
+			if !err {
+				logs.Info("dependency do not satisfy,runtime name:%v", runtime.Name)
+				//需要使用协程，但是还要防止在monitor监控的时候多次创建
+				if !runtime.DepenPreparing {
+					logs.Info("installing dependency for runtime name:%v", runtime.Name)
+					runtime.DepenPreparing = true
+					go dependency.SetupEnvironment(dependencyFile, runtime.Name)
+				} else {
+					logs.Info("runtime %v is waiting for installing dependency!", runtime.Name)
+				}
+				return false
+			} else {
+				//修改conditionIndex对应的condition结果
+				i.LeftValue.Value = "1"
+				if i.Signal == apis.Equal {
+					if i.LeftValue.Value == i.RightValue.Value {
+						i.Result = true
+					}
+					//暂时没想到 ！= 如何使用，暂定判断条件相等 ==
+					// }else {
+					// 	if runtime.Conditions.Formulas[conditionIndex].LeftValue.Value != runtime.Conditions.Formulas[conditionIndex].RightValue.Value {
+					// 		runtime.Conditions.Formulas[conditionIndex].Result = true
+					// 	}
+				}
+				if !i.Result {
+					logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+					return false
+				} else {
+					// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+				}
+			}
+			path, err := dependency.EnvForInput(envName)
+			if !err {
+				logs.Infof("%v: envName err:%v", runtime.Name, envName)
 				return false
 			}
+			envVar := []apis.EnvVar{}
+			envVar = append(envVar, apis.EnvVar{Name: "PATH", Value: path})
+
+			//TODO 后续将envPath改为数组，返回多种程序依赖
+			// envVar = append(envVar, apis.EnvVar{Name: "python", Value: envPath})
+			runtime.EnvVar = append(runtime.EnvVar, envVar...)
 		}
 	}
 	return true

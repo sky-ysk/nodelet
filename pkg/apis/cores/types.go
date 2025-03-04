@@ -357,6 +357,8 @@ type ConditionValue struct {
 	// TODO: 动态类型的Value,数据来源,需要对应的Controller Watch相关变量
 	// +Optional
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	//从对应的地方获取需要的数据
+	From string `json:"from,omitempty" yaml:"from"`
 }
 
 // 条件连接符，支持大小写
@@ -390,6 +392,7 @@ type ConditionFormula struct {
 	// 类型包含 and 或者 or
 	Join JoinType `json:"join,omitempty" yaml:"join"`
 	// TODO: 符号判断结果
+	Result bool `json:"result,omitempty" yaml:"result"`
 }
 
 // 不建议使用过于复杂的逻辑
@@ -741,6 +744,7 @@ type ResourceDetail struct {
 }
 type ResourceStatus struct {
 	// 资源的使用量和他的单位
+	// TODO
 	Usage     float64
 	UsageUnit ResourceUnit
 
@@ -1084,6 +1088,10 @@ type Runtime struct {
 	// +Optional
 	EnvVar []EnvVar `json:"env_var,omitempty" yaml:"env_var"`
 
+	// Runtime条件
+	// +Optional
+	Conditions Conditions `json:"conditions,omitempty" yaml:"conditions"`
+
 	// 需要的数据
 	// 输入数据
 	// 	输入数据作为参数注入到命令参数中
@@ -1104,6 +1112,10 @@ type Runtime struct {
 	ServiceType string            `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
 	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
 	Replicas    int32             `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
+	//ysk添加
+	Dependency     string `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的名称，后续改成多种依赖
+	DepenPreparing bool   `json:"DepenPreparing" yaml:"DepenPreparing"`   //是否正在创建虚拟环境，防止多次创建
+
 }
 
 //	 输入的数据有以下几类
