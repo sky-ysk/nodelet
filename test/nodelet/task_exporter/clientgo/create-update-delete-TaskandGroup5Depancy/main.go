@@ -109,6 +109,71 @@ func main() {
 	runtime1_3_1_2FineGrainedControl := false
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧--改为Name
+	runtime1_1_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "ProgramDependency",
+					Value:     "0",
+					ValueType: "string",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements1.txt",
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "ProgramDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+		},
+	}
+	runtime1_1_1_2Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "NodeDependency",
+					Value:     "0",
+					ValueType: "strting",
+					From:      runtime1_1_1_1Name,
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "NodeDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "ProgramDependency",
+					Value:     "0",
+					ValueType: "string",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements1.txt",
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "ProgramDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+		},
+	}
 
 	g1 := apis.Group{
 		ObjectMeta: metav1.ObjectMeta{Name: group1_1Name, Namespace: ""},
@@ -125,9 +190,10 @@ func main() {
 							apis.Runtime{
 								Name:                     runtime1_1_1_1Name,
 								Type:                     apis.ByCommand,
-								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  make([]string, 0), // 加入Parents
+								Conditions:               runtime1_1_1_1Condition,
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
@@ -135,9 +201,10 @@ func main() {
 							apis.Runtime{
 								Name:                     runtime1_1_1_2Name,
 								Type:                     apis.ByCommand,
-								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
+								Conditions:               runtime1_1_1_2Condition,
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
@@ -200,7 +267,7 @@ func main() {
 							apis.Runtime{
 								Name:                     runtime1_2_1_1Name,
 								Type:                     apis.ByCommand,
-								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
@@ -210,7 +277,7 @@ func main() {
 							apis.Runtime{
 								Name:                     runtime1_2_1_2Name,
 								Type:                     apis.ByCommand,
-								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_2_1_1Name}, // 加入Parents
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
@@ -275,7 +342,7 @@ func main() {
 							apis.Runtime{
 								Name:                     runtime1_3_1_1Name,
 								Type:                     apis.ByCommand,
-								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
@@ -285,7 +352,7 @@ func main() {
 							apis.Runtime{
 								Name:                     runtime1_3_1_2Name,
 								Type:                     apis.ByCommand,
-								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",

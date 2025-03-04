@@ -745,7 +745,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 			actionStatus.Phase = phase
 			actionStatus.LastTime = lastTime
 			// 当前group有副本，那么需要将该任务对应的副本任务的action的开始装填也设置一下
-			logs.Infof("#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas, groupSpec.Replicas > 0)
+			logs.Infof("Start#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas, groupSpec.Replicas > 0)
 			if groupSpec.Replicas > 0 {
 				logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running---")
 				logs.Infof("=======================================================5")

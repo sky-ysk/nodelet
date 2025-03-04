@@ -6,6 +6,9 @@ SCHEDULER_PATH="$BIN_DIR/scheduler"
 NODELET_PATH="$BIN_DIR/nodelet"
 PROXY_PATH="$BIN_DIR/proxy"
 
+# 删除上一次运行留下来的日志文件
+rm -f nohup.out
+
 # 函数用于检查进程是否存在
 check_process_running() {
     local process_name="$1"
@@ -24,7 +27,7 @@ if [ -f "$APISERVER_PATH" ]; then
       sleep 1
   fi
     # 使用 nohup 将 apiserver 放到后台运行，并将输出重定向到 apiserver_log.log 文件，带上相应参数
-    nohup "$APISERVER_PATH" --etcd-servers=127.0.0.1:2379 > apiserver_log.log 2>&1 &
+    nohup "$APISERVER_PATH" --etcd-servers=127.0.0.1:2379 > apiserver_log.log 2>&1 &   #如果文件已存在，内容会被覆盖  > scheduler_log.log:表示将标准输出（stdout）重定向到 apiserver_log.log 文件    2>&1：将标准错误（stderr）重定向到标准输出（stdout）  &：将进程放入后台运行，释放当前终端供其他操作使用
     echo "Started apiserver and redirected output to apiserver_log.log."
 else
     echo "The apiserver file at $APISERVER_PATH does not exist."
@@ -73,9 +76,9 @@ if [ -f "$PROXY_PATH" ]; then
       killall proxy
       sleep 1
   fi
-  # 将 proxy 放到前台运行
-  echo "Starting proxy in the foreground ..."
-  nohup "$PROXY_PATH" &
+  # 将 proxy 放到后台运行
+  echo "Starting proxy and redirected output to proxy_log.log."
+  nohup "$PROXY_PATH" > proxy_log.log 2>&1 &
 else
     echo "The proxy file at $PROXY_PATH does not exist."
     exit 1

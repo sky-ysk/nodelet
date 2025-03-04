@@ -33,8 +33,8 @@ func main() {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		// Host:    "http://localhost:10000", //http://suda801.wangwanu.com:11006
-		Host:    "http://suda801.wangwanu.com:11006", //http://suda801.wangwanu.com:11006
+		Host: "http://localhost:10000", //http://suda801.wangwanu.com:11006
+		//Host:    "http://suda801.wangwanu.com:11006", //http://suda801.wangwanu.com:11006
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

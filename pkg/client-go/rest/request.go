@@ -323,7 +323,8 @@ func (r *Request) Body(obj interface{}) *Request {
 	default:
 		r.err = fmt.Errorf("unknown type used for body: %+v", obj)
 	}
-	logs.Trace("Body to string:", string(r.bodyBytes))
+	// 暂时隐藏---2005.03.04--何涨溢
+	//logs.Trace("Body to string:", string(r.bodyBytes))
 	return r
 }
 
@@ -340,7 +341,8 @@ func (r *Request) request(ctx context.Context, fn func(*http.Request, *http.Resp
 	if err != nil {
 		return err
 	}
-	logs.Trace(req.URL.String())
+	// 暂时隐藏---2005.03.04--何涨溢
+	//logs.Trace(req.URL.String())
 
 	// 发送请求
 	resp, err := client.Do(req)
@@ -531,8 +533,10 @@ func (r *Request) newHTTPRequest(ctx context.Context) (*http.Request, error) {
 
 	//在r.URL()中可以设置url的命名空间、资源、资源名称，例如resorceName 在查找资源时会用到，但是在创建资源时不会用到
 	url := r.URL().String()
-	logs.Tracef("url:", url)
-	logs.Debugf("body to string:", string(r.bodyBytes))
+	// 暂时隐藏 --2025.3.4 hzy
+	//logs.Tracef("url:", url)
+	// 暂时隐藏 --2025.3.4 hzy
+	//logs.Debugf("body to string:", string(r.bodyBytes))
 	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, newDNSMetricsTrace(ctx)), r.verb, url, body)
 	if err != nil {
 		return nil, err
