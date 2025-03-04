@@ -91,8 +91,8 @@ func TestForBroadcaster(t *testing.T) {
 	// 配置事件接收器，需要绑定一个eventsClient
 	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: eventsClient})
 
-	// 3.2 启动日志记录功能
-	eventBroadcaster.StartLogging(ctx, logs.Infof)
+	// // 3.2 启动日志记录功能
+	// eventBroadcaster.StartLogging(ctx, logs.Infof)
 
 	// 4. 创建事件记录器EventRecorder, 用于记录事件
 	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
