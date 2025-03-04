@@ -144,13 +144,31 @@ func (c *MigrationController) handleEventEvent(key string) error {
 		return c.handleDeleteEvent(key)
 	}
 	event := obj.(*apis.Event)
-	// 这里需要从Event当中获取到时那个Group、那个Node
-	nodeName := event.GenerateName // TODO 这个参数记得要改
+	// 1、节点资源不足触发的迁移
+	if event.InvolvedObject.Kind == "Node" {
+		nodeName := event.InvolvedObject.Name // TODO 目前还只适配了节点资源不足触发的迁移
+		return c.triggerNodeMigration(nodeName)
+	} else { // 2、人为想触发迁移某个任务
+		groupName := event.InvolvedObject.Name
+		return c.triggerGroupMigration(groupName)
+	}
 
-	return c.triggerNodeMigration(nodeName)
 }
 func (mc *MigrationController) handleDeleteEvent(key string) error {
 	// 这块TODO 如果Event删除了，那就说明会不会是Event上传了又马上撤销了，那不管了
+	return nil
+}
+func (mc *MigrationController) triggerGroupMigration(groupName string) error {
+	group, err := mc.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
+	if err != nil {
+		logs.Errorf("Get group %s failed: %v", groupName, err)
+	}
+	// 带基本的重试的逻辑
+	if err := retryOnError(3, func() error {
+		return mc.migrateGroup(group)
+	}); err != nil {
+		logs.Errorf("Migrate group %s failed: %v", groupName, err)
+	}
 	return nil
 }
 
@@ -330,4 +348,82 @@ func (mc *MigrationController) migrateGroup(group *apis.Group) error {
 	}
 
 	return nil
+}
+
+// 新增一个创建一个空白的Group信息，删除不必要的内容（例如Running、DeployCheck的属性都得改为Unknown，时间也得修改）
+func NewGroupInfoCopy(g *apis.Group, isAhead bool) *apis.Group {
+	// 将原始对象序列化为JSON
+	data, err := json.Marshal(g)
+	if err != nil {
+		logs.Errorf("Marshal group:%v error:%v", g.Name, err)
+	}
+	// 反序列化为新的对象
+	var copyGroup apis.Group // 非指针
+	err = json.Unmarshal(data, &copyGroup)
+	if err != nil {
+		logs.Errorf("Unmarshal group:%v error:%v", g.Name, err)
+	}
+	var groupCopy = &copyGroup // 转换为指针
+	// 接下来修改这个复制出来的Group信息，首先修改group.Name
+	groupCopy.Name = "Reason-Copy"
+	// 将groupCopy的ResourceVersion置空，注意：这是必须的，否则报错
+	groupCopy.ResourceVersion = ""
+	// 修改GroupSpec下的Actions数组当中ActionStatus的Phase和time
+	groupCopy.Spec.IsCopy = true // 标记改Group为副本group
+	// 这个副本group信息当中，其副本数量直接置为0（意思是：不再为副本订制副本）
+	groupCopy.Spec.Replicas = 0
+	for i := range groupCopy.Spec.Actions {
+		action := &groupCopy.Spec.Actions[i]
+		if action.Status.Phase == apis.Successed {
+			continue
+		} else {
+			action.Status.Phase = apis.Unknown
+			action.Status.StartAt = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+			action.Status.LastTime = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+		}
+		for j := range action.Status.RuntimeStatus {
+			runtimeStatus := &action.Status.RuntimeStatus[j]
+			runtimeStatus.ProcessId = ""
+			if runtimeStatus.Phase != apis.Successed {
+				runtimeStatus.Phase = apis.Unknown
+				runtimeStatus.StartAt = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+				runtimeStatus.LastTime = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+			}
+		}
+
+	}
+	// 修改GroupStatus下面的phase、ActionStatus的Phase以及runtimeStatus的Phase
+	// 修改副本group信息中的属性来标记副本任务需要马上启动(这个属性会在copyPending队列当中去轮询检查的)
+	if isAhead {
+		logs.Infof("============预部署副本===========")
+		groupCopy.Status.CopyStatus = "Waiting" //注意后面真正切换的时候，需要将这个参数改为Starting
+	} else {
+		logs.Infof("============直接启动副本===========")
+		groupCopy.Status.CopyStatus = "Starting"
+	}
+	// 将groupStatus下的node属性置空
+	groupCopy.Status.Node = ""
+	if groupCopy.Status.Phase != apis.Successed {
+		groupCopy.Status.Phase = apis.Unknown
+	}
+	for i := range groupCopy.Status.ActionStatus {
+		actionStatus := &groupCopy.Status.ActionStatus[i]
+		if actionStatus.Phase == apis.Successed {
+			continue
+		} else {
+			actionStatus.Phase = apis.Unknown
+			actionStatus.StartAt = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+			actionStatus.LastTime = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+		}
+		for j := range actionStatus.RuntimeStatus {
+			runtimeStatus := &actionStatus.RuntimeStatus[j]
+			runtimeStatus.ProcessId = ""
+			if runtimeStatus.Phase != apis.Successed {
+				runtimeStatus.Phase = apis.Unknown
+				runtimeStatus.StartAt = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+				runtimeStatus.LastTime = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+			}
+		}
+	}
+	return groupCopy
 }

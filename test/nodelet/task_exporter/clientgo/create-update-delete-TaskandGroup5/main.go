@@ -62,8 +62,8 @@ func main() {
 	// 获取访问Task的客户端
 	// 默认访问的Namespace是 ""
 
-	tasksClient := clientSet.Core().Tasks("")
-	groupsClient := clientSet.Core().Groups("")
+	tasksClient := clientSet.Core().Tasks("test")
+	groupsClient := clientSet.Core().Groups("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "TrainInferTask-1" // 第一个Task的Name
