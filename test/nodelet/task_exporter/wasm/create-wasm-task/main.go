@@ -70,6 +70,28 @@ func main() {
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
 
+	var runtimeCommand = apis.Runtime{
+		Name:                         "yolo-cmd",
+		Type:                         apis.ByCommand,
+		Command:                      []string{"python3"},
+		Args:                         []string{"/home/kcm/workplace/migration-demo-0116/yolo-runner.py"},
+		EnableFineGrainedControl:     true,
+		EnableFineGrainedControlPort: "5123",
+	}
+
+	// var runtimeWasm = apis.Runtime{
+	// 	Name:                         "wasm-test-ai-task",
+	// 	Image:                        "/tmp/wasm/onnx.wasm", //暂时以文件本地地址进行测试
+	// 	Type:                         apis.ByWasm,
+	// 	Command:                      []string{},
+	// 	Args:                         []string{},
+	// 	EnableFineGrainedControl:     true,
+	// 	EnableFineGrainedControlPort: "8080",
+	// 	// EnvVar: []apis.EnvVar{
+	// 	// 	{Name: "FIXTURES_DIR", Value: "/home/kcm/tmp/wasm/fixtures"},
+	// 	// },
+	// }
+
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "TestTask-wasm",
@@ -94,16 +116,7 @@ func main() {
 								Spec: apis.ActionSpec{
 									Name: "wasm_action",
 									Runtimes: []apis.Runtime{
-										apis.Runtime{
-											Name:    "wasm-test-ai-task",
-											Image:   "/tmp/wasm/onnx.wasm", //暂时以文件本地地址进行测试
-											Type:    apis.ByWasm,
-											Command: []string{},
-											Args:    []string{},
-											// EnvVar: []apis.EnvVar{
-											// 	{Name: "FIXTURES_DIR", Value: "/home/kcm/tmp/wasm/fixtures"},
-											// },
-										},
+										runtimeCommand,
 									},
 								},
 								Status: apis.ActionStatus{
@@ -174,16 +187,7 @@ func main() {
 					Spec: apis.ActionSpec{
 						Name: "wasm_action",
 						Runtimes: []apis.Runtime{
-							apis.Runtime{
-								Name:    "wasm-test-ai-task",
-								Image:   "/tmp/wasm/onnx.wasm", //暂时以文件本地地址进行测试
-								Type:    apis.ByWasm,
-								Command: []string{},
-								Args:    []string{},
-								// EnvVar: []apis.EnvVar{
-								// 	{Name: "FIXTURES_DIR", Value: "/home/kcm/tmp/wasm/fixtures"},
-								// },
-							},
+							runtimeCommand,
 						},
 					},
 					Status: apis.ActionStatus{

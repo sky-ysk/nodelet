@@ -1,4 +1,4 @@
-package events
+package recorder
 
 import (
 	"bytes"
@@ -13,9 +13,6 @@ import (
 	"hit.edu/framework/pkg/client-go/tools/reference"
 	"hit.edu/framework/pkg/component-base/logs"
 )
-
-// "k8s.io/apimachinery/pkg/watch"
-// "k8s.io/utils/clock"
 
 type recorder struct {
 	scheme *runtime.Scheme

@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// fmt.Println("abc")
-	moduleName := "testModule"
+	moduleName := "testWasmModule"
 	logs.Init(moduleName)
 	logs.Info("---TestForAIWasm---")
 
