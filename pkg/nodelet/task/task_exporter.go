@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"hit.edu/framework/pkg/nodelet/task/controller"
 	"time"
 
 	scheme "hit.edu/framework/pkg/apimachinery/runtime"
@@ -15,7 +16,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/monitor"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
-	_switch "hit.edu/framework/pkg/nodelet/task/switch"
 	"hit.edu/framework/pkg/nodelet/task/task"
 	"hit.edu/framework/pkg/nodelet/task/types"
 )
@@ -50,7 +50,9 @@ type TaskExporter struct {
 	groupHandler *monitor.GroupHandler
 
 	// 切换模块
-	groupSwitcher *_switch.GroupSwitch
+	//groupSwitcher *_switch.GroupSwitch
+	migrationController *controller.MigrationController
+	nodeMonitor         *controller.NodeMonitor
 
 	updateCh chan types.GroupUpdate
 }
@@ -64,14 +66,15 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	nodeClient := clientset.Core().Nodes("test")
 	taskClient := clientset.Core().Tasks("test")
 	groupClient := clientset.Core().Groups("test")
+	eventClient := clientset.Core().Events("test")
 	//事件配置
 	eb := eventbus.NewEventBus()
 	eventBroadcaster := recorder.NewBroadcaster()
-	eventsClient := clientset.Core().Events("test")
-	eventBroadcaster.StartRecordingToSink(context.Background(), &core.EventSinkImpl{Interface: eventsClient})
+	eventBroadcaster.StartRecordingToSink(context.Background(), &core.EventSinkImpl{Interface: eventClient})
 	scheme := scheme.NewScheme()
 	apis.AddToScheme(scheme)
 	recorder := eventBroadcaster.NewRecorder(scheme, "TaskExporter")
+
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
 	// Manager 配置Task
@@ -87,18 +90,19 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 
 	taskExporter := &TaskExporter{
 		// Monitor配置
-		nodesClient:      nodeClient,
-		tasksClient:      taskClient,
-		gropsClient:      groupClient,
-		eventBroadcaster: eventBroadcaster,
-		groupManager:     groupManager,
-		taskManager:      taskManager,
-		groupLister:      lister,
-		groupWorkers:     workers,
-		groupMonitor:     monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient),
-		groupHandler:     monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient),
-		groupSwitcher:    _switch.NewSwitchManager(groupQueues, nodeClient, groupClient, runtimeManager),
-		updateCh:         make(chan types.GroupUpdate),
+		nodesClient:         nodeClient,
+		tasksClient:         taskClient,
+		gropsClient:         groupClient,
+		eventBroadcaster:    eventBroadcaster,
+		groupManager:        groupManager,
+		taskManager:         taskManager,
+		groupLister:         lister,
+		groupWorkers:        workers,
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient),
+		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues),
+		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder),
+		updateCh:            make(chan types.GroupUpdate),
 	}
 
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
@@ -113,9 +117,10 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	// 任务执行过程中需要动态调整任务进程的资源, 根据当前任务执行的Spec和Status, 通过cGroup动态调整任务执行资源使用情况
 	go te.groupHandler.Loop(ctx, te.updateCh) //主要监控上层发来的消息，主要是启动、停止任务
 	// 任务部署完成后，需要监控任务的执行情况，并通过Client-Go定期更新
-	go te.groupMonitor.Start()               //主要监控正在启动的任务，获取任务状态信息
-	go te.ReceiveGroupInfo()                 // 持续从etcd当中读取group
-	go te.groupSwitcher.StartSwitchService() // 开启切换服务
+	go te.groupMonitor.Start() //主要监控正在启动的任务，获取任务状态信息
+	go te.ReceiveGroupInfo()   // 持续从etcd当中读取group
+	go te.migrationController.Run(2, ctx.Done())
+	go te.nodeMonitor.Run(2, ctx.Done())
 	select {
 	case <-ctx.Done():
 		return ctx.Err() //退出是返回错误

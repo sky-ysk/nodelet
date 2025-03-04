@@ -109,6 +109,7 @@ const (
 	KillingCommand        = "Killing"
 	PreemptCommand        = "Preempting"
 	BackOffStartCommand   = "BackOff"
+	TriggerMigration      = "TriggerMigration"
 )
 
 const (

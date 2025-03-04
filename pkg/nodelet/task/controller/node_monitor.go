@@ -1,16 +1,17 @@
 package controller
 
 import (
-	"context"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/util/wait"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/cache"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/node"
 	"strconv"
 	"sync"
@@ -29,7 +30,7 @@ const (
 
 type NodeMonitor struct {
 	nodeClient    core.NodeInterface
-	eventClient   core.EventInterface
+	recorder      recorder.EventRecorder
 	nodeIndexer   cache.Indexer    //// 本地缓存，提供关于资源的快速查询（索引查询）。 informer会调用Indexer的Add、update、delete方法来实现资源的同步于更新
 	nodeInformer  cache.Controller //// cache.Controller 是 k8s中用于控制器模式的核心组件，它封装了资源的监听和事件处理机制，通常用于协调控制循环。，作用：监听资源变化、缓存资源、触发处理逻辑
 	queue         workqueue.TypedRateLimitingInterface[string]
@@ -37,7 +38,7 @@ type NodeMonitor struct {
 	lastEventTime time.Time // 记录节点最后事件时间
 }
 
-func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface, eventClient core.EventInterface) *NodeMonitor {
+func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface, recorder recorder.EventRecorder) *NodeMonitor {
 	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "", fields.Everything())
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 	nodeOptions := cache.InformerOptions{
@@ -70,7 +71,7 @@ func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface,
 	nodeIndexer, nodeInformer := cache.NewInformerWithOptions(nodeOptions)
 	return &NodeMonitor{
 		nodeClient:   nodeClient,
-		eventClient:  eventClient,
+		recorder:     recorder,
 		nodeIndexer:  nodeIndexer,
 		nodeInformer: nodeInformer,
 		queue:        queue,
@@ -143,18 +144,19 @@ func (nm *NodeMonitor) generateMigrationEvent(n *apis.Node) error {
 		logs.Infof("Node %s is still in the cooling period (last event time: %s)", n.Name, nm.lastEventTime.Format(time.RFC3339))
 		return nil
 	}
-	event := &apis.Event{
-		ObjectMeta: metav1.ObjectMeta{Name: "migration-trigger", Namespace: ""},
-		TypeMeta:   metav1.TypeMeta{Kind: "Event", APIVersion: "resources/v1"},
-		Reason:     "MigrationTrigger",
-		Message:    node.NodeName,
-		EventTime:  apis.Time{time.Now()},
-		Type:       "EventTypeNormal",
-	}
-	if _, err := nm.eventClient.Create(context.TODO(), event, metav1.CreateOptions{}); err != nil {
-		logs.Errorf("创建迁移事件失败: %v", err)
-		return err
-	}
+	//event := &apis.Event{
+	//	ObjectMeta: metav1.ObjectMeta{Name: "migration-trigger", Namespace: ""},
+	//	TypeMeta:   metav1.TypeMeta{Kind: "Event", APIVersion: "resources/v1"},
+	//	Reason:     "MigrationTrigger",
+	//	Message:    node.NodeName,
+	//	EventTime:  apis.Time{time.Now()},
+	//	Type:       "EventTypeNormal",
+	//}
+	//if _, err := nm.eventClient.Create(context.TODO(), event, metav1.CreateOptions{}); err != nil {
+	//	logs.Errorf("创建迁移事件失败: %v", err)
+	//	return err
+	//}
+	nm.recorder.Event(n, apis.EventTypeNormal, events.TriggerMigration, fmt.Sprintf("Node Name:\t %s is shortage", n.Name))
 	nm.lastEventTime = nowTime
 	return nil
 }

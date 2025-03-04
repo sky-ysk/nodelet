@@ -62,13 +62,13 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	if err != nil {
 
 		logs.Error("Failed to start action:\t", action.Spec.Name)
-		cr.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Failed to start action:%s", action.Spec.Name))
+		cr.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Failed to start runtime:%s", runtime.Name))
 		return err
 		// TODO: 输出Action的详细信息
 	}
 	// TODO: 输出Action的详细信息，等级为Debug
 	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
-	cr.recorder.Event(action, apis.EventTypeNormal, events.CreatedCommand, fmt.Sprintf("Action Name:\t %s is Running", action.Spec.Name))
+	cr.recorder.Event(action, apis.EventTypeNormal, events.CreatedCommand, fmt.Sprintf("Runtime Name:\t %s is Running", runtime.Name))
 
 	return nil
 }
@@ -257,7 +257,7 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 		logs.Errorf("任务保存状态失败: %e", error)
 	}
 	// logs.Infof("********************【模拟】成功保存了任务状态：ABCDEFG")
-	cr.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Action Name:\t %s rpc RunAppStore()", action.Spec.Name))
+	cr.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
 
 	return "ABCDEFG"
 }
@@ -280,7 +280,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	if error != nil {
 		logs.Errorf("任务恢复状态失败: %e", error)
 	}
-	cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Action Name:\t %s rpc RunAppRestore()", action.Spec.Name))
+	cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
 
 	return error
 }
@@ -298,7 +298,7 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 	if error != nil {
 		logs.Errorf("任务启动失败: %e", error)
 	}
-	cr.recorder.Event(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Action Name:\t %s rpc RunAppStart()", action.Spec.Name))
+	cr.recorder.Event(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStart()", runtime.Name))
 
 	//logs.Info("runtime has started =====================")
 
