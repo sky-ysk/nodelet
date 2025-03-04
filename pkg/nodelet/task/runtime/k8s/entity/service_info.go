@@ -45,6 +45,56 @@ func convertServiceType(serviceType string) corev1.ServiceType {
 	}
 }
 
+func GetServiceFromParam1(customService *apis.Service) *corev1.Service {
+	service := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       customService.Kind,
+			APIVersion: customService.APIVersion,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      customService.Name,
+			Namespace: customService.Namespace,
+			Labels:    customService.Labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Type:            corev1.ServiceType(customService.Spec.Type),
+			Selector:        customService.Spec.Selector,
+			SessionAffinity: corev1.ServiceAffinity(customService.Spec.SessionAffinity),
+			ClusterIP:       customService.Spec.ClusterIP,
+			ExternalIPs:     customService.Spec.ExternalIPs,
+			ExternalName:    customService.Spec.ExternalName,
+		},
+	}
+	// 端口列表转换（至少一个端口）
+	var ports []corev1.ServicePort
+	for _, p := range customService.Spec.Ports {
+		// 处理TargetPort的IntOrString类型
+		targetPort := intstr.IntOrString{}
+		if p.TargetPort.Type == apis.Int {
+			targetPort = intstr.FromInt32(p.TargetPort.IntVal)
+		} else {
+			targetPort = intstr.FromString(p.TargetPort.StrVal)
+		}
+
+		ports = append(ports, corev1.ServicePort{
+			Name:       p.Name,
+			Protocol:   corev1.Protocol(p.Protocol),
+			Port:       p.Port,
+			TargetPort: targetPort,
+			NodePort:   p.NodePort, // 当Type=NodePort/LoadBalancer时有效
+		})
+	}
+	service.Spec.Ports = ports
+
+	// 特殊字段处理
+	if customService.Spec.ExternalTrafficPolicy != "" {
+		service.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyType(
+			customService.Spec.ExternalTrafficPolicy)
+	}
+
+	return service
+}
+
 // NewService 创建 Service 的构造函数
 func NewService(name, namespace string, selector map[string]string, ports []apis.Port, serviceType string) *Service {
 	return &Service{

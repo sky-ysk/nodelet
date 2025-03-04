@@ -14,35 +14,21 @@ import (
 	"hit.edu/framework/pkg/client-go/tools/cache"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/node"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
-	_switch "hit.edu/framework/pkg/nodelet/task/switch"
 	"strconv"
+	"sync"
 	"time"
 )
 
 const (
-	controllerName = "group-switch-controller"
-	resyncPeriod   = 30 * time.Second
+	resyncPeriod = 30 * time.Second
 )
-const (
-	thresholdbattery float64 = 5
-	thresholdCPU     float64 = 70
-	thresholdGPU     float64 = 90
-	thresholdMemory  float64 = 80
-	thresholdNetWork float64 = 50
-	thresholdStorage float64 = 60
-)
-
-type queueItem struct {
-	key  string
-	kind string
-}
 
 type MigrationController struct { // 自定义的业务控制器（适配迁移触发），依赖与Informer来收集群中资源变化的事件，并可以基于这些事件采取某些操作，如创建、删除或更新某些资源。
 	// client-go
 	clientSet   *clients.ClientSet
-	nodeClient  core.NodeInterface
 	groupClient core.GroupInterface
 
 	// Group 相关组件
@@ -53,43 +39,25 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	eventIndexer  cache.Indexer    // 这个参数就是cache.Controller当中的Indexer缓存
 	eventInformer cache.Controller // cache.Controller当中包含了cache.Index ,这里我们将cache.Controller中的Indexer拎出来，是为了更好地编写代码而已，其实不要这个Indexer也是OK的，因为cache.Controller当中也是含有Indexer的
 
-	// Node 相关组件
-	nodeIndexer  cache.Indexer    // 本地缓存，提供关于资源的快速查询（索引查询）。 informer会调用Indexer的Add、update、delete方法来实现资源的同步于更新
-	nodeInformer cache.Controller // cache.Controller 是 k8s中用于控制器模式的核心组件，它封装了资源的监听和事件处理机制，通常用于协调控制循环。，作用：监听资源变化、缓存资源、触发处理逻辑
-
 	// 工作队列
-	queue workqueue.TypedRateLimitingInterface[queueItem]
+	queue workqueue.TypedRateLimitingInterface[string]
 
 	// 运行时依赖组件
 	runtimeManager *runtime.RuntimeManager
 
 	groupQueues *group.GroupQueues
-	switchCheck *_switch.SwitchCheck
 }
 
-func NewMigrationController(clientSet *clients.ClientSet, nodeClient core.NodeInterface, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues) *MigrationController {
-	//创建Node资源的List Watcher
-	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "", fields.Everything())
+func NewMigrationController(clientSet *clients.ClientSet, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues) *MigrationController {
+	//创建资源的List Watcher
 	eventpListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "events", "", fields.Everything())
 	groupListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "groups", "", fields.Everything())
-	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[queueItem]())
-	nodeOptions := cache.InformerOptions{
-		ListerWatcher: nodeListWatcher,
-		ObjectType:    &apis.Node{}, // 要监听的资源类型
-		Handler: cache.ResourceEventHandlerFuncs{
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				key, _ := cache.MetaNamespaceKeyFunc(newObj)
-				queue.Add(queueItem{key: key, kind: "node"})
-			},
-		},
-		ResyncPeriod: 0, // ResyncPeriod，0表示不定期重新同步
-		Indexers:     cache.Indexers{},
-	}
+	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 	groupOptions := cache.InformerOptions{
 		ListerWatcher: groupListWatcher,
 		ObjectType:    &apis.Group{},
 		Handler:       nil,
-		ResyncPeriod:  0,
+		ResyncPeriod:  resyncPeriod, //定义全量同步本地缓存的周期，即使没有资源变更事件发生，也会定期重新从 API Server 拉取全量数据。
 		Indexers: cache.Indexers{ // 通过Node名称，找到所有与之关联的Group
 			"ByNode": func(obj interface{}) ([]string, error) {
 				group := obj.(*apis.Group)
@@ -102,24 +70,20 @@ func NewMigrationController(clientSet *clients.ClientSet, nodeClient core.NodeIn
 		ObjectType:    &apis.Event{},
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				if event, ok := obj.(*apis.Event); ok && event.Reason == "MigrationTrigger" {
+				if event, ok := obj.(*apis.Event); ok && event.Message == node.NodeName && event.Reason == "MigrationTrigger" { // event关联的节点为本节点，且迁移理由为触发迁移
 					key, _ := cache.MetaNamespaceKeyFunc(obj)
-					queue.Add(queueItem{key: key, kind: "event"})
+					queue.Add(key)
 				}
 			},
 		},
-		ResyncPeriod: 0,
+		ResyncPeriod: resyncPeriod,
 		Indexers:     cache.Indexers{},
 	}
-	nodeIndexer, nodeInformer := cache.NewInformerWithOptions(nodeOptions)
 	eventIndexer, eventInformer := cache.NewInformerWithOptions(eventOptions)
 	groupIndexer, groupInformer := cache.NewInformerWithOptions(groupOptions)
 	return &MigrationController{
 		clientSet:      clientSet,
-		nodeClient:     nodeClient,
 		groupClient:    groupClient,
-		nodeIndexer:    nodeIndexer,
-		nodeInformer:   nodeInformer,
 		eventIndexer:   eventIndexer,
 		eventInformer:  eventInformer,
 		groupIndexer:   groupIndexer,
@@ -127,29 +91,6 @@ func NewMigrationController(clientSet *clients.ClientSet, nodeClient core.NodeIn
 		queue:          queue,
 		runtimeManager: runtimeManager,
 		groupQueues:    groupQueues,
-		switchCheck:    _switch.NewSwitchCheck(nodeClient),
-	}
-}
-
-// 共享的事件处理器
-func createEventHandler(queue workqueue.TypedRateLimitingInterface[queueItem], kind string) cache.ResourceEventHandler {
-	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			enqueueWithKind(queue, obj, kind)
-		},
-		UpdateFunc: func(old, new interface{}) {
-			enqueueWithKind(queue, new, kind)
-		},
-		DeleteFunc: func(obj interface{}) {
-			enqueueWithKind(queue, obj, kind)
-		},
-	}
-}
-
-func enqueueWithKind(queue workqueue.TypedRateLimitingInterface[queueItem], obj interface{}, kind string) {
-	key, err := cache.MetaNamespaceKeyFunc(obj) // 获取对象的唯一标识符，它尝试将对象转化为一个字符串键（结构体包含Name和Namespace），可以用于存储和查询
-	if err == nil {
-		queue.Add(queueItem{key: key, kind: kind})
 	}
 }
 
@@ -158,12 +99,11 @@ func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 	defer mc.queue.ShutDown()
 
 	// 启动所有的Informer
-	go mc.nodeInformer.Run(stopCh)
 	go mc.groupInformer.Run(stopCh)
 	go mc.eventInformer.Run(stopCh)
-
-	// 等待缓存同步
-	if cache.WaitForCacheSync(stopCh, mc.nodeInformer.HasSynced, mc.groupInformer.HasSynced, mc.eventInformer.HasSynced) {
+	//缓存同步仅指初始的列表操作完成，后续的更新是由Informer的Watch机制自动处理的，不需要手动同步。因此，在控制器启动时只需要等待一次初始同步即可，之后Informer会自动维护缓存的更新，不需要循环检查。
+	// 等待缓存同步 启动后第一次将全量数据加载到本地缓存中
+	if !cache.WaitForCacheSync(stopCh, mc.groupInformer.HasSynced, mc.eventInformer.HasSynced) { //WaitForCacheSync:是否同步完成，返回false的话报错
 		logs.Errorf("Timed out waiting for caches to sync")
 		return
 	}
@@ -174,85 +114,23 @@ func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 }
 
 func (mc *MigrationController) runWorker() {
-	for mc.processNextItem() {
-
-	}
-}
-func (mc *MigrationController) processNextItem() bool {
-	// 获取队列项
-	item, quit := mc.queue.Get()
-	if quit {
-		return false
-	}
-	defer mc.queue.Done(item)
-
-	// 处理错误逻辑
-	if err := mc.syncHandler(item); err != nil {
-		// 使用指数退避的重试机制
-		if mc.queue.NumRequeues(item) < 5 {
-			mc.queue.AddRateLimited(item)
-		} else {
-			logs.Errorf("Error syncing item %v: %v", item, err)
-			mc.queue.Forget(item)
+	for {
+		// 获取队列项
+		item, quit := mc.queue.Get()
+		if quit {
+			return
 		}
-	} else {
-		mc.queue.Forget(item)
+		defer mc.queue.Done(item)
+		if err := mc.handleEventEvent(item); err != nil {
+			// 使用指数退避的重试机制
+			if mc.queue.NumRequeues(item) < 5 {
+				mc.queue.AddRateLimited(item)
+			} else {
+				logs.Errorf("Error syncing item %v: %v", item, err)
+				mc.queue.Forget(item)
+			}
+		}
 	}
-	return true
-}
-
-func (c *MigrationController) syncHandler(item queueItem) error {
-	switch item.kind {
-	case "node":
-		return c.handleNodeEvent(item.key)
-	case "event":
-		return c.handleEventEvent(item.key)
-	default:
-		return fmt.Errorf("unknown kind: %s", item.kind)
-	}
-}
-
-// 处理Node事件
-func (c *MigrationController) handleNodeEvent(key string) error {
-	obj, exists, err := c.nodeIndexer.GetByKey(key)
-	if err != nil {
-		return fmt.Errorf("error fetching object with key %s from store: %v", key, err)
-	}
-	// 情况1：Node已经删除---Node信息不在etcd当中
-	if !exists {
-		return c.handleDeleteNode(key)
-	}
-	node := obj.(*apis.Node)
-
-	// 情况2：检查是否需要迁移
-	if !c.shouldTriggerMigration(node) { // node的资源不需要切换
-		logs.Info("检测到节点资源不足，触发迁移", "node", node.Name)
-		return c.triggerNodeMigration(node.Name)
-	}
-	return nil
-}
-
-func (mc *MigrationController) handleDeleteNode(key string) error {
-	// 这块TODO 属于后期讨论和优化的地方，比如说Node信息被删了，那么是不是Node关联的所有Group要上报呢？
-	return nil
-}
-
-func (c *MigrationController) shouldTriggerMigration(node *apis.Node) bool {
-	cpuAveUtil := getFloatValue(node.Status.Usage["cpu"][0].Values["AveUtil"])
-	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
-	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
-	//logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
-
-	return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
-}
-
-func getFloatValue(s string) float64 {
-	value, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		logs.Errorf("Convert value failed, err:%v", err)
-		return 0
-	}
-	return value
 }
 
 // 处理Event事件
@@ -268,40 +146,79 @@ func (c *MigrationController) handleEventEvent(key string) error {
 	event := obj.(*apis.Event)
 	// 这里需要从Event当中获取到时那个Group、那个Node
 	nodeName := event.GenerateName // TODO 这个参数记得要改
+
 	return c.triggerNodeMigration(nodeName)
 }
 func (mc *MigrationController) handleDeleteEvent(key string) error {
-	// 这块TODO 如果Event删除了
+	// 这块TODO 如果Event删除了，那就说明会不会是Event上传了又马上撤销了，那不管了
 	return nil
 }
 
+// 这里有个优化的地方，就是迁移的话，涉及到多个group同时迁移，那么这里普通做法是遍历，但是效果不咋好，所以我们这里可以加一个工作池（协程）
 func (c *MigrationController) triggerNodeMigration(nodeName string) error {
 	// 标记节点为迁移状态，这样就不要调度到本节点---这个好像没有必要？
-
 	// 通过索引获取关联的Groups
-	groups, err := c.groupIndexer.ByIndex("byNode", nodeName)
+	groups, err := c.groupIndexer.ByIndex("ByNode", nodeName)
 	if err != nil {
 		return fmt.Errorf("Failed to obtain the node association group:%v", err)
 	}
-	// 迁移节点上的Group
-	var migrationErrors []error
-	for _, obj := range groups {
-		group := obj.(*apis.Group)
-		if err := c.migrateGroup(group); err != nil {
-			migrationErrors = append(migrationErrors, err)
-			logs.Errorf("Failed to migrate group:%v, err:%v", group.Name, err)
-			continue
-		}
+	const maxWorkers = 5
+	var (
+		wg     sync.WaitGroup
+		errMu  sync.Mutex
+		errors []error
+	)
+
+	workCh := make(chan interface{}, len(groups))
+	for _, group := range groups {
+		workCh <- group
 	}
-	// 处理迁移结果
-	if len(migrationErrors) > 0 {
-		return fmt.Errorf("部分任务迁移失败:%v", migrationErrors)
+	close(workCh)
+
+	// 启动工作池
+	for i := 0; i < maxWorkers; i++ {
+		wg.Add(1)
+		go func() { // 相当于每个Workers开一个协程去处理，他们遍历workCh，空闲的Workers就去取
+			defer wg.Done()
+			for obj := range workCh {
+				group, ok := obj.(*apis.Group)
+				if !ok {
+					errMu.Lock()
+					errors = append(errors, fmt.Errorf("无效对象类型：%T", obj))
+					errMu.Unlock()
+					continue
+				}
+				// 带基本的重试的逻辑
+				if err := retryOnError(3, func() error {
+					return c.migrateGroup(group)
+				}); err != nil {
+					errMu.Lock()
+					errors = append(errors, fmt.Errorf("迁移失败[%s]:%w", group.Name, err))
+					errMu.Unlock()
+				}
+			}
+		}()
 	}
-	// 如果刚开始标记了节点迁移，那么还需要标记节点迁移完成
+	wg.Wait()
+
+	if len(errors) > 0 {
+		return fmt.Errorf("部分迁移失败(%d/%d): 首个错误: %v", len(errors), len(groups), errors[0])
+	}
 	return nil
 }
 
-// 任务组迁移核心逻辑---我感觉这里的核心是要改成如果这个方法当中有一步没执行成功，那么如何再次执行，让其成功
+func retryOnError(attempts int, fn func() error) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		if err = fn(); err == nil {
+			return nil
+		}
+		time.Sleep(time.Duration(i*i) * time.Second)
+	}
+	return err
+}
+
+// TODO 任务组迁移核心逻辑---我感觉这里的核心是要改成如果这个方法当中有一步没执行成功，那么如何再次执行，让其成功
 func (mc *MigrationController) migrateGroup(group *apis.Group) error {
 	// 增加一条规则：如果Group不是细粒度控制的，那么就不进行迁移---可能
 	// 1、检查当前状态
