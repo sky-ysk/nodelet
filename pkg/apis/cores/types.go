@@ -68,7 +68,7 @@ type Resource_NodeList struct {
 	Items []Resource_Node `json:"items" yaml:"items"`
 }
 
-// TODO: 独立配置
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Event struct {
 	//TODO: 定义Event
 	//TODO: ObjectReference设计
@@ -100,7 +100,7 @@ const (
 	EventTypeWarning string = "Warning"
 )
 
-// todo:改objereference
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ObjectReference struct {
 	// GVK
 	APIVersion string

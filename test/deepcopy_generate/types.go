@@ -109,7 +109,7 @@ const (
 	EventTypeWarning string = "Warning"
 )
 
-// todo:改objereference
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ObjectReference struct {
 	// GVK
 	APIVersion string
