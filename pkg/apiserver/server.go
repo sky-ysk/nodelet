@@ -78,9 +78,6 @@ type PreparedAPIServer struct {
 }
 
 func NewAPIServer(cfg *Config) *APIServer {
-	// TODO: 创建Handler
-	// TODO: 创建Serving
-	// TODO: 参数配置
 	// 创建Serving
 	apiServerHandler := server.NewAPIServerHandler(APIServerName, cfg.Serializer)
 
@@ -135,7 +132,6 @@ func (s *APIServer) Destroy() {
 
 func (s *PreparedAPIServer) RunWithContext(ctx context.Context) error {
 	logs.Info("Running API Server")
-	// TODO: 实现运行逻辑
 	// TODO: channel配置
 
 	shutdownTimeout := s.ShutdownTimeout

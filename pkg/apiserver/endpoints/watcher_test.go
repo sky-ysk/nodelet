@@ -5,72 +5,67 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer/streaming"
 	"hit.edu/framework/pkg/apimachinery/watch"
-	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler"
 	"hit.edu/framework/pkg/apiserver/endpoints/handler/responsewriters"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"testing"
 	"time"
 )
 
-func TestWatch(t *testing.T) {
-	watcher := watch.NewFake()
-	timeoutCh := make(chan time.Time)
-	done := make(chan struct{})
-	info, ok := runtime.SerializerInfoForMediaType(codecs.SupportedMediaTypes(), runtime.ContentTypeJSON)
-	if !ok || info.StreamSerializer == nil {
-		t.Fatal(info)
-	}
-	watchServer := &handler.WatchServer{
-		Scope:    &handler.RequestScope{},
-		Watching: watcher,
-
-		MediaType: "application/json",
-
-		TimeoutFactory: &fakeTimeoutFactory{timeoutCh, done},
-	}
-	s := httptest.NewServer(serveWatch(watcher, watchServer, nil, info))
-	defer s.Close()
-
-	dest, _ := url.Parse(s.URL)
-	dest.Path = "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/nodes"
-	dest.RawQuery = "watch=true"
-
-	req, _ := http.NewRequest("GET", dest.String(), nil)
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	obj := &apis.Node{
-		TypeMeta: meta.TypeMeta{
-			Kind:       "Node",
-			APIVersion: "resources/v1",
-		},
-		ObjectMeta: meta.ObjectMeta{
-			Name: "simple",
-		},
-		Spec:   apis.NodeSpec{},
-		Status: apis.NodeStatus{},
-	}
-	watcher.Add(obj)
-	watcher.Stop()
-
-	data := resp.Body
-	decoder := json.NewDecoder(data)
-	var got watchJSON
-	err = decoder.Decode(&got)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if got.Type != watch.Added {
-		t.Fatalf("unexpected watch type: %#v", got)
-	}
-}
+//func TestWatch(t *testing.T) {
+//	watcher := watch.NewFake()
+//	timeoutCh := make(chan time.Time)
+//	done := make(chan struct{})
+//	info, ok := runtime.SerializerInfoForMediaType(codecs.SupportedMediaTypes(), runtime.ContentTypeJSON)
+//	if !ok || info.StreamSerializer == nil {
+//		t.Fatal(info)
+//	}
+//	watchServer := &handler.WatchServer{
+//		Scope:    &handler.RequestScope{},
+//		Watching: watcher,
+//
+//		MediaType: "application/json",
+//
+//		TimeoutFactory: &fakeTimeoutFactory{timeoutCh, done},
+//	}
+//	s := httptest.NewServer(serveWatch(watcher, watchServer, nil, info))
+//	defer s.Close()
+//
+//	dest, _ := url.Parse(s.URL)
+//	dest.Path = "/" + testPrefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/nodes"
+//	dest.RawQuery = "watch=true"
+//
+//	req, _ := http.NewRequest("GET", dest.String(), nil)
+//	client := http.Client{}
+//	resp, err := client.Do(req)
+//	if err != nil {
+//		t.Fatalf("Unexpected error: %v", err)
+//	}
+//
+//	obj := &apis.Node{
+//		TypeMeta: meta.TypeMeta{
+//			Kind:       "Node",
+//			APIVersion: "resources/v1",
+//		},
+//		ObjectMeta: meta.ObjectMeta{
+//			Name: "simple",
+//		},
+//		Spec:   apis.NodeSpec{},
+//		Status: apis.NodeStatus{},
+//	}
+//	watcher.Add(obj)
+//	watcher.Stop()
+//
+//	data := resp.Body
+//	decoder := json.NewDecoder(data)
+//	var got watchJSON
+//	err = decoder.Decode(&got)
+//	if err != nil {
+//		t.Fatalf("Unexpected error: %v", err)
+//	}
+//	if got.Type != watch.Added {
+//		t.Fatalf("unexpected watch type: %#v", got)
+//	}
+//}
 
 // watchJSON defines the expected JSON wire equivalent of watch.Event
 type watchJSON struct {

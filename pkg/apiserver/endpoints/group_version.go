@@ -130,8 +130,6 @@ func (gvk GroupVersionKind) String() string {
 }
 
 type APIGroupVersion struct {
-
-	// TODO: 存储位置
 	Storage map[string]rest.Storage
 
 	Root string
@@ -153,8 +151,7 @@ type APIGroupVersion struct {
 	MaxRequestBodyBytes int64
 }
 
-// 安装所有REST节点
-// TODO: 返回存储相关信息
+// InstallREST 安装所有REST节点
 func (g *APIGroupVersion) InstallREST(container *restful.Container) error {
 	prefix := path.Join(g.Root, g.GroupVersion.Group, g.GroupVersion.Version)
 	installer := &APIInstaller{
