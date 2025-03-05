@@ -29,6 +29,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -221,7 +222,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -298,7 +299,12 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 		}
 	}
 }
-
+func GetAPIServerHost() string {
+	if host := os.Getenv("API_SERVER_HOST"); host != "" {
+		return host
+	}
+	return "http://localhost:10000"
+}
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
 		sched.SchedulingQueue.Add(ctx, g)

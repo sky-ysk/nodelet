@@ -1207,38 +1207,15 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 				}
 			}
 			if !i.Result {
-				logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+				logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
 				return false
 			} else {
-				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+				//logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
 		}
 	}
 	return true
 }
-
-//// 检查Group的依赖是否满足--存的是Parents的Name
-//func (gmo *GroupMonitor) checkGroupDepencies(group *apis.Group) bool {
-//	//TODO：实现依赖检查逻辑
-//	// 目前只是检查Spec当中的Parents选项
-//	if len(group.Spec.Parents) == 0 {
-//		return true
-//	} else {
-//		//检查父亲group是否执行完成
-//		for i := range group.Spec.Parents {
-//			parentName := group.Spec.Parents[i]
-//			// 去client-go当中查group
-//			result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
-//			if err != nil {
-//				logs.Errorf("Failed to get group:%s", parentName)
-//			}
-//			if result.Status.Phase != apis.Successed {
-//				return false //说明当前group的付钱group还没完成，直接返回false即可
-//			}
-//		}
-//	}
-//	return true
-//}
 
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) bool {
@@ -1274,7 +1251,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 			}
 		}
 		if !i.Result {
-			logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
 			// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
@@ -1318,7 +1295,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				i.Result = true
 			}
 			if !i.Result {
-				logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+				logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 				return false
 			} else {
 				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
@@ -1354,7 +1331,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 					// 	}
 				}
 				if !i.Result {
-					logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+					logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 					return false
 				} else {
 					// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)

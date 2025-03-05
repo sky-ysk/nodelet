@@ -34,15 +34,15 @@ WORKDIR /workspace
 
 # 从 builder 阶段中复制构建好的 nodelet 二进制文件
 COPY --from=builder /workspace/_output/local/go/bin/proxy /workspace/proxy
-
+# 复制Swagger UI资源（假设项目结构正确）
+COPY --from=builder  /workspace/third_party/swagger-ui /tmp/swagger-ui
 # 确保二进制文件具有执行权限
 RUN chmod +x /workspace/proxy
 
-# 拷贝 Swagger UI 文件到容器
-COPY ../../third_party/swagger-ui /tmp/swagger-ui
+# 暴露需要的端口（假设 proxy 监听 8080 端口）
+EXPOSE 8899
 
 # 设置容器启动命令
 CMD ["/workspace/proxy"]
 
-# 暴露需要的端口（假设 proxy 监听 8080 端口）
-EXPOSE 9090
+
