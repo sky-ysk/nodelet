@@ -26,7 +26,7 @@ var scheme = runtime.NewScheme()
 
 // 模拟一个资源对象（如Pod、Task）的引用，因为事件通常需要与具体的资源相关联
 var group = &apis.Group{
-	ObjectMeta: meta.ObjectMeta{Name: "TestGroup-cmd", Namespace: ""},
+	ObjectMeta: meta.ObjectMeta{Name: "TestGroup-cmd", Namespace: "test"},
 	TypeMeta:   meta.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 	Spec: apis.GroupSpec{
 		Name:    "TestGroup-cmd",
