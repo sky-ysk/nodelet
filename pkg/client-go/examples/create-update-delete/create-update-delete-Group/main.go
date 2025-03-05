@@ -25,6 +25,7 @@ import (
 // 与API Server通信，并执行基础操作
 
 func main() {
+	logs.Init("main")
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	fmt.Println(scheme)
@@ -101,6 +102,9 @@ func main() {
 		},
 		Spec: apis.GroupSpec{
 			Name: "demo-group",
+			Actions: []apis.Action{
+				action,
+			},
 		},
 	}
 
@@ -184,7 +188,6 @@ func main() {
 
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
-		panic(err)
 	}
 	//_, _ = groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
 	//_, _ = groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
