@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"golang.org/x/net/http2"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -27,14 +28,17 @@ func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, err
 	httpReq := http.Request{
 		Method: "POST",
 		URL: &url.URL{
-			Host: "127.0.0.1:8080",
+			Scheme: "http",
+			Host:   "127.0.0.1:8080",
 			//TODO path定一下
 			Path: path,
 		},
 	}
 	httpReq.Body = io.NopCloser(bytes.NewBuffer(data))
 	httpRes, err := client.client.Do(&httpReq)
+	fmt.Println("do done")
 	if err != nil {
+		fmt.Println(err)
 		logs.Fatal(err)
 		return nil, err
 	}

@@ -16,6 +16,21 @@ func TestBuildGroupsRequest(t *testing.T) {
 	fmt.Println(len(req.TopInfo))
 }
 
+func TestSendGroupsRequest(t *testing.T) {
+	task := mockGetTask()
+	ctx := context.Background()
+	req := BuildSendGroupsRequest(ctx, &task)
+	plugin := &ScorePluginDBY{
+		pluginClient: NewScorePluginClient(),
+	}
+	//NewScorePluginClient()
+	plugin.SendGroups(ctx, &task)
+	fmt.Println(req)
+	fmt.Println(len(req.TopInfo))
+	//TODO Fill the node name
+	//plugin.Score(ctx, &task.Spec.Groups[0], "")
+}
+
 func mockGetTask() apis.Task {
 	reqs := make([]apis.ResourceRequirement, 0)
 	req1 := apis.ResourceRequirement{
