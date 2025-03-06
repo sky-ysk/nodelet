@@ -49,11 +49,14 @@ WORKDIR /workspace
 # 设置 Go proxy
 ENV GOPROXY=https://goproxy.cn,direct
 
-# 拷贝文件（假设 Dockerfile 在合适的路径下）
-COPY ../../ /workspace
+# 1. 从项目根目录复制 go.mod 和 go.sum
+COPY go.mod go.sum ./
 
-# 下载依赖，缓存依赖层
+# 2.下载依赖，缓存依赖层
 RUN go mod download
+
+# 3. 复制整个项目到容器（注意构建上下文为项目根目录）
+COPY . .
 
 # 设置 Go 环境变量
 ENV GO111MODULE=on \
@@ -66,8 +69,8 @@ RUN make all WHAT=./cmd/nodelet FRAMEWORK_VERBOSE=3
 
 
 # 阶段 2：运行阶段（基于 conda 镜像）
-#FROM continuumio/miniconda3:latest
-FROM continuumio/miniconda3:24.4.0-0 AS conda
+FROM continuumio/miniconda3:latest AS conda
+#FROM continuumio/miniconda3:23.10.0-0 AS conda
 # 设置工作目录
 WORKDIR /workspace
 RUN conda create -n yolo python=3.10 -y && \

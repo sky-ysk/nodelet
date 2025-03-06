@@ -8,13 +8,13 @@ WORKDIR /workspace
 ENV GOPROXY=https://goproxy.cn,direct
 
 # 拷贝 go.mod 和 go.sum 文件
-COPY ../../go.mod ../../go.sum /workspace/
+COPY go.mod go.sum ./
 
 # 下载依赖，缓存依赖层
 RUN go mod download
 
 # 拷贝文件
-COPY ../../ /workspace
+COPY . .
 
 # 设置 Go 环境变量
 ENV GO111MODULE=on \
