@@ -97,8 +97,8 @@ func (sp *ScorePluginDBY) Name() string {
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
 	request := transport.ScoreRequest{
-		GroupID: string(group.UID),
-		TaskID:  group.Spec.TaskID,
+		GroupID: group.Status.GroupID,
+		TaskID:  group.Status.Belongs.TaskID,
 		NodeID:  nodeName,
 	}
 	jsonData, err := json.Marshal(request)
@@ -146,33 +146,36 @@ type SendGroupsRequest struct {
 	TopInfo             []GroupTopInfo                        `json:"topInfo"`
 }
 
+func BuildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
+	return buildSendGroupsRequest(ctx, task)
+}
+
 func buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
 	topInfo := make([]GroupTopInfo, 0)
 	groupsID := make([]string, 0)
 	resourcesMap := make(map[string][]apis.ResourceRequirement)
-	taskID := task.UID
+	taskID := task.Status.TaskID
 	//TODO 可能需要做深复制 @lbh
 	for _, group := range task.Spec.Groups {
-		topInfo = append(topInfo, GroupTopInfo{})
-		groupsID = append(groupsID, string(group.ObjectMeta.UID))
+		groupsID = append(groupsID, group.Status.GroupID)
 		resources := make([]apis.ResourceRequirement, 0)
 		for _, requirement := range group.Spec.ResourceRequirements {
 			resources = append(resources, requirement)
 		}
 		if len(resources) > 0 {
-			resourcesMap[string(group.ObjectMeta.UID)] = resources
+			resourcesMap[group.Status.GroupID] = resources
 		}
 		for _, parent := range group.Spec.Parents {
+			//fmt.Println("parent : ", parent, " child ", group.Status.GroupID)
 			topInfo = append(topInfo, GroupTopInfo{
-				Child: string(group.ObjectMeta.UID),
-				//TODO 这个里面放的估计不是uid。。
+				Child:  group.Status.GroupID,
 				Parent: parent,
 			})
 		}
 	}
 	return &SendGroupsRequest{
 		Groups:              groupsID,
-		TaskId:              string(taskID),
+		TaskId:              taskID,
 		ResourceRequirement: resourcesMap,
 		TopInfo:             topInfo,
 	}

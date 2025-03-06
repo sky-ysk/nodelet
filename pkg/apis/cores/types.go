@@ -603,8 +603,6 @@ type GroupSpec struct {
 
 	//-临时添加-k8s运行时相关，还未重构，后期会重构
 	Labels map[string]string // 添加 Labels 字段，用于选择器
-
-	TaskID string
 }
 
 type ResourceRequirement struct {
