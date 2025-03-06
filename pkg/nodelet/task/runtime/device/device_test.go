@@ -44,8 +44,73 @@ func InitClient() (*clients.ClientSet, error) {
 	}
 	return clientSet, nil
 }
+func NewActionAndRuntimeAbility() (*apis.Action, *apis.Runtime) {
+	var url string = "http://127.0.0.1:10000"
+	var abilityName string
+	action := apis.Action{
+		Spec: apis.ActionSpec{
+			Name: "ActionTest",
+		},
+		Status: apis.ActionStatus{
+			ActionID: "Action1",
+			Resources: []apis.ResourceStatus{
+				apis.ResourceStatus{
+					Name:         "cpu",
+					Reserved:     10,
+					ReservedUnit: apis.ComputeCPU,
+				},
+				apis.ResourceStatus{
+					Name:         "memory",
+					Reserved:     4096,
+					ReservedUnit: apis.StorageMB,
+				},
+				apis.ResourceStatus{
+					Name:         "disk",
+					Reserved:     200,
+					ReservedUnit: apis.StorageGB,
+				},
+			},
 
-func NewActionAndRuntime() (*apis.Action, *apis.Runtime) {
+			Devices: []apis.DeviceStatus{
+				apis.DeviceStatus{
+					Lock: apis.Lock{
+						IsLocked: true,
+					},
+					Status:     "idle",
+					Phase:      apis.DeviceIdle,
+					InstanceID: "",
+					ActionID:   "",
+					DeviceID:   "transferRobot",
+				},
+			},
+		},
+	}
+
+	runtime := apis.Runtime{
+		Image: abilityName,
+		Name:  "RuntimeTest",
+		Devices: []apis.DeviceSpec{
+			apis.DeviceSpec{
+				Name:               "transferRobot",
+				ExpectedProperties: map[string]apis.Property{},
+				AccessMethod: apis.AccessMethod{
+					Type:  apis.AccessByAbility,
+					URL:   url,
+					Group: "tinyRobot",
+					Alias: "transferRobot",
+				},
+				Desc: apis.DeviceDesc{
+					Label: []string{"Move"},
+				},
+			},
+		},
+		Outputs: make([]apis.Output, 0),
+	}
+	action.Spec.Runtimes = []apis.Runtime{runtime}
+	return &action, &runtime
+}
+
+func NewActionAndRuntimeRMF() (*apis.Action, *apis.Runtime) {
 	action := apis.Action{
 		Spec: apis.ActionSpec{
 			Name: "ActionTest",
@@ -190,8 +255,11 @@ func TestRun(t *testing.T) {
 	}
 	deviceClient := clientSet.Core().Devices("")
 	groupClient := clientSet.Core().Groups("")
+
 	dr := NewDeviceRuntime(deviceClient, groupClient)
-	action, runtimeForTest := NewActionAndRuntime()
+	//action, runtimeForTest := NewActionAndRuntimeRMF()
+	action, runtimeForTest := NewActionAndRuntimeAbility()
+
 	err = dr.Run(&apis.Group{}, action, runtimeForTest, 0, 0)
 	if err != nil {
 		fmt.Println(err)

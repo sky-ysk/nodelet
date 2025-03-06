@@ -7,6 +7,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/rmf"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/utils"
 )
@@ -52,37 +53,57 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 	//}
 	//logs.Infof("Action[%s] Runtime[%s] CheckScene success\n", action.Spec.Name, runtime.Name)
 
-	// 构造任务的请求参数
-	logs.Infof("Action[%s] Runtime[%s] ConstructParam start\n", action.Spec.Name, runtime.Name)
-	err = utils.ConstructParam(devices, runtime)
-	if err != nil {
-		logs.Errorf("Action[%s] Runtime[%s] construct param failed\n", action.Spec.Name, runtime.Name)
-		return err
-	}
-	logs.Infof("Action[%s] Runtime[%s] ConstructParam is successful\n", action.Spec.Name, runtime.Name)
-
 	// 拉起任务
 	logs.Infof("Action[%s] Runtime[%s] ConstructDevice start", action.Spec.Name, runtime.Name)
 	for name, device := range devices {
-		//TODO:区分是rmf还是ability
-		logs.Infof("device %s execute %s task\n", name, runtime.Image)
-		taskId, err := rmf.PublishAbilityInstruction(device, runtime.Image)
-		taskId = "this is a test id"
-		device = apis.Device{Spec: device.Spec}
-		//TODO: 错误处理
-		if err != nil {
-			return err
+		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
+			abilityManager := ability.NewAbilityManager(device.Spec.AccessMethod.URL, runtime.Image)
+			err = abilityManager.StartupAbility()
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] startup Ability failed\n", action.Spec.Name, runtime.Name)
+				return err
+			}
+			output := apis.Output{
+				Value:     abilityManager.TaskId,
+				Name:      "task_id",
+				ValueType: "string",
+				Type:      apis.ResultsData,
+			}
+			runtime.Outputs = append(runtime.Outputs, output)
+			action.Spec.Runtimes[0] = *runtime
+
+		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf {
+
+			// 构造任务的请求参数
+			logs.Infof("Action[%s] Runtime[%s] ConstructParam start\n", action.Spec.Name, runtime.Name)
+			err = utils.ConstructParam(devices, runtime)
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] construct param failed\n", action.Spec.Name, runtime.Name)
+				return err
+			}
+			logs.Infof("Action[%s] Runtime[%s] ConstructParam is successful\n", action.Spec.Name, runtime.Name)
+
+			//TODO:区分是rmf还是ability
+			logs.Infof("device %s execute %s task\n", name, runtime.Image)
+			taskId, err := rmf.PublishAbilityInstruction(device, runtime.Image)
+			//taskId = "this is a test id"
+			device = apis.Device{Spec: device.Spec}
+			//TODO: 错误处理
+			if err != nil {
+				return err
+			}
+			// TODO: 确定Type
+			// 没有错误就将返回信息taskId存储到runtime的Outputs中
+			output := apis.Output{
+				Value:     taskId,
+				Name:      "task_id",
+				ValueType: "string",
+				Type:      apis.ResultsData,
+			}
+			runtime.Outputs = append(runtime.Outputs, output)
+			action.Spec.Runtimes[0] = *runtime
 		}
-		// TODO: 确定Type
-		// 没有错误就将返回信息taskId存储到runtime的Outputs中
-		output := apis.Output{
-			Value:     taskId,
-			Name:      "task_id",
-			ValueType: "string",
-			Type:      apis.ResultsData,
-		}
-		runtime.Outputs = append(runtime.Outputs, output)
-		action.Spec.Runtimes[0] = *runtime
+
 	}
 
 	//修改Device状态
@@ -139,12 +160,22 @@ func (dr DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *ap
 			fmt.Println("this is a string")
 			// device的taskId存储在output中，同时取出
 			output := runtime.Outputs[index]
-			// 发布指令
-			_, err = rmf.PublishCancelTaskInstruction(device, output.Value)
-			if err != nil {
-				logs.Errorf("Action[%s] Runtime[%s] PublishCancelTaskInstruction failed\n", action.Spec.Name, runtime.Name)
-				return err
+			if device.Spec.AccessMethod.Type == apis.AccessByAbility {
+				abilityManager := ability.NewAbilityManager(device.Spec.AccessMethod.URL, runtime.Image)
+				err = abilityManager.TerminateAbility()
+				if err != nil {
+					logs.Errorf("Action[%s] Runtime[%s] terminate Ability failed\n", action.Spec.Name, runtime.Name)
+					return err
+				}
+			} else if device.Spec.AccessMethod.Type == apis.AccessByRmf {
+				// 发布指令
+				_, err = rmf.PublishCancelTaskInstruction(device, output.Value)
+				if err != nil {
+					logs.Errorf("Action[%s] Runtime[%s] PublishCancelTaskInstruction failed\n", action.Spec.Name, runtime.Name)
+					return err
+				}
 			}
+
 			////修改Device状态
 			//logs.Infof("Action[%s] Runtime[%s] recover device status start\n", action.Spec.Name, runtime.Name)
 			//err = utils.RecoverDeviceStatus(action)

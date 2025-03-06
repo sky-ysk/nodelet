@@ -266,7 +266,7 @@ func simpleTaskGroup() []*apis.Group {
 	return groups
 }
 
-func testTaskDeviceGroupCreate() *apis.Group {
+func testTaskDeviceCreateGroup_RMF() *apis.Group {
 	// 测试任务是否正确部署
 	// 创建一个任务
 	newGroup := apis.Group{
@@ -353,6 +353,76 @@ func testTaskDeviceGroupCreate() *apis.Group {
 	return &newGroup
 }
 
+// testTaskDeviceCreateGroup_Ability 创建ability的测试用例
+func testTaskDeviceCreateGroup_Ability() *apis.Group {
+	
+	// 填写url和image
+	var url string = ""
+	var image string = ""
+	newGroup := apis.Group{
+		ObjectMeta: meta.ObjectMeta{Name: "device_test"},
+		Spec: apis.GroupSpec{
+			Name:    "Test-Group-Device",
+			Parents: make([]string, 0), // 当前Group没有Parents
+			Actions: []apis.Action{
+				apis.Action{
+					Spec: apis.ActionSpec{
+						Name: "Test-Action",
+						Runtimes: []apis.Runtime{
+							{
+								Name: "device_test",
+								Type: apis.ByDevice,
+								Devices: []apis.DeviceSpec{
+									apis.DeviceSpec{
+										Name:               "transferRobot",
+										ExpectedProperties: map[string]apis.Property{},
+										AccessMethod: apis.AccessMethod{
+											Type:  apis.AccessByRmf,
+											URL:   url,
+											Group: "tinyRobot",
+											Alias: "transferRobot",
+										},
+										Desc: apis.DeviceDesc{
+											Label: []string{"Move"},
+										},
+									},
+								},
+								Outputs: make([]apis.Output, 0),
+								Image:   image,
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: apis.GroupStatus{
+			GroupID: "test-group",
+			ActionStatus: []apis.ActionStatus{
+				apis.ActionStatus{
+					ActionID: "test-action-device",
+					Phase:    apis.ReadyToDeploy,
+					Devices: []apis.DeviceStatus{
+						apis.DeviceStatus{
+							Lock: apis.Lock{
+								IsLocked: true,
+								Ref:      1,
+							},
+							Status:     "idle",
+							Phase:      apis.DeviceIdle,
+							InstanceID: "",
+							ActionID:   "",
+							DeviceID:   "transferRobot",
+						},
+					},
+				},
+			},
+			Phase: apis.ReadyToDeploy,
+		},
+	}
+
+	return &newGroup
+}
+
 func InitClient() (*clients.ClientSet, error) {
 	//初始化ClientSet客户端
 	scheme := runtime.NewScheme()
@@ -398,6 +468,7 @@ func testTaskDeviceGroupKill(ctx context.Context, groupClient core.GroupInterfac
 	}
 	return g, nil
 }
+
 func TestTaskExporter(t *testing.T) {
 
 	// 初始化logs
@@ -415,7 +486,9 @@ func TestTaskExporter(t *testing.T) {
 	}
 
 	// 创建测试用的group
-	testGroup := testTaskDeviceGroupCreate()
+	testGroup := testTaskDeviceCreateGroup_RMF()
+
+	//testGroup := testTaskDeviceCreateGroup_Ability()
 
 	// 将group存到数据总线中
 	_, err = te.gropsClient.Create(ctx, testGroup, metav1.CreateOptions{})
@@ -423,6 +496,16 @@ func TestTaskExporter(t *testing.T) {
 		logs.Errorf("Create group failed: %v", err)
 		return
 	}
+
+	// 开一个协程去更改数据总线中的testgroup的状态，ReceiveGroupInfo会自动检测并执行kill
+
+	//go func() {
+	//	time.Sleep(15 * time.Second)
+	//	_, err = testTaskDeviceGroupKill(ctx, te.gropsClient, *testGroup)
+	//	if err != nil {
+	//		logs.Error(err)
+	//	}
+	//}()
 
 	// 部署一个任务
 	go func() {
