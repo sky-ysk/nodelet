@@ -1,12 +1,18 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"golang.org/x/net/http2"
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
-	"hit.edu/framework/pkg/scheduler/transport/client"
+	"io"
 	"net/http"
+	"net/url"
+	"time"
 )
 
 type ScorePluginDBY struct {
@@ -17,6 +23,73 @@ type ScorePluginClient struct {
 	client *http.Client
 }
 
+func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, error) {
+	httpReq := http.Request{
+		Method: "POST",
+		URL: &url.URL{
+			Host: "127.0.0.1:8080",
+			//TODO path定一下
+			Path: path,
+		},
+	}
+	httpReq.Body = io.NopCloser(bytes.NewBuffer(data))
+	httpRes, err := client.client.Do(&httpReq)
+	if err != nil {
+		logs.Fatal(err)
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logs.Fatal(err)
+		}
+	}(httpRes.Body)
+	//TODO 后续再确定下返回的细节
+	res, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		logs.Fatal(err)
+		return nil, err
+	}
+	return res, nil
+}
+
+func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transport.SendGroupsResponse {
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		logs.Fatal(err)
+		return transport.NewFailSendScoreResponse(request.TaskId, err)
+	}
+	_, err = client.SendData(jsonData, "/groups")
+	if err != nil {
+		return transport.NewFailSendScoreResponse(request.TaskId, err)
+	}
+	//TODO 确认下返回细节
+	//var data transport.ScoreRespData
+	//err = json.Unmarshal(body, &data)
+	//if err != nil {
+	//	logs.Fatal(err)
+	//	return transport.NewFailSendScoreResponse(request.TaskId, err)
+	//}
+	return transport.SendGroupsResponse{
+		TaskID: request.TaskId,
+		BaseResponse: transport.BaseResponse{
+			Code:    "200",
+			Success: true,
+		},
+	}
+}
+
+func NewScorePluginClient() ScorePluginClient {
+	return ScorePluginClient{
+		&http.Client{
+			Timeout: time.Second * 1200,
+			Transport: &http2.Transport{
+				AllowHTTP: true, // 允许非加密的HTTP/2连接（测试环境可用，生产环境建议使用TLS加密）
+			},
+		},
+	}
+}
+
 func (sp *ScorePluginDBY) Name() string {
 	return "ScorePluginForDuBoyu"
 }
@@ -24,30 +97,40 @@ func (sp *ScorePluginDBY) Name() string {
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
 	request := transport.ScoreRequest{
-		Group:  group,
-		NodeID: nodeName,
+		GroupID: string(group.UID),
+		TaskID:  group.Spec.TaskID,
+		NodeID:  nodeName,
 	}
-	resp := sp.SendScoreRequest(request)
-	if resp.BaseResp.Success {
-		return resp.Data.Score, framework.NewStatus(framework.Success, "default success")
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		logs.Fatal(err)
+		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	return -1, framework.NewStatus(framework.Error, resp.BaseResp.Reason)
+	data, err := sp.pluginClient.SendData(jsonData, "/Score")
+	if err != nil {
+		return 0, framework.NewStatus(framework.Error, err.Error())
+	}
+	var resp transport.ScoreRespData
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		logs.Fatal(err)
+		return 0, nil
+	}
+	return resp.Score, framework.NewStatus(framework.Success)
 }
 
-func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (int64, *framework.Status) {
-	//TODO 没测过
-
+func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (bool, *framework.Status) {
 	request := buildSendGroupsRequest(ctx, task)
-	resp := sp.SendScoreRequest(request)
-	if resp.BaseResp.Success {
-		return resp.Data.Score, framework.NewStatus(framework.Success, "default success")
+	resp := sp.pluginClient.SendGroups(request)
+	if resp.BaseResponse.Success {
+		return true, framework.NewStatus(framework.Success, "default success")
 	}
-	return -1, framework.NewStatus(framework.Error, resp.BaseResp.Reason)
+	return false, framework.NewStatus(framework.Error, resp.BaseResponse.Reason)
 }
 
 func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugin, error) {
 	return &ScorePluginDBY{
-		SchedulerClient: client.GetHClient(),
+		pluginClient: NewScorePluginClient(),
 	}, nil
 }
 
