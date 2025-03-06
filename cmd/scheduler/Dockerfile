@@ -7,12 +7,13 @@ WORKDIR /workspace
 # 设置Go proxy
 ENV GOPROXY=https://goproxy.cn,direct
 
-# 拷贝文件
-COPY ../../ /workspace
+# 1. 从项目根目录复制 go.mod 和 go.sum
+COPY go.mod go.sum ./
 
-# 下载依赖，缓存依赖层
+# 下载依赖，缓存依赖层（仅在 go.mod 变更时重新下载）
 RUN go mod download
-
+# 3. 复制整个项目到容器（注意构建上下文为项目根目录）
+COPY . .
 # 设置 Go 环境变量
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \

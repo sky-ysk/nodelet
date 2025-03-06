@@ -4,7 +4,7 @@ import (
 	"context"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
-	_switch "hit.edu/framework/pkg/nodelet/task/switch"
+	"hit.edu/framework/pkg/nodelet/task/controller"
 	"time"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -119,7 +119,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	if gr.Spec.Replicas > 0 { //如果床架任务的时候该属性没有赋值的话，初始化是为0的
 		// 为了适配迁移
 		// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
-		groupCopy := _switch.NewGroupInfoCopy(gr, true) // 第二个参数为true，表示的是提前写入etcd
+		groupCopy := controller.NewGroupInfoCopy(gr, true) // 第二个参数为true，表示的是提前写入etcd
 		// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
 		logs.Infof("group:%v===================", groupCopy.Name)
 		_, err = gh.groupClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})

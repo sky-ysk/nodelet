@@ -39,4 +39,5 @@ COPY --from=builder /workspace/_output/local/go/bin/apiserver /workspace/apiserv
 RUN chmod +x /workspace/apiserver
 
 # 设置容器启动命令
-CMD ["/workspace/apiserver","--etcd-servers=etcd:2379"]
+ENV ETCD_SERVERS=""
+CMD sh -c '/app/apiserver --etcd-servers="${ETCD_SERVERS}"'
