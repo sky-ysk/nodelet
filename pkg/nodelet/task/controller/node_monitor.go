@@ -90,15 +90,28 @@ func checkNodeThreshold(node *apis.Node) bool {
 func (nm *NodeMonitor) Run(workers int, stopCh <-chan struct{}) {
 	defer nm.queue.ShutDown()
 
-	go nm.nodeInformer.Run(stopCh)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		nm.nodeInformer.Run(stopCh)
+	}()
+	// 等待缓存同步
 	if !cache.WaitForCacheSync(stopCh, nm.nodeInformer.HasSynced) {
 		logs.Errorf("Timed out waiting for caches to sync")
 		return
 	}
+	// 启动 Worker 协程
+	wg.Add(workers)
 	for i := 0; i < workers; i++ {
-		go wait.Until(nm.runWorker, time.Second, stopCh) //周期性执行f方法，间隔period（这里是time.Second）。如果stopCh关闭，则终止循环。
+		go func() {
+			defer wg.Done()
+			wait.Until(nm.runWorker, time.Second, stopCh) //周期性执行f方法，间隔period（这里是time.Second）。如果stopCh关闭，则终止循环。
+		}()
 	}
 	<-stopCh
+	wg.Wait()
 }
 func (nm *NodeMonitor) runWorker() {
 	for nm.processNextItem() {

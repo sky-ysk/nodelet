@@ -83,24 +83,66 @@ RUN conda create -n yolo python=3.10 -y && \
 
 # 最终阶段
 FROM debian:bullseye-slim
+
+# 安装系统依赖（包含 bash 和基础库）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    procps \
+    libncurses6 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-# 从 builder 阶段中复制构建好的 nodelet 二进制文件
+
+# 从 builder 阶段复制二进制文件
 COPY --from=builder /workspace/_output/local/go/bin/nodelet .
-# 从conda阶段复制环境
+
+# 从 conda 阶段复制环境
 COPY --from=conda /opt/conda /opt/conda
-# 确保二进制文件具有执行权限
-RUN chmod +x /app/nodelet
 
-# 设置环境变量
-ENV PATH="/opt/conda/envs/yolo/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/conda/envs/yolo/lib:$LD_LIBRARY_PATH"
-
-# 创建非root用户
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
-
-# 验证环境
+# 设置全局环境变量（关键修复）
+ENV PATH="/opt/conda/envs/yolo/bin:/opt/conda/bin:$PATH" \
+    LD_LIBRARY_PATH="/opt/conda/envs/yolo/lib" \
+    CONDA_DEFAULT_ENV=yolo
+# --- 新增步骤：初始化 Conda ---
+# 初始化 Conda 的 bash 配置
+RUN /opt/conda/bin/conda init bash
+# 验证环境（直接使用环境变量配置的Python）
 RUN python -c "import torch; print(torch.__version__)" && \
-    python -c "from ultralytics import YOLO; print(YOLO)"
+    python -c "import cv2; print(cv2.__version__)"
 
 CMD ["./nodelet"]
+
+## 最终阶段
+#FROM debian:bullseye-slim
+#
+## 安装系统依赖
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    libgl1-mesa-glx \
+#    libglib2.0-0 \
+#    libsm6 \
+#    libxext6 \
+#    libxrender1 \
+#    && rm -rf /var/lib/apt/lists/*
+#
+#WORKDIR /app
+#
+## 从 builder 阶段复制二进制文件
+#COPY --from=builder /workspace/_output/local/go/bin/nodelet .
+#
+## 从 conda 阶段复制环境
+#COPY --from=conda /opt/conda /opt/conda
+#
+## 设置环境变量（修复 LD_LIBRARY_PATH）
+#ENV PATH="/opt/conda/envs/yolo/bin:$PATH" \
+#    LD_LIBRARY_PATH="/opt/conda/envs/yolo/lib"
+#
+## 验证环境（建议移至构建阶段调试）
+#RUN python -c "import torch; print(torch.__version__)" && \
+#    python -c "import cv2; print(cv2.__version__)"  # 验证 OpenCV 是否正常
+#
+#CMD ["./nodelet"]

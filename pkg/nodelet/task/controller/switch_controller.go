@@ -98,19 +98,34 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 	defer mc.queue.ShutDown()
 
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	// 启动所有的Informer
-	go mc.groupInformer.Run(stopCh)
-	go mc.eventInformer.Run(stopCh)
+	go func() {
+		defer wg.Done()
+		mc.groupInformer.Run(stopCh)
+	}()
+	go func() {
+		defer wg.Done()
+		mc.eventInformer.Run(stopCh)
+	}()
+
 	//缓存同步仅指初始的列表操作完成，后续的更新是由Informer的Watch机制自动处理的，不需要手动同步。因此，在控制器启动时只需要等待一次初始同步即可，之后Informer会自动维护缓存的更新，不需要循环检查。
 	// 等待缓存同步 启动后第一次将全量数据加载到本地缓存中
 	if !cache.WaitForCacheSync(stopCh, mc.groupInformer.HasSynced, mc.eventInformer.HasSynced) { //WaitForCacheSync:是否同步完成，返回false的话报错
 		logs.Errorf("Timed out waiting for caches to sync")
 		return
 	}
+	wg.Add(workers)
 	for i := 0; i < workers; i++ {
-		go wait.Until(mc.runWorker, time.Second, stopCh)
+		go func() {
+			defer wg.Done()
+			wait.Until(mc.runWorker, time.Second, stopCh)
+		}()
 	}
 	<-stopCh
+	wg.Wait()
 }
 
 func (mc *MigrationController) runWorker() {

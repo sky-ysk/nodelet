@@ -45,17 +45,21 @@ type Handler interface {
 
 // 开启监听上层指令
 func (gh *GroupHandler) Loop(ctx context.Context, updateCh <-chan types.GroupUpdate) {
-	const (
-		// base = 100000 * time.Millisecond //100s
-		base = 100 * time.Millisecond //5s
-	)
-	logs.Info("GroupHandler component start")
-	duration := base
+	const base = 100 * time.Millisecond //
 
+	logs.Info("GroupHandler component start")
+	//duration := base
 	for {
-		go gh.LoopIteration(ctx, updateCh) //是否采用协程，取决于该函数是否要与Loop方法并行执行
-		time.Sleep(duration)
-		// TODO: 二进制指数退避
+		// 檢查Context是否已取消
+		select {
+		case <-ctx.Done():
+			logs.Info("Context canceled, exiting GroupHandler loop")
+			return
+		case <-time.After(base):
+			gh.LoopIteration(ctx, updateCh) //是否采用协程，取决于该函数是否要与Loop方法并行执行
+		}
+		//time.Sleep(duration)
+		//// TODO: 二进制指数退避
 	}
 }
 
