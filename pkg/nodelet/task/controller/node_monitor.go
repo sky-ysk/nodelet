@@ -39,7 +39,8 @@ type NodeMonitor struct {
 }
 
 func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface, recorder recorder.EventRecorder) *NodeMonitor {
-	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "", fields.Everything())
+	//创建资源的List Watcher
+	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "test", fields.Everything())
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 	nodeOptions := cache.InformerOptions{
 		ListerWatcher: nodeListWatcher,
@@ -65,10 +66,28 @@ func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface,
 				}
 			},
 		},
+		//Handler: cache.ResourceEventHandlerFuncs{
+		//	UpdateFunc: func(oldObj, newObj interface{}) {
+		//		newNode, okNew := newObj.(*apis.Node)
+		//		if !okNew || newNode.Name != node.NodeName {
+		//			return
+		//		}
+		//		newExceeded := checkNodeThreshold(newNode)
+		//		if newExceeded { // 只要新状态超限就触发
+		//			key, err := cache.MetaNamespaceKeyFunc(newObj)
+		//			if err != nil {
+		//				logs.Errorf("get node key failed: %v", err)
+		//				return
+		//			}
+		//			queue.Add(key)
+		//		}
+		//	},
+		//},
 		ResyncPeriod: 0, // ResyncPeriod，0表示不定期重新同步
 		Indexers:     cache.Indexers{},
 	}
 	nodeIndexer, nodeInformer := cache.NewInformerWithOptions(nodeOptions)
+
 	return &NodeMonitor{
 		nodeClient:   nodeClient,
 		recorder:     recorder,
@@ -83,7 +102,9 @@ func checkNodeThreshold(node *apis.Node) bool {
 	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
 	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
 	//logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
-
+	//time.Sleep(6 * time.Second)
+	//logs.Info("6秒结束-=-------------------------------------------=")
+	//return true
 	return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
 }
 
@@ -157,19 +178,8 @@ func (nm *NodeMonitor) generateMigrationEvent(n *apis.Node) error {
 		logs.Infof("Node %s is still in the cooling period (last event time: %s)", n.Name, nm.lastEventTime.Format(time.RFC3339))
 		return nil
 	}
-	//event := &apis.Event{
-	//	ObjectMeta: metav1.ObjectMeta{Name: "migration-trigger", Namespace: ""},
-	//	TypeMeta:   metav1.TypeMeta{Kind: "Event", APIVersion: "resources/v1"},
-	//	Reason:     "MigrationTrigger",
-	//	Message:    node.NodeName,
-	//	EventTime:  apis.Time{time.Now()},
-	//	Type:       "EventTypeNormal",
-	//}
-	//if _, err := nm.eventClient.Create(context.TODO(), event, metav1.CreateOptions{}); err != nil {
-	//	logs.Errorf("创建迁移事件失败: %v", err)
-	//	return err
-	//}
 	nm.recorder.Event(n, apis.EventTypeNormal, events.TriggerMigration, fmt.Sprintf("Node Name:\t %s is shortage", n.Name))
+	logs.Info("send Trigger Migration event=====================")
 	nm.lastEventTime = nowTime
 	return nil
 }

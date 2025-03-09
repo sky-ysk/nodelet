@@ -495,14 +495,13 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								//说明runtime可以执行
 								//grou.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex].Waiting = false
 								grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false
-								//说明runtime可以执行，这里为了适配迁移，如果是副本group，这里启动的时候，需要先获取关键状态
 								if runtime.EnableFineGrainedControl {
 									logs.Info("****************************************ABCDSDSADSAD**************************")
 									if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
 										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
 									}
-								} else { // 说明是启动刚部署好的副本
+								} else {
 									logs.Info("****************************************1234554564**********************")
 									if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
 										go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
@@ -1239,7 +1238,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 		//		return false //说明当前group的付钱group还没完成，直接返回false即可
 		//	}
 		//}
-		for index, i := range group.Spec.Conditions.Formulas {
+		for _, i := range group.Spec.Conditions.Formulas {
 			if i.LeftValue.Name == "NodeDependency" {
 				parentName := i.LeftValue.From // 这里要考虑父亲节点有两个的情况吧，还是说弄两个Formulas
 				result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
@@ -1262,7 +1261,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 				}
 			}
 			if !i.Result {
-				logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
+				//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
 				return false
 			} else {
 				//logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
@@ -1332,7 +1331,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	//}
 
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
-	for index, i := range runtime.Conditions.Formulas {
+	for _, i := range runtime.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
 			runtimeParentName := i.LeftValue.From
 			for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
@@ -1350,7 +1349,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				i.Result = true
 			}
 			if !i.Result {
-				logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
+				//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 				return false
 			} else {
 				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
@@ -1386,7 +1385,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 					// 	}
 				}
 				if !i.Result {
-					logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
+					//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 					return false
 				} else {
 					// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
