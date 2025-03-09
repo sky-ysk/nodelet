@@ -8,13 +8,13 @@ WORKDIR /workspace
 ENV GOPROXY=https://goproxy.cn,direct
 
 # 拷贝 go.mod 和 go.sum 文件
-COPY ../../go.mod ../../go.sum /workspace/
+COPY go.mod go.sum ./
 
 # 下载依赖，缓存依赖层
 RUN go mod download
 
 # 拷贝文件
-COPY ../../ /workspace
+COPY . .
 
 # 设置 Go 环境变量
 ENV GO111MODULE=on \
@@ -38,6 +38,10 @@ COPY --from=builder /workspace/_output/local/go/bin/apiserver /workspace/apiserv
 # 确保二进制文件具有执行权限
 RUN chmod +x /workspace/apiserver
 
-# 设置容器启动命令
+
 ENV ETCD_SERVERS=""
-CMD sh -c '/app/apiserver --etcd-servers="${ETCD_SERVERS}"'
+CMD sh -c '/workspace/apiserver --etcd-servers="${ETCD_SERVERS}"'
+
+# 设置容器启动命令
+# 最佳实践 CMD 格式
+#CMD ["sh", "-c", "/workspace/apiserver --etcd-servers=\"${ETCD_SERVERS}\""]

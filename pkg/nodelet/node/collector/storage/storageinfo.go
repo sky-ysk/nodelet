@@ -3,6 +3,7 @@ package storage
 import (
 	"github.com/shirou/gopsutil/disk"
 	"hit.edu/framework/pkg/component-base/logs"
+	"os"
 )
 
 // 静态存储信息
@@ -26,6 +27,13 @@ type StorageInfoProvider interface {
 type LinuxStoInfoProvider struct {
 }
 
+// 初始化：检测容器环境并设置宿主机路径
+func init() {
+	if _, err := os.Stat("/host/proc"); err == nil {
+		os.Setenv("HOST_PROC", "/host/proc")
+		os.Setenv("HOST_SYS", "/host/sys")
+	}
+}
 func NewLinuxStoInfoProvider() *LinuxStoInfoProvider {
 	return &LinuxStoInfoProvider{}
 }
