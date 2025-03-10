@@ -1,6 +1,7 @@
 package inst
 
 import (
+	"encoding/json"
 	"fmt"
 	"hit.edu/framework/pkg/component-base/logs"
 	"testing"
@@ -21,6 +22,11 @@ func TestGetAbilityInstances(t *testing.T) {
 	if abilityInstances[1].Subabilities == nil {
 		fmt.Println("this is a test !")
 	}
-	fmt.Println(abilityInstances[2].Subabilities[1].Position)
-	fmt.Println(abilityInstances[2].Spec.SubAbilities[0].Package)
+	abilityByte, err := json.Marshal(abilityInstances)
+	if err != nil {
+		fmt.Println(err)
+	}
+	abilityStr := string(abilityByte)
+	fmt.Println(abilityStr)
+
 }

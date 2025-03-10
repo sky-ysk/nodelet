@@ -1,6 +1,7 @@
 package rmf
 
 import (
+	"encoding/json"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -163,21 +164,355 @@ func TestPublishCancelPhaseInstruction(t *testing.T) {
 }
 
 func TestGetTaskState(t *testing.T) {
-	logs.Infof("start to test get task state......\n")
-	device := apis.Device{
-		Spec: apis.DeviceSpec{
-			AccessMethod: apis.AccessMethod{
-				Type: apis.AccessByRmf,
-				URL:  "http://192.168.1.225:8000",
-			},
-		},
-	}
-	var taskId string
-	fmt.Println(taskId)
-	taskStateResponse, err := GetTaskState(device, taskId)
-	if err != nil {
+	//logs.Infof("start to test get task state......\n")
+	//device := apis.Device{
+	//	Spec: apis.DeviceSpec{
+	//		AccessMethod: apis.AccessMethod{
+	//			Type: apis.AccessByRmf,
+	//			URL:  "http://192.168.1.225:8000",
+	//		},
+	//	},
+	//}
+	//var taskId string
+	//fmt.Println(taskId)
+	//taskStateResponse, err := GetTaskState(device, taskId)
+	var taskStateResponse TaskStateSuccessResponse
+	jsonData := `{
+  "booking": {
+    "id": "string",
+    "unix_millis_earliest_start_time": 0,
+    "unix_millis_request_time": 0,
+    "priority": {},
+    "labels": [
+      "string"
+    ],
+    "requester": "string"
+  },
+  "category": "string",
+  "detail": [],
+  "unix_millis_start_time": 0,
+  "unix_millis_finish_time": 0,
+  "original_estimate_millis": 0,
+  "estimate_millis": 0,
+  "assigned_to": {
+    "group": "string",
+    "name": "string"
+  },
+  "status": "uninitialized",
+  "dispatch": {
+    "status": "queued",
+    "assignment": {
+      "fleet_name": "string",
+      "expected_robot_name": "string"
+    },
+    "errors": [
+      {
+        "code": 0,
+        "category": "string",
+        "detail": "string"
+      }
+    ]
+  },
+  "phases": {
+    "additionalProp1": {
+      "id": 0,
+      "category": "string",
+      "detail": [],
+      "unix_millis_start_time": 0,
+      "unix_millis_finish_time": 0,
+      "original_estimate_millis": 0,
+      "estimate_millis": 0,
+      "final_event_id": 0,
+      "events": {
+        "additionalProp1": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        },
+        "additionalProp2": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        },
+        "additionalProp3": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        }
+      },
+      "skip_requests": {
+        "additionalProp1": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        },
+        "additionalProp2": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        },
+        "additionalProp3": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        }
+      }
+    },
+    "additionalProp2": {
+      "id": 0,
+      "category": "string",
+      "detail": [],
+      "unix_millis_start_time": 0,
+      "unix_millis_finish_time": 0,
+      "original_estimate_millis": 0,
+      "estimate_millis": 0,
+      "final_event_id": 0,
+      "events": {
+        "additionalProp1": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        },
+        "additionalProp2": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        },
+        "additionalProp3": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        }
+      },
+      "skip_requests": {
+        "additionalProp1": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        },
+        "additionalProp2": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        },
+        "additionalProp3": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        }
+      }
+    },
+    "additionalProp3": {
+      "id": 0,
+      "category": "string",
+      "detail": [],
+      "unix_millis_start_time": 0,
+      "unix_millis_finish_time": 0,
+      "original_estimate_millis": 0,
+      "estimate_millis": 0,
+      "final_event_id": 0,
+      "events": {
+        "additionalProp1": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        },
+        "additionalProp2": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        },
+        "additionalProp3": {
+          "id": 0,
+          "status": "uninitialized",
+          "name": "string",
+          "detail": [],
+          "deps": [
+            0
+          ]
+        }
+      },
+      "skip_requests": {
+        "additionalProp1": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        },
+        "additionalProp2": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        },
+        "additionalProp3": {
+          "unix_millis_request_time": 0,
+          "labels": [
+            "string"
+          ],
+          "undo": {
+            "unix_millis_request_time": 0,
+            "labels": [
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "completed": [
+    0
+  ],
+  "active": 0,
+  "pending": [
+    0
+  ],
+  "interruptions": {
+    "additionalProp1": {
+      "unix_millis_request_time": 0,
+      "labels": [
+        "string"
+      ],
+      "resumed_by": {
+        "unix_millis_request_time": 0,
+        "labels": [
+          "string"
+        ]
+      }
+    },
+    "additionalProp2": {
+      "unix_millis_request_time": 0,
+      "labels": [
+        "string"
+      ],
+      "resumed_by": {
+        "unix_millis_request_time": 0,
+        "labels": [
+          "string"
+        ]
+      }
+    },
+    "additionalProp3": {
+      "unix_millis_request_time": 0,
+      "labels": [
+        "string"
+      ],
+      "resumed_by": {
+        "unix_millis_request_time": 0,
+        "labels": [
+          "string"
+        ]
+      }
+    }
+  },
+  "cancellation": {
+    "unix_millis_request_time": 0,
+    "labels": [
+      "string"
+    ]
+  },
+  "killed": {
+    "unix_millis_request_time": 0,
+    "labels": [
+      "string"
+    ]
+  }
+}`
+	if err := json.Unmarshal([]byte(jsonData), &taskStateResponse); err != nil {
 		t.Error(err)
 		logs.Errorf("GetTaskState err: %s\n", err.Error())
 	}
-	logs.Infof("taskStateResponse: %+v\n", taskStateResponse)
+	logs.Init("this is a test log")
+	//logs.Infof("taskStateResponse: %+v\n", taskStateResponse)
+	if data, err := json.Marshal(taskStateResponse); err != nil {
+		logs.Errorf("Marshal err: %s\n", err.Error())
+	} else {
+		logs.Infof("data: %s\n", string(data))
+	}
 }

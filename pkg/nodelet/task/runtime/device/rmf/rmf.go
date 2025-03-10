@@ -33,7 +33,7 @@ type Worker interface {
 }
 
 // PublishAbilityInstruction 发布指令，成功返回任务ID，失败返回错误信息
-func PublishAbilityInstruction(device apis.Device, ability string) (string, error) {
+func PublishAbilityInstruction(device *apis.Device, ability string) (string, error) {
 
 	// 判断参数的合法性
 	if ability == "" {
@@ -46,7 +46,7 @@ func PublishAbilityInstruction(device apis.Device, ability string) (string, erro
 	}
 
 	// 构造并发布指令
-	instruction, err := inst.NewAbilityInstruction(device, ability)
+	instruction, err := inst.NewAbilityInstruction(*device, ability)
 	if err != nil {
 		logs.Errorf(err.Error())
 		logs.Errorf("Ability instruction create failed\n")
@@ -224,7 +224,7 @@ func PublishCancelPhaseInstruction(device apis.Device, phaseId int, taskId strin
 }
 
 // GetTaskState 返回一个TaskStateSuccessResponse，失败返回的空的TaskStateSuccessResponse
-func GetTaskState(device apis.Device, taskId string) (*TaskStateSuccessResponse, error) {
+func GetTaskState(device *apis.Device, taskId string) (*TaskStateSuccessResponse, error) {
 
 	requestForGet := NewGetRequest(fmt.Sprintf("%s/tasks/%s/state", device.Spec.AccessMethod.URL, taskId))
 	// 创建HTTP client

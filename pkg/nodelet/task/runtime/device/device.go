@@ -7,24 +7,30 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/rmf"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/utils"
+	"time"
 )
 
 type DeviceRuntime struct {
 	deviceClient core.DeviceInterface
 	groupClient  core.GroupInterface
+	eventBus     *eventbus.EventBus
+	lockManager  *utils.LockManager
 }
 
-func NewDeviceRuntime(deviceClient core.DeviceInterface, groupClient core.GroupInterface) DeviceRuntime {
-	return DeviceRuntime{
+func NewDeviceRuntime(deviceClient core.DeviceInterface, groupClient core.GroupInterface) *DeviceRuntime {
+	return &DeviceRuntime{
 		deviceClient: deviceClient,
 		groupClient:  groupClient,
+		lockManager:  utils.NewLockManager(),
 	}
 }
 
-func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 
 	// 检查Device
 	logs.Infof("Action[%s] Runtime[%s] CheckDevice start\n", action.Spec.Name, runtime.Name)
@@ -52,15 +58,17 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 	//	return err
 	//}
 	//logs.Infof("Action[%s] Runtime[%s] CheckScene success\n", action.Spec.Name, runtime.Name)
-
 	// 拉起任务
 	logs.Infof("Action[%s] Runtime[%s] ConstructDevice start", action.Spec.Name, runtime.Name)
 	for name, device := range devices {
+		var taskId string
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
 			abilityManager := ability.NewAbilityManager(device.Spec.AccessMethod.URL, runtime.Image)
 			err = abilityManager.StartupAbility()
 			if err != nil {
 				logs.Errorf("Action[%s] Runtime[%s] startup Ability failed\n", action.Spec.Name, runtime.Name)
+				// processId 字段保留
+				dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 				return err
 			}
 			output := apis.Output{
@@ -83,16 +91,12 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 			}
 			logs.Infof("Action[%s] Runtime[%s] ConstructParam is successful\n", action.Spec.Name, runtime.Name)
 
-			//TODO:区分是rmf还是ability
 			logs.Infof("device %s execute %s task\n", name, runtime.Image)
-			taskId, err := rmf.PublishAbilityInstruction(device, runtime.Image)
-			//taskId = "this is a test id"
-			device = apis.Device{Spec: device.Spec}
-			//TODO: 错误处理
-			if err != nil {
+
+			if taskId, err = rmf.PublishAbilityInstruction(device, runtime.Image); err != nil {
+				dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 				return err
 			}
-			// TODO: 确定Type
 			// 没有错误就将返回信息taskId存储到runtime的Outputs中
 			output := apis.Output{
 				Value:     taskId,
@@ -103,27 +107,18 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 			runtime.Outputs = append(runtime.Outputs, output)
 			action.Spec.Runtimes[0] = *runtime
 		}
-
+		go dr.monitorDevice(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device)
 	}
 
 	//修改Device状态
 	logs.Infof("Action[%s] Runtime[%s] update device status start\n", action.Spec.Name, runtime.Name)
-	err = utils.UpdateDeviceStatus(runtime, action, action.Status.ActionID, devices, dr.deviceClient)
-	if err != nil {
+	if err = utils.UpdateDeviceStatusList(runtime, action, action.Status.ActionID, devices, dr.deviceClient); err != nil {
 		logs.Errorf(err.Error())
 		logs.Errorf("Action[%s] Runtime[%s] update device status failed", action.Spec.Name, runtime.Name)
 		return fmt.Errorf("Action[%s] Runtime[%s] update device status failed ", action.Spec.Name, runtime.Name)
 	}
 	logs.Infof("Action[%s] Runtime[%s] update device status is finished\n", action.Spec.Name, runtime.Name)
 
-	// 更新group
-	group.Status.ActionStatus[actionIndex] = action.Status
-	_, err = dr.groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
-	if err != nil {
-		logs.Errorf(err.Error())
-		logs.Errorf("Action[%s] Runtime[%s] update group status failed", action.Spec.Name, runtime.Name)
-		return fmt.Errorf("Action[%s] Runtime[%s] update group status failed ", action.Spec.Name, runtime.Name)
-	}
 	////修改Resource状态
 	//logs.Infof("Action[%s] Runtime[%s] update resource status start\n", action.Spec.Name, runtime.Name)
 	//err = utils.UpdateResourceStatus(runtime, action)
@@ -146,7 +141,7 @@ func (dr DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 	return nil
 }
 
-func (dr DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (dr *DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
 	// 检查action的运行状态，只有处在running状态时才能取消
 	if action.Status.Phase == apis.Running {
 		// 一个runtime可能涉及到多个或一个 device 获取全部的device
@@ -212,6 +207,79 @@ func (dr DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *ap
 	return nil
 }
 
-func (dr DeviceRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
+func (dr *DeviceRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 	return "", nil
+}
+
+func (dr *DeviceRuntime) monitorDevice(action *apis.Action, groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, taskId string, device *apis.Device) {
+	for {
+		logs.Infof("Device %s is getting task state....", device.Name)
+		tr, err := rmf.GetTaskState(device, taskId)
+		if err != nil {
+			logs.Errorf("Device %s monitor GetTaskState failed\n", device.Name)
+			return
+		}
+		switch tr.Status {
+		case "failed":
+			//TODO:错误处理
+			logs.Errorf("Device %s is failed\n", device.Name)
+			dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			if err = utils.UpdateDeviceStatusFailed(runtime, action, device, dr.deviceClient); err != nil {
+				logs.Errorf(err.Error())
+			}
+			if _, err = dr.deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
+				logs.Errorf(err.Error())
+			}
+			return
+		case "completed":
+			//TODO:锁操作
+			logs.Infof("Device %s is completed\n", device.Name)
+			dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			if err = utils.UpdateDeviceStatusFailed(runtime, action, device, dr.deviceClient); err != nil {
+				logs.Errorf(err.Error())
+			}
+			if _, err = dr.deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
+				logs.Errorf(err.Error())
+			}
+			return
+		case "canceled":
+			logs.Infof("Device %s is canceled\n", device.Name)
+			dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			if err = utils.UpdateDeviceStatusFailed(runtime, action, device, dr.deviceClient); err != nil {
+				logs.Errorf(err.Error())
+			}
+			if _, err = dr.deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
+				logs.Errorf(err.Error())
+			}
+			return
+		default:
+			logs.Infof("Device %s is %s\n", device.Name, tr.Status)
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+
+}
+
+func (dr *DeviceRuntime) notifyRuntimeStartPhase(groupName string, actionIndex, runtimeIndex int, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
+	event := events.RuntimeStartPhaseEvent1{
+		GroupName:    groupName,
+		ActionIndex:  actionIndex,
+		RuntimeIndex: runtimeIndex,
+		ProcessId:    processId,
+		Phase:        phase,
+		StartAt:      startAt,
+		LastTime:     lastTime,
+	}
+	dr.eventBus.Publish(event)
+}
+func (dr *DeviceRuntime) notifyRuntimeEndPhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
+	event := events.RuntimeEndPhaseEvent1{
+		GroupName:    groupName,
+		ActionIndex:  actionIndex,
+		RuntimeIndex: runtimeIndex,
+		Phase:        phase,
+		FinishAt:     finishTime,
+		LastTime:     lastTime,
+	}
+	dr.eventBus.Publish(event)
 }

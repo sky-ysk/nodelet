@@ -18,15 +18,15 @@ type DeviceWorker interface {
 }
 
 // CheckDevice 检查设备情况
-func CheckDevice(runtime *apis.Runtime, action *apis.Action) (error, map[string]apis.Device) {
-	devices := make(map[string]apis.Device)
+func CheckDevice(runtime *apis.Runtime, action *apis.Action) (error, map[string]*apis.Device) {
+	devices := make(map[string]*apis.Device)
 	for index, spec := range runtime.Devices {
 		status := action.Status.Devices[index]
 		// device必须已经被上锁（已经经过检查)
 		//TODO:
-		err := CheckDeviceLock(&status)
-		if err != nil {
-			return err, nil
+		if status.Lock.IsLocked == false {
+			logs.Errorf("Device %s is not locked", status.DeviceID)
+			return fmt.Errorf("Device %s is not locked\n", status.DeviceID), nil
 		}
 
 		// device状态为idle(系统内状态和运行时状态)
@@ -40,7 +40,7 @@ func CheckDevice(runtime *apis.Runtime, action *apis.Action) (error, map[string]
 			logs.Errorf("device %s's task_id is not null", spec.Name)
 			return fmt.Errorf("device %s's task_id is not null", spec.Name), nil
 		}
-		devices[spec.Name] = apis.Device{Spec: spec, Status: status}
+		devices[spec.Name] = &apis.Device{Spec: spec, Status: status}
 	}
 
 	return nil, devices
@@ -89,7 +89,7 @@ func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.De
 }
 
 // UpdateDeviceStatus 更新DeviceStatus
-func UpdateDeviceStatus(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]apis.Device, deviceClient core.DeviceInterface) error {
+func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]*apis.Device, deviceClient core.DeviceInterface) error {
 
 	devices := action.Status.Devices
 	for index, spec := range runtime.Devices {
@@ -102,7 +102,7 @@ func UpdateDeviceStatus(runtime *apis.Runtime, action *apis.Action, taskId strin
 			InstanceID: taskId,
 			Status:     "running",
 			ActionID:   action.Status.ActionID,
-			Lock:       apis.Lock{Type: status.Lock.Type, IsLocked: true, Ref: status.Lock.Ref + 1},
+			Lock:       apis.Lock{Type: status.Lock.Type, IsLocked: true, Ref: status.Lock.Ref},
 			LastTime:   apis.Time{Time: time.Now()},
 
 			// 不需要更新的字段直接复制
@@ -112,8 +112,22 @@ func UpdateDeviceStatus(runtime *apis.Runtime, action *apis.Action, taskId strin
 		}
 
 		// 在etcd中更新数据内容
-		newDevice := &apis.Device{Spec: deviceMap[name].Spec, Status: ds}
-		deviceMap[name] = *newDevice
+		newDevice := &apis.Device{
+			Spec:   deviceMap[name].Spec,
+			Status: ds,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "deviceTest",
+				Namespace: "test",
+				Labels: map[string]string{
+					"environment": "dev",
+				},
+			},
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Device",
+				APIVersion: "resources/v1",
+			},
+		}
+		deviceMap[name] = newDevice
 		action.Status.Devices[index] = ds
 		_, err := deviceClient.Update(context.TODO(), newDevice, metav1.UpdateOptions{})
 		if err != nil {
@@ -123,6 +137,42 @@ func UpdateDeviceStatus(runtime *apis.Runtime, action *apis.Action, taskId strin
 		logs.Infof("update device %s's status\n", name)
 	}
 	action.Status.Devices = devices
+	return nil
+}
+
+func UpdateDeviceStatusFailed(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
+	device.Status.Status = "failed"
+	device.Status.Phase = apis.DeviceError
+	device.Status.LastTime = apis.Time{time.Now()}
+	if _, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
+		logs.Errorf("update device %s status failed, %s", device.Name, err)
+		return err
+	}
+
+	for index, spec := range runtime.Devices {
+		if spec.Name == device.Spec.Name {
+			action.Status.Devices[index] = device.Status
+
+		}
+	}
+	return nil
+}
+
+func UpdateDeviceStatusCompleted(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
+	device.Status.Status = "completed"
+	device.Status.Phase = apis.DeviceComplete
+	device.Status.LastTime = apis.Time{time.Now()}
+	if _, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
+		logs.Errorf("update device %s status failed, %s", device.Name, err)
+		return err
+	}
+
+	for index, spec := range runtime.Devices {
+		if spec.Name == device.Spec.Name {
+			action.Status.Devices[index] = device.Status
+
+		}
+	}
 	return nil
 }
 

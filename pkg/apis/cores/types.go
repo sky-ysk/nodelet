@@ -777,6 +777,7 @@ const (
 	DeviceRunning      DevicePhase = "Running"
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
+	DeviceComplete     DevicePhase = "Complete"
 	DeviceDisconnected DevicePhase = "Disconnected"
 )
 

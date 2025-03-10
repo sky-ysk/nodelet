@@ -11,7 +11,7 @@ type ParamsWorker interface {
 }
 
 // ConstructParam 构造device的参数，存放到ExpectedProperties成员中
-func ConstructParam(devices map[string]apis.Device, runtime *apis.Runtime) error {
+func ConstructParam(devices map[string]*apis.Device, runtime *apis.Runtime) error {
 	// 只有一个device的情况
 	if len(devices) == 1 {
 		for name, device := range devices {
