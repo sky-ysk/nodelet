@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"strconv"
+	"sync"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/types"
@@ -65,7 +66,7 @@ func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, group
 	}
 }
 
-func (gmo *GroupMonitor) Start() {
+func (gmo *GroupMonitor) Start(ctx context.Context) {
 	//TODO 轮询检查队列当中的内容
 	logs.Info("GroupMonitor component start")
 
@@ -75,10 +76,15 @@ func (gmo *GroupMonitor) Start() {
 
 	gmo.eventBus.Subscribe(reflect.TypeOf(events.RuntimeStartPhaseEvent1{}), chRuntimeStart)
 	gmo.eventBus.Subscribe(reflect.TypeOf(events.RuntimeEndPhaseEvent1{}), chRuntimeEnd)
-	//启动监听事件
+	//启动监听事件（支持 Context 退出）
+	eventLoopDone := make(chan struct{})
 	go func() {
+		defer close(eventLoopDone)
 		for {
 			select {
+			case <-ctx.Done():
+				logs.Info("GroupMonitor exiting due to context cancel")
+				return
 			case event := <-chRuntimeStart:
 				RuntimeEvent := event.(events.RuntimeStartPhaseEvent1)
 				gmo.handleRuntimeStartUpdate(RuntimeEvent)
@@ -88,8 +94,22 @@ func (gmo *GroupMonitor) Start() {
 			}
 		}
 	}()
-	gmo.CheckStatus()
-
+	// 启动状态检查协程（支持 Context 退出）
+	statusCheckDone := make(chan struct{})
+	go func() {
+		defer close(statusCheckDone)
+		gmo.CheckStatus(ctx) // 修改 CheckStatus 方法以接受 Context
+	}()
+	// 等待 Context 取消或所有协程退出
+	select {
+	case <-ctx.Done():
+		logs.Info("GroupMonitor exiting due to context cancel")
+	case <-eventLoopDone:
+	case <-statusCheckDone:
+	}
+	// 等待所有子协程退出
+	<-eventLoopDone
+	<-statusCheckDone
 }
 
 func (gm *GroupMonitor) Stop() {
@@ -101,21 +121,30 @@ func (gm *GroupMonitor) Stop() {
 // 检车copyPending队列的任务，对于副本任务，Checking完成后进入等待，当副本任务需要启动时，才正式迁移到Running队列
 // 检查running队列，看任务是否还在执行、是否执行完成、、进程占用资源量    任务完成和任务失败下线该如何判断呢？
 // 检查error队列，检查任务是否出错，看能否尝试拉起，多次尝试拉起失败后，重新提交给调度器
-func (gmo *GroupMonitor) CheckStatus() {
-	go gmo.CheckingQueueCheck()
-	go gmo.RunningQueueCheck()
-	go gmo.CopyPendingQueueCheck()
-	go gmo.CompletedQueueCheck()
-	go gmo.ErrorQueueCheck()
-	go gmo.MigratedQueueCheck()
+func (gmo *GroupMonitor) CheckStatus(ctx context.Context) {
+	var wg sync.WaitGroup
+	wg.Add(6)
+
+	// 启动所有队列检查（传递 Context）
+	go func() { defer wg.Done(); gmo.CheckingQueueCheck(ctx) }()
+	go func() { defer wg.Done(); gmo.RunningQueueCheck(ctx) }()
+	go func() { defer wg.Done(); gmo.CopyPendingQueueCheck(ctx) }()
+	go func() { defer wg.Done(); gmo.CompletedQueueCheck(ctx) }()
+	go func() { defer wg.Done(); gmo.ErrorQueueCheck(ctx) }()
+	go func() { defer wg.Done(); gmo.MigratedQueueCheck(ctx) }()
+
+	// 等待所有检查协程退出
+	wg.Wait()
 }
 
 // 都要改成for i：=range
-func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Group在多个设备上运行，group之间有依赖关系，需要检查
+func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针对Task下的多个Group在多个设备上运行，group之间有依赖关系，需要检查
 	// TODO 轮询检查Checking队列，检查任务group的依赖是否满足，如果满足才放入running队列当中
 	logs.Info("Pending queue start checking")
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-time.After(time.Millisecond * 100):
 			checkingGroups := gmo.groupQueues.GetAllChecking()
 			for i := range checkingGroups {
@@ -221,16 +250,21 @@ func (gmo *GroupMonitor) CheckingQueueCheck() { //主要针对Task下的多个Gr
 				//	logs.Errorf("update group to group_manager err:%v", err)
 				//}
 			}
+			//default:
+			//case <-ctx.Done():
+			//	return
 		}
 	}
 }
 
 // 对于副本group，不设置任何时间，除非group启动了，才开始设置时间
 // 检查副本任务的队列，做的事情：①如果当前副本任务的状态被标记为Waiting，则副本继续等待，如果说副本任务状态标记为Stating，则副本任务马上启动   ②如果runtime为DeployCheck，就去查源任务的状态如何
-func (gmo *GroupMonitor) CopyPendingQueueCheck() { //TODO 对于专门存放副本的队列，目前暂时用到actionDepenSatisfy方法和runtimeDepencySatisfy方法，默认只要源任务满足，副本任务一定可以满足，后期有的话再加进去
+func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对于专门存放副本的队列，目前暂时用到actionDepenSatisfy方法和runtimeDepencySatisfy方法，默认只要源任务满足，副本任务一定可以满足，后期有的话再加进去
 	logs.Info("Copy Pending queue start checking")
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-time.After(time.Millisecond * 100):
 			copyPendingGroups := gmo.groupQueues.GetAllCopyPending()
 			for i := range copyPendingGroups {
@@ -341,17 +375,22 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck() { //TODO 对于专门存放副�
 					}
 				}
 			}
+			//default:
+			//case <-ctx.Done():
+			//	return
 		}
 	}
 }
 
 // 检查Running队列，做的事情：①如果发现任务完成，迁移到Completed队列，如果发现任务失败，迁移到Error队列
 // ②检查runtime、Action当中的parents是否执行完成，如果完成，则执行
-func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的Group，下面有多个Action，之间有依赖关系，需要检查
+func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对当前设备上的Group，下面有多个Action，之间有依赖关系，需要检查
 	//TODO 监控进程的返回值等判断任务是否正常执行完成，正常则放入completedqueue，否则放入errorqueue(方法待确认)
 	logs.Info("Running queue start checking")
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-time.After(time.Millisecond * 100):
 			runningGroups := gmo.groupQueues.GetAllRunning()
 			for i := range runningGroups {
@@ -456,14 +495,13 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 								//说明runtime可以执行
 								//grou.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex].Waiting = false
 								grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false
-								//说明runtime可以执行，这里为了适配迁移，如果是副本group，这里启动的时候，需要先获取关键状态
 								if runtime.EnableFineGrainedControl {
 									logs.Info("****************************************ABCDSDSADSAD**************************")
 									if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
 										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
 									}
-								} else { // 说明是启动刚部署好的副本
+								} else {
 									logs.Info("****************************************1234554564**********************")
 									if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
 										go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
@@ -523,14 +561,19 @@ func (gmo *GroupMonitor) RunningQueueCheck() { //主要针对当前设备上的G
 					continue
 				}
 			}
+			//default:
+			//case <-ctx.Done():
+			//	return
 		}
 	}
 }
-func (gmo *GroupMonitor) MigratedQueueCheck() {
+func (gmo *GroupMonitor) MigratedQueueCheck(ctx context.Context) {
 	logs.Info("migrated queue start checking")
 	//TODO 可能主要是将信息上传到api-server当中，然后将group_manager中的信息删除
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-time.After(time.Second * 1):
 			//var start = false
 			migrated := gmo.groupQueues.GetAllMigrated()
@@ -559,14 +602,19 @@ func (gmo *GroupMonitor) MigratedQueueCheck() {
 					gmo.groupQueues.DeleteFromMigratedAndAddToCompleted(group.Status.GroupID)
 				}
 			}
+			//default:
+			//case <-ctx.Done():
+			//	return
 		}
 	}
 }
-func (gmo *GroupMonitor) CompletedQueueCheck() {
+func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 	logs.Info("Completed queue start checking")
 	//TODO 可能主要是将信息上传到api-server当中，然后将group_manager中的信息删除
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-time.After(time.Second * 10):
 			//var start = false
 			completed := gmo.groupQueues.GetAllCompleted()
@@ -599,15 +647,19 @@ func (gmo *GroupMonitor) CompletedQueueCheck() {
 			//		logs.Infof("error groupName:%v,num=%v", errored[i].Name, errorNum)
 			//	}
 			//}
-
+			//default:
+			//case <-ctx.Done():
+			//	return
 		}
 	}
 }
-func (gmo *GroupMonitor) ErrorQueueCheck() {
+func (gmo *GroupMonitor) ErrorQueueCheck(ctx context.Context) {
 	logs.Info("Error queue start checking")
 	//TODO 可能要做的就是通知调度器，group部署失败
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-time.After(time.Second * 100):
 			// 通知调度器
 			errored := gmo.groupQueues.GetAllError()
@@ -618,7 +670,9 @@ func (gmo *GroupMonitor) ErrorQueueCheck() {
 				// 删除内存当中group_manager当中的group信息
 				gmo.groupManager.DeleteGroup(gro) //groupManager就删除group的信息，此时group的信息就只存在于etcd当中
 			}
-
+			//default:
+			//case <-ctx.Done():
+			//	return
 		}
 	}
 }
@@ -1184,7 +1238,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 		//		return false //说明当前group的付钱group还没完成，直接返回false即可
 		//	}
 		//}
-		for index, i := range group.Spec.Conditions.Formulas {
+		for _, i := range group.Spec.Conditions.Formulas {
 			if i.LeftValue.Name == "NodeDependency" {
 				parentName := i.LeftValue.From // 这里要考虑父亲节点有两个的情况吧，还是说弄两个Formulas
 				result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
@@ -1207,38 +1261,15 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 				}
 			}
 			if !i.Result {
-				logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+				//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
 				return false
 			} else {
-				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+				//logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
 		}
 	}
 	return true
 }
-
-//// 检查Group的依赖是否满足--存的是Parents的Name
-//func (gmo *GroupMonitor) checkGroupDepencies(group *apis.Group) bool {
-//	//TODO：实现依赖检查逻辑
-//	// 目前只是检查Spec当中的Parents选项
-//	if len(group.Spec.Parents) == 0 {
-//		return true
-//	} else {
-//		//检查父亲group是否执行完成
-//		for i := range group.Spec.Parents {
-//			parentName := group.Spec.Parents[i]
-//			// 去client-go当中查group
-//			result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
-//			if err != nil {
-//				logs.Errorf("Failed to get group:%s", parentName)
-//			}
-//			if result.Status.Phase != apis.Successed {
-//				return false //说明当前group的付钱group还没完成，直接返回false即可
-//			}
-//		}
-//	}
-//	return true
-//}
 
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) bool {
@@ -1274,7 +1305,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 			}
 		}
 		if !i.Result {
-			logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
 			// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
@@ -1300,7 +1331,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	//}
 
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
-	for index, i := range runtime.Conditions.Formulas {
+	for _, i := range runtime.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
 			//正则匹配选择parents的pahse
 			runtimeParentName := i.LeftValue.From
@@ -1319,7 +1350,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				i.Result = true
 			}
 			if !i.Result {
-				logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+				//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 				return false
 			} else {
 				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
@@ -1355,7 +1386,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 					// 	}
 				}
 				if !i.Result {
-					logs.Infof("group condition[%v]:%v do not satisfy!", index, i.LeftValue.Name)
+					//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 					return false
 				} else {
 					// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)

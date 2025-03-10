@@ -89,8 +89,9 @@ func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason
 		Message:        message,
 		// FirstTimestamp: t,
 		// LastTimestamp:  t,
-		Count: 1,
-		Type:  eventtype,
+		Count:     1,
+		Type:      eventtype,
+		EventTime: apis.Time{time.Now()},
 	}
 }
 
