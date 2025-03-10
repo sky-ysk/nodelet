@@ -1302,6 +1302,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
 	for index, i := range runtime.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
+			//正则匹配选择parents的pahse
 			runtimeParentName := i.LeftValue.From
 			for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
 				rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]

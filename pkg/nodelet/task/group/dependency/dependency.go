@@ -28,7 +28,7 @@ func CheckEnvironmentSatisfy(requirementsPath string) (string, bool) {
 	//获取requirements里面包含的所有package以及version
 	requirements, err := ParseRequirements(requirementsPath)
 	if err != nil {
-		fmt.Printf("Error reading requirements file: %v\n", err)
+		logs.Info("Error reading requirements file: %v", err)
 		return "", false
 	}
 
@@ -36,22 +36,22 @@ func CheckEnvironmentSatisfy(requirementsPath string) (string, bool) {
 	//获取所有虚拟环境的名称
 	envName, err := GetAllCondaEnv()
 	if err != nil {
-		fmt.Printf("Error retrieving installed packages: %v\n", err)
+		logs.Info("Error retrieving installed packages: %v", err)
 		return "", false
 	}
 	//for遍历所有虚拟环境
 	for _, envname := range envName {
 		installed, err := GetInstalledPackages(envname)
 		if err != nil {
-			fmt.Printf("Error retrieving installed packages: %v\n", err)
+			logs.Info("Error retrieving installed packages: %v", err)
 			return "", false
 		}
 
 		if CheckRequirements(requirements, installed, envname) {
-			fmt.Printf("All requirements are satisfied.")
+			logs.Info("All requirements are satisfied. EnvName:%v", envname)
 			return envname, true
 		} else {
-			fmt.Printf("Some requirements are not satisfied. EnvName:%v", envname)
+			logs.Info("Some requirements are not satisfied. EnvName:%v", envname)
 		}
 	}
 	return "", false
@@ -59,6 +59,7 @@ func CheckEnvironmentSatisfy(requirementsPath string) (string, bool) {
 
 // 解析requirements.txt文件，返回包的切片
 func ParseRequirements(filePath string) ([]Requirement, error) {
+	// startTime := time.Now()
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -87,13 +88,14 @@ func ParseRequirements(filePath string) ([]Requirement, error) {
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-
+	// timeCost := time.Since(startTime)
+	// fmt.Println("ParseRequirements cost %s time", timeCost)
 	return requirements, nil
 }
 
 // 使用pip list获取pip freeze格式（numpy==1.23.1这种）的字符数组
 func GetInstalledPackages(envName string) (map[string]string, error) {
-
+	// startTime := time.Now()
 	cmd := exec.Command("conda", "run", "-n", envName, "pip", "list", "--format=freeze")
 	output, err := cmd.Output()
 	if err != nil {
@@ -115,11 +117,15 @@ func GetInstalledPackages(envName string) (map[string]string, error) {
 		return nil, err
 	}
 
+	// timeCost := time.Since(startTime)
+	// fmt.Println("GetInstalledPackages cost %s time", timeCost)
+
 	return installed, nil
 }
 
 // 将获取到的requirements.txt的内容与已有的installed的内容比较
 func CheckRequirements(requirements []Requirement, installed map[string]string, envName string) bool {
+	// startTime := time.Now()
 	allSatisfied := true
 	for _, req := range requirements {
 		installedVersion, found := installed[req.Name]
@@ -133,10 +139,12 @@ func CheckRequirements(requirements []Requirement, installed map[string]string, 
 			allSatisfied = false
 			return allSatisfied
 		} else {
-			// fmt.Printf("Package %s is satisfied.\n", req.Name)
+			logs.Info("Package %s is satisfied.", req.Name)
 		}
 	}
 	logs.Info("requirements satisfied envName: %v", envName)
+	// timeCost := time.Since(startTime)
+	// fmt.Println("CheckRequirements cost %s time", timeCost)
 	return allSatisfied
 }
 
@@ -213,12 +221,12 @@ func runCommand(name string, args ...string) error {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Command output: %s\n", out.String())
-		fmt.Printf("Command error: %s\n", stderr.String())
+		logs.Info("Command output: %s", out.String())
+		logs.Info("Command error: %s", stderr.String())
 		return fmt.Errorf("command execution failed: %v", err)
 	}
 
-	fmt.Printf("Command output: %s\n", out.String())
+	logs.Info("Command output: %s", out.String())
 	return nil
 }
 
@@ -267,12 +275,13 @@ func EnvForInput(envName string) (string, bool) {
 }
 
 func GetAllCondaEnv() ([]string, error) {
+	// startTime := time.Now()
 	cmd := exec.Command("conda", "info", "--envs")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("Error executing conda command: %v\n", err)
+		logs.Info("Error executing conda command: %v", err)
 		return nil, err
 	}
 
@@ -290,6 +299,8 @@ func GetAllCondaEnv() ([]string, error) {
 			envNames = append(envNames, fields[0]) // 添加环境名称
 		}
 	}
+	// timeCost := time.Since(startTime)
+	// fmt.Println("GetAllCondaEnv cost %s time", timeCost)
 	return envNames, nil
 }
 
@@ -318,4 +329,37 @@ func GetCondaEnvPath(envName string) (string, error) {
 
 	// 如果没有找到环境
 	return "", fmt.Errorf("environment '%s' not found", envName)
+}
+
+// TODO 正则表达式解析，格式：
+//
+//	     Results的访问格式对应
+//				TODO: 正则表达式
+//				Action{ID}.Results.{Name}， 缺省访问本Group对应的Action
+//				Group{ID}.Action{ID}.Results.{Name}， 访问对应Group的对应Action
+//				Task{ID}.Group{ID}.Action{ID}.Results.{Name}, 访问对应Task的对应Group的对应Action
+//	         目前不支持跨Workflow获取数据
+//	  对于Local类型，Value对应从本地资源或者数据节点获取的数据，ValueType对应从资源或者数据中获取的数据类型
+//	  	Local的访问格式对应
+//	         Resources.{Name}: 从本地资源中获取
+//				Devices.{Name}: 从本地设备里列表中获取
+//				Scenes.{Name}： 从本地场景中获取
+//				Data.{Name}： 从本地数据中获取
+func IdParser(Idstr string) (Task, Group, Action, runtime string, err error) {
+	//两类数据类型对应两类正则解析式
+	// 定义正则表达式
+	//TODO Local格式的正则匹配，目前没使用到
+	re := regexp.MustCompile(`(?:Task\{(\d+)\}\.)?(?:Group\{(\d+)\}\.)?Action\{(\d+)\}\.Runtime\{(\d+)\}`)
+	// 匹配并提取 ID
+
+	matches := re.FindStringSubmatch(Idstr)
+	if matches != nil {
+		logs.Info("匹配的字符串: %v", Idstr)
+		logs.Info("提取的 ID: TaskID=%v, GroupID=%v, ActionID=%v, RuntimeID=%v",
+			matches[1], matches[2], matches[3], matches[4])
+		return matches[1], matches[2], matches[3], matches[4], nil
+	} else {
+		logs.Error("未匹配到: %v", Idstr)
+		return "", "", "", "", fmt.Errorf("未匹配到: %v", Idstr)
+	}
 }

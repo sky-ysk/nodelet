@@ -4,6 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -13,9 +17,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"os"
-	"time"
 )
 
 // 创建一个Rest Client
@@ -117,7 +118,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements1.txt",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -159,7 +160,104 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements1.txt",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "ProgramDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+		},
+	}
+
+	//为g2 g3增加condition
+	runtime1_2_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "ProgramDependency",
+					Value:     "0",
+					ValueType: "string",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "ProgramDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+		},
+	}
+
+	runtime1_2_1_2Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "ProgramDependency",
+					Value:     "0",
+					ValueType: "string",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "ProgramDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+		},
+	}
+
+	runtime1_3_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "ProgramDependency",
+					Value:     "0",
+					ValueType: "string",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "ProgramDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+		},
+	}
+
+	runtime1_3_1_2Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "ProgramDependency",
+					Value:     "0",
+					ValueType: "string",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -270,6 +368,7 @@ func main() {
 								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
+								Conditions:               runtime1_2_1_1Condition,
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
@@ -280,6 +379,7 @@ func main() {
 								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_2_1_1Name}, // 加入Parents
+								Conditions:               runtime1_2_1_2Condition,
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_2FineGrainedControl,
@@ -345,6 +445,7 @@ func main() {
 								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
+								Conditions:               runtime1_3_1_1Condition,
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
@@ -355,6 +456,7 @@ func main() {
 								Command:                  []string{"python"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
+								Conditions:               runtime1_3_1_2Condition,
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_2FineGrainedControl,

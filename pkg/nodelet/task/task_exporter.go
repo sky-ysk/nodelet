@@ -119,8 +119,8 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	// 任务部署完成后，需要监控任务的执行情况，并通过Client-Go定期更新
 	go te.groupMonitor.Start() //主要监控正在启动的任务，获取任务状态信息
 	go te.ReceiveGroupInfo()   // 持续从etcd当中读取group
-	go te.migrationController.Run(2, ctx.Done())
-	go te.nodeMonitor.Run(2, ctx.Done())
+	// go te.migrationController.Run(2, ctx.Done())
+	// go te.nodeMonitor.Run(2, ctx.Done())
 	select {
 	case <-ctx.Done():
 		return ctx.Err() //退出是返回错误
