@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"sync"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/util/wait"
@@ -18,9 +22,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/node"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
@@ -88,6 +89,7 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 					return // 跳过历史事件/非本节点事件/非迁移触发事件
 				}
 				// 所有条件满足时入队
+				logs.Infof("switch controller: event informer AddFunc(): %v", event.Name)
 				key, _ := cache.MetaNamespaceKeyFunc(obj)
 				queue.Add(key)
 			},
