@@ -44,6 +44,7 @@ func TestBuildGroupsRequest(t *testing.T) {
 	//创建ClientSet
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	// 资源定义在 pkg/apis/xxx/type.go 下
