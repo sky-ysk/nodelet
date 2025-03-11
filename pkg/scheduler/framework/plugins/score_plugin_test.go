@@ -57,6 +57,7 @@ func TestBuildGroupsRequest(t *testing.T) {
 	results, err := tasksClient.Create(context.TODO(), &task, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)
+		fmt.Println(err)
 		panic(err)
 	}
 	fmt.Println("Created task ", results)
