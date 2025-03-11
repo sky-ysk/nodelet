@@ -29,14 +29,14 @@ func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, err
 		Method: "POST",
 		URL: &url.URL{
 			Scheme: "http",
-			Host:   "127.0.0.1:8080",
+			Host:   "127.0.0.1:5000",
 			//TODO path定一下
 			Path: path,
 		},
 	}
 	httpReq.Body = io.NopCloser(bytes.NewBuffer(data))
 	httpRes, err := client.client.Do(&httpReq)
-	fmt.Println("do done")
+	//fmt.Println("do done")
 	if err != nil {
 		fmt.Println(err)
 		logs.Fatal(err)
