@@ -76,7 +76,7 @@ func InitClient() (*clients.ClientSet, error) {
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 10 * time.Second,
+		Timeout: 3600 * time.Second,
 	}
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
