@@ -79,6 +79,55 @@ func TestAddGroupsIndatabus(t *testing.T) {
 	//plugin.Score(ctx, &task.Spec.Groups[0], "")
 }
 
+func TestListAllNodes(t *testing.T) {
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	//参数配置
+	// TODO: 填写参数
+	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        10000,            // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 1000 * time.Second,
+	}
+
+	//创建ClientSet
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+	// 资源定义在 pkg/apis/xxx/type.go 下
+	// 这里以访问资源Node为例，
+	// 获取访问Node的客户端
+	// 默认访问的Namespace是 ""
+
+	nodesClient := clientSet.Core().Nodes("test")
+	logs.Info("listing 筛选的node")
+	lstOpts := metav1.ListOptions{}
+	list, err := nodesClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		logs.Error(err)
+	}
+	for _, d := range list.Items {
+		fmt.Println(d)
+	}
+}
+
 func TestSendGroupsRequest(t *testing.T) {
 	task := mockGetTask()
 	ctx := context.Background()
@@ -159,6 +208,9 @@ func mockGetTask() apis.Task {
 	}
 
 	return apis.Task{
+		ObjectMeta: meta.ObjectMeta{
+			Name: "testTask",
+		},
 		Spec: apis.TaskSpec{
 			Groups: []apis.Group{g1, g2, g3},
 		},

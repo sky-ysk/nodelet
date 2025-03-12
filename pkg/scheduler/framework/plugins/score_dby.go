@@ -63,7 +63,7 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		logs.Fatal(err)
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
-	_, err = client.SendData(jsonData, "/groups")
+	_, err = client.SendData(jsonData, "/schedule/postGroup")
 	if err != nil {
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
@@ -110,7 +110,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Fatal(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	data, err := sp.pluginClient.SendData(jsonData, "/Score")
+	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
