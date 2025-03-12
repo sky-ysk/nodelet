@@ -95,7 +95,7 @@ func main() {
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "TestTask-wasm",
-			Namespace: "",
+			Namespace: "test",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Task",
@@ -105,7 +105,7 @@ func main() {
 			Name: "demo-task",
 			Groups: []apis.Group{
 				apis.Group{
-					ObjectMeta: metav1.ObjectMeta{Name: "TestGroup-wasm", Namespace: ""},
+					ObjectMeta: metav1.ObjectMeta{Name: "TestGroup-wasm", Namespace: "test"},
 					TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 					Spec: apis.GroupSpec{
 						Name:    "TestGroup-wasm",
@@ -176,7 +176,7 @@ func main() {
 	}
 
 	group1 := &apis.Group{
-		ObjectMeta: metav1.ObjectMeta{Name: "TestGroup-wasm", Namespace: ""},
+		ObjectMeta: metav1.ObjectMeta{Name: "TestGroup-wasm", Namespace: "test"},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
 			Name:    "TestGroup-wasm",

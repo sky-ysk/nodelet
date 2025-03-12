@@ -155,7 +155,7 @@ type EventList struct {
 
 	meta.ListMeta
 
-	Events []Event `json:"items" yaml:"items"`
+	Items []Event `json:"items" yaml:"items"`
 }
 
 // Node

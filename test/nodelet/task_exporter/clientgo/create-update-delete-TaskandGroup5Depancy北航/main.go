@@ -101,7 +101,7 @@ func main() {
 	runtime1_3_1_2ID := "RuntimeID3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
 
 	// runtime是否细粒度控制
-	runtime1_1_1_1FineGrainedControl := true
+	runtime1_1_1_1FineGrainedControl := false
 	runtime1_1_1_2FineGrainedControl := false
 	runtime1_2_1_1FineGrainedControl := false
 	runtime1_2_1_2FineGrainedControl := false
@@ -117,7 +117,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -139,7 +139,7 @@ func main() {
 					Type:      apis.ResultsData,
 					Name:      "NodeDependency",
 					Value:     "0",
-					ValueType: "string",
+					ValueType: "strting",
 					From:      runtime1_1_1_1Name,
 				},
 				RightValue: apis.ConditionValue{
@@ -159,7 +159,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -183,7 +183,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -205,7 +205,7 @@ func main() {
 					Type:      apis.ResultsData,
 					Name:      "NodeDependency",
 					Value:     "0",
-					ValueType: "string",
+					ValueType: "strting",
 					From:      runtime1_2_1_1Name,
 				},
 				RightValue: apis.ConditionValue{
@@ -225,7 +225,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -249,7 +249,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -271,7 +271,7 @@ func main() {
 					Type:      apis.ResultsData,
 					Name:      "NodeDependency",
 					Value:     "0",
-					ValueType: "string",
+					ValueType: "strting",
 					From:      runtime1_3_1_1Name,
 				},
 				RightValue: apis.ConditionValue{
@@ -291,7 +291,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -314,7 +314,7 @@ func main() {
 					Type:      apis.ResultsData,
 					Name:      "NodeDependency",
 					Value:     "0",
-					ValueType: "string",
+					ValueType: "strting",
 					From:      group1_1Name,
 				},
 				RightValue: apis.ConditionValue{
@@ -338,7 +338,7 @@ func main() {
 					Type:      apis.ResultsData,
 					Name:      "NodeDependency",
 					Value:     "0",
-					ValueType: "string",
+					ValueType: "strting",
 					From:      group1_2Name,
 				},
 				RightValue: apis.ConditionValue{
@@ -371,7 +371,7 @@ func main() {
 								Name:                     runtime1_1_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_1_1_1Condition,
 								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/train.py",
@@ -382,7 +382,7 @@ func main() {
 								Name:                     runtime1_1_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
 								Conditions:               runtime1_1_1_2Condition,
 								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/train.py",
@@ -449,10 +449,10 @@ func main() {
 								Name:                     runtime1_2_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_2_1_1Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
 							},
@@ -460,10 +460,10 @@ func main() {
 								Name:                     runtime1_2_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_2_1_1Name}, // 加入Parents
 								Conditions:               runtime1_2_1_2Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_2FineGrainedControl,
 							},
@@ -527,10 +527,10 @@ func main() {
 								Name:                     runtime1_3_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_3_1_1Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
 							},
@@ -538,10 +538,10 @@ func main() {
 								Name:                     runtime1_3_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
 								Conditions:               runtime1_3_1_2Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_2FineGrainedControl,
 							},

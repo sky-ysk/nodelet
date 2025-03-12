@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -58,7 +59,7 @@ func InitClient() (*clients.ClientSet, error) {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	c := &rest.Config{
-		Host:    "http://localhost:10000", //http://localhost:10000   http://suda801.wangwanu.com:11006   //连接api-server
+		Host:    GetAPIServerHost(), //http://localhost:10000   http://suda801.wangwanu.com:11006   //连接api-server
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -75,13 +76,19 @@ func InitClient() (*clients.ClientSet, error) {
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 10 * time.Second,
+		Timeout: 3600 * time.Second,
 	}
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
 	}
 	return clientSet, nil
+}
+func GetAPIServerHost() string {
+	if host := os.Getenv("API_SERVER_HOST"); host != "" {
+		return host
+	}
+	return "http://localhost:10000"
 }
 
 func (nl *Nodelet) Run(ctx context.Context) {
