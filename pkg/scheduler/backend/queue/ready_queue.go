@@ -152,7 +152,7 @@ func (rq *readyQueue) unlockedPop() (*config.QueuedGroupInfo, error) {
 
 // delete deletes the pod info from activeQ.
 //func (aq *activeQueue) delete(pInfo *framework.QueuedPodInfo) error {
-//	aq.lock.Lock()
+//	aq.lock.IsLocked()
 //	defer aq.lock.Unlock()
 //
 //	return aq.queue.Delete(pInfo)

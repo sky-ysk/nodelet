@@ -2,6 +2,8 @@ package runtime
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"sync"
 
 	"hit.edu/framework/pkg/client-go/tools/recorder"
@@ -73,7 +75,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			runtime = device.NewDeviceRuntime()
+			runtime = device.NewDeviceRuntime(rm.deviceClient, rm.groupClient)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

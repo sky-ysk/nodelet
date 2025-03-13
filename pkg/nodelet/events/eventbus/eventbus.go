@@ -20,7 +20,6 @@ func NewEventBus() *EventBus {
 func (eb *EventBus) Subscribe(eventType reflect.Type, ch chan interface{}) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
-
 	if _, exists := eb.subscribers[eventType]; !exists {
 		eb.subscribers[eventType] = []chan interface{}{}
 	}

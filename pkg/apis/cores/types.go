@@ -2,9 +2,8 @@
 package apis
 
 import (
-	"time"
-
 	"hit.edu/framework/pkg/apis/meta"
+	"time"
 )
 
 const (
@@ -760,6 +759,7 @@ type ResourceDetail struct {
 	Type string
 }
 type ResourceStatus struct {
+	Name string
 	// 资源的使用量和他的单位
 	// TODO
 	Usage     float64
@@ -817,6 +817,7 @@ const (
 	DeviceRunning      DevicePhase = "Running"
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
+	DeviceComplete     DevicePhase = "Complete"
 	DeviceDisconnected DevicePhase = "Disconnected"
 )
 
@@ -908,7 +909,7 @@ type Lock struct {
 	Type LockType
 
 	// 调度时 ref为0时释放
-	Lock bool
+	IsLocked bool
 
 	// 资源引用数 部署时
 	Ref int
@@ -981,15 +982,6 @@ type DeviceStatus struct {
 	LastTime Time
 }
 
-type DataSpec struct {
-	// 对于文件类型的Data
-	// 文件格式
-	// 文件大小
-	// SHA文件校验
-}
-
-type DataStatus struct{}
-
 // SceneSpec 描述scene的固有属性和期待属性
 type SceneSpec struct {
 	// 每一个scene的标识
@@ -1042,6 +1034,14 @@ type SceneStatus struct {
 	// 锁
 	Lock Lock
 }
+type DataSpec struct {
+	// 对于文件类型的Data
+	// 文件格式
+	// 文件大小
+	// SHA文件校验
+}
+
+type DataStatus struct{}
 
 // Action所需执行环境
 type Runtime struct {
@@ -1113,7 +1113,7 @@ type Runtime struct {
 	// 需要的数据
 	// 输入数据
 	// 	输入数据作为参数注入到命令参数中
-	Inputs Input `json:"inputs,omitempty" yaml:"inputs"`
+	Inputs []Input `json:"inputs,omitempty" yaml:"inputs"`
 
 	// 输出数据
 	//  输出数据作为参数注入到命令参数中

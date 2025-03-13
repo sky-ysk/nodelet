@@ -99,6 +99,7 @@ func (g *groupWorkers) UpdateGroup(options *UpdateGroupOptions) {
 			g.groupWorkerLoop(groupUpdates) //对每一个任务只开这一个协程
 		}()
 	}
+
 	// 通知更新
 	select {
 	case groupUpdates <- options: //往管道中放入options

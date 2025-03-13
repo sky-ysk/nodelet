@@ -40,6 +40,6 @@ func TestReadyQueue(t *testing.T) {
 	q.readyQ.lock.Lock()
 	q.readyQ.cond.Wait()
 	//q := newReadyQueue()
-	//q.lock.Lock()
+	//q.lock.IsLocked()
 	//q.cond.Wait()
 }

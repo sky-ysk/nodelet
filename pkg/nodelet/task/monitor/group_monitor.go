@@ -638,6 +638,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	if err != nil {
 		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
 	}
+
 	actionIndex := event.ActionIndex
 	runtimeIndex := event.RuntimeIndex
 	phase := event.Phase // 这里接收的Phase有可能是running，也有可能是Failed
