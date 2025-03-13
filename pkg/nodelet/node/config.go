@@ -11,10 +11,13 @@ type Config struct {
 	EnabledCollectors []string
 	//  资源访问方式 （例如：资源访问协议或 API 的 URL）
 	ResourceAccessMethod string
-	//  ......
+	//  节点名称
+	NodeName string
+	//  节点所属类别
+	ClusterCategory string
 }
 
-func NewConfig(enabledCollectors []string, resourceAccessMethod string) *Config {
+func NewConfig(enabledCollectors []string, resourceAccessMethod, nodeName, clusterCategory string) *Config {
 	//监测当前系统平台
 	platform := runtime.GOOS
 	// 如果资源访问方式为空，设置默认值
@@ -25,5 +28,7 @@ func NewConfig(enabledCollectors []string, resourceAccessMethod string) *Config 
 		Platform:             platform,
 		EnabledCollectors:    enabledCollectors,
 		ResourceAccessMethod: resourceAccessMethod,
+		NodeName:             nodeName,
+		ClusterCategory:      clusterCategory,
 	}
 }

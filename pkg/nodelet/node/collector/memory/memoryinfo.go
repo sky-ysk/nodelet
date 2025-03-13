@@ -1,6 +1,9 @@
 package memory
 
-import "github.com/shirou/gopsutil/mem"
+import (
+	"github.com/shirou/gopsutil/mem"
+	"os"
+)
 
 type MemoryInfo struct {
 	Total     uint64
@@ -20,6 +23,14 @@ type LinuxMemInfoProvider struct{}
 
 func NewLinuxMemInfoProvider() *LinuxMemInfoProvider {
 	return &LinuxMemInfoProvider{}
+}
+
+// 初始化：检测容器环境并设置宿主机路径
+func init() {
+	if _, err := os.Stat("/host/proc"); err == nil {
+		os.Setenv("HOST_PROC", "/host/proc")
+		os.Setenv("HOST_SYS", "/host/sys")
+	}
 }
 
 func (l LinuxMemInfoProvider) GetMemoryInfo() (*MemoryInfo, error) {

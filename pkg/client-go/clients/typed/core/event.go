@@ -24,6 +24,7 @@ type EventInterface interface {
 	Create(ctx context.Context, event *apis.Event, opts meta.CreateOptions) (*apis.Event, error)
 	Update(ctx context.Context, event *apis.Event, opts meta.UpdateOptions) (*apis.Event, error)
 	Delete(ctx context.Context, name string, opts meta.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts meta.DeleteOptions, listOpts meta.ListOptions) error
 	Get(ctx context.Context, name string, opts meta.GetOptions) (*apis.Event, error)
 	List(ctx context.Context, opts meta.ListOptions) (*apis.EventList, error)
 	Watch(ctx context.Context, opts meta.ListOptions) (watch.Interface, error)

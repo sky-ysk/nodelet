@@ -207,80 +207,25 @@ func (dr *DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *a
 	logs.Infof("device runtime kill task: %s", group.Name)
 	return nil
 }
+func (dr DeviceRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 
 func (dr *DeviceRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 	return "", nil
 }
+func (dr DeviceRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
 
-func (dr *DeviceRuntime) monitorDevice(action *apis.Action, groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, taskId string, device *apis.Device) {
-	for {
-		logs.Infof("Device %s is getting task state....", device.Name)
-		tr, err := rmf.GetTaskState(device, taskId)
-		if err != nil {
-			logs.Errorf("Device %s monitor GetTaskState failed\n", device.Name)
-			return
-		}
-		switch tr.Status {
-		case "failed":
-			//TODO:错误处理
-			logs.Errorf("Device %s is failed\n", device.Name)
-			dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
-			if err = utils.UpdateDeviceStatusFailed(runtime, action, device, dr.deviceClient); err != nil {
-				logs.Errorf(err.Error())
-			}
-			if _, err = dr.deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
-				logs.Errorf(err.Error())
-			}
-			return
-		case "completed":
-			//TODO:锁操作
-			logs.Infof("Device %s is completed\n", device.Name)
-			dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
-			if err = utils.UpdateDeviceStatusFailed(runtime, action, device, dr.deviceClient); err != nil {
-				logs.Errorf(err.Error())
-			}
-			if _, err = dr.deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
-				logs.Errorf(err.Error())
-			}
-			return
-		case "canceled":
-			logs.Infof("Device %s is canceled\n", device.Name)
-			dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
-			if err = utils.UpdateDeviceStatusFailed(runtime, action, device, dr.deviceClient); err != nil {
-				logs.Errorf(err.Error())
-			}
-			if _, err = dr.deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
-				logs.Errorf(err.Error())
-			}
-			return
-		default:
-			logs.Infof("Device %s is %s\n", device.Name, tr.Status)
-		}
-		time.Sleep(time.Millisecond * 500)
-	}
-
+	return ""
 }
-
-func (dr *DeviceRuntime) notifyRuntimeStartPhase(groupName string, actionIndex, runtimeIndex int, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
-	event := events.RuntimeStartPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		ProcessId:    processId,
-		Phase:        phase,
-		StartAt:      startAt,
-		LastTime:     lastTime,
-	}
-	dr.eventBus.Publish(event)
+func (dr DeviceRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
 }
-func (dr *DeviceRuntime) notifyRuntimeEndPhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
-	event := events.RuntimeEndPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		Phase:        phase,
-		FinishAt:     finishTime,
-		LastTime:     lastTime,
-	}
-	dr.eventBus.Publish(event)
+func (dr DeviceRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+
+	return nil
+}
+func (dr DeviceRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}
+func (dr DeviceRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
 }

@@ -24,7 +24,7 @@ type WasmRuntime struct {
 type Config struct {
 	runtimeExecfile string //wasm runtime server文件地址
 	wasmLLVM        string //wasm aot compiler 文件地址
-	rpcAddr         string
+	rpcPort         string
 }
 
 // todo:增加config，配置rpc端口和运行时信息
@@ -34,7 +34,7 @@ func NewWasmRuntime() *WasmRuntime {
 	config := Config{
 		runtimeExecfile: "/tmp/wasm/toolchain/server",
 		wasmLLVM:        "/tmp/wasm/toolchain/wasm-llvm",
-		rpcAddr:         "127.0.0.1:8080", //在运行时里暂时写死了rpc端口，所以不能改，后续考虑将rpc端口作为启动参数
+		rpcPort:         "8080", //在运行时里暂时写死了rpc端口，所以不能改，后续考虑将rpc端口作为启动参数
 	}
 	wr := &WasmRuntime{config: config}
 	// wr.rpcAddr = config.rpcAddr
@@ -53,17 +53,13 @@ func ensureFile() error {
 
 // 启动任务
 func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
-	logs.Infof("wasm runtime for task:%s", group.Name)
+	logs.Infof("wasm runtime Run() for task:%s", group.Name)
 	wasm_file := runtime.Image
-	wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcAddr)
-
-	time.Sleep(1 * time.Second)
-	err := wr.wasmClient.Connect()
-	if err != nil {
-		logs.Error("wasm client 连接失败:", err)
-		return err
+	if wr.wasmClient == nil {
+		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, "wasm-test-demo")
 	}
-	_, err = wr.wasmClient.Deploy(wasm_file)
+
+	_, err := wr.wasmClient.Deploy(wasm_file)
 	if err != nil {
 		return err
 	}
@@ -75,7 +71,7 @@ func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis
 	if err != nil {
 		return err
 	}
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 	return nil
 }
 
@@ -86,28 +82,16 @@ func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *api
 	if err != nil {
 		return err
 	}
-	time.Sleep(2 * time.Second)
+	// time.Sleep(2 * time.Second)
 	return nil
 }
 
-// 销毁运行时
-func (wr *WasmRuntime) Destory() error {
-	logs.Infof("wasm runtime destory for task: wasm-test")
-	_, err := wr.wasmClient.Destory()
-	if err != nil {
-		return err
-	}
-	time.Sleep(2 * time.Second)
-	return nil
-}
-
-// 后续改成使用cmd package里的build cmd等
 // 需要保存进程的pid，检查进程是否是正常执行完成
 func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
 	wr.cmd = exec.Command(cmd, args...)
 	wr.cmd.Stdout = os.Stdout
 	wr.cmd.Stderr = os.Stderr
-	// 设置aot编译器环境变量,打开rust日志信息
+	// 设置aot编译器环境变量,打开rust日志信息,设置 推理资源文件夹路径
 	llvm := fmt.Sprintf("WASM_LLVM=%s", wr.config.wasmLLVM)
 	fixtures := fmt.Sprintf("FIXTURES_DIR=/tmp/wasm/fixtures")
 	wr.cmd.Env = append(os.Environ(), llvm, "RUST_LOG=info", fixtures)
@@ -135,12 +119,83 @@ func (wr *WasmRuntime) StopCMD() {
 	info := fmt.Sprintf("stop cmd process pid : %d", wr.cmd.Process.Pid)
 	logs.Info(info)
 	if err := wr.cmd.Process.Kill(); err != nil {
-		logs.Error("停止进程失败: %v\n", err)
+		logs.Error("停止进程 %d 失败: %v\n", wr.cmd.Process.Pid, err)
 	} else {
 		logs.Info("进程已停止")
 	}
 }
-func (wr WasmRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
+func (wr WasmRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 
 	return "", nil
+}
+
+func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+
+	return nil
+}
+
+func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	logs.Infof("wasm runtime StartRuntime() for task:%s", group.Name)
+	wasm_file := runtime.Image
+	if wr.wasmClient == nil {
+		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, "wasm-test-demo")
+	}
+
+	_, err := wr.wasmClient.Deploy(wasm_file)
+	if err != nil {
+		logs.Errorf("任务启动失败: %e", err)
+		return err
+	}
+	_, err = wr.wasmClient.Init()
+	if err != nil {
+		logs.Errorf("任务启动失败: %e", err)
+		return err
+	}
+	_, err = wr.wasmClient.Start()
+	if err != nil {
+		logs.Errorf("任务启动失败: %e", err)
+		return err
+	}
+
+	return nil
+}
+
+func (wr WasmRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+	if wr.wasmClient == nil {
+		// 该方法应增加err返回值
+		// return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
+		return ""
+	}
+	return ""
+}
+
+func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	// keyStatus := ""
+	//logs.Infof("keyStatus: %s", keyStatus)
+	for {
+		if wr.wasmClient != nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil
+}
+
+func (wr WasmRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	logs.Infof("wasm runtime destory for task: wasm-test")
+	_, err := wr.wasmClient.Destory()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// 销毁任务
+func (wr *WasmRuntime) Destory() error {
+	logs.Infof("wasm runtime destory for task: wasm-test")
+	_, err := wr.wasmClient.Destory()
+	if err != nil {
+		return err
+	}
+	return nil
 }

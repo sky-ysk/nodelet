@@ -29,6 +29,9 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
+
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -37,9 +40,10 @@ import (
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/internal"
-	"time"
 
 	// extension "hit.edu/framework/pkg/scheduler/schedulechain"
+	"net/http"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -48,7 +52,6 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	schedRuntime "hit.edu/framework/pkg/scheduler/framework/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"net/http"
 )
 
 // TODO: 将K8s相关组件替换为我们自己的
@@ -219,7 +222,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -250,7 +253,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	groupClient := clientSet.Core().Groups("")
+	groupClient := clientSet.Core().Groups("test")
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
 	var watchTimeout int64 = 3600
@@ -296,7 +299,12 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 		}
 	}
 }
-
+func GetAPIServerHost() string {
+	if host := os.Getenv("API_SERVER_HOST"); host != "" {
+		return host
+	}
+	return "http://localhost:10000"
+}
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
 		sched.SchedulingQueue.Add(ctx, g)

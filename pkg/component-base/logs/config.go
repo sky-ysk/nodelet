@@ -27,8 +27,8 @@ type Output struct {
 
 // 默认配置
 func (conf *Config) DefaultWithModuleName(moduleName string) {
-	conf.level = "trace"
-
+	//conf.level = "trace"
+	conf.level = "info" // trace、debug、info、warn、error 等不同级别。当设置级别为 info 时，只有 info 及更高优先级（如 warn、error）的日志会被输出，而 trace 和 debug 会被过滤掉。
 	conf.context.format = "console"
 	conf.context.fields = map[string]string{}
 

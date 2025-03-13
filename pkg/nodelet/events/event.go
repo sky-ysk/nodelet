@@ -85,3 +85,37 @@ type RuntimeEndPhaseEvent1 struct {
 	FinishAt     apis.Time
 	LastTime     apis.Time // 可选字段，表示最后更新时间
 }
+
+const (
+	ReadyToMigrate = "ReadyToMigrate"
+)
+
+// Wasm event reason list
+const (
+	CreatedWasm         = "Created"
+	StartedWasm         = "Started"
+	FailedToCreateWasm  = "Failed"
+	FailedToStartWasm   = "Failed"
+	KillingWasm         = "Killing"
+	PreemptWasm         = "Preempting"
+	BackOffStartWasm    = "BackOff"
+	ExceededGracePeriod = "ExceededGracePeriod"
+)
+
+// Command event reason list
+const (
+	CreatedCommand        = "Created"
+	StartedCommand        = "Started"
+	StoredCommand         = "Stored"
+	RestoredCommand       = "Restored"
+	FailedToCreateCommand = "Failed"
+	FailedToStartCommand  = "Failed"
+	KillingCommand        = "Killing"
+	PreemptCommand        = "Preempting"
+	BackOffStartCommand   = "BackOff"
+	TriggerLocalMigration = "TriggerLocalMigration"
+	TriggerCrossMigration = "TriggerCrossMigration"
+	ExecuteSuccessfully   = "ExecuteSuccessfully"
+	ExecuteFailed         = "ExecuteFailed"
+	SelectOtherDomain     = "SelectDomain"
+)

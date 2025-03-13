@@ -3,8 +3,6 @@ package logs
 import (
 	"bufio"
 	"fmt"
-	"github.com/rs/zerolog"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,6 +12,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type ILogger interface {
@@ -40,6 +41,8 @@ func Init(moduleName string) {
 }
 
 func initLogs(conf Config) {
+	// 设置全局时间格式为包含纳秒的格式
+	zerolog.TimeFieldFormat = time.RFC3339Nano // 新增代码
 	// 设置日志轮转
 	var writers []io.Writer
 	// 使用独立的缓冲区
@@ -77,7 +80,7 @@ func initLogs(conf Config) {
 	}
 	if conf.output.console {
 		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout,
-			TimeFormat: time.DateTime,
+			TimeFormat: "2006-01-02 15:04:05.000", // 为了评估迁移的延时，这里暂时修改一下 原：time.DateTime
 		}) // 也可以只输出Stderr
 	}
 

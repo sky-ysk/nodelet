@@ -5,6 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"net/http"
+	"strings"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -14,10 +19,6 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
-	"math/rand"
-	"net/http"
-	"strings"
-	"time"
 
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/workflow"
@@ -450,7 +451,7 @@ func getNodeFromApiServer() []*config.NodeInfo {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	nodesClient := clientSet.Core().Nodes("")
+	nodesClient := clientSet.Core().Nodes("test")
 	lstOpts := metav1.ListOptions{}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {

@@ -3,24 +3,20 @@ package k8s
 import (
 	"context"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/entity"
-	EM "hit.edu/framework/pkg/nodelet/task/runtime/k8s/entity/entity_manager"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-func CreatePod(clientset *kubernetes.Clientset, podInfo *entity.Pod) error {
-	pod, err := podInfo.CreatePodTemplate()
+func CreatePod(clientset *kubernetes.Clientset, pod *corev1.Pod) error {
+
+	_, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 	if err != nil {
-		return err
-	}
-	_, err2 := clientset.CoreV1().Pods(podInfo.Namespace).Create(context.TODO(), &pod, metav1.CreateOptions{})
-	if err2 != nil {
 		logs.Error(err, "fail to start pod")
 		return err
 	}
-	EM.GetInstance().AddPod(podInfo.Namespace, podInfo.PodName)
-	logs.Info("Pod started successfully", "Pod:", podInfo.PodName)
+	//EM.GetInstance().AddPod(podInfo.Namespace, podInfo.PodName)
+	logs.Info("Pod started successfully", "Pod:", pod.Name)
 	//return CreatePod(groupName, runtime)
 	return nil
 }

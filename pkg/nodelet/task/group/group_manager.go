@@ -109,4 +109,5 @@ func (gm *groupManager) DeleteGroup(group *apis.Group) {
 	defer gm.modifyLock.Unlock()
 	delete(gm.groupsByID, group.Status.GroupID)
 	delete(gm.groupsByName, group.Name)
+	logs.Infof("group_manager删除group：%s", group.Name)
 }

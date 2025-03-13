@@ -1,12 +1,12 @@
 package task
 
 type Config struct {
-	// Node ID
-	name string
+	// Node Name
+	NodeName string
 }
 
 func NewConfig(name string) *Config {
 	return &Config{
-		name: name,
+		NodeName: name,
 	}
 }

@@ -48,22 +48,25 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	//再各自调用代码
 	switch runtime.Type {
 	case apis.ByDeployment:
-		deployment := entity.NewDeployment(group.Name, group.Namespace, group.Spec.Labels, runtime.Replicas, runtime.Name, runtime.Image, runtime.Selector, action.Spec.EnableFineGrainedControl)
-		return CreateDeployment(k.clientset, deployment)
+		//deployment := entity.NewDeployment(group.Name, group.Namespace, group.Spec.Labels, runtime.Replicas, runtime.Name, runtime.Image, runtime.Selector, action.Spec.EnableFineGrainedControl)
+		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
+		logs.Info("-----------------k8s deployment created----------------------------")
+		return CreateDeployment(k.clientset, deployment1)
 		//fmt.Printf("%v\n", deployment.DeploymentName)
-		//logs.Info("-----------------k8s deployment created----------------------------")
 		//return nil
 	case apis.ByService:
-		service := entity.NewService(group.Name, group.Namespace, runtime.Selector, runtime.Ports, runtime.ServiceType)
-		return CreateService(k.clientset, service)
+		//service := entity.NewService(group.Name, group.Namespace, runtime.Selector, runtime.Ports, runtime.ServiceType)
+		service1 := entity.GetServiceFromParam1(&runtime.Service)
+		logs.Info("-----------------k8s Service created----------------------------")
+		return CreateService(k.clientset, service1)
 		//fmt.Printf("%v\n", service.ServiceName)
-		//logs.Info("-----------------k8s Service created----------------------------")
 		//return nil
 	case apis.ByPod:
-		podInfo := entity.NewPodFromParam(group.Name, group.Namespace, runtime.Name, runtime.Image, action.Spec.EnableFineGrainedControl)
-		return CreatePod(k.clientset, podInfo)
+		//podInfo := entity.NewPodFromParam(group.Name, group.Namespace, runtime.Name, runtime.Image, action.Spec.EnableFineGrainedControl)
+		podInfo1 := entity.GetPodFromParam1(&runtime.Pod)
+		logs.Info("-----------------k8s Pod created----------------------------")
+		return CreatePod(k.clientset, podInfo1)
 		//fmt.Printf("%v\n", podInfo.PodName)
-		//logs.Info("-----------------k8s Pod created----------------------------")
 		//return nil
 	default:
 		err := fmt.Errorf("unsupported runtime type: %s", runtime.Type)
@@ -71,7 +74,24 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 		return err
 	}
 }
-func (k *K8sRuntime) CheckTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
+func (k *K8sRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 
 	return "", nil
+}
+func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+
+	return ""
+}
+func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}
+func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+
+	return nil
+}
+func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
+}
+func (k *K8sRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	return nil
 }

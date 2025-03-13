@@ -3,18 +3,18 @@ package k8s
 import (
 	"context"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/entity"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-func CreateDeployment(clientset *kubernetes.Clientset, deployment *entity.Deployment) error {
-	template := deployment.CreateDeploymentTemplate()
-	_, err := clientset.AppsV1().Deployments(deployment.Namespace).Create(context.TODO(), &template, metav1.CreateOptions{})
+func CreateDeployment(clientset *kubernetes.Clientset, deployment *appsv1.Deployment) error {
+
+	_, err := clientset.AppsV1().Deployments(deployment.Namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 	if err != nil {
 		logs.Error("k8s create deployment template fail")
 		return err
 	}
-	logs.Info("Deployment created successfully", "Deployment:", deployment.DeploymentName)
+	logs.Info("Deployment created successfully", "Deployment:", deployment.Name)
 	return nil
 }

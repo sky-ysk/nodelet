@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"fmt"
 	"hit.edu/framework/pkg/component-base/logs"
 	"sync"
 )
@@ -55,7 +54,6 @@ func NewNodeCollector(enabledCollectors []string) (*NodeCollector, error) {
 	// 遍历所有的构造函数，添加Collector
 	for name, f := range factories {
 		if contains(enabledCollectors, name) {
-			fmt.Println("name:" + name)
 			collectors[name], err = f()
 			if err != nil {
 				logs.Infof("Warning: failed to initialize collector %s: %v", name, err)

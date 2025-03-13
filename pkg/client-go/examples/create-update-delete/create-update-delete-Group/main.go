@@ -100,9 +100,34 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
-			Name: "demo-group",
+			Name:    "demo-group",
+			Actions: []apis.Action{action},
 		},
 	}
+
+	//patchGroup3, err := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"actions": []map[string]interface{}{
+	//			{
+	//				"status": map[string]interface{}{
+	//					"status": []map[string]interface{}{
+	//						{
+	//							"phase": "patch-phase-value", // 这里设置你想要的新值
+	//						},
+	//					},
+	//				},
+	//			},
+	//		},
+	//	},
+	//})
+
+	patchGroup3, err := json.Marshal([]map[string]interface{}{
+		{
+			"op":    "replace",
+			"path":  "/spec/actions/0/status/status/0/phase",
+			"value": "new-phase-value", // 这里替换为你需要的 Phase 值
+		},
+	})
 
 	//group2 := &apis.Group{
 	//	ObjectMeta: metav1.ObjectMeta{
@@ -128,12 +153,17 @@ func main() {
 	//		GroupName: "demo-group",
 	//	},
 	//}
-	patchGroup, err := json.Marshal(map[string]interface{}{
-		"Spec": map[string]interface{}{
-			"GroupName": "patch-group-name",
-			"HostName":  "master",
-		},
-	})
+
+	//patchGroup, err := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"name": "patch-group-name",
+	//		"actions": []map[string]interface{}{
+	//			{
+	//				"name": "patch-action-name",
+	//			},
+	//		},
+	//	},
+	//})
 
 	//监听事件并打印  监听resources/v1/groups
 	go func() {
@@ -168,6 +198,8 @@ func main() {
 					fmt.Println("资源被删除: ", event.Object)
 				case watch.Error:
 					fmt.Println("发生错误: ", event.Object)
+				case watch.Bookmark:
+					fmt.Println("收到书签事件: ", event.Object)
 				default:
 					fmt.Println("未识别的事件类型: ", event.Type)
 				}
@@ -175,16 +207,12 @@ func main() {
 		}
 	}()
 
-	//如果已经存在，先删掉
-	//err = groupsClient.Delete(context.TODO(), "demo-groups", metav1.DeleteOptions{})
-
 	// Create一个Group
 	fmt.Println("creating")
 	results, err := groupsClient.Create(context.TODO(), group, metav1.CreateOptions{})
 
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
-		panic(err)
 	}
 	//_, _ = groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
 	//_, _ = groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
@@ -230,7 +258,7 @@ func main() {
 
 	//Patch 一个Group
 	fmt.Println("patching")
-	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup3, metav1.PatchOptions{})
 	fmt.Println("patchResult: ", patchResult)
 	fmt.Println("patch Done")
 

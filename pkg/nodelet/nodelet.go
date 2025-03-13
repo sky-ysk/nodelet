@@ -3,17 +3,20 @@ package nodelet
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/nodelet/node"
 	"hit.edu/framework/pkg/nodelet/node/collector"
 	"hit.edu/framework/pkg/nodelet/task"
-	"log"
-	"net/http"
-	"time"
 )
 
 // Nodelet,部署在每个节点上，管理当前节点上的所有资源
@@ -56,7 +59,7 @@ func InitClient() (*clients.ClientSet, error) {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	c := &rest.Config{
-		Host:    "http://localhost:10000", //http://localhost:10000   http://suda801.wangwanu.com:11006   //连接api-server
+		Host:    GetAPIServerHost(), //http://localhost:10000   http://suda801.wangwanu.com:11006   //连接api-server
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -73,7 +76,7 @@ func InitClient() (*clients.ClientSet, error) {
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 10 * time.Second,
+		Timeout: 3600 * time.Second,
 	}
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
@@ -81,17 +84,22 @@ func InitClient() (*clients.ClientSet, error) {
 	}
 	return clientSet, nil
 }
+func GetAPIServerHost() string {
+	if host := os.Getenv("API_SERVER_HOST"); host != "" {
+		return host
+	}
+	return "http://localhost:10000"
+}
 
 func (nl *Nodelet) Run(ctx context.Context) {
 	// 构造Node Exporter
-	//ne, err := node.NewNodeExporter(nl.cfg.nc, nl.nodesClient)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//go ne.Run(ctx)
+	ne, err := node.NewNodeExporter(nl.cfg.nc, nl.clientSet)
+	if err != nil {
+		panic(err)
+	}
+	go ne.Run(ctx)
 
 	//构造Task Exporter
-	//te, err := task.NewTaskExporter(nl.cfg.tc, nl.nodesClient)
 	te, err := task.NewTaskExporter(nl.cfg.tc, nl.clientSet)
 	if err != nil {
 		panic(err)

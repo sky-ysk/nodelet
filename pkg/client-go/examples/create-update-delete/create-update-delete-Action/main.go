@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -15,9 +19,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"os"
-	"time"
 )
 
 // 创建一个Rest Client
@@ -25,8 +26,10 @@ import (
 // 与API Server通信，并执行基础操作
 
 func main() {
+	logs.Init("main")
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
+	fmt.Println(scheme)
 	//参数配置
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
@@ -44,11 +47,11 @@ func main() {
 		},
 		UserAgent: "defaultUserAgent",
 		Transport: &http.Transport{
-			MaxIdleConns:        10000,            // 最大空闲连接数
+			MaxIdleConns:        100,              // 最大空闲连接数
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 1000 * time.Second,
+		Timeout: 10 * time.Second,
 	}
 
 	//创建ClientSet
@@ -154,30 +157,6 @@ func main() {
 	fmt.Println("creating")
 	results, err := actionsClient.Create(context.TODO(), action, metav1.CreateOptions{})
 
-				// 打印事件类型和对象的相关信息
-				logs.Infof("接收到事件类型:", event.Type)
-				switch event.Type {
-				case watch.Added:
-					logs.Infof("资源被添加: ", event.Object)
-				case watch.Modified:
-					logs.Infof("资源被修改: ", event.Object)
-				case watch.Deleted:
-					logs.Infof("资源被删除: ", event.Object)
-				case watch.Error:
-					logs.Infof("发生错误: ", event.Object)
-				case watch.Bookmark:
-					logs.Infof("收到Bookmark", event.Object)
-
-				default:
-					logs.Infof("未识别的事件类型: ", event.Type)
-				}
-			}
-		}
-	}()
-
-	// Create三个Action
-	logs.Trace("creating")
-	result, err := actionsClient.Create(context.TODO(), action, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create action: %v", err)
 		panic(err)
@@ -190,26 +169,26 @@ func main() {
 
 	//Update一个Action
 
-	logs.Info("updating")
+	fmt.Println("updating")
 	// 部分更改一个参数
 	// 先Get一个Action ,更改Action的参数, UpdateAction
 
 	result, getErr := actionsClient.Get(context.TODO(), "demo-actions", metav1.GetOptions{})
 	if getErr != nil {
-		logs.Error(fmt.Errorf("Failed to get : %v", getErr))
+		panic(fmt.Errorf("Failed to get : %v", getErr))
 	}
 
-	logs.Infof("get result", result)
-	logs.Infof("修改前的result.Spec.Name：", result.Spec.Name)
+	fmt.Println("get result", result)
+	fmt.Println("修改前的result.Spec.ActionName：", result.Spec.Name)
 
-	result.Spec.Name = "updatedName"
+	result.Spec.Name = "updatedActionName"
 	_, updateErr := actionsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
-		logs.Error(fmt.Errorf("Update failed: %v", updateErr))
+		panic(fmt.Errorf("Update failed: %v", updateErr))
 	}
 
-	logs.Infof("修改后的result.Spec.Name：", result.Spec.Name)
-	logs.Info("Updated action...")
+	fmt.Println("修改后的result.Spec.ActionName：", result.Spec.Name)
+	fmt.Println("Updated action...")
 	prompt()
 
 	// List 所有Action
@@ -217,33 +196,13 @@ func main() {
 	lstOpts := metav1.ListOptions{}
 	list, err := actionsClient.List(context.TODO(), lstOpts)
 	if err != nil {
-		logs.Error(err)
+		panic(err)
 	}
 	for _, d := range list.Items {
-		logs.Info(d)
+		fmt.Println(d)
 	}
 
-	logs.Info("listing done")
-	prompt()
-
-	//Patch 一个Action
-	logs.Info("patching")
-	patchResult, err := actionsClient.Patch(context.TODO(), "demo-actions", types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
-	logs.Infof("patchResult: ", patchResult)
-	logs.Info("patch Done")
-
-	// List 所有Action
-	logs.Info("listing")
-	lstOpts = metav1.ListOptions{}
-	list, err = actionsClient.List(context.TODO(), lstOpts)
-	if err != nil {
-		logs.Error(err)
-	}
-	for _, d := range list.Items {
-		logs.Info(d)
-	}
-
-	logs.Info("listing done")
+	fmt.Println("listing done")
 	prompt()
 
 	//Patch 一个Action
@@ -267,12 +226,12 @@ func main() {
 	prompt()
 
 	// Delete一个Action
-	logs.Info("deleting")
+	fmt.Println("deleting")
 	err = actionsClient.Delete(context.TODO(), "demo-actions", metav1.DeleteOptions{})
 	if err != nil {
 		panic(err)
 	}
-	logs.Info("Deleted action...")
+	fmt.Println("Deleted action...")
 	prompt()
 
 	// Delete 之后再次 List所有Action
@@ -280,12 +239,11 @@ func main() {
 	lstOpts = metav1.ListOptions{}
 	list, err = actionsClient.List(context.TODO(), lstOpts)
 	if err != nil {
-		logs.Error(err)
+		panic(err)
 	}
 	for _, d := range list.Items {
-		logs.Info(d)
+		fmt.Println(d)
 	}
-	logs.Info("listing done")
 
 	fmt.Println("listing done")
 

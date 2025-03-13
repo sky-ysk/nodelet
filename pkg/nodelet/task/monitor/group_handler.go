@@ -2,12 +2,20 @@ package monitor
 
 import (
 	"context"
-	"time"
-
+	"encoding/json"
+	"fmt"
+	ty "hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/types"
+	"time"
 )
 
 type GroupHandler struct {
@@ -18,15 +26,24 @@ type GroupHandler struct {
 	groupWorkers group.GroupWorkers
 
 	groupQueues *group.GroupQueues
+	// client -go
+	groupClient core.GroupInterface
+	//
+	eventBus *eventbus.EventBus
+	// eventRecorder 记录事件
+	recorder recorder.EventRecorder
 
 	stopCh chan struct{}
 }
 
-func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues) *GroupHandler {
+func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, eb *eventbus.EventBus, recorder recorder.EventRecorder) *GroupHandler {
 	return &GroupHandler{
 		groupManager: groupManager,
 		groupWorkers: groupWorkers,
 		groupQueues:  groupQueues,
+		groupClient:  groupClient,
+		eventBus:     eb,
+		recorder:     recorder,
 		stopCh:       make(chan struct{}),
 	}
 }
@@ -39,17 +56,21 @@ type Handler interface {
 
 // 开启监听上层指令
 func (gh *GroupHandler) Loop(ctx context.Context, updateCh <-chan types.GroupUpdate) {
-	const (
-		// base = 100000 * time.Millisecond //100s
-		base = 5000 * time.Millisecond //5s
-	)
-	logs.Info("GroupHandler component start")
-	duration := base
+	const base = 100 * time.Millisecond //
 
+	logs.Info("GroupHandler component start")
+	//duration := base
 	for {
-		go gh.LoopIteration(ctx, updateCh) //是否采用协程，取决于该函数是否要与Loop方法并行执行
-		time.Sleep(duration)
-		// TODO: 二进制指数退避
+		// 檢查Context是否已取消
+		select {
+		case <-ctx.Done():
+			logs.Info("Context canceled, exiting GroupHandler loop")
+			return
+		case <-time.After(base):
+			gh.LoopIteration(ctx, updateCh) //是否采用协程，取决于该函数是否要与Loop方法并行执行
+		}
+		//time.Sleep(duration)
+		//// TODO: 二进制指数退避
 	}
 }
 
@@ -96,7 +117,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	_, err := gh.groupManager.GetGroupByID(gr.Status.GroupID) // 使用groupID查，因为groupID是唯一分配的
 	if err == nil {                                           //err等于nil说明在group_manager当中能找到group信息
 		// 1、说明group已经存
-		logs.Debugf("Group:%s is already put into Deployer", gr.Spec.Name)
+		logs.Infof("Group:%s is already put into Deployer", gr.Spec.Name)
 		return
 	}
 	//如果说部署器本地没有改groupID信息的话，就存入group信息
@@ -105,9 +126,51 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	// 2、检查资源是否足够并满足部署条件
 	if isCanDeploy := gh.checkResource(gr); !isCanDeploy {
 		// 如果无法部署，拒绝改Group的部署并通知调度器
-		logs.Errorf("Group:%s cannot be deployed,err:%v", gr.Spec.Name, err)
+		logs.Errorf("Group:%s cannot be deployed,err:%v", gr.Name, err)
 		// TODO 这里得直接提交给调度器，告知group无法部署
 		return
+	}
+	// 3、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
+	copiesInDomain := gr.Spec.Replicas[0]
+	copiesInOtherDomain := gr.Spec.Replicas[1]
+	if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的
+		// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本
+		for i := 0; i < int(copiesInDomain); i++ {
+			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
+			groupCopyName := "Reason-Copy"                                        // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
+			groupCopy := controller.NewGroupInfoCopy(gr, true, groupCopyName, "") // 第二个参数为true，表示的是提前写入etcd
+			// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
+			logs.Infof("group:%v===================", groupCopy.Name)
+			_, err = gh.groupClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+			if err != nil {
+				logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
+			}
+
+			// TODO 这里需要将副本信息写入到Copyinfo当中
+			patchGroup, err := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"copy_info": map[string]string{groupCopy.Name: "local"}, //value值不同
+				},
+			})
+			if err != nil {
+				logs.Errorf("Json Marshal failed, err:%v", err)
+			}
+			patchResult, err := gh.groupClient.Patch(context.TODO(), groupCopy.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+			if err != nil {
+				logs.Errorf("Patch group error:%v", err)
+			}
+			logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
+		}
+	}
+	if copiesInOtherDomain > 0 { // 说明有副本需要部署在其他域---后续可能要添加要求：部署在其他哪个域
+		for i := 0; i < int(copiesInOtherDomain); i++ {
+			// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息--我已经生成好副本group了，调度器直接把这个group放到别的域即可
+			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
+			groupCopyName := "Reason-Copy"                                        // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
+			groupCopy := controller.NewGroupInfoCopy(gr, true, groupCopyName, "") // 第二个参数为true，表示的是提前写入etcd
+			gh.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
+		}
+		// TODO 这里得让调度器那边发送一个事件给我，我在这监听
 	}
 	// 任务满足条件，提交给GroupWorkers
 	gh.groupWorkers.UpdateGroup(
@@ -143,6 +206,11 @@ func (gh *GroupHandler) HandleGroupKill(gr *apis.Group) {
 
 // TODO 检查本地资源是否可以启动该Group
 func (gh *GroupHandler) checkResource(g *apis.Group) bool {
+	// 首先检查一下这个group的状态是否为ReadyToDeploy
+	logs.Infof("checkResource方法：g.Status.Phase:%v", g.Status.Phase)
+	if g.Status.Phase != apis.ReadyToDeploy {
+		return false
+	}
 	//检查当前节点资源是否满足
 
 	//检查当前节点是否满足Group的条件

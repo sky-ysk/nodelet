@@ -50,7 +50,8 @@ func main() {
 
 	moduleName := "testModule"
 	logs.Init(moduleName)
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// 构造Task Exporter
 	tc := task.NewConfig("test-node")
 	clientSet, err := InitClient()
