@@ -31,6 +31,7 @@ const (
 	Running     AbilityState = "Running"
 	Suspend     AbilityState = "Suspend"
 	Terminating AbilityState = "Terminating"
+	Terminated  AbilityState = "Terminated"
 	Error       AbilityState = "Error"
 	Inactive    AbilityState = "Inactive"
 )
@@ -163,7 +164,7 @@ func FindStateByUUID(hearBeats []HeartBeat, uuid string) (AbilityState, error) {
 	return "", errors.New(uuid)
 }
 
-func GetAbilityState(url string) (AbilityState, error) {
+func GetAbilityState(url string, uuid string) (AbilityState, error) {
 	logs.Infof("getting heart beat......\n")
 	hearBeats, err := GetAbilityHeartBeat(url)
 	if err != nil {
@@ -173,7 +174,7 @@ func GetAbilityState(url string) (AbilityState, error) {
 	logs.Info("get heart beats successfully\n")
 
 	logs.Info("try to find state by UUID\n")
-	state, err := FindStateByUUID(hearBeats, url)
+	state, err := FindStateByUUID(hearBeats, uuid)
 	if err != nil {
 		logs.Error("find state by UUID error\n")
 		return "", err

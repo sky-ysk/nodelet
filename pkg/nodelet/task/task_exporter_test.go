@@ -355,14 +355,14 @@ func testTaskDeviceCreateGroup_RMF() *apis.Group {
 
 // testTaskDeviceCreateGroup_Ability 创建ability的测试用例
 func testTaskDeviceCreateGroup_Ability() *apis.Group {
-	
+
 	// 填写url和image
-	var url string = ""
-	var image string = ""
+	var url string = "http://127.0.0.1:8123"
+	var image string = "Mock"
 	newGroup := apis.Group{
 		ObjectMeta: meta.ObjectMeta{Name: "device_test"},
 		Spec: apis.GroupSpec{
-			Name:    "Test-Group-Device",
+			Name:    "device_test",
 			Parents: make([]string, 0), // 当前Group没有Parents
 			Actions: []apis.Action{
 				apis.Action{
@@ -468,6 +468,35 @@ func testTaskDeviceGroupKill(ctx context.Context, groupClient core.GroupInterfac
 	}
 	return g, nil
 }
+func createDemoDevice() *apis.Device {
+	deviceTest := &apis.Device{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deviceTest",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Device",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DeviceSpec{
+			Name:               "patrolRobot",
+			ExpectedProperties: map[string]apis.Property{},
+			AccessMethod: apis.AccessMethod{
+				Type:  apis.AccessByRmf,
+				URL:   "http://192.168.1.225:8000",
+				Group: "tinyRobot",
+				Alias: "patrolRobot",
+			},
+			Desc: apis.DeviceDesc{
+				Label: []string{"Move"},
+			},
+		},
+	}
+	return deviceTest
+}
 
 func TestTaskExporter(t *testing.T) {
 
@@ -486,9 +515,13 @@ func TestTaskExporter(t *testing.T) {
 	}
 
 	// 创建测试用的group
-	testGroup := testTaskDeviceCreateGroup_RMF()
+	//testGroup := testTaskDeviceCreateGroup_RMF()
 
-	//testGroup := testTaskDeviceCreateGroup_Ability()
+	testGroup := testTaskDeviceCreateGroup_Ability()
+
+	deviceClient := clientSet.Core().Devices("test")
+	deviceDemo := createDemoDevice()
+	_, err = deviceClient.Create(context.TODO(), deviceDemo, metav1.CreateOptions{})
 
 	// 将group存到数据总线中
 	_, err = te.gropsClient.Create(ctx, testGroup, metav1.CreateOptions{})

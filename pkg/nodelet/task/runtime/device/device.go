@@ -106,8 +106,9 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *ap
 			}
 			runtime.Outputs = append(runtime.Outputs, output)
 			action.Spec.Runtimes[0] = *runtime
+			go dr.monitorDevice(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device)
 		}
-		go dr.monitorDevice(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device)
+
 	}
 
 	//修改Device状态

@@ -11,7 +11,7 @@ func TestGetHeartBeats(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	var url string
+	var url string = "http://127.0.0.1:8123"
 	var heartBeats []HeartBeat
 	heartBeats, err := GetAbilityHeartBeat(url)
 
@@ -19,9 +19,7 @@ func TestGetHeartBeats(t *testing.T) {
 		t.Error(err)
 	}
 
-	fmt.Println(heartBeats[2].AbilityName)
-	fmt.Println(heartBeats[2].ID)
-	fmt.Println(heartBeats[2].State)
+	fmt.Println(heartBeats)
 }
 
 func TestNewOperatorStr(t *testing.T) {
@@ -45,8 +43,8 @@ func TestGetTaskState(t *testing.T) {
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
 	var taskState TaskState
-	var url string
-	var taskId string
+	var url string = "http://127.0.0.1:8123"
+	var taskId string = "d26a86e4-83c3-44af-97fc-d65fa033adbd"
 
 	taskState, err := GetTaskState(taskId, url)
 	if err != nil {

@@ -11,7 +11,7 @@ func TestGetAbilityInstances(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	var url string
+	var url string = "http://127.0.0.1:8123"
 
 	var abilityInstances []AbilityInstance
 
@@ -19,14 +19,10 @@ func TestGetAbilityInstances(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	if abilityInstances[1].Subabilities == nil {
-		fmt.Println("this is a test !")
-	}
-	abilityByte, err := json.Marshal(abilityInstances)
+	responseByte, err := json.Marshal(abilityInstances)
 	if err != nil {
-		fmt.Println(err)
+		logs.Errorf("Marshal failed")
 	}
-	abilityStr := string(abilityByte)
-	fmt.Println(abilityStr)
-
+	responseStr := string(responseByte)
+	logs.Infof("%v", responseStr)
 }

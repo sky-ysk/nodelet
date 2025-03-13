@@ -1,11 +1,13 @@
 package device
 
 import (
+	"context"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -45,31 +47,14 @@ func InitClient() (*clients.ClientSet, error) {
 	return clientSet, nil
 }
 func NewActionAndRuntimeAbility() (*apis.Action, *apis.Runtime) {
-	var url string = "http://127.0.0.1:10000"
-	var abilityName string
+	var url string = "http://127.0.0.1:8123"
+	var abilityName string = "Mock"
 	action := apis.Action{
 		Spec: apis.ActionSpec{
 			Name: "ActionTest",
 		},
 		Status: apis.ActionStatus{
 			ActionID: "Action1",
-			Resources: []apis.ResourceStatus{
-				apis.ResourceStatus{
-					Name:         "cpu",
-					Reserved:     10,
-					ReservedUnit: apis.ComputeCPU,
-				},
-				apis.ResourceStatus{
-					Name:         "memory",
-					Reserved:     4096,
-					ReservedUnit: apis.StorageMB,
-				},
-				apis.ResourceStatus{
-					Name:         "disk",
-					Reserved:     200,
-					ReservedUnit: apis.StorageGB,
-				},
-			},
 
 			Devices: []apis.DeviceStatus{
 				apis.DeviceStatus{
@@ -80,7 +65,7 @@ func NewActionAndRuntimeAbility() (*apis.Action, *apis.Runtime) {
 					Phase:      apis.DeviceIdle,
 					InstanceID: "",
 					ActionID:   "",
-					DeviceID:   "transferRobot",
+					DeviceID:   "ability framework test",
 				},
 			},
 		},
@@ -91,7 +76,7 @@ func NewActionAndRuntimeAbility() (*apis.Action, *apis.Runtime) {
 		Name:  "RuntimeTest",
 		Devices: []apis.DeviceSpec{
 			apis.DeviceSpec{
-				Name:               "transferRobot",
+				Name:               "ability framework test",
 				ExpectedProperties: map[string]apis.Property{},
 				AccessMethod: apis.AccessMethod{
 					Type:  apis.AccessByAbility,
@@ -245,6 +230,36 @@ func NewActionAndRuntimeRMF() (*apis.Action, *apis.Runtime) {
 	return &action, &runtime
 }
 
+func createDemoDevice() *apis.Device {
+	deviceTest := &apis.Device{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deviceTest",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Device",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DeviceSpec{
+			Name:               "patrolRobot",
+			ExpectedProperties: map[string]apis.Property{},
+			AccessMethod: apis.AccessMethod{
+				Type:  apis.AccessByRmf,
+				URL:   "http://192.168.1.225:8000",
+				Group: "tinyRobot",
+				Alias: "patrolRobot",
+			},
+			Desc: apis.DeviceDesc{
+				Label: []string{"Move"},
+			},
+		},
+	}
+	return deviceTest
+}
+
 func TestRun(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
@@ -253,8 +268,15 @@ func TestRun(t *testing.T) {
 	if err != nil {
 		logs.Errorf("[test] init clientSet failed: %v", err)
 	}
-	deviceClient := clientSet.Core().Devices("")
-	groupClient := clientSet.Core().Groups("")
+	deviceClient := clientSet.Core().Devices("test")
+	groupClient := clientSet.Core().Groups("test")
+
+	deviceDemo := createDemoDevice()
+	_, err = deviceClient.Create(context.TODO(), deviceDemo, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("%v", err)
+		logs.Errorf("create device demo fail..")
+	}
 
 	dr := NewDeviceRuntime(deviceClient, groupClient)
 	//action, runtimeForTest := NewActionAndRuntimeRMF()
@@ -262,7 +284,7 @@ func TestRun(t *testing.T) {
 
 	err = dr.Run(&apis.Group{}, action, runtimeForTest, 0, 0)
 	if err != nil {
-		fmt.Println(err)
+		logs.Errorf("run fail %v", err)
 	}
 }
 
