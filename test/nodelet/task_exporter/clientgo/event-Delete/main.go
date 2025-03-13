@@ -4,10 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"net/http"
-	"os"
-	"time"
-
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -21,6 +17,9 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	node_exporter "hit.edu/framework/pkg/nodelet/node"
+	"net/http"
+	"os"
+	"time"
 )
 
 var scheme = runtime.NewScheme()
@@ -62,13 +61,23 @@ var node = &apis.Node{
 func main() {
 	logs.Init("testEventModule")
 	clientSet := initClientSet(scheme)
-	client := clientSet.Core().Events("test")
+	eventclient := clientSet.Core().Events("test")
 
+	list, err := eventclient.List(context.TODO(), meta.ListOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+	}
+	for _, item := range list.Items {
+		err := eventclient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
+		if err != nil {
+			logs.Error(err.Error())
+		}
+	}
 	// // 监听event
 	// go eventListener(client)
 
 	// 模拟提交一个事件，事件Reason为 events.ReadyToMigrate
-	postEventForMigrate(client)
+	//postEventForMigrate(client)
 
 	// 获知触发迁移的事件源进行迁移处理
 	prompt()

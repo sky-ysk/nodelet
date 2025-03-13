@@ -21,7 +21,7 @@ import (
 // 创建一个Rest Client
 // 验证xxx动词
 // 与API Server通信，并执行基础操作
-// 3个group，3个Action，每个Action两个Runtime， 一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
+// 2个group，2个Action，每个Action1个Runtime， 一共2个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理） 并且group1与group2之间没有依赖关系
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
@@ -65,48 +65,33 @@ func main() {
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
 
-	// Task  总共1个Task、3个Group、3个Action、6个runtime
+	// Task  总共1个Task、2个Group、2个Action、2个runtime
 	task1Name := "TrainInferTask-1" // 第一个Task的Name
 	task1ID := "TrainInferTaskID-1" // 第一个Task的ID
 
 	// group
-	group1_1Name := "TrainGroup-1"            // 第一个Task下的第一个GroupName
-	group1_2Name := "ReasonGroup-2"           // 第一个Task下的第二个GroupName
-	group1_3Name := "RobotDestinationGroup-3" // 第一个Task下的第三个GroupName  "RobotDestinationGroup"
-	group1_1ID := "GroupID-1"                 // 第一个Task下的第一个GroupID
-	group1_2ID := "GroupID-2"                 // 第一个Task下的第二个GroupID
-	group1_3ID := "GroupID-3"                 // 第一个Task下的第三个GroupID
+	group1_1Name := "TrainGroup-1"  // 第一个Task下的第一个GroupName
+	group1_2Name := "ReasonGroup-2" // 第一个Task下的第二个GroupName
+	group1_1ID := "GroupID-1"       // 第一个Task下的第一个GroupID
+	group1_2ID := "GroupID-2"       // 第一个Task下的第二个GroupID
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
 	action1_2_1Name := "Action2-1" // 第一个Task下的第二个Group下的第一个ActionName
-	action1_3_1Name := "Action3-1" // 第一个Task下的第三个Group下的第一个ActionName
 	action1_1_1ID := "ActionID1-1" // 第一个Task下的第一个Group下的第一个ActionID
 	action1_2_1ID := "ActionID2-1" // 第一个Task下的第二个Group下的第一个ActionID
-	action1_3_1ID := "ActionID3-1" // 第一个Task下的第三个Group下的第一个ActionID
 
 	// runtime
 	runtime1_1_1_1Name := "Runtime1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_1_1_2Name := "Runtime1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
 	runtime1_2_1_1Name := "Runtime2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_2_1_2Name := "Runtime2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_3_1_1Name := "Runtime3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_3_1_2Name := "Runtime3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
 
 	runtime1_1_1_1ID := "RuntimeID1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_1_1_2ID := "RuntimeID1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
 	runtime1_2_1_1ID := "RuntimeID2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_2_1_2ID := "RuntimeID2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_3_1_1ID := "RuntimeID3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_3_1_2ID := "RuntimeID3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
-	runtime1_1_1_2FineGrainedControl := false
 	runtime1_2_1_1FineGrainedControl := false
-	runtime1_2_1_2FineGrainedControl := false
-	runtime1_3_1_1FineGrainedControl := false
-	runtime1_3_1_2FineGrainedControl := false
+
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧--改为Name
 	runtime1_1_1_1Condition := apis.Conditions{
@@ -117,49 +102,7 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "ProgramDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-		},
-	}
-	runtime1_1_1_2Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "NodeDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      runtime1_1_1_1Name,
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "NodeDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "ProgramDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
@@ -183,167 +126,11 @@ func main() {
 					Name:      "ProgramDependency",
 					Value:     "0",
 					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
+					From:      "/home/l1hy/workspace/task_input/requirements.txt",
 				},
 				RightValue: apis.ConditionValue{
 					Type:      apis.ConstData,
 					Name:      "ProgramDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-		},
-	}
-	runtime1_2_1_2Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "NodeDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      runtime1_2_1_1Name,
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "NodeDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "ProgramDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "ProgramDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-		},
-	}
-
-	runtime1_3_1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "ProgramDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "ProgramDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-		},
-	}
-	runtime1_3_1_2Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "NodeDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      runtime1_3_1_1Name,
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "NodeDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "ProgramDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements.txt",
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "ProgramDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-		},
-	}
-
-	group1_2Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "NodeDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      group1_1Name,
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "NodeDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
-		},
-	}
-
-	group1_3Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "NodeDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      group1_2Name,
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "NodeDependency",
 					Value:     "1",
 					ValueType: "string",
 					From:      "",
@@ -371,23 +158,12 @@ func main() {
 								Name:                     runtime1_1_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_1_1_1Condition,
 								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
-							},
-							apis.Runtime{
-								Name:                     runtime1_1_1_2Name,
-								Type:                     apis.ByCommand,
-								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
-								Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
-								Conditions:               runtime1_1_1_2Condition,
-								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/train.py",
-								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-								EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
 							},
 						},
 					},
@@ -397,10 +173,6 @@ func main() {
 						RuntimeStatus: []apis.RuntimeStatus{
 							apis.RuntimeStatus{
 								RuntimeID: runtime1_1_1_1ID, // RuntimeID = RuntimeName + ActionID
-								Phase:     apis.Unknown,
-							},
-							apis.RuntimeStatus{
-								RuntimeID: runtime1_1_1_2ID, // RuntimeID = RuntimeName + ActionID
 								Phase:     apis.Unknown,
 							},
 						},
@@ -418,10 +190,6 @@ func main() {
 							RuntimeID: runtime1_1_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						apis.RuntimeStatus{
-							RuntimeID: runtime1_1_1_2ID,
-							Phase:     apis.Unknown,
-						},
 					},
 					Phase: apis.Unknown,
 				},
@@ -436,9 +204,8 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{Name: group1_2Name, Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
-			Name:       group1_2Name,
-			Parents:    []string{group1_1Name}, // 加入Parents
-			Conditions: group1_2Condition,
+			Name:    group1_2Name,
+			Parents: []string{},
 			Actions: []apis.Action{
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_2_1Name},
@@ -449,23 +216,12 @@ func main() {
 								Name:                     runtime1_2_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_2_1_1Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
-							},
-							apis.Runtime{
-								Name:                     runtime1_2_1_2Name,
-								Type:                     apis.ByCommand,
-								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
-								Parents:                  []string{runtime1_2_1_1Name}, // 加入Parents
-								Conditions:               runtime1_2_1_2Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
-								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-								EnableFineGrainedControl: runtime1_2_1_2FineGrainedControl,
 							},
 						},
 					},
@@ -475,10 +231,6 @@ func main() {
 						RuntimeStatus: []apis.RuntimeStatus{
 							apis.RuntimeStatus{
 								RuntimeID: runtime1_2_1_1ID,
-								Phase:     apis.Unknown,
-							},
-							apis.RuntimeStatus{
-								RuntimeID: runtime1_2_1_2ID,
 								Phase:     apis.Unknown,
 							},
 						},
@@ -496,10 +248,6 @@ func main() {
 							RuntimeID: runtime1_2_1_1ID,
 							Phase:     apis.Unknown,
 						},
-						apis.RuntimeStatus{
-							RuntimeID: runtime1_2_1_2ID,
-							Phase:     apis.Unknown,
-						},
 					},
 					Phase: apis.Unknown,
 				},
@@ -509,84 +257,6 @@ func main() {
 		},
 	}
 	group2 := &g2
-
-	g3 := apis.Group{
-		ObjectMeta: metav1.ObjectMeta{Name: group1_3Name, Namespace: ""},
-		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
-		Spec: apis.GroupSpec{
-			Name:       group1_3Name,
-			Parents:    []string{group1_1Name, group1_2Name}, // 加入Parents ID
-			Conditions: group1_3Condition,
-			Actions: []apis.Action{
-				apis.Action{
-					ObjectMeta: metav1.ObjectMeta{Name: action1_3_1Name},
-					Spec: apis.ActionSpec{
-						Name: action1_3_1Name,
-						Runtimes: []apis.Runtime{
-							apis.Runtime{
-								Name:                     runtime1_3_1_1Name,
-								Type:                     apis.ByCommand,
-								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
-								Parents:                  make([]string, 0), // 加入Parents
-								Conditions:               runtime1_3_1_1Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
-								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-								EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
-							},
-							apis.Runtime{
-								Name:                     runtime1_3_1_2Name,
-								Type:                     apis.ByCommand,
-								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
-								Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
-								Conditions:               runtime1_3_1_2Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
-								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-								EnableFineGrainedControl: runtime1_3_1_2FineGrainedControl,
-							},
-						},
-					},
-					Status: apis.ActionStatus{
-						ActionID: action1_3_1ID, // ActionID =ActionName + GroupID
-						Phase:    apis.Unknown,
-						RuntimeStatus: []apis.RuntimeStatus{
-							apis.RuntimeStatus{
-								RuntimeID: runtime1_3_1_1ID, // RuntimeID = RuntimeName + ActionID
-								Phase:     apis.Unknown,
-							},
-							apis.RuntimeStatus{
-								RuntimeID: runtime1_3_1_2ID, // RuntimeID = RuntimeName + ActionID
-								Phase:     apis.Unknown,
-							},
-						},
-					},
-				},
-			},
-		},
-		Status: apis.GroupStatus{
-			GroupID: group1_3ID,
-			ActionStatus: []apis.ActionStatus{
-				apis.ActionStatus{
-					ActionID: action1_3_1ID,
-					RuntimeStatus: []apis.RuntimeStatus{
-						apis.RuntimeStatus{
-							RuntimeID: runtime1_3_1_1ID,
-							Phase:     apis.Unknown,
-						},
-						apis.RuntimeStatus{
-							RuntimeID: runtime1_3_1_2ID,
-							Phase:     apis.Unknown,
-						},
-					},
-					Phase: apis.Unknown,
-				},
-			},
-			Belongs: apis.IDRef{TaskID: task1ID},
-			Phase:   apis.Unknown,
-		},
-	}
-	group3 := &g3
 
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
@@ -600,7 +270,7 @@ func main() {
 		Spec: apis.TaskSpec{
 			Name: task1Name,
 			Groups: []apis.Group{
-				g1, g2, g3,
+				g1, g2,
 			},
 		},
 		Status: apis.TaskStatus{
@@ -615,10 +285,6 @@ func main() {
 							RuntimeStatus: []apis.RuntimeStatus{
 								apis.RuntimeStatus{
 									RuntimeID: runtime1_1_1_1ID,
-									Phase:     apis.Unknown,
-								},
-								apis.RuntimeStatus{
-									RuntimeID: runtime1_1_1_2ID,
 									Phase:     apis.Unknown,
 								},
 							},
@@ -636,31 +302,6 @@ func main() {
 							RuntimeStatus: []apis.RuntimeStatus{
 								apis.RuntimeStatus{
 									RuntimeID: runtime1_2_1_1ID,
-									Phase:     apis.Unknown,
-								},
-								apis.RuntimeStatus{
-									RuntimeID: runtime1_2_1_2ID,
-									Phase:     apis.Unknown,
-								},
-							},
-							Phase: apis.Unknown,
-						},
-					},
-					Belongs: apis.IDRef{TaskID: task1ID},
-					Phase:   apis.Unknown,
-				},
-				apis.GroupStatus{
-					GroupID: group1_3ID,
-					ActionStatus: []apis.ActionStatus{
-						apis.ActionStatus{
-							ActionID: action1_3_1ID,
-							RuntimeStatus: []apis.RuntimeStatus{
-								apis.RuntimeStatus{
-									RuntimeID: runtime1_3_1_1ID,
-									Phase:     apis.Unknown,
-								},
-								apis.RuntimeStatus{
-									RuntimeID: runtime1_3_1_2ID,
 									Phase:     apis.Unknown,
 								},
 							},
@@ -720,7 +361,7 @@ func main() {
 	err = tasksClient.Delete(context.TODO(), "TrainInferTask-1", metav1.DeleteOptions{})
 	err1 := groupsClient.Delete(context.TODO(), "TrainGroup-1", metav1.DeleteOptions{})
 	err2 := groupsClient.Delete(context.TODO(), "ReasonGroup-2", metav1.DeleteOptions{})
-	err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup-3", metav1.DeleteOptions{})
+	//err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup-3", metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("task delete error: %v", err1)
 	}
@@ -730,15 +371,15 @@ func main() {
 	if err2 != nil {
 		logs.Errorf("group2 delete error: %v", err2)
 	}
-	if err3 != nil {
-		logs.Errorf("group3 delete error: %v", err3)
-	}
+	//if err3 != nil {
+	//	logs.Errorf("group3 delete error: %v", err3)
+	//}
 	// Create一个Task
 	logs.Infof("creating")
 	results, err := tasksClient.Create(context.TODO(), task, metav1.CreateOptions{})
 	results1, err1 := groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
 	results2, err2 := groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
-	results3, err3 := groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
+	//results3, err3 := groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
 
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)
@@ -752,16 +393,16 @@ func main() {
 		logs.Errorf("Failed to create group2: %v", err)
 		panic(err)
 	}
-	if err3 != nil {
-		logs.Errorf("Failed to create group3: %v", err)
-		panic(err)
-	}
+	//if err3 != nil {
+	//	logs.Errorf("Failed to create group3: %v", err)
+	//	panic(err)
+	//}
 	//_, _ = tasksClient.Create(context.TODO(), task2, metav1.CreateOptions{})
 	//_, _ = tasksClient.Create(context.TODO(), task3, metav1.CreateOptions{})
 	logs.Infof("Created task ", results)
 	logs.Infof("Created group1 ", results1)
 	logs.Infof("Created group2 ", results2)
-	logs.Infof("Created group3 ", results3)
+	//logs.Infof("Created group3 ", results3)
 	//prompt()
 
 	//Update一个Task

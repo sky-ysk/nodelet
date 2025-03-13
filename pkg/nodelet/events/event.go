@@ -113,5 +113,9 @@ const (
 	KillingCommand        = "Killing"
 	PreemptCommand        = "Preempting"
 	BackOffStartCommand   = "BackOff"
-	TriggerMigration      = "TriggerMigration"
+	TriggerLocalMigration = "TriggerLocalMigration"
+	TriggerCrossMigration = "TriggerCrossMigration"
+	ExecuteSuccessfully   = "ExecuteSuccessfully"
+	ExecuteFailed         = "ExecuteFailed"
+	SelectOtherDomain     = "SelectDomain"
 )

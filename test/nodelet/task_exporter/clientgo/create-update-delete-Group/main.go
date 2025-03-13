@@ -17,7 +17,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -63,7 +62,7 @@ func main() {
 	// 获取访问Group的客户端
 	// 默认访问的Namespace是 ""
 
-	groupsClient := clientSet.Core().Groups("") //目前我支持的api-server，对应的命名空间为""
+	groupsClient := clientSet.Core().Groups("test")
 
 	action := apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -86,7 +85,7 @@ func main() {
 			RuntimeStatus: []apis.RuntimeStatus{
 				apis.RuntimeStatus{
 					NodeName: "demo-runtime",
-					Phase:    "Migrated",
+					Phase:    "running",
 				},
 			},
 		},
@@ -101,31 +100,13 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
-			Name:    "demo-group",
+			Name:    "demo-group4444",
 			Actions: []apis.Action{action},
 		},
-		Status: apis.GroupStatus{
-			Phase: apis.Unknown,
-			ActionStatus: []apis.ActionStatus{
-				apis.ActionStatus{
-					Phase: apis.Successed,
-					RuntimeStatus: []apis.RuntimeStatus{
-						apis.RuntimeStatus{
-							NodeName: "demo-runtime",
-							Phase:    "Migrated",
-						},
-					},
-				},
-			},
-		},
 	}
-
-	// 修改源group的Status.phase为Migrating
-	patchGroup, err := json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			"phase": apis.Migrating,
-		},
-	})
+	groupSpec := &apis.GroupSpec{
+		Name: "demo-group5555",
+	}
 
 	//patchGroup3, err := json.Marshal(map[string]interface{}{
 	//	"spec": map[string]interface{}{
@@ -150,19 +131,6 @@ func main() {
 	//		"value": "new-phase-value", // 这里替换为你需要的 Phase 值
 	//	},
 	//})
-
-	patchGroup4, err := json.Marshal([]map[string]interface{}{
-		{
-			"op":    "replace",
-			"path":  "/spec/actions/" + strconv.Itoa(0) + "/status/status/" + strconv.Itoa(0) + "/phase",
-			"value": apis.Migrated,
-		}, // 顺带groupStatus下面的runtime的状态也修改了，看行不行
-		{
-			"op":    "replace",
-			"path":  "/status/action_status/" + strconv.Itoa(0) + "/status/" + strconv.Itoa(0) + "/phase",
-			"value": apis.Migrated,
-		},
-	})
 
 	//group2 := &apis.Group{
 	//	ObjectMeta: metav1.ObjectMeta{
@@ -189,16 +157,9 @@ func main() {
 	//	},
 	//}
 
-	//patchGroup, err := json.Marshal(map[string]interface{}{
-	//	"spec": map[string]interface{}{
-	//		"name": "patch-group-name",
-	//		"actions": []map[string]interface{}{
-	//			{
-	//				"name": "patch-action-name",
-	//			},
-	//		},
-	//	},
-	//})
+	patchGroup, err := json.Marshal(map[string]interface{}{
+		"spec": groupSpec,
+	})
 
 	//监听事件并打印  监听resources/v1/groups
 	go func() {
@@ -233,13 +194,22 @@ func main() {
 					fmt.Println("资源被删除: ", event.Object)
 				case watch.Error:
 					fmt.Println("发生错误: ", event.Object)
+				case watch.Bookmark:
+					fmt.Println("收到书签事件: ", event.Object)
 				default:
 					fmt.Println("未识别的事件类型: ", event.Type)
 				}
 			}
 		}
 	}()
-
+	// Delete一个Group
+	fmt.Println("deleting")
+	err = groupsClient.Delete(context.TODO(), "demo-groups", metav1.DeleteOptions{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Deleted group...")
+	prompt()
 	// Create一个Group
 	fmt.Println("creating")
 	results, err := groupsClient.Create(context.TODO(), group, metav1.CreateOptions{})
@@ -255,7 +225,7 @@ func main() {
 
 	//Update一个Group
 
-	fmt.Println("updating")
+	//fmt.Println("updating")
 	// 部分更改一个参数
 	// 先Get一个Group ,更改Group的参数, UpdateGroup
 
@@ -265,65 +235,48 @@ func main() {
 	}
 
 	fmt.Println("get result", result)
+	fmt.Println("++++++++++++++++++++++++++Spec-Name:", result.Spec.Name)
 
-	result.Spec.Actions[0].Spec.Name = "updated action-runtime-Name"
-	_, updateErr := groupsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
-	if updateErr != nil {
-		panic(fmt.Errorf("Update failed: %v", updateErr))
-	}
-
-	fmt.Println("Updated group...")
-	prompt()
-
-	// List 所有Group
-	fmt.Println("listing")
-	lstOpts := metav1.ListOptions{}
-	list, err := groupsClient.List(context.TODO(), lstOpts)
-	if err != nil {
-		panic(err)
-	}
-	for _, d := range list.Items {
-		fmt.Println(d)
-	}
-
-	fmt.Println("listing done")
-	prompt()
+	//result.Spec.Actions[0].Spec.Name = "updated action-runtime-Name"
+	//_, updateErr := groupsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
+	//if updateErr != nil {
+	//	panic(fmt.Errorf("Update failed: %v", updateErr))
+	//}
+	//
+	//fmt.Println("Updated group...")
+	//prompt()
+	//
+	//// List 所有Group
+	//fmt.Println("listing")
+	//lstOpts := metav1.ListOptions{}
+	//list, err := groupsClient.List(context.TODO(), lstOpts)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//for _, d := range list.Items {
+	//	fmt.Println(d)
+	//}
+	//
+	//fmt.Println("listing done")
+	//prompt()
 
 	//Patch 一个Group
 	fmt.Println("patching")
-	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.JSONPatchType, patchGroup4, metav1.PatchOptions{})
+	patchResult, err := groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 	fmt.Println("patchResult: ", patchResult)
-	//fmt.Println("value: ", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
+	fmt.Println("++++++++++++++++++++++++++spce-Name:%", patchResult.Spec.Name)
 	fmt.Println("patch Done")
 
-	fmt.Println("geting")
-	result, getErr = groupsClient.Get(context.TODO(), "demo-groups", metav1.GetOptions{})
-	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
-	}
-	fmt.Println("spec/actions/0/status/status/0/phase:", result.Spec.Actions[0].Status.RuntimeStatus[0].Phase)
-	fmt.Println("status/action_status/0/status/0/phase:", result.Status.ActionStatus[0].RuntimeStatus[0].Phase)
-
-	prompt()
-	fmt.Println("patching---2")
-	patchResult, err = groupsClient.Patch(context.TODO(), "demo-groups", types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
-	if err != nil {
-		logs.Errorf("Patch group error-2:%v", err)
-	}
-	fmt.Println("patchResult: ", patchResult)
-	fmt.Println("value: ", result.Status.Phase)
-	fmt.Println("patch Done")
-
-	// List 所有Group
-	fmt.Println("listing")
-	lstOpts = metav1.ListOptions{}
-	list, err = groupsClient.List(context.TODO(), lstOpts)
-	if err != nil {
-		panic(err)
-	}
-	for _, d := range list.Items {
-		fmt.Println(d)
-	}
+	//// List 所有Group
+	//fmt.Println("listing")
+	//lstOpts = metav1.ListOptions{}
+	//list, err = groupsClient.List(context.TODO(), lstOpts)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//for _, d := range list.Items {
+	//	fmt.Println(d)
+	//}
 
 	fmt.Println("listing done")
 	prompt()
@@ -337,20 +290,20 @@ func main() {
 	fmt.Println("Deleted group...")
 	prompt()
 
-	// Delete 之后再次 List所有Group
-	fmt.Println("listing")
-	lstOpts = metav1.ListOptions{}
-	list, err = groupsClient.List(context.TODO(), lstOpts)
-	if err != nil {
-		panic(err)
-	}
-	for _, d := range list.Items {
-		fmt.Println(d)
-	}
-
-	fmt.Println("listing done")
-
-	select {}
+	//// Delete 之后再次 List所有Group
+	//fmt.Println("listing")
+	//lstOpts = metav1.ListOptions{}
+	//list, err = groupsClient.List(context.TODO(), lstOpts)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//for _, d := range list.Items {
+	//	fmt.Println(d)
+	//}
+	//
+	//fmt.Println("listing done")
+	//
+	//select {}
 
 	////DeleteCollection 删除所有Spec.GroupName=demo-group的Group
 	//fmt.Println("deleting collection")

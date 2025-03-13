@@ -68,6 +68,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	taskClient := clientset.Core().Tasks("test")
 	groupClient := clientset.Core().Groups("test")
 	eventClient := clientset.Core().Events("test")
+	actionClient := clientset.Core().Actions("test")
 	//事件配置
 	eb := eventbus.NewEventBus()
 	eventBroadcaster := recorder.NewBroadcaster()
@@ -99,9 +100,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		taskManager:         taskManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient),
-		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, eb, recorder),
+		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, eb, recorder),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder),
 		updateCh:            make(chan types.GroupUpdate),
 	}

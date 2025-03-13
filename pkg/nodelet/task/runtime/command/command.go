@@ -60,16 +60,9 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	// 目前只接受Command中第一个元素
 	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, false)
 	if err != nil {
-
 		logs.Error("Failed to start action:\t", action.Spec.Name)
-		cr.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Failed to start runtime:%s", runtime.Name))
 		return err
-		// TODO: 输出Action的详细信息
 	}
-	// TODO: 输出Action的详细信息，等级为Debug
-	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
-	cr.recorder.Event(action, apis.EventTypeNormal, events.CreatedCommand, fmt.Sprintf("Runtime Name:\t %s is Running", runtime.Name))
-
 	return nil
 }
 
@@ -106,7 +99,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	// CMD.Env = append(CMD.Env, )
 
 	// 启动命令
-	logs.Infof("taskName:\t %s is Running", runtime.Name)
+	logs.Infof("runtime Name:\t %s is Running", runtime.Name)
 
 	if err := CMD.Start(); err != nil {
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
