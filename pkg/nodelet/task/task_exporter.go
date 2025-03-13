@@ -71,6 +71,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	groupClient := clientset.Core().Groups("test")
 	eventClient := clientset.Core().Events("test")
 	actionClient := clientset.Core().Actions("test")
+	deviceClient := clientset.Core().Devices("test")
 	//事件配置
 	eb := eventbus.NewEventBus()
 	eventBroadcaster := recorder.NewBroadcaster()
@@ -86,11 +87,11 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, recorder)
+	runtimeManager := runtime.NewRuntimeManager(eb, recorder, deviceClient, actionClient, groupClient)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
-	workers := group.NewGroupWorkers(groupManager, taskManager, groupQueues, runtimeManager, groupClient, taskClient)
+	workers := group.NewGroupWorkers(groupManager, taskManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient)
 	// 当前Taskexporter所在节点的NodeName
 	nodeName := cfg.NodeName
 

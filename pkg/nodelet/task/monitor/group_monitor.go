@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -208,7 +209,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 }
 
 // 对于副本group，不设置任何时间，除非group启动了，才开始设置时间
-// 检查副本任务的队列，做的事情：①如果当前副本任务的状态被标记为Waiting，则副本继续等待，如果说副本任务状态标记为Stating，则副本任务马上启动   ②如果runtime为DeployCheck，就去查源任务的状态如何？
+// 检查副本任务的队列，做的事情：①如果当前副本任务的状态被标记为Waiting，则副本继续等待，如果说副本任务状态标记为Stating，则副本任务马上启动   ②如果说源任务（Action 、Runtime）Running了，会设置副本任务当中的（Action或Runtime的）copy_status为Running，同理如果为源任务为Failed，设置副本任务为Failed
 func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对于专门存放副本的队列，目前暂时用到actionDepenSatisfy方法和runtimeDepencySatisfy方法，默认只要源任务满足，副本任务一定可以满足，后期有的话再加进去
 	logs.Info("Copy Pending queue start checking")
 	for {
@@ -225,14 +226,15 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 					logs.Errorf("Etcd get group error-2:%v", err)
 				}
 				if group.Status.CopyStatus == "Waiting" { // 说明副本任务是提前部署好的
-					// 这里打算Init初始化group,就是提前进行Running步骤  源任务一个Runtime执行完成后，就修改runtime的状态即可
-					var isSuccess bool                                   // 标记group下面的action是否都执行成功
+					// 这里打算Init初始化group,就是提前进行Running步骤  源任务一个Runtime执行完成后，就修改副本runtime的状态即可，Action执行完成后，也会修改副本Runtime的状态
+					var isSuccess bool                                   // 标记group下面的action是否都执行成功，如果都执行完了，还没有触发迁移，那么关闭副本即可
 					for actionIndex := range group.Status.ActionStatus { // 遍历group当中的Action
 						actionStatus := &group.Status.ActionStatus[actionIndex]
 						action := &group.Spec.Actions[actionIndex]
-						isSuccess = false
+						isSuccess = true
 						if actionStatus.CopyStatus == "Running" { //说明源任务已经启动了，那么这里需要遍历runtime，找到源任务当中运行的runtime，然后init初始化runtime
-							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID)
+							isSuccess = false
+							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
 							if err != nil {
 								logs.Errorf("Get group by id failed, err:%v", err)
 							}
@@ -241,52 +243,51 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 								runtime := &action.Spec.Runtimes[runtimeIndex]
 								if runtimeStatus.CopyStatus == "Running" { //说明源任务当中的该runtime已经Running了
 									// 这里将副本group中的该runtime进行判断，如果是细粒度控制的，就进行init
-									if runtime.EnableFineGrainedControl && !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing {
+									if runtime.EnableFineGrainedControl && !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing { //细粒度控制 且 还未Init初始化过
 										// 启动runtimeStatus的Init方法
 										logs.Info("#############################Init#######################################")
 										gmo.runtimeManager.InitRuntime(group, action, runtime, actionIndex, runtimeIndex) // TODO init方法当中最好也能发送一个事件
 										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing = true  // 标记该runtime是细粒度控制，且开启了Init初始化，因为对于细粒度控制的runtime，如果没有预部署，直接切换的话，不会调用Init方法？
-										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true  // 这个参数标记用来放置Runtime被执行多次，在启动Runtime后，将Waiting属性置为false就能防止Runtime被执行多次了
+										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true  // 这个参数标记用来防止接下来进入Running队列的时候，Runtime被执行多次，在启动Runtime后，将Waiting属性置为false就能防止Runtime被执行多次了
 									} else { // 如果不是细粒度的，那么就标记该runtime的Waiting属性为Waiting（其状态仍然是DeployCheck）
-										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true
+										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true // TODO应该是为了适配进入到Running队列后，会重复执行（因为当前状态为DeployCheck状态，进入到Running队列，有可能还是DeployCheck状态，对于DeployCheck状态，需要考虑该runtime是否处于等待的过程），这里的runtime，其实就是处于一种等待的过程
 									}
 								}
 								if runtimeStatus.CopyStatus == "Succeeded" { // 说明源任务当中的runtime已经运行完成了
 									// 这里将副本group中的该runtime进行判断，如果是细粒度控制的，且进行了初始化的工作话，就关闭Init初始化
 									if runtime.EnableFineGrainedControl && grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing {
-										// 关闭runtime
+										// 关闭runtime，直接关闭runtime进程
 										logs.Info("(((((((((((((((((((((((((((((((((((((((")
-										//gmo.runtimeManager.StopRuntime(group, action, runtime, actionIndex, runtimeIndex) // 如果是细粒度控制的话Action状态也被修改了
 										gmo.runtimeManager.Kill(group, action, runtime)
-									} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的，所以这里需要主动修改runtime的状态为Succeed
+									} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的（因为副本runtime没启动无法调用Kill函数来修改runtime状态），所以这里需要主动修改runtime的状态为Succeed
 										gmo.handleRuntimeSucceedUpdate(group, actionIndex, runtimeIndex)
 									}
 								}
 							}
+							continue // 这样能快速遍历下一个Action，不然还会进入下面的判断，稍微好一丢丢
 						}
-						if actionStatus.CopyStatus == "Succeeded" { //TODO 这里有个小插曲，就是对于副本任务里面该Action，其下面的Runtime的状态没有改为Succeed，以后可以补充进来--
-							isSuccess = true
+						if actionStatus.CopyStatus == "Succeeded" { // 这里有个小插曲，就是对于副本任务里面改Action，其下面的Runtime的状态没有改为Succeed，可以补充进来--  这是为啥呢？因为这里是一层层遍历，虽然说源任务runtime完成、Action完成会同时修改副本的runtime、Action，但是由于这里的逻辑是先遍历到Action，然后再遍历到下面的runtime，这里选择不再遍历下去，这样会很，直接遍历到Action状态为Successed，然后调用一个方法将Action下面的所有runtime的Phase改为Succeed即可
 							// 这里有一个问题，就是对于Action下面有细粒度控制的runtime，那么runtimeza在Succeed后也会修改Action的状态为Succeed，所以这里是否要判断一下？其实也没事情，顶多就是重复操作了，问题不大
 							// 将etcd当中当前副本的action状态改为Succeed，还需要将action下面的最后一个执行完成的Runtime的Phase修改为Succeed---其实这块也没有完全修改的必要，因为遍历是从Action遍历到Runtime，如果Action的Phase为Succeed，默认下面的所有Runtime的Phase为Succeed，这里以后有时间可以添加上
-							groupCopyName := "Reason-Copy"
-							getCopyGroup, err := gmo.groupClient.Get(context.TODO(), groupCopyName, metav1.GetOptions{})
-							if err != nil {
-								logs.Errorf("Get group by id failed, err:%v", err)
-							}
-							gmo.handleCopyActionSucceedUpdate(getCopyGroup, actionIndex)
-
-							continue //说明当前Action执行完成了，接着查看下一个Action的执行情况
+							//groupCopyName := "Reason-Copy"
+							//getCopyGroup, err := gmo.groupClient.Get(context.TODO(), groupCopyName, metav1.GetOptions{})
+							//if err != nil {
+							//	logs.Errorf("Get group by id failed, err:%v", err)
+							//}
+							gmo.handleCopyActionSucceedUpdate(group, actionIndex) //修改副本任务的Action、Runtime为Successed的状态（因为源任务的Action、Runtime执行完了，副本任务的Action、Runtime没必要执行，直接设置phase为成功即可）
+							continue                                              //说明当前Action执行完成了，接着查看下一个Action的执行情况
 						}
 						if actionStatus.CopyStatus == "Failed" { //TODO 这里有个小插曲，就是对于副本任务里面的其他Action、Runtime的状态没有改为Failed，以后可以补充进来
+							isSuccess = false
 							// 修改副本group的状态为Failed
-							groupCopyName := "Reason-Copy"
-							getCopyGroup, err := gmo.groupClient.Get(context.TODO(), groupCopyName, metav1.GetOptions{})
-							if err != nil {
-								logs.Errorf("Get group by id failed, err:%v", err)
-							}
-							gmo.handleCopyRuntimeFailedUpdate(getCopyGroup, actionIndex) // 源任务执行失败了，直接标记副本任务的runtime、action状态为Failed，那么副本group的状态也直接被标记为Failed
+							//groupCopyName := "Reason-Copy"
+							//getCopyGroup, err := gmo.groupClient.Get(context.TODO(), groupCopyName, metav1.GetOptions{})
+							//if err != nil {
+							//	logs.Errorf("Get group by id failed, err:%v", err)
+							//}
+							gmo.handleCopyRuntimeFailedUpdate(group, actionIndex) // 源任务执行失败了，直接标记副本任务的runtime、action状态为Failed，那么副本group的状态也直接被标记为Failed
 							logs.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@!=2")
-							ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToCompleted(group.Status.GroupID)
+							ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToCompleted(group.Status.GroupID) // 源任务失败后被移入Error队列来通知调度器，这里副本任务直接移入成功队列即可
 							if !ok {
 								logs.Error("Delete group from copypending queue and add to completed pending queue failed")
 							}
@@ -295,7 +296,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 					if isSuccess { //说明源任务，还没有迁移就完成了全部的工作，那么直接将副本迁移到Completed队列就OK了
 						// 这里还需要把副本任务的Group状态设置为Succeed
 						// 修改副本group的状态为Succeed
-						groupCopyName := "Reason-Copy"
+						//groupCopyName := "Reason-Copy"
 						patchGroup, err := json.Marshal(map[string]interface{}{
 							"status": map[string]interface{}{
 								"phase": apis.Successed,
@@ -304,7 +305,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						if err != nil {
 							logs.Errorf("Json Marshal failed, err:%v", err)
 						}
-						_, err = gmo.groupClient.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+						_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 						if err != nil {
 							logs.Errorf("Patch group error-9:%v", err)
 						}
@@ -319,7 +320,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 					}
 				} else if group.Status.CopyStatus == "Starting" {
 					//logs.Infof("=============CopyPending--Starting")
-					ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToRunning(group.Status.GroupID)
+					ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToRunning(group.Status.GroupID) // 有两种情况，一种是无副本情况的瞬时迁移，另一种是副本任务触发了迁移
 					if !ok {
 						logs.Error("Delete group from copy checking queue and add to running queue failed")
 					}
@@ -350,29 +351,29 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 				if err != nil {
 					logs.Errorf("Etcd get group error-3:%v", err)
 				}
-				var isSuccess bool                            // 标记group下面的action是否都执行成功
+				var isSuccess = true                          // 标记group下面的action是否都执行成功
 				for actionIndex := range group.Spec.Actions { // 遍历group当中的Action
 					action := &group.Spec.Actions[actionIndex]
 					actionStatus := &group.Status.ActionStatus[actionIndex]
-					isSuccess = false
 					// 为了适配迁移，状态为Migrated也说明Action成功结束了，然后接下来就通过Action成功标记Group成功了
-					if action.Status.Phase == apis.Successed || action.Status.Phase == apis.Migrated { // 当前action的状态为Successed
-						isSuccess = true
+					if action.Status.Phase == apis.Successed || action.Status.Phase == apis.Migrated { // 当前action的状态为Successed或者Migrated
 						continue //说明当前Action执行完成了，接着查看下一个Action的执行情况
 					}
-					if action.Status.Phase == apis.Failed { //注意:runtime执行失败的时候除了标记Runtime状态为失败，也需要标记Runtime所属的Action状态为失败
+					if action.Status.Phase == apis.Failed { //注意:handleRuntimeEndUpdate方法当中，当Runtime状态失败时，同时也会修改其Action的状态为Failed，同时也会修改Group为Failed、Task为Failed
+						isSuccess = false
 						//将任务迁移到Error队列当中
 						ok := gmo.groupQueues.DeleteFromRunningAndAddToError(group.Status.GroupID)
 						if !ok {
 							logs.Errorf("Delete group from running queue and add to running queue failed")
 						}
-						break
+						break // 这里直接跳出for循环即可，因为该group已经是Failed了，不用看了
 					}
 					grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID)
 					if err != nil {
 						logs.Errorf("Get group by id from group_manager err:%v", err)
 					}
 					if action.Status.Phase == apis.DeployCheck { //
+						isSuccess = false
 						if grou.Status.ActionStatus[actionIndex].Waiting == true { //说明是第二次遍历到了这个Action，第一次遍历到该Action的时候，其依赖没有满足
 							if !gmo.actionDepenSatisfy(actionIndex, group) {
 								//logs.Infof("Action %s depends on parent action, parent not finish ", action.Name)
@@ -391,14 +392,14 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 						for runtimeIndex := range action.Spec.Runtimes {
 							runtime := &action.Spec.Runtimes[runtimeIndex]
 							runtimeStatus := &actionStatus.RuntimeStatus[runtimeIndex]
-							if grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting == true { // 说明是第二次遍历到这个runtime，第一次遍历到该runtime的时候，其依赖没有满足
-								if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) {
+							if grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting == true { // 说明是第二次遍历到这个runtime，第一次遍历到该runtime的时候，其依赖没有满足（判断Runtime是否处于等待）
+								if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) { // runtime 依赖不满足
 									continue
 								}
-								grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false
+								grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false //runtime依赖已经满足，此时设置为false，就不会继续往下执行，去启动任务了，这里的设置很关键
 							} else {
-								if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) {
-									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true
+								if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) { // runtime 依赖不满足
+									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true // 设置Runtime处于等待
 									continue
 								}
 							}
@@ -429,6 +430,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 					}
 					//检查runtime、Action当中的parents是否执行完成，如果父亲节点完成，则让他执行 ---这里有bug，就是任务已经放入running队列，但是还没执行完，这时候runningCheck循环遍历到当前runtime的状态为checking，查看是否满足执行条件，发现是满足的，结果有跑起来该任务
 					if action.Status.Phase == apis.Running {
+						isSuccess = false
 						for runtimeIndex := range action.Spec.Runtimes {
 							runtime := &action.Spec.Runtimes[runtimeIndex]
 							if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) {
@@ -464,6 +466,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 					}
 					//之后这里要考虑迁移的情况，遇到Action为Init的情况，就将Init的runtime启动run/Start起来
 					if action.Status.Phase == apis.Init { //说明当前action下面有Init的runtime了（即：有细粒度控制的runtime）
+						isSuccess = false
 						for runtimeIndex := range action.Spec.Runtimes {
 							runtime := &action.Spec.Runtimes[runtimeIndex]
 							runtimeStatus := &action.Status.RuntimeStatus[runtimeIndex]
@@ -696,6 +699,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	// ## 处理Group的Phase
 	//修改group下面的groupSpec下面的Actions，Actions下面的ActionStatus，ActionStatus下面的RuntimeStatus
 	for j := range groupSpec.Actions { //GroupSpec(Actions)---->ActionStatus----->RuntimeStatus
+		action := &groupSpec.Actions[j]
 		actionStatus := &groupSpec.Actions[j].Status //ActionStatus
 		if j != actionIndex {                        // 判断是否是当前处理的Action
 			continue
@@ -716,33 +720,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 				rs.Phase = phase // 这里的Phase有可能是Failed，也有可能是running
 				rs.LastTime = lastTime
 				// 设置副本runtime的状态为Phase（running or failed），如果是跨域的话，这里估计还得再修改
-				logs.Infof("=======================================================1")
-				//logs.Infof("#########runtime#############groupSpec.Replicas:%v,groupSpec.Replicas[0] > 0:%v,groupSpec.Replicas[1] > 0:%v", groupSpec.Replicas, groupSpec.Replicas[0] > 0, groupSpec.Replicas[1] > 0)
-				//if groupSpec.Replicas[0] > 0 {
-				//	logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running---")
-				//	logs.Infof("=======================================================2")
-				//	for i := 0; i < int(groupSpec.Replicas[0]); i++ {
-				//		copyGroupName := getGroup.Spec // 从copyInfo当中获取
-				//		patchGroup, err := json.Marshal([]map[string]interface{}{
-				//			{
-				//				"op":    "replace",
-				//				"path":  "/status/action_status/" + strconv.Itoa(j) + "/status/" + strconv.Itoa(k) + "/copy_status",
-				//				"value": phase,
-				//			},
-				//		})
-				//		if err != nil {
-				//			logs.Errorf("Marshal patch group err:%v", err)
-				//		}
-				//		_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-				//		if err != nil {
-				//			logs.Errorf("Patch group err-7:%v", err)
-				//		}
-				//		logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running----成功")
-				//	}
-				//}
-				if groupSpec.Replicas[1] > 0 {
-					// 得使用跨域组件
-				}
+				gmo.updateCopyIngfoForRuntime(groupSpec, phase, actionIndex, runtimeIndex)
 				logs.Infof("=======================================================3")
 			}
 		}
@@ -758,31 +736,13 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 			actionStatus.Phase = phase
 			actionStatus.LastTime = lastTime
 			// 当前group有副本，那么需要将该任务对应的副本任务的action的开始装填也设置一下
-			//logs.Infof("Start#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas, groupSpec.Replicas > 0)
-			//if groupSpec.Replicas > 0 {
-			//	logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running---")
-			//	logs.Infof("=======================================================5")
-			//	copyGroupName := "Reason-Copy"
-			//	patchGroup, err := json.Marshal([]map[string]interface{}{
-			//		{
-			//			"op":    "replace",
-			//			"path":  "/status/action_status/" + strconv.Itoa(j) + "/copy_status",
-			//			"value": phase,
-			//		},
-			//	})
-			//	if err != nil {
-			//		logs.Errorf("Marshal patch group err:%v", err)
-			//	}
-			//	_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-			//	if err != nil {
-			//		logs.Errorf("Patch group err-8:%v", err)
-			//	}
-			//	logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running---成功")
-			//	logs.Infof("=======================================================6")
-			//}
-			// 说明Action是第一次启动，这里添加一个操作，将action上传到etcd当中
-			action := &groupSpec.Actions[actionIndex]
-			_, err := gmo.actionClient.Create(context.TODO(), action, metav1.CreateOptions{})
+			gmo.updateCopyIngfoForAction(groupSpec, phase, actionIndex)
+
+			// 修改一下Action的状态
+			patchAction, err := json.Marshal(map[string]interface{}{
+				"status": actionStatus,
+			})
+			_, err = gmo.actionClient.Patch(context.TODO(), action.Name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
 			if err != nil {
 				logs.Errorf("Create action failed,err:%v", err)
 			}
@@ -1000,27 +960,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				rs.FinishAt = finshTime
 				rs.LastTime = lastTime
 				// 如果说该group有副本，并且该副本group是提前部署副本的，那么这里除了修改源runtime的状态，还得修改副本runtime的状态
-				//logs.Infof("#########runtime#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas, groupSpec.Replicas > 0)
-				//if groupSpec.Replicas > 0 { // 当前group有副本，那么需要将该任务对应的副本任务的runtime的结束状态也设置一下
-				//	logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running")
-				//	// 设置副本runtime的状态为Phase（Succeed or Failed）  如果是跨域的话，这里估计还得再修改
-				//	copyGroupName := "Reason-Copy"
-				//	patchGroup, err := json.Marshal([]map[string]interface{}{
-				//		{
-				//			"op":    "replace",
-				//			"path":  "/status/action_status/" + strconv.Itoa(i) + "/status/" + strconv.Itoa(j) + "/copy_status",
-				//			"value": phase,
-				//		},
-				//	})
-				//	if err != nil {
-				//		logs.Errorf("Marshal patch group err:%v", err)
-				//	}
-				//	_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-				//	if err != nil {
-				//		logs.Errorf("Patch group err-7:%v", err)
-				//	}
-				//	logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running----成功")
-				//}
+				gmo.updateCopyIngfoForRuntime(groupSpec, phase, actionIndex, runtimeIndex)
 			}
 			if rs.Phase == apis.DeployCheck { // 遍历所有的Runtime，如果其中一个Runtime状态没有执行完成，说明Action最终不用更新
 				allRuntiemCompleted = false
@@ -1054,28 +994,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				logs.Errorf("Patch action err:%v", err)
 			}
 			nowActionCompleted = true //当前Action已经完成
-			//logs.Infof("#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas, groupSpec.Replicas > 0)
-			//if groupSpec.Replicas > 0 { // 当前group有副本，那么需要将该任务对应的副本任务的action的结束状态也设置一下
-			//	logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running")
-			//	// 设置副本runtime的状态为Phase（Succeed or Failed）  如果是跨域的话，这里估计还得再修改
-			//	copyGroupName := "Reason-Copy"
-			//	patchGroup, err := json.Marshal([]map[string]interface{}{
-			//		{
-			//			"op":    "replace",
-			//			"path":  "/status/action_status/" + strconv.Itoa(i) + "/copy_status",
-			//			"value": phase,
-			//		},
-			//	})
-			//	if err != nil {
-			//		logs.Errorf("Marshal patch group err:%v", err)
-			//	}
-			//	_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-			//	if err != nil {
-			//		logs.Errorf("Patch group err-7:%v", err)
-			//	}
-			//	logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running-----成功")
-			//}
-
+			gmo.updateCopyIngfoForAction(groupSpec, phase, actionIndex)
 		}
 	}
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
@@ -1097,7 +1016,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	// ----------------
 	for i := range groupStatus.ActionStatus { //ActionStatus
 		var allRuntiemCompleted = true  // 当前action是否已经完成（只有action下面的所有的runtime都执行完成了，也就是最后一个runtime被执行完成了，要标记action的状态为succeed，如果说action下面的某一个runtime执行失败，则要标记action装填为Failed）
-		var finalActionIsFailed = false //标记group里面当前遍历到的Action地下的runtime是否有Failed状态
+		var finalActionIsFailed = false //标记group里面当前遍历到的Action底下的runtime是否有Failed状态，只要有Failed，Action的状态也必为Failed
 		as := &groupStatus.ActionStatus[i]
 		if i != actionIndex {
 			continue
@@ -1581,26 +1500,38 @@ func (gmo *GroupMonitor) handleRuntimeSucceedUpdate(group *apis.Group, actionInd
 
 }
 
-// 将副本的Action以及下面的runtime（还没设置为Succeed）的phase设置为Succeed
+// 将副本的Action以及下面的runtime（还没设置为Succeed）的phase设置为Succeed,时间的话全部改成源任务完成的时间吧
 func (gmo *GroupMonitor) handleCopyActionSucceedUpdate(groupCopy *apis.Group, actionIndex int) {
 	groupSpec := &groupCopy.Spec
 	groupStatus := &groupCopy.Status
-
-	// groupSpec下面的Action以及runtime的phase修改为Succeed
+	nowTime := apis.Time{time.Now()}
+	// groupSpec下面的Action以及runtime的phase修改为Succeed，并且将所有时间修改成当前的时间
 	groupSpec.Actions[actionIndex].Status.Phase = apis.Successed
+	groupSpec.Actions[actionIndex].Status.LastTime = nowTime
+	groupSpec.Actions[actionIndex].Status.FinishAt = nowTime
+	groupSpec.Actions[actionIndex].Status.StartAt = nowTime
 	for i := range groupSpec.Actions[actionIndex].Status.RuntimeStatus {
 		runtimeStatus := &groupSpec.Actions[i].Status
 		if runtimeStatus.Phase != apis.Successed {
 			runtimeStatus.Phase = apis.Successed
 		}
+		runtimeStatus.StartAt = nowTime
+		runtimeStatus.FinishAt = nowTime
+		runtimeStatus.LastTime = nowTime
 	}
 	// groupStatus下面的Action以及runtime的Phase修改为Succeed
 	groupStatus.ActionStatus[actionIndex].Phase = apis.Successed
+	groupStatus.ActionStatus[actionIndex].LastTime = nowTime
+	groupStatus.ActionStatus[actionIndex].StartAt = nowTime
+	groupStatus.ActionStatus[actionIndex].FinishAt = nowTime
 	for i := range groupStatus.ActionStatus[actionIndex].RuntimeStatus {
 		runtimeStatus := &groupStatus.ActionStatus[actionIndex].RuntimeStatus[i]
 		if runtimeStatus.Phase != apis.Successed {
 			runtimeStatus.Phase = apis.Successed
 		}
+		runtimeStatus.LastTime = nowTime
+		runtimeStatus.FinishAt = nowTime
+		runtimeStatus.StartAt = nowTime
 	}
 	_, err2 := gmo.groupClient.Update(context.TODO(), groupCopy, metav1.UpdateOptions{})
 	if err2 != nil {
@@ -1608,27 +1539,43 @@ func (gmo *GroupMonitor) handleCopyActionSucceedUpdate(groupCopy *apis.Group, ac
 	}
 }
 
-// 设置group、action、runtime的phase为failed
+// 设置group、action、runtime的phase为failed，单单将当前这个Filed的Action，以及下面Failed的Runtime的状态设置为Failed，对于其他的Action、Runtime不做处理，然后同时将Group的状态设置为Failed，完毕
 func (gmo *GroupMonitor) handleCopyRuntimeFailedUpdate(groupCopy *apis.Group, actionIndex int) {
+	nowTime := apis.Time{time.Now()}
 	groupCopy.Status.Phase = apis.Failed
+	groupCopy.Status.LastTime = nowTime
+	groupCopy.Status.FinishAt = nowTime
+	groupCopy.Status.StartAt = nowTime
 
 	groupSpec := &groupCopy.Spec
 	groupStatus := &groupCopy.Status
 
 	// groupSpec下面的Action以及runtime的phase修改为Failed
 	groupSpec.Actions[actionIndex].Status.Phase = apis.Failed
+	groupSpec.Actions[actionIndex].Status.LastTime = nowTime
+	groupSpec.Actions[actionIndex].Status.FinishAt = nowTime
+	groupSpec.Actions[actionIndex].Status.StartAt = nowTime
 	for i := range groupSpec.Actions[actionIndex].Status.RuntimeStatus {
 		runtimeStatus := &groupSpec.Actions[i].Status
-		if runtimeStatus.CopyStatus == "Failed" {
+		if runtimeStatus.CopyStatus == "Failed" { // 修改造成Failed的Runtime的状态为Failed
 			runtimeStatus.Phase = apis.Failed
+			runtimeStatus.LastTime = nowTime
+			runtimeStatus.FinishAt = nowTime
+			runtimeStatus.StartAt = nowTime
 		}
 	}
 	// groupStatus下面的Action以及runtime的Phase修改为Succeed
 	groupStatus.ActionStatus[actionIndex].Phase = apis.Failed
+	groupStatus.ActionStatus[actionIndex].LastTime = nowTime
+	groupStatus.ActionStatus[actionIndex].StartAt = nowTime
+	groupStatus.ActionStatus[actionIndex].FinishAt = nowTime
 	for i := range groupStatus.ActionStatus[actionIndex].RuntimeStatus {
 		runtimeStatus := &groupStatus.ActionStatus[actionIndex].RuntimeStatus[i]
 		if runtimeStatus.CopyStatus == "Failed" {
 			runtimeStatus.Phase = apis.Failed
+			runtimeStatus.LastTime = nowTime
+			runtimeStatus.FinishAt = nowTime
+			runtimeStatus.StartAt = nowTime
 		}
 	}
 	_, err2 := gmo.groupClient.Update(context.TODO(), groupCopy, metav1.UpdateOptions{})
@@ -1748,5 +1695,95 @@ func (gmo *GroupMonitor) handleTaskSucceedUpdate(gro *apis.Group) {
 	_, err = gmo.taskClient.Patch(context.TODO(), task.Name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("Patch task err:%v", err)
+	}
+}
+
+func (gmo *GroupMonitor) updateCopyIngfoForRuntime(groupSpec *apis.GroupSpec, phase apis.Phase, actionIndex, runtimeIndex int) {
+	logs.Infof("=======================================================1")
+	logs.Infof("#########runtime#############groupSpec.Replicas:%v,groupSpec.Replicas[0] > 0:%v,groupSpec.Replicas[1] > 0:%v", groupSpec.Replicas, groupSpec.Replicas[0] > 0, groupSpec.Replicas[1] > 0)
+	if groupSpec.Replicas[0] > 0 { // 当前group有副本，那么需要将该任务对应的副本任务的runtime的结束状态也设置一下
+		logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running")
+		// 设置副本runtime的状态为Phase（Succeed or Failed）  如果是跨域的话，这里估计还得再修改
+		for key := range groupSpec.CopyInfo {
+			if groupSpec.CopyInfo[key] != "local" {
+				continue
+			}
+			copyGroupName := key
+			patchGroup, err := json.Marshal(map[string]interface{}{
+				"op":    "replace",
+				"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/copy_status",
+				"value": phase,
+			})
+			if err != nil {
+				logs.Errorf("Marshal patch group err:%v", err)
+			}
+			_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+			if err != nil {
+				logs.Errorf("Patch group err-7:%v", err)
+			}
+			logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running----成功")
+		}
+	}
+	if groupSpec.Replicas[1] > 0 {
+		for key := range groupSpec.CopyInfo {
+			if groupSpec.CopyInfo[key] != "local" { // 说明是跨域的
+				// TODO 使用跨域组件连接另一个域，修改group信息
+				//copyGroupName := key // 从copyInfo当中获取到副本的名字Name
+				//patchGroup, err := json.Marshal(map[string]interface{}{
+				//	"op":    "replace",
+				//	"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/copy_status",
+				//	"value": phase,
+				//})
+				//if err != nil {
+				//	logs.Errorf("Marshal patch group err:%v", err)
+				//}
+			}
+		}
+	}
+}
+func (gmo *GroupMonitor) updateCopyIngfoForAction(groupSpec *apis.GroupSpec, phase apis.Phase, actionIndex int) {
+	logs.Infof("Start#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas[0], groupSpec.Replicas[0] > 0)
+	if groupSpec.Replicas[0] > 0 { // 当前group有副本，那么需要将该任务对应的副本任务的action的结束状态也设置一下
+		logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running")
+		// 设置副本runtime的状态为Phase（Succeed or Failed）  如果是跨域的话，这里估计还得再修改
+		for key := range groupSpec.CopyInfo {
+			if groupSpec.CopyInfo[key] != "local" {
+				continue
+			}
+			copyGroupName := key
+			patchGroup, err := json.Marshal([]map[string]interface{}{
+				{
+					"op":    "replace",
+					"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/copy_status",
+					"value": phase,
+				},
+			})
+			if err != nil {
+				logs.Errorf("Marshal patch group err:%v", err)
+			}
+			_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+			if err != nil {
+				logs.Errorf("Patch group err-7:%v", err)
+			}
+			logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running-----成功")
+		}
+	}
+	if groupSpec.Replicas[1] > 0 {
+		for key := range groupSpec.CopyInfo {
+			if groupSpec.CopyInfo[key] != "local" { // 说明是跨域的
+				// TODO 使用跨域组件连接另一个域，修改group信息
+				//copyGroupName := key // 从copyInfo当中获取到副本的名字Name
+				//patchGroup, err := json.Marshal([]map[string]interface{}{
+				//	{
+				//		"op":    "replace",
+				//		"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/copy_status",
+				//		"value": phase,
+				//	},
+				//})
+				//if err != nil {
+				//	logs.Errorf("Marshal patch group err:%v", err)
+				//}
+			}
+		}
 	}
 }

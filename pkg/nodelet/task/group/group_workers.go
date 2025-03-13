@@ -61,13 +61,15 @@ type groupWorkers struct {
 	groupClient core.GroupInterface
 	//task-client
 	taskClient core.TaskInterface
+	//action-Client
+	actionClient core.ActionInterface
 
 	// 管理运行所需的Runtime
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
 }
 
-func NewGroupWorkers(groupManager Manager, taskManager task.Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface) GroupWorkers {
+func NewGroupWorkers(groupManager Manager, taskManager task.Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface, actionClient core.ActionInterface) GroupWorkers {
 	//TODO:
 	return &groupWorkers{
 		runtimeManager: runtimeManager,
@@ -76,6 +78,7 @@ func NewGroupWorkers(groupManager Manager, taskManager task.Manager, groupQueues
 		queueManager:   groupQueues,
 		groupClient:    groupclient,
 		taskClient:     taskclient,
+		actionClient:   actionClient,
 		groupUpdates:   make(map[string]chan *UpdateGroupOptions),
 	}
 }
@@ -304,7 +307,7 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 }
 
 // 修改group下面的所有状态为Checking  +增加：修改group上层的Task状态为Checking
-func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
+func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	//gr, err := g.groupClient.Get(context.TODO(), group.Name, metav1.GetOptions{})
 	//if err != nil {
 	//	logs.Error("get group:%v frm etcd err:", group.Name, err)
@@ -332,6 +335,12 @@ func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 			actionStatus.RuntimeStatus[j].Phase = apis.DeployCheck
 			//actionStatus.RuntimeStatus[j].LastTime = times // 隐藏
 		}
+		// 说明Action是第一次启动，这里添加一个操作，将action上传到etcd当中----修改一下改成patch
+		action := &groupSpec.Actions[i]
+		_, err := gw.actionClient.Create(context.TODO(), action, metav1.CreateOptions{})
+		if err != nil {
+			logs.Errorf("Create action failed,err:%v", err)
+		}
 	}
 	//GroupStatus当中的ActionStatus，需要修改（ActionStatus的Phase以及RuntimeStatus的Phase）
 	for i := range groupStatus.ActionStatus { //ActionStatus
@@ -357,14 +366,14 @@ func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	if !gr.Spec.IsCopy {
 		taskID := gr.Status.Belongs.TaskID // 查找该group所属的Task
 		// client-go 查看task-list
-		list, err := g.taskClient.List(context.TODO(), metav1.ListOptions{})
+		list, err := gw.taskClient.List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			logs.Errorf("Get list task err:%v", err)
 		}
 		for _, t := range list.Items { //遍历etcd当中的所有task，根据taskID取出task
 			if t.Status.TaskID == taskID { // 如果taskId对上了，则就修改该Task的Phase为Checking
 				taskName := t.Name
-				task1, err1 := g.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
+				task1, err1 := gw.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
 				if err1 != nil {
 					logs.Errorf("Etcd has group:%v, but not has task:%v, get task err:%v,", gr.Name, taskName, err1)
 					return
@@ -384,24 +393,24 @@ func (g *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 					}
 				}
 				// 将task信息提交到etcd上去
-				_, err1 = g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+				_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 				if err1 != nil {
 					logs.Errorf("Etcd update task:%v err:%v, now is handing group:%v", taskName, err1, gr.Spec.Name) //这里出错
 					// 再次上传
 					time.Sleep(200 * time.Millisecond)
-					_, err1 = g.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+					_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
 				}
 				break //后续就不用再遍历Task列表了，直接结束
 			}
 		}
 	}
 	//将group信息提交到etcd上去，使用update更新--出现一次报错  TODO 为了适配迁移，如果后面替换为Patch操作，那么要使用gr.ObjectMeta.Name 来进行patch，因为目前规定gr.ObjectMeta.Name为不同group的标识（针对副本、源group）
-	_, err := g.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
+	_, err := gw.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
 	logs.Infof("Group's deployCheck phase submit to etcd, group:%v", gr.Name)
 	if err != nil {
 		logs.Errorf("Etcd update group:%v err:%v", gr.Name, err)
 		// 再次上传
 		time.Sleep(200 * time.Millisecond)
-		_, err = g.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
+		_, err = gw.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
 	}
 }

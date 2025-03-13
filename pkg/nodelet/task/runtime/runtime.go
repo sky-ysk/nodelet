@@ -6,10 +6,8 @@ import (
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"sync"
 
-	"hit.edu/framework/pkg/client-go/tools/recorder"
-	"hit.edu/framework/pkg/nodelet/events/eventbus"
-
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/binary"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
@@ -32,18 +30,23 @@ type Runtime interface {
 }
 
 type RuntimeManager struct {
-	runtimes map[apis.RuntimeType]Runtime
-	eventbus *eventbus.EventBus
-	recorder recorder.EventRecorder
-
-	mu sync.Mutex
+	runtimes     map[apis.RuntimeType]Runtime
+	eventbus     *eventbus.EventBus
+	recorder     recorder.EventRecorder
+	deviceClient core.DeviceInterface
+	actionClient core.ActionInterface
+	groupClient  core.GroupInterface
+	mu           sync.Mutex
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, deviceClient core.DeviceInterface, actionClient core.ActionInterface, groupClient core.GroupInterface) *RuntimeManager {
 	return &RuntimeManager{
-		runtimes: make(map[apis.RuntimeType]Runtime),
-		eventbus: bus,
-		recorder: recorder,
+		runtimes:     make(map[apis.RuntimeType]Runtime),
+		eventbus:     bus,
+		recorder:     recorder,
+		deviceClient: deviceClient,
+		actionClient: actionClient,
+		groupClient:  groupClient,
 	}
 }
 
