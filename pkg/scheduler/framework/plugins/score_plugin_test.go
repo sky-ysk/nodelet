@@ -12,6 +12,7 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -64,19 +65,14 @@ func TestBuildGroupsRequest(t *testing.T) {
 
 }
 
-func TestAddGroupsIndatabus(t *testing.T) {
+func TestScore(t *testing.T) {
 	task := mockGetTask()
 	ctx := context.Background()
-	req := BuildSendGroupsRequest(ctx, &task)
 	plugin := &ScorePluginDBY{
 		pluginClient: NewScorePluginClient(),
 	}
-	//NewScorePluginClient()
 	plugin.SendGroups(ctx, &task)
-	fmt.Println(req)
-	fmt.Println(len(req.TopInfo))
-	//TODO Fill the node name
-	//plugin.Score(ctx, &task.Spec.Groups[0], "")
+	plugin.Score(ctx, &task.Spec.Groups[0], "EdgeNode2")
 }
 
 func TestListAllNodes(t *testing.T) {
@@ -167,7 +163,6 @@ func mockGetTask() apis.Task {
 		},
 		Spec: apis.GroupSpec{
 			ResourceRequirements: reqs,
-			//Parents:              [] string {1,2,3 },
 		},
 		Status: apis.GroupStatus{
 			GroupID: "testGroup1",
@@ -218,4 +213,310 @@ func mockGetTask() apis.Task {
 			TaskID: "task1",
 		},
 	}
+}
+
+// 机器人A拿盘子到远处 -> 机器人B放橙子 -> 机器人A拿盘子到近处 -> 机器人B拿出橙子 (loop)
+//func mockGetOrangeTask() apis.Task {
+//
+//	g1 := apis.Group{
+//		TypeMeta: meta.TypeMeta{
+//			Kind:       "Group",
+//			APIVersion: "resources/v1",
+//		},
+//		ObjectMeta: meta.ObjectMeta{
+//			Name: "PlacePlateToFarPosition",
+//		},
+//		Spec: apis.GroupSpec{
+//			Name: "PlacePlateToFarPosition",
+//			Desc: apis.Description{
+//				Docs: "把盘子放到远处位置",
+//			},
+//			Type:          apis.Norm,
+//			AffinityNodes: []string{"RobotA"},
+//			Actions: []apis.Action{
+//				{
+//					TypeMeta: meta.TypeMeta{
+//						Kind:       "Action",
+//						APIVersion: "resources/v1",
+//					},
+//					ObjectMeta: meta.ObjectMeta{
+//						Name: "Action-PlacePlateToFarPosition",
+//					},
+//					Spec: apis.ActionSpec{
+//						Name: "",
+//						Runtimes: []apis.Runtime{
+//							{
+//								Name:   "Runtime-PlacePlateToFarPosition",
+//								Inputs: apis.Input{},
+//							},
+//						},
+//						Type: apis.Norm,
+//						Desc: apis.Description{},
+//					},
+//					Status: apis.ActionStatus{},
+//				},
+//			},
+//		},
+//		Status: apis.GroupStatus{
+//			GroupID: "testGroup1",
+//			Belongs: apis.IDRef{
+//				TaskID: "task1",
+//			},
+//		},
+//	}
+//	g2 := apis.Group{
+//		TypeMeta: meta.TypeMeta{
+//			Kind:       "Group",
+//			APIVersion: "resources/v1",
+//		},
+//		ObjectMeta: meta.ObjectMeta{
+//			Name: "PlaceOrangeToPlate-Far",
+//		},
+//		Spec: apis.GroupSpec{
+//			Name: "PlaceOrangeToPlate-Far",
+//			Desc: apis.Description{
+//				Docs: "把橙子放到盘子里面",
+//			},
+//			Parents: []string{"PlacePlateToFarPosition"},
+//			Conditions: apis.Conditions{
+//				Formulas: []apis.ConditionFormula{
+//					{
+//						LeftValue: apis.ConditionValue{
+//							Type:      apis.ResultsData,
+//							Name:      "testGroup1_execution_status",
+//							ValueType: "bool",
+//							From:      "resource_bus",
+//						},
+//						RightValue: apis.ConditionValue{
+//							Type:      apis.ConstData,
+//							Name:      "const_data",
+//							Value:     "true",
+//							ValueType: "bool",
+//						},
+//						Signal: apis.Equal,
+//					},
+//				},
+//			},
+//			Type:          apis.Norm,
+//			AffinityNodes: []string{"RobotB"},
+//			Actions: []apis.Action{
+//				{
+//					TypeMeta: meta.TypeMeta{
+//						Kind:       "Action",
+//						APIVersion: "resources/v1",
+//					},
+//					ObjectMeta: meta.ObjectMeta{
+//						Name: "Action-PlaceOrangeToPlate",
+//					},
+//					Spec: apis.ActionSpec{
+//						Name: "Action-PlaceOrangeToPlate",
+//						Runtimes: []apis.Runtime{
+//							{
+//								Name:    "Runtime-PlaceOrangeToPlate",
+//								Inputs:  apis.Input{},
+//								Outputs: apis.Output{},
+//							},
+//						},
+//						Type: apis.Norm,
+//						Desc: apis.Description{},
+//					},
+//					Status: apis.ActionStatus{},
+//				},
+//			},
+//		},
+//		Status: apis.GroupStatus{
+//			GroupID: "testGroup2",
+//			Belongs: apis.IDRef{
+//				TaskID: "task1",
+//			},
+//		},
+//	}
+//	g3 := apis.Group{
+//		TypeMeta: meta.TypeMeta{
+//			Kind:       "Group",
+//			APIVersion: "resources/v1",
+//		},
+//		ObjectMeta: meta.ObjectMeta{
+//			Name: "PlacePlateToClosePosition",
+//		},
+//		Spec: apis.GroupSpec{
+//			Name: "PlacePlateToClosePosition",
+//			Desc: apis.Description{
+//				Docs: "把盘子放到近处",
+//			},
+//			Parents: []string{"PlaceOrangeToPlate-Far"},
+//			Conditions: apis.Conditions{
+//				Formulas: []apis.ConditionFormula{
+//					{
+//						LeftValue: apis.ConditionValue{
+//							Type:      apis.ResultsData,
+//							Name:      "testGroup2_execution_status",
+//							ValueType: "bool",
+//							From:      "resource_bus",
+//						},
+//						RightValue: apis.ConditionValue{
+//							Type:      apis.ConstData,
+//							Name:      "const_data",
+//							Value:     "true",
+//							ValueType: "bool",
+//						},
+//						Signal: apis.Equal,
+//					},
+//				},
+//			},
+//			Type:          apis.Norm,
+//			AffinityNodes: []string{"RobotA"},
+//			Actions: []apis.Action{
+//				{
+//					TypeMeta: meta.TypeMeta{
+//						Kind:       "Action",
+//						APIVersion: "resources/v1",
+//					},
+//					ObjectMeta: meta.ObjectMeta{
+//						Name: "Action-PlacePlateToClosePosition",
+//					},
+//					Spec: apis.ActionSpec{
+//						Name: "Action-PlacePlateToClosePosition",
+//						Runtimes: []apis.Runtime{
+//							{
+//								Name:    "Runtime-PlacePlateToClosePosition",
+//								Inputs:  apis.Input{},
+//								Outputs: apis.Output{},
+//							},
+//						},
+//						Type: apis.Norm,
+//						Desc: apis.Description{},
+//					},
+//					Status: apis.ActionStatus{},
+//				},
+//			},
+//		},
+//		Status: apis.GroupStatus{
+//			GroupID: "testGroup3",
+//			Belongs: apis.IDRef{
+//				TaskID: "task1",
+//			},
+//		},
+//	}
+//
+//	g4 := apis.Group{
+//		TypeMeta: meta.TypeMeta{
+//			Kind:       "Group",
+//			APIVersion: "resources/v1",
+//		},
+//		ObjectMeta: meta.ObjectMeta{
+//			Name: "TakeOrangeFromPlate",
+//		},
+//		Spec: apis.GroupSpec{
+//			Name: "TakeOrangeFromPlate",
+//			Desc: apis.Description{
+//				Docs: "把橙子从盘子里拿出",
+//			},
+//			Parents: []string{"PlacePlateToClosePosition"},
+//			Conditions: apis.Conditions{
+//				Formulas: []apis.ConditionFormula{
+//					{
+//						LeftValue: apis.ConditionValue{
+//							Type:      apis.ResultsData,
+//							Name:      "testGroup3_execution_status",
+//							ValueType: "bool",
+//							From:      "resource_bus",
+//						},
+//						RightValue: apis.ConditionValue{
+//							Type:      apis.ConstData,
+//							Name:      "const_data",
+//							Value:     "true",
+//							ValueType: "bool",
+//						},
+//						Signal: apis.Equal,
+//					},
+//				},
+//			},
+//			Type:          apis.Norm,
+//			AffinityNodes: []string{"RobotB"},
+//			Actions: []apis.Action{
+//				{
+//					TypeMeta: meta.TypeMeta{
+//						Kind:       "Action",
+//						APIVersion: "resources/v1",
+//					},
+//					ObjectMeta: meta.ObjectMeta{
+//						Name: "Action-TakeOrangeFromPlate",
+//					},
+//					Spec: apis.ActionSpec{
+//						Name: "Action-TakeOrangeFromPlate",
+//						Runtimes: []apis.Runtime{
+//							{
+//								Name:    "Runtime-TakeOrangeFromPlate",
+//								Inputs:  apis.Input{},
+//								Outputs: apis.Output{},
+//							},
+//						},
+//						Type: apis.Norm,
+//						Desc: apis.Description{},
+//					},
+//					Status: apis.ActionStatus{},
+//				},
+//			},
+//		},
+//		Status: apis.GroupStatus{
+//			GroupID: "testGroup4",
+//			Belongs: apis.IDRef{
+//				TaskID: "task1",
+//			},
+//		},
+//	}
+//
+//	return apis.Task{
+//		TypeMeta: meta.TypeMeta{
+//			Kind:       "task",
+//			APIVersion: "resources/v1",
+//		},
+//		ObjectMeta: meta.ObjectMeta{
+//			Name: "testOrangeWorkflowTask",
+//		},
+//		Spec: apis.TaskSpec{
+//			Groups: []apis.Group{g1, g2, g3, g4},
+//		},
+//		Status: apis.TaskStatus{
+//			TaskID: "task1",
+//		},
+//	}
+//}
+
+//func TestTask(t *testing.T) {
+//	task := mockGetOrangeTask()
+//	data, err := json.Marshal(task)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	fmt.Println(string(data))
+//}
+
+func TestServer(t *testing.T) {
+	http.HandleFunc("/schedule/postGroup", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("request received is ")
+		fmt.Println(r)
+		// 获取请求报文的内容长度
+		length := r.ContentLength
+		// 新建一个字节切片，长度与请求报文的内容长度相同
+		fmt.Println("lem is")
+		fmt.Println(length)
+		body, err := io.ReadAll(r.Body)
+		// 读取 r 的请求主体，并将具体内容读入 body 中
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		// 将字节切片内容写入相应报文
+		fmt.Println("body is: ", string(body))
+	})
+	port := ":5000"
+	fmt.Printf("Starting server on port %s...\n", port)
+	err := http.ListenAndServe(port, nil)
+	if err != nil {
+		fmt.Println("Error starting server: ", err)
+		return
+	}
+
 }

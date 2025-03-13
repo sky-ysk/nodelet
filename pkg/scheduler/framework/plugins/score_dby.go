@@ -5,14 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/http2"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 )
 
@@ -25,18 +23,13 @@ type ScorePluginClient struct {
 }
 
 func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, error) {
-	httpReq := http.Request{
-		Method: "POST",
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   "127.0.0.1:5000",
-			//TODO path定一下
-			Path: path,
-		},
+	// 自动处理 Content-Length 和 Body 封装
+	httpReq, err := http.NewRequest("POST", "http://127.0.0.1:5000"+path, bytes.NewBuffer(data))
+	if err != nil {
+		panic(err)
 	}
-	httpReq.Body = io.NopCloser(bytes.NewBuffer(data))
-	httpRes, err := client.client.Do(&httpReq)
-	//fmt.Println("do done")
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpRes, err := client.client.Do(httpReq)
 	if err != nil {
 		fmt.Println(err)
 		logs.Fatal(err)
@@ -63,17 +56,22 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		logs.Fatal(err)
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
-	_, err = client.SendData(jsonData, "/schedule/postGroup")
+	data, err := client.SendData(jsonData, "/schedule/postGroup")
 	if err != nil {
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
+	fmt.Println("raw resp is like")
+	fmt.Println(string(data))
 	//TODO 确认下返回细节
-	//var data transport.ScoreRespData
-	//err = json.Unmarshal(body, &data)
-	//if err != nil {
-	//	logs.Fatal(err)
-	//	return transport.NewFailSendScoreResponse(request.TaskId, err)
-	//}
+	var resp SendGroupsResponse
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		logs.Fatal(err)
+		return transport.NewFailSendScoreResponse(request.TaskId, err)
+	}
+	if resp.State != 200 {
+		logs.Error("send groups to DTS plugin fail", resp.Reason)
+	}
 	return transport.SendGroupsResponse{
 		TaskID: request.TaskId,
 		BaseResponse: transport.BaseResponse{
@@ -87,8 +85,9 @@ func NewScorePluginClient() ScorePluginClient {
 	return ScorePluginClient{
 		&http.Client{
 			Timeout: time.Second * 1200,
-			Transport: &http2.Transport{
-				AllowHTTP: true, // 允许非加密的HTTP/2连接（测试环境可用，生产环境建议使用TLS加密）
+			//走http1
+			Transport: &http.Transport{
+				//AllowHTTP: true, // 允许非加密的HTTP/2连接（测试环境可用，生产环境建议使用TLS加密）
 			},
 		},
 	}
@@ -110,10 +109,13 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Fatal(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
+	fmt.Println("request is")
+	fmt.Println(string(jsonData))
 	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
+	fmt.Println(data)
 	var resp transport.ScoreRespData
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
@@ -148,6 +150,11 @@ type SendGroupsRequest struct {
 	TaskId              string                                `json:"taskId"`
 	ResourceRequirement map[string][]apis.ResourceRequirement `json:"resourceRequirement"`
 	TopInfo             []GroupTopInfo                        `json:"topInfo"`
+}
+
+type SendGroupsResponse struct {
+	Reason string `json:"Reason"`
+	State  int64  `json:"state"`
 }
 
 func BuildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {

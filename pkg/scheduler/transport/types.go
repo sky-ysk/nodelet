@@ -1,13 +1,13 @@
 package transport
 
 type ScoreRequest struct {
-	TaskID     string `json:"task_id"`
-	PipelineId string `json:"pipeline_id"`
-	SecID      string `json:"sec_id"`
-	GroupID    string `json:"group_id"`
+	TaskID string `json:"taskId"`
+	//PipelineId string `json:"pipeline_id"`
+	//SecID      string `json:"sec_id"`
+	GroupID string `json:"groupId"`
 	//Group      *apis.Group `json:"group"`
-	NodeID string `json:"node_id"`
-	Host   string `json:"host"`
+	NodeID string `json:"nodeId"`
+	//Host   string `json:"host"`
 }
 
 type ScoreResponse struct {
