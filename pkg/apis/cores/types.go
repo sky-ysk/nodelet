@@ -603,6 +603,9 @@ type GroupSpec struct {
 
 	//-临时添加-k8s运行时相关，还未重构，后期会重构
 	Labels map[string]string // 添加 Labels 字段，用于选择器
+
+	//亲和节点，如果该字段不为空的话，那么group就必须放在这些节点上执行
+	AffinityNodes []string `json:"affinity_nodes,omitempty" yaml:"affinity_nodes"`
 }
 
 type ResourceRequirement struct {
