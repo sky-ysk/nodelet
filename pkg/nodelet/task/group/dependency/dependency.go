@@ -12,89 +12,65 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 
 	"time"
 
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
-type Requirement struct {
-	Name    string
-	Version string
+// type Requirement struct {
+// 	Name    string
+// 	Version string
+// }
+
+type DependencyManager struct {
+	lock 	sync.Mutex
+	allEnv	[]string
+	envsPackage	map[string][]apis.Requirement
 }
 
-// 查找当前conda的  所有虚拟环境，判断是否有虚拟环境满足这个requirements.txt的依赖
-func CheckEnvironmentSatisfy(requirementsPath string) (string, bool) {
-	//获取requirements里面包含的所有package以及version
-	requirements, err := ParseRequirements(requirementsPath)
-	if err != nil {
-		logs.Info("Error reading requirements file: %v", err)
-		return "", false
+func NewDependencyManager() *DependencyManager {
+	dm := &DependencyManager{
+		allEnv: make([]string, 0),
+		envsPackage: make(map[string][]apis.Requirement),
 	}
-
-	//获取每一个虚拟环境里面包含的所有package以及version
-	//获取所有虚拟环境的名称
-	envName, err := GetAllCondaEnv()
-	if err != nil {
-		logs.Info("Error retrieving installed packages: %v", err)
-		return "", false
-	}
-	//for遍历所有虚拟环境
-	for _, envname := range envName {
-		installed, err := GetInstalledPackages(envname)
-		if err != nil {
-			logs.Info("Error retrieving installed packages: %v", err)
-			return "", false
-		}
-
-		if CheckRequirements(requirements, installed, envname) {
-			logs.Info("All requirements are satisfied. EnvName:%v", envname)
-			return envname, true
-		} else {
-			logs.Info("Some requirements are not satisfied. EnvName:%v", envname)
-		}
-	}
-	return "", false
+	return dm
 }
 
-// 解析requirements.txt文件，返回包的切片
-func ParseRequirements(filePath string) ([]Requirement, error) {
+func GetAllCondaEnv() ([]string, error) {
 	// startTime := time.Now()
-	file, err := os.Open(filePath)
+	cmd := exec.Command("conda", "info", "--envs")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
 	if err != nil {
+		logs.Info("Error executing conda command: %v", err)
 		return nil, err
 	}
-	defer file.Close()
 
-	var requirements []Requirement
-	re := regexp.MustCompile(`(?P<Name>[a-zA-Z0-9_-]+)(==(?P<Version>[0-9\.]+))?`)
+	// 解析输出
+	output := out.String()
+	lines := strings.Split(output, "\n")
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue // Skip empty lines and comments
+	// 存储环境名称
+	var envNames []string
+
+	// 遍历每一行，提取虚拟环境名称
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) > 1 && !strings.HasPrefix(fields[0], "#") {
+			envNames = append(envNames, fields[0]) // 添加环境名称
 		}
-		match := re.FindStringSubmatch(line)
-		if match != nil {
-			req := Requirement{
-				Name:    match[1],
-				Version: match[3],
-			}
-			requirements = append(requirements, req)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
 	}
 	// timeCost := time.Since(startTime)
-	// fmt.Println("ParseRequirements cost %s time", timeCost)
-	return requirements, nil
+	// fmt.Println("GetAllCondaEnv cost %s time", timeCost)
+	return envNames, nil
 }
 
 // 使用pip list获取pip freeze格式（numpy==1.23.1这种）的字符数组
-func GetInstalledPackages(envName string) (map[string]string, error) {
+func (dm *DependencyManager) GetInstalledPackages(envName string) ([]apis.Requirement, error) {
 	// startTime := time.Now()
 	cmd := exec.Command("conda", "run", "-n", envName, "pip", "list", "--format=freeze")
 	output, err := cmd.Output()
@@ -119,18 +95,184 @@ func GetInstalledPackages(envName string) (map[string]string, error) {
 
 	// timeCost := time.Since(startTime)
 	// fmt.Println("GetInstalledPackages cost %s time", timeCost)
+	InstalledRequirements := make([]apis.Requirement, 0)
+	for name, version := range installed {
+		InstalledRequirements = append(InstalledRequirements, apis.Requirement{Name:name, Version: version})
+	}
 
-	return installed, nil
+	return InstalledRequirements, nil
 }
 
+// GetCondaEnvPath 根据传入的虚拟环境名称，返回虚拟环境的路径
+func GetCondaEnvPath(envName string) (string, error) {
+	// 执行 "conda info --envs" 命令，获取所有虚拟环境的信息  命令conda env list 也可以
+	cmd := exec.Command("conda", "info", "--envs")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("failed to execute conda command: %v", err)
+	}
+
+	// 解析输出
+	output := out.String()
+	lines := strings.Split(output, "\n")
+
+	// 遍历每一行，查找目标环境
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) > 1 && fields[0] == envName {
+			return fields[len(fields)-1], nil // 返回路径
+		}
+	}
+
+	// 如果没有找到环境
+	return "", fmt.Errorf("environment '%s' not found", envName)
+}
+
+func (dm *DependencyManager)UpdateEnvs() error {
+	startTime := time.Now()
+	envNames, err := GetAllCondaEnv()
+	if err != nil {
+		logs.Errorf("Get All Conda Environments Err. Maybe pip is not installed")
+		return fmt.Errorf("UpdateEnvs err!")
+	}
+	dm.lock.Lock()
+	defer dm.lock.Unlock()
+	dm.allEnv = envNames
+	
+	timeCost := time.Since(startTime)
+	fmt.Println("GetInstalledPackages cost %s time", timeCost)
+	logs.Info("UpdateEnvs success")
+	return nil
+}
+
+func (dm *DependencyManager)UpdateEnvPackages() error {
+	startTime := time.Now()
+	dm.lock.Lock()
+	defer dm.lock.Unlock()
+	for _, envname := range dm.allEnv {
+		installed, err := dm.GetInstalledPackages(envname)
+		if err != nil {
+			logs.Info("Error retrieving installed packages: %v", err)
+			return fmt.Errorf("UpdateEnvPackages err!")
+		}
+		dm.envsPackage[envname] = installed
+	}
+
+	timeCost := time.Since(startTime)
+	fmt.Println("GetInstalledPackages cost %s time", timeCost)
+	logs.Info("UpdateEnvPackages success")
+	return nil
+}
+
+func (dm* DependencyManager)UpdateRuntimePackages(filePath string) ([]apis.Requirement, error) {
+	startTime := time.Now()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var requirements []apis.Requirement
+	re := regexp.MustCompile(`(?P<Name>[a-zA-Z0-9_-]+)(==(?P<Version>[0-9\.]+))?`)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue // Skip empty lines and comments
+		}
+		match := re.FindStringSubmatch(line)
+		if match != nil {
+			req := apis.Requirement{
+				Name:    match[1],
+				Version: match[3],
+			}
+			requirements = append(requirements, req)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	timeCost := time.Since(startTime)
+	fmt.Println("UpdateRuntimePackages cost %s time", timeCost)
+	logs.Info("UpdateRuntimePackages success")
+	return requirements, nil
+}
+
+// 查找当前conda的  所有虚拟环境，判断是否有虚拟环境满足这个requirements.txt的依赖
+func (dm* DependencyManager)CheckEnvironmentSatisfy(requirements []apis.Requirement) (string, bool) {
+	//for遍历所有虚拟环境
+	envNames := dm.allEnv
+	for _, envname := range envNames {
+		installedRequire := dm.envsPackage[envname]
+		if CheckRequirements(requirements, installedRequire, envname) {
+			logs.Info("All requirements are satisfied. EnvName:%v", envname)
+			return envname, true
+		} else {
+			// logs.Info("Some requirements are not satisfied. EnvName:%v", envname)
+		}
+	}
+	return "", false
+}
+
+// 解析requirements.txt文件，返回包的切片
+func (dm* DependencyManager)ParseRequirements(filePath string) ([]apis.Requirement, error) {
+	startTime := time.Now()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var requirements []apis.Requirement
+	re := regexp.MustCompile(`(?P<Name>[a-zA-Z0-9_-]+)(==(?P<Version>[0-9\.]+))?`)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue // Skip empty lines and comments
+		}
+		match := re.FindStringSubmatch(line)
+		if match != nil {
+			req := apis.Requirement{
+				Name:    match[1],
+				Version: match[3],
+			}
+			requirements = append(requirements, req)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	timeCost := time.Since(startTime)
+	fmt.Println("ParseRequirements cost %s time", timeCost)
+	return requirements, nil
+}
+
+
+
 // 将获取到的requirements.txt的内容与已有的installed的内容比较
-func CheckRequirements(requirements []Requirement, installed map[string]string, envName string) bool {
-	// startTime := time.Now()
+func CheckRequirements(requirements []apis.Requirement, installed []apis.Requirement, envName string) bool {
+	startTime := time.Now()
 	allSatisfied := true
 	for _, req := range requirements {
-		installedVersion, found := installed[req.Name]
+		found := false
+		name := req.Name
+		// reqVersion := req.Version
+		var installedVersion string
+		for _, installed := range installed {
+			if installed.Name == name {
+				found = true
+				installedVersion = installed.Version
+			}
+		}
 		if !found {
-			logs.Info("Package %v is not installed.", req.Name)
+			// logs.Info("Package %v is not installed.", req.Name)
 			allSatisfied = false
 			return allSatisfied
 		} else if req.Version != "" && installedVersion < req.Version {
@@ -139,12 +281,12 @@ func CheckRequirements(requirements []Requirement, installed map[string]string, 
 			allSatisfied = false
 			return allSatisfied
 		} else {
-			logs.Info("Package %s is satisfied.", req.Name)
+			// logs.Info("Package %s is satisfied.", req.Name)
 		}
 	}
-	logs.Info("requirements satisfied envName: %v", envName)
-	// timeCost := time.Since(startTime)
-	// fmt.Println("CheckRequirements cost %s time", timeCost)
+	// logs.Info("requirements satisfied envName: %v", envName)
+	timeCost := time.Since(startTime)
+	fmt.Println("CheckRequirements cost %s time", timeCost)
 	return allSatisfied
 }
 
@@ -213,23 +355,6 @@ func RemoveEnvironment(envName string) bool {
 	return true
 }
 
-func runCommand(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		logs.Info("Command output: %s", out.String())
-		logs.Info("Command error: %s", stderr.String())
-		return fmt.Errorf("command execution failed: %v", err)
-	}
-
-	logs.Info("Command output: %s", out.String())
-	return nil
-}
-
 // 根据传入的虚拟环境名称，生成一个用于runtime的ENV属性的Value并返回
 func EnvForInput(envName string) (string, bool) {
 	// pythonPath := "/home/ysk/miniconda3/envs/py38/bin" // 替换为Python 安装路径
@@ -274,63 +399,6 @@ func EnvForInput(envName string) (string, bool) {
 	return pythonPath, true
 }
 
-func GetAllCondaEnv() ([]string, error) {
-	// startTime := time.Now()
-	cmd := exec.Command("conda", "info", "--envs")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		logs.Info("Error executing conda command: %v", err)
-		return nil, err
-	}
-
-	// 解析输出
-	output := out.String()
-	lines := strings.Split(output, "\n")
-
-	// 存储环境名称
-	var envNames []string
-
-	// 遍历每一行，提取虚拟环境名称
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) > 1 && !strings.HasPrefix(fields[0], "#") {
-			envNames = append(envNames, fields[0]) // 添加环境名称
-		}
-	}
-	// timeCost := time.Since(startTime)
-	// fmt.Println("GetAllCondaEnv cost %s time", timeCost)
-	return envNames, nil
-}
-
-// GetCondaEnvPath 根据传入的虚拟环境名称，返回虚拟环境的路径
-func GetCondaEnvPath(envName string) (string, error) {
-	// 执行 "conda info --envs" 命令，获取所有虚拟环境的信息  命令conda env list 也可以
-	cmd := exec.Command("conda", "info", "--envs")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("failed to execute conda command: %v", err)
-	}
-
-	// 解析输出
-	output := out.String()
-	lines := strings.Split(output, "\n")
-
-	// 遍历每一行，查找目标环境
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) > 1 && fields[0] == envName {
-			return fields[len(fields)-1], nil // 返回路径
-		}
-	}
-
-	// 如果没有找到环境
-	return "", fmt.Errorf("environment '%s' not found", envName)
-}
-
 // TODO 正则表达式解析，格式：
 //
 //	     Results的访问格式对应
@@ -362,4 +430,22 @@ func IdParser(Idstr string) (Task, Group, Action, runtime string, err error) {
 		logs.Error("未匹配到: %v", Idstr)
 		return "", "", "", "", fmt.Errorf("未匹配到: %v", Idstr)
 	}
+}
+
+
+func runCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		logs.Info("Command output: %s", out.String())
+		logs.Info("Command error: %s", stderr.String())
+		return fmt.Errorf("command execution failed: %v", err)
+	}
+
+	logs.Info("Command output: %s", out.String())
+	return nil
 }

@@ -44,6 +44,8 @@ type GroupMonitor struct {
 	// 管理运行所需的Runtime
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
+	//管理依赖
+	dependencyManager *dependency.DependencyManager
 	//Client-go
 	nodesClient core.NodeInterface //需要查node信息
 	groupClient core.GroupInterface
@@ -51,18 +53,19 @@ type GroupMonitor struct {
 	stopCh      chan struct{}
 }
 
-func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface) *GroupMonitor {
+func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, dependencyManager *dependency.DependencyManager) *GroupMonitor {
 	return &GroupMonitor{
-		groupManager:   groupManager,
-		taskManager:    taskManager,
-		groupQueues:    groupQueues,
-		eventBus:       eventbus,
-		recorder:       recorder,
-		runtimeManager: runtimeManager,
-		nodesClient:    nodeClient,
-		groupClient:    groupClient,
-		taskClient:     taskClient,
-		stopCh:         make(chan struct{}),
+		groupManager:      groupManager,
+		taskManager:       taskManager,
+		groupQueues:       groupQueues,
+		eventBus:          eventbus,
+		recorder:          recorder,
+		runtimeManager:    runtimeManager,
+		dependencyManager: dependencyManager,
+		nodesClient:       nodeClient,
+		groupClient:       groupClient,
+		taskClient:        taskClient,
+		stopCh:            make(chan struct{}),
 	}
 }
 
@@ -76,6 +79,26 @@ func (gmo *GroupMonitor) Start(ctx context.Context) {
 
 	gmo.eventBus.Subscribe(reflect.TypeOf(events.RuntimeStartPhaseEvent1{}), chRuntimeStart)
 	gmo.eventBus.Subscribe(reflect.TypeOf(events.RuntimeEndPhaseEvent1{}), chRuntimeEnd)
+
+	//启动环境的依赖检查与更新
+	depenUpdateDone := make(chan struct{})
+	go func() {
+		defer close(depenUpdateDone)
+		ticker := time.NewTicker(5 * time.Second)
+		//循环检查更新依赖，有两个内容要更新：所有虚拟环境的名字；每个虚拟环境所包含的所有包
+		for {
+			select {
+			case <-ctx.Done(): // 如果父进程通知关闭
+				logs.Info("依赖检查协程收到关闭通知，正在退出...")
+				return // 退出协程
+			case <-ticker.C: // 每隔一段时间执行一次更新依赖操作
+				logs.Info("定期检查机器的虚拟环境依赖")
+				gmo.dependencyManager.UpdateEnvs()
+				gmo.dependencyManager.UpdateEnvPackages()
+			}
+		}
+	}()
+
 	//启动监听事件（支持 Context 退出）
 	eventLoopDone := make(chan struct{})
 	go func() {
@@ -108,6 +131,7 @@ func (gmo *GroupMonitor) Start(ctx context.Context) {
 	case <-statusCheckDone:
 	}
 	// 等待所有子协程退出
+	<-depenUpdateDone
 	<-eventLoopDone
 	<-statusCheckDone
 }
@@ -145,7 +169,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Millisecond * 100):
+		case <-time.After(time.Millisecond * 500):
 			checkingGroups := gmo.groupQueues.GetAllChecking()
 			for i := range checkingGroups {
 				gr := checkingGroups[i]
@@ -208,40 +232,40 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 					//此处不用再修改group信息为Running，真正启动任务的时候，会修改phase为running
 					// TODO: 检查需要运行的Action
 					// TODO: 开始部署
-					//logs.Infof("Checking queue start group:%s", get.Spec.Name)
-					////根据group当中的Action开启相应的runtime  group(Spec:Actions)--action（Spec：Runtimes）
-					//grou, err := gmo.groupManager.GetGroupByID(get.Status.GroupID)
-					//if err != nil {
-					//	logs.Errorf("Get group by id frmo group_manager err:%v", err)
-					//}
-					//for j := range get.Spec.Actions {
-					//	action := &get.Spec.Actions[j]
-					//	if !gmo.actionDepenSatisfy(j, get) {
-					//		logs.Infof("Action:%s in group:%s waiting for dependencies", action.Spec.Name, get.Spec.Name)
-					//		//action.Status.Waiting = true
-					//		grou.Spec.Actions[j].Status.Waiting = true
-					//		//logs.Infof("****************CheckingQueueCheck:ActionWaiting:%v,j:%v", grou.Spec.Actions[j].Status.Waiting, j)
-					//		continue
-					//	}
-					//	for k := range action.Spec.Runtimes {
-					//		ru := &action.Spec.Runtimes[k]
-					//		if !gmo.runtimeDepenSatisfy(j, k, get) {
-					//			logs.Infof("Runtime:%s in group:%s waiting for dependencies", ru.Name, get.Spec.Name)
-					//			//ru.Waiting = true
-					//			grou.Spec.Actions[j].Spec.Runtimes[k].Waiting = true
-					//			//logs.Infof("****************CheckingQueueCheck:RuntimeWaiting:%v,j:%v,k:%v", grou.Spec.Actions[j].Spec.Runtimes[k].Waiting, j, k)
-					//			continue
-					//		}
-					//		go gmo.runtimeManager.Run(get, action, ru, j, k)
-					//		if err != nil {
-					//			logs.Error("Run task err:%v", err)
-					//		}
-					//	}
-					//}
-					//_, err = gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
-					//if err != nil {
-					//	logs.Errorf("Update task error:%v", err)
-					//}
+					logs.Infof("Checking queue start group:%s", get.Spec.Name)
+					//根据group当中的Action开启相应的runtime  group(Spec:Actions)--action（Spec：Runtimes）
+					grou, err := gmo.groupManager.GetGroupByID(get.Status.GroupID)
+					if err != nil {
+						logs.Errorf("Get group by id frmo group_manager err:%v", err)
+					}
+					for j := range get.Spec.Actions {
+						action := &get.Spec.Actions[j]
+						if !gmo.actionDepenSatisfy(j, get) {
+							logs.Infof("Action:%s in group:%s waiting for dependencies", action.Spec.Name, get.Spec.Name)
+							//action.Status.Waiting = true
+							grou.Spec.Actions[j].Status.Waiting = true
+							logs.Infof("****************CheckingQueueCheck:ActionWaiting:%v,j:%v", grou.Spec.Actions[j].Status.Waiting, j)
+							continue
+						}
+						for k := range action.Spec.Runtimes {
+							ru := &action.Spec.Runtimes[k]
+							if !gmo.runtimeDepenSatisfy(j, k, get) {
+								logs.Infof("Runtime:%s in group:%s waiting for dependencies", ru.Name, get.Spec.Name)
+								//ru.Waiting = true
+								grou.Spec.Actions[j].Status.RuntimeStatus[k].Waiting = true
+								logs.Infof("****************CheckingQueueCheck:RuntimeWaiting:%v,j:%v,k:%v", grou.Spec.Actions[j].Status.RuntimeStatus[k].Waiting, j, k)
+								continue
+							}
+							go gmo.runtimeManager.Run(get, action, ru, j, k)
+							if err != nil {
+								logs.Error("Run task err:%v", err)
+							}
+						}
+					}
+					_, err = gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
+					if err != nil {
+						logs.Errorf("Update task error:%v", err)
+					}
 					// ************************************
 				}
 				//// 也上传一份到group_manager当中
@@ -1331,6 +1355,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	//}
 
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
+	rtStatus := &group.Spec.Actions[actionIndex].Status.RuntimeStatus[runtimeIndex]
 	for _, i := range runtime.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
 			//正则匹配选择parents的pahse
@@ -1360,14 +1385,26 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
 			var dependencyFile = i.LeftValue.From
-			envName, err := dependency.CheckEnvironmentSatisfy(dependencyFile)
+
+			if !rtStatus.IsParsed {
+				// runtimeReqPackages := make([]apis.Requirement, 0)
+				runtimeReqPackages, err := gmo.dependencyManager.ParseRequirements(dependencyFile)
+				rtStatus.IsParsed = true
+				if err != nil {
+					logs.Info("parse Runtime Requirements error!")
+					rtStatus.IsParsed = false
+					return false
+				}
+				runtime.Packages = runtimeReqPackages
+			}
+			envName, err := gmo.dependencyManager.CheckEnvironmentSatisfy(runtime.Packages)
 			if !err {
-				logs.Info("dependency do not satisfy,runtime name:%v", runtime.Name)
+				// logs.Info("dependency do not satisfy,runtime name:%v", runtime.Name)
 				//需要使用协程，但是还要防止在monitor监控的时候多次创建
-				if !runtime.DepenPreparing {
+				if !rtStatus.DepenPreparing {
 					logs.Info("installing dependency for runtime name:%v", runtime.Name)
-					runtime.DepenPreparing = true
-					go dependency.SetupEnvironment(dependencyFile, runtime.Name)
+					rtStatus.DepenPreparing = true
+					// go dependency.SetupEnvironment(dependencyFile, runtime.Name)
 				} else {
 					logs.Info("runtime %v is waiting for installing dependency!", runtime.Name)
 				}
