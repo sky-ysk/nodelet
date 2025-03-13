@@ -54,6 +54,8 @@ type TaskExporter struct {
 	//groupSwitcher *_switch.GroupSwitch
 	migrationController *controller.MigrationController
 	nodeMonitor         *controller.NodeMonitor
+	// 当前Taskexporter所部署的节点的Name
+	nodeName string
 
 	updateCh chan types.GroupUpdate
 }
@@ -89,6 +91,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
 	workers := group.NewGroupWorkers(groupManager, taskManager, groupQueues, runtimeManager, groupClient, taskClient)
+	// 当前Taskexporter所在节点的NodeName
+	nodeName := cfg.NodeName
 
 	taskExporter := &TaskExporter{
 		// Monitor配置
@@ -102,8 +106,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupWorkers:        workers,
 		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, eb, recorder),
-		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, eb, recorder),
-		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder),
+		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, eb, recorder, nodeName),
+		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
+		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
 	}
 
@@ -166,7 +171,7 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 				//if err != nil {
 				//	logs.Errorf("get group:%s failed", groupName)
 				//}
-				if gr.Status.Node == "CloudNode1" { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
+				if gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 					if gr.Status.Phase == apis.ReadyToDeploy {
 						groupUpdate := types.GroupUpdate{
 							Group: gr,

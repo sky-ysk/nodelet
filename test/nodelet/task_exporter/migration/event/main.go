@@ -20,10 +20,11 @@ import (
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
-	node_exporter "hit.edu/framework/pkg/nodelet/node"
 )
 
 var scheme = runtime.NewScheme()
+
+const NodeName = "CloudNode1"
 
 // 模拟一个资源对象（如Pod、Task）的引用，因为事件通常需要与具体的资源相关联
 var group = &apis.Group{
@@ -54,9 +55,9 @@ var group = &apis.Group{
 }
 
 var node = &apis.Node{
-	ObjectMeta: meta.ObjectMeta{Name: node_exporter.NodeName, Namespace: "test"},
+	ObjectMeta: meta.ObjectMeta{Name: NodeName, Namespace: "test"},
 	TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "resources/v1"},
-	Spec:       apis.NodeSpec{NodeName: node_exporter.NodeName},
+	Spec:       apis.NodeSpec{NodeName: NodeName},
 }
 
 func main() {

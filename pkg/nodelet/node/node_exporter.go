@@ -18,9 +18,6 @@ import (
 )
 
 // TODO 11.14 node-exporter后续需要实现的功能，数据处理并填入nodestatus字段，通过client-go定期写入api-server中 --完成
-const NodeName = "CloudNode1"   //pve2上需要修改这个NodeName为EdgeNode1
-const clusterCategory = "Cloud" // pve2上需要修改这个参数为Edge
-
 // TODO: 接口格式调整
 type Exporter interface {
 	// TODO: 定义接口
@@ -39,7 +36,8 @@ type NodeExporter struct {
 	staticCacheLock  sync.RWMutex
 	dynamicCacheLock sync.RWMutex
 	nodesClient      core.NodeInterface
-	apiServerURL     string //上传目标的API-server的地址
+	NodeName         string
+	ClusterCategory  string
 }
 
 func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, error) {
@@ -52,12 +50,14 @@ func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, 
 	}
 	// Client-Go配置
 	nodeClient := clientset.Core().Nodes("test")
+	// 配置const常量
 	return &NodeExporter{
-		nodeCollector: nc,
-		staticCache:   make(map[string]collector.Metric),
-		dynamicCache:  make(map[string]collector.Metric),
-		apiServerURL:  cfg.ResourceAccessMethod,
-		nodesClient:   nodeClient,
+		nodeCollector:   nc,
+		staticCache:     make(map[string]collector.Metric),
+		dynamicCache:    make(map[string]collector.Metric),
+		nodesClient:     nodeClient,
+		NodeName:        cfg.NodeName,
+		ClusterCategory: cfg.ClusterCategory,
 	}, nil
 }
 
@@ -70,7 +70,7 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 	}
 	var nodeInfoIsCreated = false
 	for _, d := range list.Items {
-		if d.Name == NodeName {
+		if d.Name == n.NodeName {
 			nodeInfoIsCreated = true
 			break
 		}
@@ -79,15 +79,15 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 		//etcd当中没有本节点的信息，下进行创建node信息
 		node := &apis.Node{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: NodeName,
+				Name: n.NodeName,
 			},
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Node",
 				APIVersion: "resources/v1",
 			},
 			Spec: apis.NodeSpec{
-				NodeName:        NodeName,
-				ClusterCategory: clusterCategory,
+				NodeName:        n.NodeName,
+				ClusterCategory: n.ClusterCategory,
 				Resource:        make(map[string][]apis.Item),
 			},
 			Status: apis.NodeStatus{
@@ -102,10 +102,10 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 	// TODO 执行一个Patch操作，将ClusterCategory属性设置为clusterCategory
 	patchNode, err := json.Marshal(map[string]interface{}{
 		"spec": map[string]interface{}{
-			"clusterCategory": clusterCategory,
+			"clusterCategory": n.ClusterCategory,
 		},
 	})
-	_, err = n.nodesClient.Patch(context.TODO(), NodeName, types.StrategicMergePatchType, patchNode, metav1.PatchOptions{})
+	_, err = n.nodesClient.Patch(context.TODO(), n.NodeName, types.StrategicMergePatchType, patchNode, metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (n *NodeExporter) collectAndUploadData(dataType string) error {
 	}
 
 	// 获取Node结构体指针
-	node, getErr := n.nodesClient.Get(context.TODO(), NodeName, metav1.GetOptions{})
+	node, getErr := n.nodesClient.Get(context.TODO(), n.NodeName, metav1.GetOptions{})
 	if getErr != nil {
 		return fmt.Errorf("Failed to get node: %v", getErr)
 	}

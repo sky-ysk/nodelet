@@ -23,7 +23,6 @@ import (
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
-	"hit.edu/framework/pkg/nodelet/node"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
 )
@@ -54,7 +53,7 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	recorder recorder.EventRecorder
 }
 
-func NewMigrationController(clientSet *clients.ClientSet, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder) *MigrationController {
+func NewMigrationController(clientSet *clients.ClientSet, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, nodeName string) *MigrationController {
 	nowTime := time.Now()
 	//创建资源的List Watcher
 	eventListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "events", "test", fields.Everything())
@@ -93,7 +92,7 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 				logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
 				// 合并时间判断和事件条件判断
 				if event.EventTime.Time.Before(ctrl.startTime) ||
-					event.InvolvedObject.Name != node.NodeName ||
+					event.InvolvedObject.Name != nodeName ||
 					(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
 					return // 跳过历史事件/非本节点事件/非迁移触发事件
 				}

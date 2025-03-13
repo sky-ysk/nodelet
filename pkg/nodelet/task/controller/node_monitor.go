@@ -12,7 +12,6 @@ import (
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
-	"hit.edu/framework/pkg/nodelet/node"
 	"strconv"
 	"sync"
 	"time"
@@ -38,7 +37,7 @@ type NodeMonitor struct {
 	lastEventTime time.Time // 记录节点最后事件时间
 }
 
-func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface, recorder recorder.EventRecorder) *NodeMonitor {
+func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface, recorder recorder.EventRecorder, nodeName string) *NodeMonitor {
 	//创建资源的List Watcher
 	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "test", fields.Everything())
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
@@ -49,7 +48,7 @@ func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface,
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldNode, okOld := oldObj.(*apis.Node)
 				newNode, okNew := newObj.(*apis.Node)
-				if !okOld || !okNew || newNode.Name != node.NodeName { // 只处理本节点的Node的资源不足的触发
+				if !okOld || !okNew || newNode.Name != nodeName { // 只处理本节点的Node的资源不足的触发
 					return
 				}
 				// 状态变化检查：从正常变为超过阈值
@@ -178,7 +177,7 @@ func (nm *NodeMonitor) generateMigrationEvent(n *apis.Node) error {
 		logs.Infof("Node %s is still in the cooling period (last event time: %s)", n.Name, nm.lastEventTime.Format(time.RFC3339))
 		return nil
 	}
-	nm.recorder.Event(n, apis.EventTypeNormal, events.TriggerMigration, fmt.Sprintf("Node Name:\t %s is shortage", n.Name))
+	nm.recorder.Event(n, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", n.Name))
 	logs.Info("send Trigger Migration event=====================")
 	nm.lastEventTime = nowTime
 	return nil
