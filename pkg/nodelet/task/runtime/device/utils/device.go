@@ -91,30 +91,19 @@ func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.De
 // UpdateDeviceStatus 更新DeviceStatus
 func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]*apis.Device, deviceClient core.DeviceInterface) error {
 
-	devices := action.Status.Devices
 	for index, spec := range runtime.Devices {
 		status := action.Status.Devices[index]
 		name := spec.Name
 		logs.Infof("device name is %s\n", name)
-		ds := apis.DeviceStatus{
-			// 更新device的相应字段
-			Phase:      apis.DeviceRunning,
-			InstanceID: taskId,
-			Status:     "running",
-			ActionID:   action.Status.ActionID,
-			Lock:       apis.Lock{Type: status.Lock.Type, IsLocked: true, Ref: status.Lock.Ref},
-			LastTime:   apis.Time{Time: time.Now()},
+		status.Status = "running"
+		status.Phase = apis.DeviceRunning
+		status.InstanceID = taskId
+		status.Lock = apis.Lock{Type: status.Lock.Type, IsLocked: true, Ref: status.Lock.Ref}
+		status.LastTime = apis.Time{Time: time.Now()}
 
-			// 不需要更新的字段直接复制
-			DeviceID:   status.DeviceID,
-			Events:     status.Events,
-			Properties: status.Properties,
-		}
+		action.Status.Devices[index] = status
 
-		// 在etcd中更新数据内容
 		newDevice := &apis.Device{
-			Spec:   deviceMap[name].Spec,
-			Status: ds,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "deviceTest",
 				Namespace: "test",
@@ -126,9 +115,9 @@ func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId s
 				Kind:       "Device",
 				APIVersion: "resources/v1",
 			},
+			Spec:   spec,
+			Status: status,
 		}
-		deviceMap[name] = newDevice
-		action.Status.Devices[index] = ds
 		_, err := deviceClient.Update(context.TODO(), newDevice, metav1.UpdateOptions{})
 		if err != nil {
 			logs.Errorf("update device %s status failed, %s", name, err)
@@ -136,7 +125,7 @@ func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId s
 		}
 		logs.Infof("update device %s's status\n", name)
 	}
-	action.Status.Devices = devices
+
 	return nil
 }
 

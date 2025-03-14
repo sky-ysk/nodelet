@@ -196,12 +196,14 @@ func (gh *GroupHandler) HandleGroupKill(gr *apis.Group) {
 	logs.Infof("Start HandleGroupKill")
 	// 遍历所有的Group,创建Group
 	// 向 GroupWorkers 提交任务组的删除请求-hzy
+
 	gh.groupWorkers.UpdateGroup(&group.UpdateGroupOptions{
 		Group:      gr,
 		StartTime:  start,
 		UpdateType: group.GroupKill,
 	})
-	gh.groupManager.DeleteGroup(gr)
+	//gh.groupManager.DeleteGroup(gr)
+	//gh.groupClient.Delete(context.TODO(), gr.Name, metav1.DeleteOptions{})
 }
 
 // TODO 检查本地资源是否可以启动该Group

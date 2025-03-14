@@ -65,6 +65,7 @@ func (am *Manager) StartupAbility() error {
 		time.Sleep(2000 * time.Millisecond)
 		var state inst.AbilityState
 		logs.Infof("getting ability state\n")
+		logs.Infof("uuid is%v", am.UUid)
 		state, err = inst.GetAbilityState(am.Url, am.UUid)
 		if err != nil {
 			logs.Info("can not get ability state\n")
@@ -106,8 +107,16 @@ func PauseAbility() {
 // TerminateAbility 终止一个能力
 func (am *Manager) TerminateAbility() error {
 
+	// 获取能力的uuid
+	id, err := am.GetUUID()
+	if err != nil {
+		logs.Info("can not get uuid\n")
+		return err
+	}
+	logs.Info("find ability's uuid\n")
+	am.UUid = id
 	// 发送terminate指令
-	_, err := inst.PostLifeCycleRequest(am.UUid, inst.Terminate, am.Url)
+	_, err = inst.PostLifeCycleRequest(am.UUid, inst.Terminate, am.Url)
 	if err != nil {
 		logs.Info("can not post lifecycle request and obtain taskId\n")
 		return err

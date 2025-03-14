@@ -11,6 +11,7 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"net/http"
 	"testing"
 	"time"
@@ -50,6 +51,17 @@ func NewActionAndRuntimeAbility() (*apis.Action, *apis.Runtime) {
 	var url string = "http://127.0.0.1:8123"
 	var abilityName string = "Mock"
 	action := apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "actionTest",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
 		Spec: apis.ActionSpec{
 			Name: "ActionTest",
 		},
@@ -89,7 +101,7 @@ func NewActionAndRuntimeAbility() (*apis.Action, *apis.Runtime) {
 				},
 			},
 		},
-		Outputs: make([]apis.Output, 0),
+		Outputs: apis.Output{},
 	}
 	action.Spec.Runtimes = []apis.Runtime{runtime}
 	return &action, &runtime
@@ -172,7 +184,7 @@ func NewActionAndRuntimeRMF() (*apis.Action, *apis.Runtime) {
 				},
 			},
 		},
-		Outputs: make([]apis.Output, 0),
+		Outputs: apis.Output{},
 		Inputs: []apis.Input{
 			apis.Input{
 				Type:      apis.LocalData,
@@ -269,18 +281,18 @@ func TestRun(t *testing.T) {
 		logs.Errorf("[test] init clientSet failed: %v", err)
 	}
 	deviceClient := clientSet.Core().Devices("test")
-	groupClient := clientSet.Core().Groups("test")
-
+	actionClient := clientSet.Core().Actions("test")
+	action, runtimeForTest := NewActionAndRuntimeAbility()
 	deviceDemo := createDemoDevice()
+	_, err = actionClient.Create(context.TODO(), action, metav1.CreateOptions{})
 	_, err = deviceClient.Create(context.TODO(), deviceDemo, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("%v", err)
 		logs.Errorf("create device demo fail..")
 	}
-
-	dr := NewDeviceRuntime(deviceClient, groupClient)
+	eb := eventbus.NewEventBus()
+	dr := NewDeviceRuntime(deviceClient, actionClient, eb)
 	//action, runtimeForTest := NewActionAndRuntimeRMF()
-	action, runtimeForTest := NewActionAndRuntimeAbility()
 
 	err = dr.Run(&apis.Group{}, action, runtimeForTest, 0, 0)
 	if err != nil {
@@ -349,13 +361,12 @@ func NewActionAndRuntimeForKill() (*apis.Action, *apis.Runtime) {
 				},
 			},
 		},
-		Outputs: []apis.Output{
-			apis.Output{
-				Type:  apis.LocalData,
-				Name:  "taskId",
-				Value: taskId,
-			},
+		Outputs: apis.Output{
+			Type:  apis.LocalData,
+			Name:  "taskId",
+			Value: taskId,
 		},
+
 		Inputs: []apis.Input{
 			apis.Input{
 				Type:      apis.LocalData,
@@ -389,9 +400,10 @@ func TestKill(t *testing.T) {
 	if err != nil {
 		logs.Errorf("[test] init clientSet failed: %v", err)
 	}
-	deviceClient := clientSet.Core().Devices("")
-	groupClient := clientSet.Core().Groups("")
-	dr := NewDeviceRuntime(deviceClient, groupClient)
+	deviceClient := clientSet.Core().Devices("test")
+	actionClient := clientSet.Core().Actions("test")
+	eb := eventbus.NewEventBus()
+	dr := NewDeviceRuntime(deviceClient, actionClient, eb)
 	action, runtimeForTest := NewActionAndRuntimeForKill()
 	err = dr.Kill(&apis.Group{}, action, runtimeForTest)
 	if err != nil {
