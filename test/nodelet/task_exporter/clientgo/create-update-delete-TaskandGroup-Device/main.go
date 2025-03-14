@@ -21,7 +21,7 @@ import (
 // 创建一个Rest Client
 // 验证xxx动词
 // 与API Server通信，并执行基础操作
-// 2个group，2个Action，每个Action1个Runtime， 一共2个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理） 并且group1与group2之间没有依赖关系
+// 1个group，1个Action，每个Action1个Runtime
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
@@ -66,50 +66,81 @@ func main() {
 	groupsClient := clientSet.Core().Groups("test")
 
 	// Task  总共1个Task、1个Group、1个Action、1个runtime
-	task1Name := "InferTask-2" // 第一个Task的Name
-	task1ID := "InferTaskID-2" // 第一个Task的ID
+	task1Name := "Test-Task-Device" // 第一个Task的Name
+	task1ID := "Test-Task-DeviceID" // 第一个Task的ID
 
 	// group
-	group1_1Name := "TrainGroup-3" // 第一个Task下的第一个GroupName
-	group1_1ID := "TrainGroupID-3" // 第一个Task下的第一个GroupID
+	group1_1Name := "Test-Group-Device" // 第一个Task下的第一个GroupName
+	//group1_2Name := "ReasonGroup-2" // 第一个Task下的第二个GroupName
+	group1_1ID := "Test-Group-DeviceID" // 第一个Task下的第一个GroupID
+	//group1_2ID := "GroupID-2"       // 第一个Task下的第二个GroupID
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+	//action1_2_1Name := "Action2-1" // 第一个Task下的第二个Group下的第一个ActionName
 	action1_1_1ID := "ActionID1-1" // 第一个Task下的第一个Group下的第一个ActionID
+	//action1_2_1ID := "ActionID2-1" // 第一个Task下的第二个Group下的第一个ActionID
 
 	// runtime
 	runtime1_1_1_1Name := "Runtime1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	//runtime1_2_1_1Name := "Runtime2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
 
 	runtime1_1_1_1ID := "RuntimeID1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
+	//runtime1_2_1_1ID := "RuntimeID2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
+	//runtime1_2_1_1FineGrainedControl := false
 
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧--改为Name
 	runtime1_1_1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			apis.ConditionFormula{
-				LeftValue: apis.ConditionValue{
-					Type:      apis.ResultsData,
-					Name:      "ProgramDependency",
-					Value:     "0",
-					ValueType: "string",
-					From:      "/home/l1hy/workspace/task_input/requirements1.txt",
-				},
-				RightValue: apis.ConditionValue{
-					Type:      apis.ConstData,
-					Name:      "ProgramDependency",
-					Value:     "1",
-					ValueType: "string",
-					From:      "",
-				},
-				Signal: apis.Equal,
-				Join:   "",
-				Result: false,
-			},
+		Formulas: []apis.ConditionFormula{},
+	}
+	runtime1_1_1_1Input := []apis.Input{
+		apis.Input{
+			Type:      apis.LocalData,
+			Name:      "dest",
+			Value:     "R201",
+			ValueType: "string",
+		},
+		apis.Input{
+			Type:      apis.LocalData,
+			Name:      "orientation",
+			Value:     "-3.12",
+			ValueType: "double",
+		},
+		apis.Input{
+			Type:      apis.LocalData,
+			Name:      "dock",
+			Value:     "true",
+			ValueType: "bool",
 		},
 	}
+
+	//runtime1_2_1_1Condition := apis.Conditions{
+	//	Formulas: []apis.ConditionFormula{
+	//		apis.ConditionFormula{
+	//			LeftValue: apis.ConditionValue{
+	//				Type:      apis.ResultsData,
+	//				Name:      "ProgramDependency",
+	//				Value:     "0",
+	//				ValueType: "string",
+	//				From:      "/home/l1hy/workspace/task_input/requirements.txt",
+	//			},
+	//			RightValue: apis.ConditionValue{
+	//				Type:      apis.ConstData,
+	//				Name:      "ProgramDependency",
+	//				Value:     "1",
+	//				ValueType: "string",
+	//				From:      "",
+	//			},
+	//			Signal: apis.Equal,
+	//			Join:   "",
+	//			Result: false,
+	//		},
+	//	},
+	//}
 
 	g1 := apis.Group{
 		ObjectMeta: metav1.ObjectMeta{Name: group1_1Name, Namespace: ""},
@@ -124,13 +155,27 @@ func main() {
 						Name: action1_1_1Name,
 						Runtimes: []apis.Runtime{
 							apis.Runtime{
-								Name:                     runtime1_1_1_1Name,
-								Type:                     apis.ByCommand,
-								Command:                  []string{"python"},
-								Args:                     []string{"/home/l1hy/YOLO_test/2_yolov8_infer/use_demo.py"},
+								Name: runtime1_1_1_1Name,
+								Type: apis.ByDevice,
+								Devices: []apis.DeviceSpec{
+									apis.DeviceSpec{
+										Name:               "transferRobot",
+										ExpectedProperties: map[string]apis.Property{},
+										AccessMethod: apis.AccessMethod{
+											Type:  apis.AccessByRmf,
+											URL:   "http://192.168.1.225:8000",
+											Group: "tinyRobot",
+											Alias: "transferRobot",
+										},
+										Desc: apis.DeviceDesc{
+											Label: []string{"Move"},
+										},
+									},
+								},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_1_1_1Condition,
-								Image:                    "/home/l1hy/YOLO_test/2_yolov8_infer/use_demo.py",
+								Image:                    "Move",
+								Inputs:                   runtime1_1_1_1Input,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 							},
@@ -154,13 +199,26 @@ func main() {
 			ActionStatus: []apis.ActionStatus{
 				apis.ActionStatus{
 					ActionID: action1_1_1ID,
+					Devices: []apis.DeviceStatus{
+						apis.DeviceStatus{
+							Lock: apis.Lock{
+								IsLocked: true,
+								Ref:      1,
+							},
+							Status:     "idle",
+							Phase:      apis.DeviceIdle,
+							InstanceID: "",
+							ActionID:   "",
+							DeviceID:   "transferRobot",
+						},
+					},
 					RuntimeStatus: []apis.RuntimeStatus{
 						apis.RuntimeStatus{
 							RuntimeID: runtime1_1_1_1ID,
 							Phase:     apis.Unknown,
 						},
 					},
-					Phase: apis.Unknown,
+					Phase: apis.ReadyToDeploy,
 				},
 			},
 			Belongs: apis.IDRef{TaskID: task1ID},
@@ -168,6 +226,64 @@ func main() {
 		},
 	}
 	group1 := &g1
+
+	//g2 := apis.Group{
+	//	ObjectMeta: metav1.ObjectMeta{Name: group1_2Name, Namespace: ""},
+	//	TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
+	//	Spec: apis.GroupSpec{
+	//		Name:    group1_2Name,
+	//		Parents: []string{},
+	//		Actions: []apis.Action{
+	//			apis.Action{
+	//				ObjectMeta: metav1.ObjectMeta{Name: action1_2_1Name},
+	//				Spec: apis.ActionSpec{
+	//					Name: action1_2_1Name,
+	//					Runtimes: []apis.Runtime{
+	//						apis.Runtime{
+	//							Name:                     runtime1_2_1_1Name,
+	//							Type:                     apis.ByCommand,
+	//							Command:                  []string{"python"},
+	//							Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"},
+	//							Parents:                  make([]string, 0), // 加入Parents
+	//							Conditions:               runtime1_2_1_1Condition,
+	//							Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/predict.py",
+	//							EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+	//							EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
+	//						},
+	//					},
+	//				},
+	//				Status: apis.ActionStatus{
+	//					ActionID: action1_2_1ID,
+	//					Phase:    apis.Unknown,
+	//					RuntimeStatus: []apis.RuntimeStatus{
+	//						apis.RuntimeStatus{
+	//							RuntimeID: runtime1_2_1_1ID,
+	//							Phase:     apis.Unknown,
+	//						},
+	//					},
+	//				},
+	//			},
+	//		},
+	//	},
+	//	Status: apis.GroupStatus{
+	//		GroupID: group1_2ID,
+	//		ActionStatus: []apis.ActionStatus{
+	//			apis.ActionStatus{
+	//				ActionID: action1_2_1ID,
+	//				RuntimeStatus: []apis.RuntimeStatus{
+	//					apis.RuntimeStatus{
+	//						RuntimeID: runtime1_2_1_1ID,
+	//						Phase:     apis.Unknown,
+	//					},
+	//				},
+	//				Phase: apis.Unknown,
+	//			},
+	//		},
+	//		Belongs: apis.IDRef{TaskID: task1ID},
+	//		Phase:   apis.Unknown,
+	//	},
+	//}
+	//group2 := &g2
 
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{

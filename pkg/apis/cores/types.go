@@ -314,6 +314,7 @@ const (
 	ReadyToDeploy Phase = "ReadyToDeploy"
 	DeployCheck   Phase = "DeployCheck"
 	ReadyToKill   Phase = "ReadyToKill"
+	Killed        Phase = "Killed"
 	// 迁移相关状态
 	CopyPending Phase = "CopyPending" //副本就绪状态-B
 	Restoring   Phase = "Restoring"   //副本恢复任务状态-B

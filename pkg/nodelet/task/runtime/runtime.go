@@ -12,7 +12,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/runtime/binary"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
 	"hit.edu/framework/pkg/nodelet/task/runtime/container"
-	"hit.edu/framework/pkg/nodelet/task/runtime/device"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
 	"hit.edu/framework/pkg/nodelet/task/runtime/net"
 	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
@@ -20,7 +19,7 @@ import (
 
 type Runtime interface {
 	Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
-	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error
+	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
 	CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error)
 	StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string
 	RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
@@ -78,7 +77,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			runtime = device.NewDeviceRuntime(rm.deviceClient, rm.groupClient)
+			//runtime = device.NewDeviceRuntime(rm.deviceClient, rm.groupClient)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()
@@ -95,12 +94,12 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 func (rm *RuntimeManager) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	return rm.GetRuntime(runtime.Type).Run(group, action, runtime, actionIndex, runtimeIndex)
 }
-func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	if rm == nil {
 		logs.Error("runtime manager is nil")
 		return fmt.Errorf("RuntimeManager is not initialized")
 	}
-	return rm.GetRuntime(runtime.Type).Kill(group, action, runtime)
+	return rm.GetRuntime(runtime.Type).Kill(group, action, runtime, actionIndex, runtimeIndex)
 }
 func (rm *RuntimeManager) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 	//TODO

@@ -142,7 +142,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *ap
 	return nil
 }
 
-func (dr *DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (dr *DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime,actionIndex,runtimeIndex int) error {
 	// 检查action的运行状态，只有处在running状态时才能取消
 	if action.Status.Phase == apis.Running {
 		// 一个runtime可能涉及到多个或一个 device 获取全部的device

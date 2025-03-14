@@ -76,7 +76,7 @@ func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis
 }
 
 // 关闭任务
-func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("wasm runtime kill task:%s", group.Name)
 	_, err := wr.wasmClient.Destory()
 	if err != nil {

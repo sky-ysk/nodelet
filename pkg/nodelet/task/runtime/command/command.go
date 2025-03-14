@@ -35,7 +35,7 @@ func NewCommandRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecor
 		stopSignals:    make(map[string]chan struct{}),
 	}
 }
-func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("command runtime kill task:%s", group.Name)
 	// 如果 stopSignals[runtime.Name] 已经被关闭，直接返回
 	if cr.stopSignals[runtime.Name] == nil {
@@ -43,7 +43,7 @@ func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *
 		return nil
 	}
 	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
-	err := cr.stopCMD(runtime.Name)
+	err := cr.stopCMD(group.Name, actionIndex, runtimeIndex, runtime)
 	if err != nil {
 		return err
 	}
@@ -151,22 +151,24 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 
 // 停止某个CMD对应的进程
 // TODO：保存现场
-func (cr *CommandRuntime) stopCMD(taskName string) error {
-	CMD, exists := cr.processManager.GetProcess(taskName)
+func (cr *CommandRuntime) stopCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime) error {
+	nowTime := apis.Time{time.Now()}
+	CMD, exists := cr.processManager.GetProcess(runtime.Name)
 	if !exists {
-		logs.Errorf("Failed to find task:\t ", taskName)
-		return fmt.Errorf("task '%s' not found", taskName)
+		logs.Errorf("Failed to find task:\t ", runtime.Name)
+		return fmt.Errorf("task '%s' not found", runtime.Name)
 	}
 	// 终止任务的进程
 	if CMD.Process != nil {
 		if err := CMD.Process.Kill(); err != nil {
-			logs.Errorf("Failed to kill task:\t ", taskName)
-			return fmt.Errorf("failed to stop task '%s': %w", taskName, err)
+			logs.Errorf("Failed to kill task:\t ", runtime.Name)
+			return fmt.Errorf("failed to stop task '%s': %w", runtime.Name, err)
 		}
-		fmt.Printf("Task '%s' with PID %d has been stopped.\n", taskName, CMD.Process.Pid)
+		cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Killed, nowTime, nowTime)
+		fmt.Printf("Task '%s' with PID %d has been stopped.\n", runtime.Name, CMD.Process.Pid)
 	} else {
-		logs.Infof("Task '%s' is already stopped.", taskName)
-		return fmt.Errorf("task '%s' process is nil", taskName)
+		logs.Infof("Task '%s' is already stopped.", runtime.Name)
+		return fmt.Errorf("task '%s' process is nil", runtime.Name)
 	}
 	//cr.processManager.RemoveProcess(taskName)  //这条语句不用了，直接在monitorCMD方法当中会执行
 	return nil

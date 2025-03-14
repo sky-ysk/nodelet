@@ -401,10 +401,10 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						//logs.Info("!!!!!!!!!!!!!!!!!!!!!!!!!")
 						data := mc.runtimeManager.StoreData(group, action, runtime, i, j) // 获取group下的正在执行的runtime的关键数据
 						//err := mc.runtimeManager.StopRuntime(group, action, runtime, i, j)
-						err := mc.runtimeManager.Kill(group, action, runtime) // 关闭runtime进程
-						if err != nil {
-							logs.Errorf("Stop runtime error:%v", err)
-						}
+						//err := mc.runtimeManager.Kill(group, action, runtime, i, j) // 关闭runtime进程,挪到外面
+						//if err != nil {
+						//	logs.Errorf("Stop runtime error:%v", err)
+						//}
 						// 将获取到的任务关键装填数据写入到本域或者跨域的etcd上的副本group当中
 
 						patchGroup, err := json.Marshal([]map[string]interface{}{
@@ -428,7 +428,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						time.Sleep(1 * time.Second)
 
 					}
-					err = mc.runtimeManager.Kill(group, action, runtime) //最后都需要将runtime进程关闭
+					err = mc.runtimeManager.Kill(group, action, runtime, i, j) //最后都需要将runtime进程关闭
 					if err != nil {
 						logs.Errorf("Stop group error:%v", err)
 					}
