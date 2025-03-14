@@ -71,7 +71,7 @@ func TestScore(t *testing.T) {
 	plugin := &ScorePluginDBY{
 		pluginClient: NewScorePluginClient(),
 	}
-	plugin.SendGroups(ctx, &task)
+	//plugin.SendGroups(ctx, &task)
 	plugin.Score(ctx, &task.Spec.Groups[0], "EdgeNode2")
 }
 

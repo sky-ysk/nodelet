@@ -30,6 +30,7 @@ type Quantity struct {
 	// 单位
 	format string
 }
+//now ????
 
 // TODO: 独立配置
 // +k8s:deepcopy-gen=false
