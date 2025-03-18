@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
-	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"regexp"
 	"strconv"
 	"strings"
@@ -49,11 +48,10 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	// 当前Controller的启动时间
 	startTime time.Time
 	// event事件发布器
-	eventBus *eventbus.EventBus
 	recorder recorder.EventRecorder
 }
 
-func NewMigrationController(clientSet *clients.ClientSet, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, nodeName string) *MigrationController {
+func NewMigrationController(clientSet *clients.ClientSet, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string) *MigrationController {
 	nowTime := time.Now()
 	//创建资源的List Watcher
 	eventListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "events", "test", fields.Everything())
@@ -66,7 +64,6 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 		runtimeManager: runtimeManager,
 		groupQueues:    groupQueues,
 		startTime:      nowTime,
-		eventBus:       eventbus,
 		recorder:       recorder,
 	}
 	eventOptions := cache.InformerOptions{

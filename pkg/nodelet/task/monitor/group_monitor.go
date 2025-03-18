@@ -1458,16 +1458,22 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, actionIn
 				}
 				if grStatus.Phase == apis.Migrated { // 还得去查对应副本任务的状态，如果状态为Running（大概率是这个状态）或者是DeployChek（说明迁移过去的group依赖不满足，暂时还不能执行），那么otherGroupCompleted参数也是false
 					// 为了适配迁移，目前还是处理同域的迁移,这里怎么根据源任务找到副本任务，还是一个遗留的问题
-					copyGroup, err := gmo.groupClient.Get(context.TODO(), "Reason-Copy", metav1.GetOptions{})
-					if err != nil {
-						logs.Errorf("Get copy group err:%v", err)
-					}
-					if copyGroup.Status.Phase == apis.DeployCheck || copyGroup.Status.Phase == apis.Running {
+					//copyGroup, err := gmo.groupClient.Get(context.TODO(), "Reason-Copy", metav1.GetOptions{})
+					//if err != nil {
+					//	logs.Errorf("Get copy group err:%v", err)
+					//}
+					if grStatus.CopyStatus == "" { // 说明该Group的副本group正在运行还没结束
 						otherGroupCompleted = false
 					}
-					if copyGroup.Status.Phase == apis.Failed {
-						finalTaskIsFailed = true
+					if grStatus.CopyStatus == "Failed" {
+						finalTaskIsFailed = false
 					}
+					//if copyGroup.Status.Phase == apis.DeployCheck || copyGroup.Status.Phase == apis.Running {
+					//	otherGroupCompleted = false
+					//}
+					//if copyGroup.Status.Phase == apis.Failed {
+					//	finalTaskIsFailed = true
+					//}
 				}
 				continue
 			}
@@ -1477,7 +1483,7 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, actionIn
 			if finalTaskIsFailed { // 如果说group当中有Failed状态，那么最终Task也是得被标记为Failed
 				task.Status.Phase = apis.Failed
 			} else {
-				task.Status.Phase = apis.Running //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，如果为Succeed，则Task也为Succeed，反正为Failed
+				task.Status.Phase = apis.Running //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，因为当前的Group正在迁移，只有当前group的副本任务完成了，那么到时候在Migrated队列当中，就会修改Task的状态的，这里设置为Running，合理
 			}
 			task.Status.FinishAt = nowTime
 			task.Status.LastTime = nowTime

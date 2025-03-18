@@ -8,15 +8,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func CreatePod(clientset *kubernetes.Clientset, pod *corev1.Pod) error {
+func CreatePod(clientset *kubernetes.Clientset, pod *corev1.Pod) {
 
 	_, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 	if err != nil {
 		logs.Error(err, "fail to start pod")
-		return err
 	}
 	//EM.GetInstance().AddPod(podInfo.Namespace, podInfo.PodName)
 	logs.Info("Pod started successfully", "Pod:", pod.Name)
 	//return CreatePod(groupName, runtime)
-	return nil
 }

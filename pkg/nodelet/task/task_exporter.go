@@ -72,8 +72,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	eventClient := clientset.Core().Events("test")
 	actionClient := clientset.Core().Actions("test")
 	deviceClient := clientset.Core().Devices("test")
-	//事件配置
+	//事件总线--只使用与Runtime运行时传输状态的
 	eb := eventbus.NewEventBus()
+	// 全局事件组件的配置
 	eventBroadcaster := recorder.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(context.Background(), &core.EventSinkImpl{Interface: eventClient})
 	scheme := scheme.NewScheme()
@@ -106,8 +107,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupLister:         lister,
 		groupWorkers:        workers,
 		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, eb, recorder, eventClient),
-		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, eb, recorder, nodeName),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient),
+		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),

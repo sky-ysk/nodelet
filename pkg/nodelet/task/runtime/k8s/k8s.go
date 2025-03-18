@@ -3,9 +3,16 @@ package k8s
 import (
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/config"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/entity"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/rbac"
 	"k8s.io/client-go/kubernetes"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -13,6 +20,12 @@ import (
 type K8sRuntime struct {
 	clientset     *kubernetes.Clientset
 	metricsClient *metricsclientset.Clientset //go get k8s.io/metrics/pkg/client/clientset/versioned 从 Metrics Server 获取的实时监控数据
+	rabcManager   *rbac.RBACManager
+	//client         *grpc_client.RuntimeClient
+	connectionPool *pool.ConnectionPool
+	// 全局事件发送的组件
+	recorder recorder.EventRecorder
+	monitor  *monitor.Monitor
 }
 
 // 资源占用量
@@ -27,71 +40,127 @@ type PodStatus struct {
 	Resource_usage ResourceUsage
 }
 
-func NewK8sRuntime() *K8sRuntime {
+func NewK8sRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecorder, pool *pool.ConnectionPool) *K8sRuntime {
 	clientset := config.LoadConfig()
 	metricsClient := config.LoadMcConfig()
 	if metricsClient == nil || metricsClient == nil {
 		logs.Error("clientset or metricsClient is nil---")
 		return nil
 	}
-	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient}
+	rbacManager := rbac.NewRBACManager(clientset)
+	k8sMonitor := monitor.NewMonitor(clientset, eventBus)
+	k8sMonitor.Start()
+	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, rabcManager: rbacManager, connectionPool: pool, recorder: recorder, monitor: k8sMonitor}
 }
 func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("k8s runtime kill task: %s", group.Name)
 	return nil
 }
 
-// 目前我把pod、Deployment、Service的name和namespace当成放在action的meta.ObjectMeta当中
+// 粗粒度管理的启动方法
 func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	logs.Infof("k8s runtime for task: %s", group.Name)
-	//先执行共同的操作
-	//再各自调用代码
+	//先执行共同的操作,再各自调用代码
+	k.monitor.SetState(group, action, runtime, actionIndex, runtimeIndex)
 	switch runtime.Type {
 	case apis.ByDeployment:
-		//deployment := entity.NewDeployment(group.Name, group.Namespace, group.Spec.Labels, runtime.Replicas, runtime.Name, runtime.Image, runtime.Selector, action.Spec.EnableFineGrainedControl)
 		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
 		logs.Info("-----------------k8s deployment created----------------------------")
-		return CreateDeployment(k.clientset, deployment1)
-		//fmt.Printf("%v\n", deployment.DeploymentName)
-		//return nil
+		CreateDeployment(k.clientset, deployment1) // 创建Deployment
+		return nil
 	case apis.ByService:
-		//service := entity.NewService(group.Name, group.Namespace, runtime.Selector, runtime.Ports, runtime.ServiceType)
 		service1 := entity.GetServiceFromParam1(&runtime.Service)
 		logs.Info("-----------------k8s Service created----------------------------")
-		return CreateService(k.clientset, service1)
-		//fmt.Printf("%v\n", service.ServiceName)
-		//return nil
+		CreateService(k.clientset, service1)
+		return nil
 	case apis.ByPod:
-		//podInfo := entity.NewPodFromParam(group.Name, group.Namespace, runtime.Name, runtime.Image, action.Spec.EnableFineGrainedControl)
 		podInfo1 := entity.GetPodFromParam1(&runtime.Pod)
 		logs.Info("-----------------k8s Pod created----------------------------")
-		return CreatePod(k.clientset, podInfo1)
-		//fmt.Printf("%v\n", podInfo.PodName)
-		//return nil
+		CreatePod(k.clientset, podInfo1)
+		return nil
 	default:
 		err := fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 		logs.Error(err, "Runtime type not supported")
 		return err
 	}
 }
+
 func (k *K8sRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 
 	return "", nil
 }
 func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
-
-	return ""
+	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
+	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
+	// rpc调用store()
+	_, err := client.RunAppStore()
+	if err != nil {
+		logs.Error(err, "Store application status failed")
+	}
+	k.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
+	return "aass"
 }
 func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	return nil
+	keyStatus := ""
+	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
+	_, error := client.RunAppRestore(keyStatus)
+	if error != nil {
+		logs.Errorf("Restore application status failed")
+	}
+	k.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
+	return error
 }
 func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-
-	return nil
+	k.monitor.SetState(group, action, runtime, actionIndex, runtimeIndex)
+	switch runtime.Type {
+	case apis.ByDeployment:
+		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
+		logs.Info("-----------------k8s deployment created----------------------------")
+		CreateDeployment(k.clientset, deployment1) // 创建Deployment
+	case apis.ByPod:
+		podInfo1 := entity.GetPodFromParam1(&runtime.Pod)
+		logs.Info("-----------------k8s Pod created----------------------------")
+		CreatePod(k.clientset, podInfo1)
+	default:
+		err := fmt.Errorf("unsupported runtime type: %s", runtime.Type)
+		logs.Error(err, "Runtime type not supported")
+	}
+	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
+	_, error := client.RunAppStart()
+	if error != nil {
+		logs.Errorf("Start application failed")
+	}
+	return error
 }
 func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	return nil
+	switch runtime.Type {
+	case apis.ByDeployment:
+		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
+		logs.Info("-----------------k8s deployment created----------------------------")
+		CreateDeployment(k.clientset, deployment1) // 创建Deployment
+	case apis.ByPod:
+		podInfo1 := entity.GetPodFromParam1(&runtime.Pod)
+		logs.Info("-----------------k8s Pod created----------------------------")
+		CreatePod(k.clientset, podInfo1)
+	default:
+		err := fmt.Errorf("unsupported runtime type: %s", runtime.Type)
+		logs.Error(err, "Runtime type not supported")
+	}
+	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
+	_, error := client.RunAppInit()
+	if error != nil {
+		logs.Errorf("Init application failed")
+	}
+	return error
 }
 func (k *K8sRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	return nil
+	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
+	_, error := client.RunAppStop()
+	if error != nil {
+		logs.Errorf("Stop application failed")
+	}
+	return error
+}
+func (k *K8sRuntime) getClient(service, port string) *grpc_client.RuntimeClient {
+	return grpc_client.NewK8sRuntimeClient(service, port, k.connectionPool)
 }

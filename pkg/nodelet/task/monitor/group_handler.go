@@ -13,7 +13,6 @@ import (
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
-	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/types"
@@ -31,7 +30,6 @@ type GroupHandler struct {
 	// client -go
 	groupClient core.GroupInterface
 	//
-	eventBus *eventbus.EventBus
 	// eventRecorder 记录事件
 	recorder    recorder.EventRecorder
 	eventClient core.EventInterface
@@ -39,13 +37,12 @@ type GroupHandler struct {
 	stopCh chan struct{}
 }
 
-func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, eb *eventbus.EventBus, recorder recorder.EventRecorder, eventClient core.EventInterface) *GroupHandler {
+func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, recorder recorder.EventRecorder, eventClient core.EventInterface) *GroupHandler {
 	return &GroupHandler{
 		groupManager: groupManager,
 		groupWorkers: groupWorkers,
 		groupQueues:  groupQueues,
 		groupClient:  groupClient,
-		eventBus:     eb,
 		recorder:     recorder,
 		eventClient:  eventClient,
 		stopCh:       make(chan struct{}),

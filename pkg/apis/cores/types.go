@@ -315,6 +315,7 @@ const (
 	DeployCheck   Phase = "DeployCheck"
 	ReadyToKill   Phase = "ReadyToKill"
 	Killed        Phase = "Killed"
+	Terminated    Phase = "Terminated"
 	// 迁移相关状态
 	CopyPending Phase = "CopyPending" //副本就绪状态-B
 	Restoring   Phase = "Restoring"   //副本恢复任务状态-B
@@ -1122,8 +1123,9 @@ type Runtime struct {
 	//添加-hzy
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
 	//Waiting                      bool     `json:"waiting" yaml:"waiting"`
-	EnableFineGrainedControl     bool   `json:"enable_control,omitempty" yaml:"enable_control"`
-	EnableFineGrainedControlPort string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
+	EnableFineGrainedControl        bool   `json:"enable_control,omitempty" yaml:"enable_control"`
+	EnableFineGrainedControlService string `json:"enable_control_service,omitempty" yaml:"enable_control_service"`
+	EnableFineGrainedControlPort    string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
 	//-hzy暂时添加
 	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
 	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器

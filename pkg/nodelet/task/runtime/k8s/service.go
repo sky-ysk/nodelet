@@ -9,7 +9,7 @@ import (
 )
 
 // CreateService 将 Service 资源提交到 Kubernetes
-func CreateService(clientset *kubernetes.Clientset, service *corev1.Service) error {
+func CreateService(clientset *kubernetes.Clientset, service *corev1.Service) {
 	svc, err := clientset.CoreV1().Services(service.Namespace).Create(
 		context.TODO(),
 		service,
@@ -17,8 +17,6 @@ func CreateService(clientset *kubernetes.Clientset, service *corev1.Service) err
 	)
 	if err != nil {
 		logs.Error(err, "Failed to create service")
-		return err
 	}
 	logs.Info("Service created successfully", "Service:", svc.Name)
-	return nil
 }

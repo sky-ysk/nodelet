@@ -8,13 +8,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func CreateDeployment(clientset *kubernetes.Clientset, deployment *appsv1.Deployment) error {
+func CreateDeployment(clientset *kubernetes.Clientset, deployment *appsv1.Deployment) {
 
 	_, err := clientset.AppsV1().Deployments(deployment.Namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 	if err != nil {
 		logs.Error("k8s create deployment template fail")
-		return err
 	}
 	logs.Info("Deployment created successfully", "Deployment:", deployment.Name)
-	return nil
 }

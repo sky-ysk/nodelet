@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 	"sync"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -36,6 +37,7 @@ type RuntimeManager struct {
 	actionClient core.ActionInterface
 	groupClient  core.GroupInterface
 	mu           sync.Mutex
+	pool         *pool.ConnectionPool
 }
 
 func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, deviceClient core.DeviceInterface, actionClient core.ActionInterface, groupClient core.GroupInterface) *RuntimeManager {
@@ -46,6 +48,7 @@ func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, 
 		deviceClient: deviceClient,
 		actionClient: actionClient,
 		groupClient:  groupClient,
+		pool:         pool.NewConnectionPool(),
 	}
 }
 
@@ -64,14 +67,14 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			break
 		case apis.ByPod, apis.ByDeployment, apis.ByService: //k8s-Pod\k8s-deployment\k8s-service
 			//TODO
-			runtime = k8s.NewK8sRuntime()
+			runtime = k8s.NewK8sRuntime(rm.eventbus, rm.recorder, rm.pool)
 			break
 		case apis.ByWasm:
 			//TODO
 			runtime = wasm.NewWasmRuntime()
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.eventbus, rm.recorder)
+			runtime = command.NewCommandRuntime(rm.eventbus, rm.recorder, rm.pool)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime()

@@ -3,53 +3,80 @@ package grpc_client
 import (
 	"context"
 	"errors"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
+	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"hit.edu/framework/pkg/component-base/logs"
 	pb "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/proto"
 )
 
 type RuntimeClient struct {
-	RuntimeID       string
 	ServerIPAndPort string
-	conn            *grpc.ClientConn
+	connPool        *pool.ConnectionPool
 	grpcClient      pb.RuntimeIntentClient
+	mu              sync.Mutex // 保护连接状态
 }
 
-func NewRuntimeClient(port string, runtimeID string) *RuntimeClient {
-	client := &RuntimeClient{ServerIPAndPort: "127.0.0.1:" + port, RuntimeID: runtimeID}
-	for {
-		success := client.checkConnection()
-		if success {
-			break
-		}
-		logs.Debug("try to connect grpc server")
-		time.Sleep(time.Millisecond * 500)
-	}
+func NewRuntimeClient(port string, pool *pool.ConnectionPool) *RuntimeClient {
+	client := &RuntimeClient{ServerIPAndPort: "127.0.0.1:" + port, connPool: pool}
+	//for {
+	//	success := client.checkConnection()
+	//	if success {
+	//		break
+	//	}
+	//	logs.Debug("try to connect grpc server")
+	//	time.Sleep(time.Millisecond * 500)
+	//}
+	return client
+}
+func NewK8sRuntimeClient(service, port string, pool *pool.ConnectionPool) *RuntimeClient {
+	client := &RuntimeClient{ServerIPAndPort: service + port, connPool: pool}
+	//for {
+	//	success := client.checkConnection()
+	//	if success {
+	//		break
+	//	}
+	//	logs.Debug("try to connect grpc server")
+	//	time.Sleep(time.Millisecond * 500)
+	//}
 	return client
 }
 
-func (c *RuntimeClient) checkConnection() bool {
-	connState := true
-	if c.conn == nil {
-		conn, err := grpc.Dial(c.ServerIPAndPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			logs.Debugf("failed to connect to grpc server:%v", err)
-			connState = false
-		} else {
-			c.conn = conn
-			c.grpcClient = pb.NewRuntimeIntentClient(conn)
-		}
+//	func (c *RuntimeClient) checkConnection() bool {
+//		connState := true
+//		if c.conn == nil {
+//			conn, err := grpc.Dial(c.ServerIPAndPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+//			if err != nil {
+//				logs.Debugf("failed to connect to grpc server:%v", err)
+//				connState = false
+//			} else {
+//				c.conn = conn
+//				c.grpcClient = pb.NewRuntimeIntentClient(conn)
+//			}
+//		}
+//		return connState
+//	}
+func (c *RuntimeClient) checkConnection1() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// 从连接池获取或创建连接
+	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 20, 100*time.Millisecond)
+	if err != nil {
+		logs.Debug("failed to connect to grpc server:%v", err)
+		return false
 	}
-	return connState
+	if c.grpcClient == nil {
+		c.grpcClient = pb.NewRuntimeIntentClient(conn)
+	}
+	return true
 }
 
 // rpc远程调用init
 func (c *RuntimeClient) RunAppInit() (result *pb.Result, err error) {
 	logs.Infof("RunAppInit()")
-	if !c.checkConnection() {
+	if !c.checkConnection1() {
 		return &pb.Result{}, errors.New("runAppInit: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -67,7 +94,7 @@ func (c *RuntimeClient) RunAppInit() (result *pb.Result, err error) {
 // rpc远程调用服务端启动应用
 func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 	logs.Infof("RunAppStart()")
-	if !c.checkConnection() {
+	if !c.checkConnection1() {
 		return &pb.Result{}, errors.New("runAppStart: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -85,7 +112,7 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 // rpc远程调用服务端保存应用状态
 func (c *RuntimeClient) RunAppStore() (result *pb.Result, err error) {
 	logs.Infof("RunAppStore()")
-	if !c.checkConnection() {
+	if !c.checkConnection1() {
 		return &pb.Result{}, errors.New("runAppStore: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -102,7 +129,7 @@ func (c *RuntimeClient) RunAppStore() (result *pb.Result, err error) {
 // rpc远程调用服务端保存应用状态
 func (c *RuntimeClient) RunAppRestore(keyStatus string) (result *pb.Result, err error) {
 	logs.Infof("RunAppRestore()")
-	if !c.checkConnection() {
+	if !c.checkConnection1() {
 		return &pb.Result{}, errors.New("runAppRestore: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -123,7 +150,7 @@ func (c *RuntimeClient) RunAppRestore(keyStatus string) (result *pb.Result, err 
 // rpc远程调用服务端启动应用
 func (c *RuntimeClient) RunAppStop() (result *pb.Result, err error) {
 	logs.Infof("StopAppStart()")
-	if !c.checkConnection() {
+	if !c.checkConnection1() {
 		return &pb.Result{}, errors.New("runAppStop: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -138,6 +165,6 @@ func (c *RuntimeClient) RunAppStop() (result *pb.Result, err error) {
 	return result, nil
 }
 
-func (c *RuntimeClient) close() {
-	defer c.conn.Close()
-}
+//func (c *RuntimeClient) close() {
+//	defer c.conn.Close()
+//}
