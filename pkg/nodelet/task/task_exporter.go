@@ -2,10 +2,12 @@ package task
 
 import (
 	"context"
-	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/nodelet/task/controller"
 	"sync"
 	"time"
+
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/nodelet/task/controller"
+	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 
 	scheme "hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -89,6 +91,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
 	runtimeManager := runtime.NewRuntimeManager(eb, recorder, deviceClient, actionClient, groupClient)
+	//dependencyManager配置
+	depenManager := dependency.NewDependencyManager()
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -106,7 +110,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		taskManager:         taskManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, depenManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient),
 		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
@@ -141,8 +145,8 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 		te.ReceiveGroupInfo(ctx) // 持续从etcd当中读取group
 	}()
 
-	go te.migrationController.Run(2, ctx.Done())
-	go te.nodeMonitor.Run(2, ctx.Done())
+	// go te.migrationController.Run(2, ctx.Done())
+	// go te.nodeMonitor.Run(2, ctx.Done())
 	<-ctx.Done()
 	wg.Wait()
 	return ctx.Err()

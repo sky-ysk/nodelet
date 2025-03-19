@@ -82,8 +82,8 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	// TODO: 不同系统平台下的CMD，根据运行平台选择对应路径下的解释器等
 	//判断程序所在Linux还是Windows环境，决定python等解释器路径
 	// 创建命令
+	envVars := runtime.EnvVar
 	if cmd == "python" {
-		envVars := runtime.EnvVar
 		for _, value := range envVars {
 			if value.Name == "" {
 				continue
@@ -125,14 +125,16 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	// return nil
 	if err := CMD.Wait(); err != nil {
 		// 检查 stopSignal 通道是否被关闭，判断进程是否是外部停止的
-		if _, ok := <-cr.stopSignals[runtime.Name]; !ok {
-			// 通道已关闭，说明是stopCMD终止的  两种情况：一种是用户想停止任务，一种是需要迁移，从而停止任务
-			logs.Info("command killed externally by stopCMD")
-			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
-		} else {
-			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
-			// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
-			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		select {
+			case <- cr.stopSignals[runtime.Name]: // 如果接收到停止信号
+				logs.Info("Goroutine 收到停止信号，退出...")
+				logs.Info("command killed externally by stopCMD")
+				cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+			default:
+				logs.Info("Goroutine 正在运行...")
+				logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
+				// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
+				cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		}
 		cr.processManager.RemoveProcess(runtime.Name)
 		delete(cr.stopSignals, runtime.Name)

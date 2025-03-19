@@ -1137,8 +1137,9 @@ type Runtime struct {
 	Service     Service           `json:"service,omitempty" yaml:"service"`
 	Deployment  Deployment        `json:"deployment,omitempty" yaml:"deployment"`
 	//ysk添加
-	Dependency     string `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的名称，后续改成多种依赖
-	DepenPreparing bool   `json:"DepenPreparing" yaml:"DepenPreparing"`   //是否正在创建虚拟环境，防止多次创建
+	Dependency     string `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
+	Packages		   []Requirement `json:"package,omitempty" yaml:"package"`	//解析之后的包
+	
 
 }
 
@@ -1249,6 +1250,8 @@ type RuntimeStatus struct {
 	Starting   bool   `json:"starting,omitempty" yaml:"starting"`
 	KeyStatus  string `json:"key_status" yaml:"key_status"`
 	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
+	IsParsed		bool `json:"isparsed" yaml:"isparsed"`		//是否已经被解析过
+	DepenPreparing bool   `json:"DepenPreparing" yaml:"DepenPreparing"`   //是否正在创建虚拟环境，防止多次创建
 }
 
 // 任务的输出结果
@@ -1653,3 +1656,8 @@ type RollingUpdateDeployment struct {
 type VM struct{}
 
 // 后续需要可以扩展
+//依赖解析成包的结构体
+type Requirement struct {
+	Name    string
+	Version string
+}
