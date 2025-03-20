@@ -237,7 +237,7 @@ func (m *Broadcaster) ActionOrDrop(action EventType, obj runtime.Object) (bool, 
 
 	select {
 	case m.incoming <- Event{action, obj}:
-		logs.Info("broadcaster--ActionOrDrop")
+		logs.Trace("broadcaster--ActionOrDrop")
 		return true, nil
 	default:
 		return false, nil

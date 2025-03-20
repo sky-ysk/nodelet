@@ -57,6 +57,9 @@ var _ Runtime = &RuntimeManager{}
 func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	if rt == apis.ByService || rt == apis.ByPod || rt == apis.ByDeployment {
+		rt = apis.ByK8s
+	}
 
 	runtime, exists := rm.runtimes[rt]
 	if !exists {
@@ -65,7 +68,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			//TODO
 			runtime = binary.NewBinaryRuntime()
 			break
-		case apis.ByPod, apis.ByDeployment, apis.ByService: //k8s-Pod\k8s-deployment\k8s-service
+		case apis.ByK8s: //k8s-Pod\k8s-deployment\k8s-service
 			//TODO
 			runtime = k8s.NewK8sRuntime(rm.eventbus, rm.recorder, rm.pool)
 			break

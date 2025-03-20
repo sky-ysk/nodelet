@@ -336,10 +336,16 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 			//actionStatus.RuntimeStatus[j].LastTime = times // 隐藏
 		}
 		// 说明Action是第一次启动，这里添加一个操作，将action上传到etcd当中----修改一下改成patch
-		action := &groupSpec.Actions[i]
-		_, err := gw.actionClient.Create(context.TODO(), action, metav1.CreateOptions{})
+		newAction := &apis.Action{
+			ObjectMeta: metav1.ObjectMeta{Name: groupSpec.Actions[i].Name, Namespace: ""},
+			TypeMeta:   metav1.TypeMeta{Kind: "Action", APIVersion: "resources/v1"},
+			Spec:       groupSpec.Actions[i].Spec,
+			Status:     groupSpec.Actions[i].Status,
+		}
+		//action := &groupSpec.Actions[i]
+		_, err := gw.actionClient.Create(context.TODO(), newAction, metav1.CreateOptions{})
 		if err != nil {
-			logs.Errorf("Create action failed,err:%v", err)
+			logs.Errorf("Create action failed,err-1:%v", err)
 		}
 	}
 	//GroupStatus当中的ActionStatus，需要修改（ActionStatus的Phase以及RuntimeStatus的Phase）
@@ -381,7 +387,7 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 				logs.Infof("==========================Task的Status.Phase:%v", task1.Status.Phase)
 				if task1.Status.Phase == apis.ReadyToDeploy || task1.Status.Phase == apis.Unknown { // TODO 这里为啥要判断是否DeployCheck--因为group被分配到不同的节点上，遍历到group的时候，都需要修改上层Task的信息的话，是重叠的，没必要  这里逻辑错误，如果第一个group遍历到完并且运行了，这里的Task的状态就行Running
 					task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
-					logs.Info("=================Task的状态被修改为DeployCheck")
+					logs.Trace("=================Task的状态被修改为DeployCheck")
 					//task1.Status.LastTime = times //隐藏
 				}
 				for i := range task1.Spec.Groups { //同时得更新TaskSpec下的Group以及TaskStatus下的GroupStatus为当前的group信息

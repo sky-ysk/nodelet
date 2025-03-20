@@ -86,7 +86,7 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 				if !ok {
 					return
 				}
-				logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
+				//logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
 				// 合并时间判断和事件条件判断
 				if event.EventTime.Time.Before(ctrl.startTime) ||
 					event.InvolvedObject.Name != nodeName ||
@@ -126,7 +126,7 @@ func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 		logs.Errorf("Timed out waiting for caches to sync")
 		return
 	}
-	logs.Info("缓存同步完成=======================")
+	logs.Trace("缓存同步完成=======================")
 	wg.Add(workers)
 	for i := 0; i < workers; i++ {
 		go func() {

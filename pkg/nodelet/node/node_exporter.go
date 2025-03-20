@@ -43,7 +43,7 @@ type NodeExporter struct {
 func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, error) {
 	// TODO：参数配置
 	// 创建NodeCollector 读取配置信息
-	logs.Info("Init NodeExporter module")
+	logs.Info("Init nodeExporter module")
 	nc, err := collector.NewNodeCollector(cfg.EnabledCollectors)
 	if err != nil {
 		return nil, err

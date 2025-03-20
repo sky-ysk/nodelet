@@ -40,7 +40,7 @@ func eventListener(ctx context.Context, client core.EventInterface) {
 	logs.Infof("event watching")
 
 	// 筛选出 事件触发原因是 ReadyToMigrate 的事件
-	fieldSelector := fmt.Sprintf("reason=%v", events.TriggerMigration)
+	fieldSelector := fmt.Sprintf("reason=%v", events.TriggerLocalMigration)
 	// 设置长超时时间
 	var timeout int64 = 3600
 	watchOptions := meta.ListOptions{
@@ -67,11 +67,11 @@ func eventListener(ctx context.Context, client core.EventInterface) {
 			switch event.Type {
 			case watch.Added:
 				// logs.Infof("资源被添加: ", event.Object)
-				event, ok := event.Object.(*apis.Event)
+				_, ok := event.Object.(*apis.Event)
 				if !ok {
 					return
 				}
-				logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
+				//logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
 			case watch.Modified:
 				logs.Infof("资源被修改: ", event.Object)
 			case watch.Deleted:

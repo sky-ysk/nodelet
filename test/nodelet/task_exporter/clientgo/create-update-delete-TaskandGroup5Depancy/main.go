@@ -78,6 +78,10 @@ func main() {
 	group1_2ID := "GroupID-2"                 // 第一个Task下的第二个GroupID
 	group1_3ID := "GroupID-3"                 // 第一个Task下的第三个GroupID
 
+	group1_1Replicas := []int32{0, 0}
+	group1_2Replicas := []int32{0, 0}
+	group1_3Replicas := []int32{0, 0}
+
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
 	action1_2_1Name := "Action2-1" // 第一个Task下的第二个Group下的第一个ActionName
@@ -360,8 +364,9 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{Name: group1_1Name, Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
-			Name:    group1_1Name,
-			Parents: make([]string, 0),
+			Replicas: group1_1Replicas,
+			Name:     group1_1Name,
+			Parents:  make([]string, 0),
 			Actions: []apis.Action{
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_1_1Name},
@@ -437,6 +442,7 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{Name: group1_2Name, Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
+			Replicas:   group1_2Replicas,
 			Name:       group1_2Name,
 			Parents:    []string{group1_1Name}, // 加入Parents
 			Conditions: group1_2Condition,
@@ -515,6 +521,7 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{Name: group1_3Name, Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
+			Replicas:   group1_3Replicas,
 			Name:       group1_3Name,
 			Parents:    []string{group1_1Name, group1_2Name}, // 加入Parents ID
 			Conditions: group1_3Condition,

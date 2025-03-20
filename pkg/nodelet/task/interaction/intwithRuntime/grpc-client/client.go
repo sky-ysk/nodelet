@@ -93,8 +93,9 @@ func (c *RuntimeClient) RunAppInit() (result *pb.Result, err error) {
 
 // rpc远程调用服务端启动应用
 func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
-	logs.Infof("RunAppStart()")
+	logs.Infof("RunAppStart()==========")
 	if !c.checkConnection1() {
+		logs.Error("grpc connection fail===================")
 		return &pb.Result{}, errors.New("runAppStart: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())

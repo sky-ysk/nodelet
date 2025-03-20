@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	createorLabel = "app.kubernetes.io/created-by"
-	systemName    = "deploy-system"
+	CreateorLabel = "app.kubernetes.io/created-by"
+	SystemName    = "deploy-system"
 )
 
 type ResourceState struct {
@@ -31,7 +31,7 @@ type ResourceState struct {
 }
 
 //	type DeploymentMonitor struct {
-//		clientset *kubernetes.Clientset
+//	   clientset *kubernetes.Clientset
 //	}
 type Monitor struct {
 	clientset kubernetes.Interface
@@ -51,7 +51,7 @@ func NewMonitor(clientset kubernetes.Interface, eventBus *eventbus.EventBus) *Mo
 }
 func (m *Monitor) Start() {
 	labelSelector := labels.SelectorFromSet(labels.Set{
-		createorLabel: systemName,
+		CreateorLabel: SystemName,
 	})
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		m.clientset, 10*time.Minute, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
@@ -74,6 +74,7 @@ func (m *Monitor) Start() {
 	go serviceInformer.Run(m.stopChan)
 
 }
+
 func (m *Monitor) newEventHandler(resType apis.RuntimeType) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -88,6 +89,7 @@ func (m *Monitor) newEventHandler(resType apis.RuntimeType) cache.ResourceEventH
 	}
 }
 func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj, newObj interface{}) {
+	logs.Infof("resType：%v======================触发k8s的Event事件处理：%v", resType, eventType)
 	//var state ResourceState
 	nowTime := apis.Time{time.Now()}
 	switch resType {
@@ -115,6 +117,7 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 			logs.Errorf("Deployment %s/%s not found in infoMap", currentDeploy.Namespace, currentDeploy.Name)
 			return
 		}
+
 		rs := value.(ResourceState)
 		// 状态判定逻辑
 		currentStatus := getDeploymentStatus(currentDeploy)
@@ -134,15 +137,11 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		}
 		if shouldNotify {
 			phase := convertDeploymentStatus(currentDeploy, currentStatus, eventType)
-			m.notifyRuntimeStartPhase(
-				rs.group.Name,
-				rs.actionIndex,
-				rs.runtimeIndex,
-				"",
-				phase,
-				nowTime,
-				nowTime,
-			)
+			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+			} else if phase == apis.Running {
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+			}
 			logs.Infof("[Deployment]=============发送状态：%v 给事件处理模块===========", phase)
 		}
 	case apis.ByPod:
@@ -197,16 +196,11 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 			if eventType == "DELETED" {
 				phase = apis.Killed // 或根据实际状态处理
 			}
-
-			m.notifyRuntimeStartPhase(
-				rs.group.Name,
-				rs.actionIndex,
-				rs.runtimeIndex,
-				"",
-				phase,
-				nowTime,
-				nowTime,
-			)
+			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+			} else {
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+			}
 			logs.Infof("[Pod]=============发送状态：%v 给事件处理模块===========", phase)
 		}
 	case apis.ByService:
@@ -224,19 +218,20 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 			currentService = oldObj.(*corev1.Service)
 			previousService = nil
 		}
-
 		if currentService == nil {
 			return
 		}
-
 		// 获取关联状态
 		value, ok := m.infoMap.Load(stateKey(apis.ByService, currentService.Namespace, currentService.Name))
 		if !ok {
 			logs.Errorf("Service %s/%s not found in infoMap", currentService.Namespace, currentService.Name)
 			return
 		}
-		rs := value.(ResourceState)
 
+		rs := value.(ResourceState)
+		if eventType == "ADDED" {
+			m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", apis.Running, nowTime, nowTime)
+		}
 		// 状态判定逻辑
 		currentStatus := getServiceStatus(currentService)
 		previousStatus := ""
@@ -257,15 +252,11 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 
 		if shouldNotify {
 			phase := convertServiceStatus(currentService, currentStatus, eventType)
-			m.notifyRuntimeStartPhase(
-				rs.group.Name,
-				rs.actionIndex,
-				rs.runtimeIndex,
-				"",
-				phase,
-				nowTime,
-				nowTime,
-			)
+			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+			} else {
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+			}
 			logs.Infof("[Service]=============发送状态：%v 给事件处理模块===========", phase)
 		}
 	}
@@ -302,11 +293,20 @@ func (m *Monitor) SetState(group *apis.Group, action *apis.Action, runtime *apis
 	}
 	switch runtime.Type {
 	case apis.ByDeployment:
-		m.infoMap.Store(stateKey(apis.ByDeployment, runtime.Deployment.Namespace, runtime.Deployment.Name), state)
+		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByDeployment, runtime.Deployment.Namespace, runtime.Deployment.Name), state)
+		if loaded {
+			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByDeployment, runtime.Deployment.Namespace, runtime.Deployment.Name))
+		}
 	case apis.ByPod:
-		m.infoMap.Store(stateKey(apis.ByPod, runtime.Pod.Namespace, runtime.Pod.Name), state)
+		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByPod, runtime.Pod.Namespace, runtime.Pod.Name), state)
+		if loaded {
+			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByPod, runtime.Pod.Namespace, runtime.Pod.Name))
+		}
 	case apis.ByService:
-		m.infoMap.Store(stateKey(apis.ByService, runtime.Service.Namespace, runtime.Service.Name), state)
+		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByService, runtime.Service.Namespace, runtime.Service.Name), state)
+		if loaded {
+			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByService, runtime.Service.Namespace, runtime.Service.Name))
+		}
 	}
 }
 
@@ -469,39 +469,39 @@ func isServiceTimeout(svc *corev1.Service) bool {
 
 //
 //func (dm *DeploymentMonitor) WatchDeploymentStatus(namespace, name string) (<-chan string, error) {
-//	fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
-//	watcher, err := dm.clientset.AppsV1().Deployments(namespace).Watch(
-//		context.TODO(),
-//		metav1.ListOptions{
-//			FieldSelector: fieldSelector,
-//		},
-//	)
-//	if err != nil {
-//		return nil, err
-//	}
+//  fieldSelector := fields.OneTermEqualSelector("metadata.name", name).String()
+//  watcher, err := dm.clientset.AppsV1().Deployments(namespace).Watch(
+//     context.TODO(),
+//     metav1.ListOptions{
+//        FieldSelector: fieldSelector,
+//     },
+//  )
+//  if err != nil {
+//     return nil, err
+//  }
 //
-//	statusChan := make(chan string)
-//	go func() {
-//		defer close(statusChan)
-//		for event := range watcher.ResultChan() {
-//			deploy, ok := event.Object.(*appsv1.Deployment)
-//			if !ok {
-//				continue
-//			}
+//  statusChan := make(chan string)
+//  go func() {
+//     defer close(statusChan)
+//     for event := range watcher.ResultChan() {
+//        deploy, ok := event.Object.(*appsv1.Deployment)
+//        if !ok {
+//           continue
+//        }
 //
-//			status := "Pending"
-//			for _, cond := range deploy.Status.Conditions {
-//				if cond.Type == appsv1.DeploymentAvailable {
-//					if cond.Status == corev1.ConditionTrue {
-//						status = "Available"
-//					} else {
-//						status = "Unavailable"
-//					}
-//				}
-//			}
-//			statusChan <- fmt.Sprintf("[%s/%s] Status: %s", namespace, name, status)
-//		}
-//	}()
+//        status := "Pending"
+//        for _, cond := range deploy.Status.Conditions {
+//           if cond.Type == appsv1.DeploymentAvailable {
+//              if cond.Status == corev1.ConditionTrue {
+//                 status = "Available"
+//              } else {
+//                 status = "Unavailable"
+//              }
+//           }
+//        }
+//        statusChan <- fmt.Sprintf("[%s/%s] Status: %s", namespace, name, status)
+//     }
+//  }()
 //
-//	return statusChan, nil
+//  return statusChan, nil
 //}

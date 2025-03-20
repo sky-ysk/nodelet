@@ -3,6 +3,7 @@ package entity
 import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,10 +43,10 @@ import (
 func GetDeploymentFromParam1(customDeployment *apis.Deployment) *appsv1.Deployment {
 	spec := convertDeploymentSpec(&customDeployment.Spec)
 	labels := customDeployment.Labels
-	if labels != nil {
+	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels["app.kubernetes.io/create-by"] = "deploy-system"
+	labels[monitor.CreateorLabel] = monitor.SystemName
 	deployment := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: customDeployment.APIVersion,

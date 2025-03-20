@@ -2,6 +2,7 @@ package entity
 
 import (
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -47,10 +48,10 @@ import (
 
 func GetServiceFromParam1(customService *apis.Service) *corev1.Service {
 	labels := customService.Labels
-	if labels != nil {
+	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels["app.kubernetes.io/create-by"] = "deploy-system"
+	labels[monitor.CreateorLabel] = monitor.SystemName
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       customService.Kind,

@@ -97,6 +97,10 @@ func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface,
 }
 
 func checkNodeThreshold(node *apis.Node) bool {
+	// 防御性判空：节点对象及关键路径
+	if node == nil || node.Status.Usage == nil {
+		return false
+	}
 	cpuAveUtil := getFloatValue(node.Status.Usage["cpu"][0].Values["AveUtil"])
 	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
 	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
