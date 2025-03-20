@@ -27,7 +27,7 @@ func PublishArmAngleInst(params map[string][]float64, baseUrl string) error {
 		logs.Errorf("JSON 序列化错误: %v\n", err)
 		return err
 	}
-
+	logs.Infof("the json data is %s", string(jsonData))
 	// 创建 POST 请求
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {

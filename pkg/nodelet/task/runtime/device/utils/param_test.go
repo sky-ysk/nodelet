@@ -7,14 +7,14 @@ import (
 )
 
 func TestConstructParam(t *testing.T) {
-	logs.Infof("[Test] testing ConstructParam....\n")
+	logs.Infof("[Test] testing ConstructParamRMF....\n")
 	devices, runtime := NewRuntimeAndDevice()
-	err := ConstructParam(devices, runtime)
+	err := ConstructParamRMF(devices, runtime)
 	if err != nil {
-		logs.Errorf("[Test] ConstructParam err: %v\n", err)
+		logs.Errorf("[Test] ConstructParamRMF err: %v\n", err)
 	}
 
-	logs.Infof("[Test] ConstructParam successful\n")
+	logs.Infof("[Test] ConstructParamRMF successful\n")
 	logs.Info("[Test] print device's expected properties\n")
 	for name, device := range devices {
 		logs.Infof("[Test] device name: %s\n", name)

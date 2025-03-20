@@ -79,7 +79,11 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 	for name, device := range devices {
 		var taskId string
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
-
+			err = utils.ConstructParamAbility(devices, runtime)
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] construct param failed\n", action.Spec.Name, runtime.Name)
+				return err
+			}
 			output, err := ability.PublishAbilityInst(runtime.Image, device, "")
 
 			if err != nil {
@@ -96,13 +100,13 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf {
 
 			// 构造任务的请求参数
-			logs.Infof("Action[%s] Runtime[%s] ConstructParam start\n", action.Spec.Name, runtime.Name)
-			err = utils.ConstructParam(devices, runtime)
+			logs.Infof("Action[%s] Runtime[%s] ConstructParamRMF start\n", action.Spec.Name, runtime.Name)
+			err = utils.ConstructParamRMF(devices, runtime)
 			if err != nil {
 				logs.Errorf("Action[%s] Runtime[%s] construct param failed\n", action.Spec.Name, runtime.Name)
 				return err
 			}
-			logs.Infof("Action[%s] Runtime[%s] ConstructParam is successful\n", action.Spec.Name, runtime.Name)
+			logs.Infof("Action[%s] Runtime[%s] ConstructParamRMF is successful\n", action.Spec.Name, runtime.Name)
 
 			logs.Infof("device %s execute %s task\n", name, runtime.Image)
 
