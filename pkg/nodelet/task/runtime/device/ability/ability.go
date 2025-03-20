@@ -2,147 +2,78 @@ package ability
 
 import (
 	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/inst"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/lib"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
+	"strings"
 	"time"
 )
 
-type Manager struct {
-	State  inst.AbilityState // 能力状态
-	UUid   string
-	TaskId string // 能力对应的taskId
-	Url    string // 能力访问的rl
-	Name   string // 能力名字
-}
+func PublishAbilityInst(Inst string, device *apis.Device, operation string) (apis.Output, error) {
+	// 能力操作的适配分为两种
+	parts := strings.Split(Inst, "_")
+	if parts[0] == "manage" { // 以manage开头的是 拉起 暂停 终止能力等操作
+		abilityManager := manager.NewAbilityManager(device.Spec.AccessMethod.URL, parts[1])
 
-type Ability interface {
-	StartupAbility() error
-	PauseAbility()
-	TerminateAbility() error
-}
-
-func NewAbilityManager(url string, name string) *Manager {
-	return &Manager{
-		Url:  url,
-		Name: name,
-	}
-}
-func (am *Manager) GetUUID() (string, error) {
-	// 首先获取所有的ability信息
-	instances, err := inst.GetAbilityInstances(am.Url)
-	if err != nil {
-		return "", err
-	}
-	// 通过AbilityName找到对应的uuid
-	id, err := inst.FindIdByAbilityName(am.Name, instances)
-	am.UUid = id
-	if err != nil {
-		logs.Info("can not find the id by name\n")
-		return "", err
-	}
-	logs.Info("find the id by name\n")
-	return id, nil
-}
-
-// StartupAbility 启动一个能力
-func (am *Manager) StartupAbility() error {
-	// 获取能力的uuid
-	id, err := am.GetUUID()
-	if err != nil {
-		logs.Info("can not get uuid\n")
-		return err
-	}
-	logs.Info("find ability's uuid\n")
-	// 获取能力的taskId
-	taskId, err := inst.PostLifeCycleRequest(id, inst.Start, am.Url)
-	if err != nil {
-		logs.Info("can not post lifecycle request and obtain taskId\n")
-		return err
-	}
-	am.TaskId = taskId
-	fmt.Println("taskId is ", taskId)
-	for {
-		time.Sleep(2000 * time.Millisecond)
-		var state inst.AbilityState
-		logs.Infof("getting ability state\n")
-		logs.Infof("uuid is%v", am.UUid)
-		state, err = inst.GetAbilityState(am.Url, am.UUid)
-		if err != nil {
-			logs.Info("can not get ability state\n")
-			return err
-		}
-		switch state {
-		case inst.Standby: // 进入standby状态说明启动成功，可以connect了
-			am.State = state
-			logs.Info("the ability state is standby, publish connect command...\n")
-			taskId, err = inst.PostLifeCycleRequest(id, inst.Connect, am.Url)
+		if operation == "terminate" {
+			err := abilityManager.TerminateAbility()
 			if err != nil {
-				logs.Info("can not post lifecycle request and obtain taskId\n")
-				return err
+				logs.Errorf("terminate ability %v failed", parts[1])
+				return apis.Output{}, err
 			}
-			logs.Info("successfully post lifecycle request and obtain taskId\n")
-
-		case inst.Running: // 进入running状态说明程序正在运行了
-			logs.Info("the ability state is running, startup ability successfully\n")
-			am.State = state
-			return nil
-		case inst.Error: // 进入error状态说明程序进入错误
-			logs.Info("the ability state is error, startup ability fail\n")
-			am.State = state
-			return fmt.Errorf("ability is in error state")
-		default:
-			logs.Infof("the ability state is %v", state)
-			am.State = state
-
+			logs.Infof("ability%s is terminated......", abilityManager.Name)
+			return apis.Output{}, err
 		}
-	}
 
-}
-
-// PauseAbility 暂停一个能力
-func PauseAbility() {
-
-}
-
-// TerminateAbility 终止一个能力
-func (am *Manager) TerminateAbility() error {
-
-	// 获取能力的uuid
-	id, err := am.GetUUID()
-	if err != nil {
-		logs.Info("can not get uuid\n")
-		return err
-	}
-	logs.Info("find ability's uuid\n")
-	am.UUid = id
-	// 发送terminate指令
-	_, err = inst.PostLifeCycleRequest(am.UUid, inst.Terminate, am.Url)
-	if err != nil {
-		logs.Info("can not post lifecycle request and obtain taskId\n")
-		return err
-	}
-
-	for {
-		time.Sleep(200 * time.Millisecond)
-		var state inst.AbilityState
-		logs.Infof("getting ability state\n")
-		state, err = inst.GetAbilityState(am.Url, am.UUid)
+		err := abilityManager.StartupAbility()
 		if err != nil {
-			return err
+			logs.Errorf("start ability frame fail...")
+			return apis.Output{}, err
 		}
-		logs.Info("successfully get ability state\n")
-		switch state {
-		case inst.Terminating:
-			logs.Info("the ability state is terminating,waiting....\n")
-			am.State = state
-		case inst.Inactive:
-			logs.Info("the ability state is inactive, terminate successfully\n")
-			am.State = state
-			return nil
-		case inst.Terminated:
-			logs.Info("the ability state is terminated, terminate successfully\n")
-			am.State = state
-			return nil
+		logs.Info("start AbilityFramework successfully")
+		// 单独开一个协程来监控运行结果
+		go monitorDeviceAbility(abilityManager)
+		return apis.Output{
+			Value:     abilityManager.TaskId,
+			Name:      "task_id",
+			ValueType: "string",
+			Type:      apis.ResultsData,
+		}, nil
+
+	} else if parts[0] == "service" { // 以service开头的是每一次业务逻辑
+		output, err := lib.SendServiceRequest(parts[1], device)
+		if err != nil {
+			return apis.Output{}, err
 		}
+		return output, nil
 	}
+	logs.Errorf("inst is invalid")
+	return apis.Output{}, fmt.Errorf("inst is invalid")
+}
+
+func monitorDeviceAbility(am *manager.ManagerOfAbility) {
+	logs.Infof("monitoring the AbilityFrameWork status....")
+	go func() {
+		for {
+			hb, err := manager.GetAbilityHeartBeat(am.Url)
+			if err != nil {
+				logs.Errorf("get heartbeats fail")
+			}
+			logs.Infof("[AbilityFrameWork Monitor]ability: %v  status:%v", am.Name, hb[0].State)
+			time.Sleep(time.Millisecond * 1500)
+		}
+	}()
+	logs.Infof("monitoring the mock ability status....")
+	go func() {
+		for {
+			as, err := manager.GetAbilityExeStatus(am.UUid, am.Url)
+			if err != nil {
+				logs.Errorf("get mock status fail")
+			}
+			logs.Infof("[AbilityExe Monitor]ability: %v status %v", am.Name, as)
+			time.Sleep(time.Millisecond * 1500)
+		}
+	}()
+
 }

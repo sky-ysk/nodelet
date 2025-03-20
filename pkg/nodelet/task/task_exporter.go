@@ -97,20 +97,19 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 
 	taskExporter := &TaskExporter{
 		// Monitor配置
-		nodesClient:         nodeClient,
-		tasksClient:         taskClient,
-		gropsClient:         groupClient,
-		eventBroadcaster:    eventBroadcaster,
-		groupManager:        groupManager,
-		taskManager:         taskManager,
-		groupLister:         lister,
-		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, eb, recorder),
-		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, eb, recorder, nodeName),
-		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
-		nodeName:            nodeName,
-		updateCh:            make(chan types.GroupUpdate),
+		nodesClient:      nodeClient,
+		tasksClient:      taskClient,
+		gropsClient:      groupClient,
+		eventBroadcaster: eventBroadcaster,
+		groupManager:     groupManager,
+		taskManager:      taskManager,
+		groupLister:      lister,
+		groupWorkers:     workers,
+		groupMonitor:     monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient),
+		groupHandler:     monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, eb, recorder, eventClient), migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, eb, recorder, nodeName),
+		nodeMonitor: controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
+		nodeName:    nodeName,
+		updateCh:    make(chan types.GroupUpdate),
 	}
 
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
@@ -173,6 +172,7 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 				//	logs.Errorf("get group:%s failed", groupName)
 				//}
 				if gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
+					//logs.Infof("phase is %v", gr.Status.Phase)
 					if gr.Status.Phase == apis.ReadyToDeploy {
 						groupUpdate := types.GroupUpdate{
 							Group: gr,
@@ -180,6 +180,7 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 						}
 						te.updateCh <- groupUpdate
 					} else if gr.Status.Phase == apis.ReadyToKill {
+						logs.Infof("kill 1...")
 						groupUpdate := types.GroupUpdate{
 							Group: gr,
 							Op:    types.KILL,

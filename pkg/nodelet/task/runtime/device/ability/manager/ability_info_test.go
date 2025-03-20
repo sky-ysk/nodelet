@@ -1,4 +1,4 @@
-package inst
+package manager
 
 import (
 	"encoding/json"

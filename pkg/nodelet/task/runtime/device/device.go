@@ -3,16 +3,21 @@ package device
 import (
 	"context"
 	"fmt"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability"
-	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/inst"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/rmf"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/utils"
+	"net/http"
 	"time"
 )
 
@@ -34,6 +39,10 @@ func NewDeviceRuntime(deviceClient core.DeviceInterface, actionClient core.Actio
 
 func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 
+	clientset, _ := InitClient()
+	groupClient := clientset.Core().Groups("test")
+	group.Status.Phase = apis.Running
+	groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
 	// 首先获取action
 	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
 	if err != nil {
@@ -70,29 +79,20 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 	for name, device := range devices {
 		var taskId string
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
-			abilityManager := ability.NewAbilityManager(device.Spec.AccessMethod.URL, runtime.Image)
-			err = abilityManager.StartupAbility()
-			if err != nil {
-				logs.Errorf("start ability frame fail...")
-				return err
-			}
-			logs.Info("start AbilityFramework successfully")
+
+			output, err := ability.PublishAbilityInst(runtime.Image, device, "")
+
 			if err != nil {
 				logs.Errorf("Action[%s] Runtime[%s] startup Ability failed\n", action.Spec.Name, runtime.Name)
 				// processId 字段保留
 				dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 				return err
 			}
-			output := apis.Output{
-				Value:     abilityManager.TaskId,
-				Name:      "task_id",
-				ValueType: "string",
-				Type:      apis.ResultsData,
-			}
+
 			runtime.Outputs = output
 			action.Spec.Runtimes[runtimeIndex] = *runtime
 			action.Status.Phase = apis.Running
-			go dr.monitorDeviceAbility(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device, abilityManager)
+			//go dr.monitorDeviceAbility(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device, abilityManager)
 		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf {
 
 			// 构造任务的请求参数
@@ -157,11 +157,14 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 	//logs.Infof("Action[%s] Runtime[%s] update scene status is finished\n", action.Spec.Name, runtime.Name)
 	//
 	//// etcd更改
+
+	group.Spec.Actions[0].Status.RuntimeStatus[0].Phase = apis.Running
+	groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
 	return nil
 }
 
-func (dr *DeviceRuntime) Kill(group *apis.Group, a *apis.Action, runtime *apis.Runtime) error {
-	// 首先获取action
+func (dr *DeviceRuntime) Kill(group *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error { // 首先获取action
+	logs.Infof("this is a test for kill")
 	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("can not get action from etcd!")
@@ -180,13 +183,31 @@ func (dr *DeviceRuntime) Kill(group *apis.Group, a *apis.Action, runtime *apis.R
 			// device的taskId存储在output中，同时取出
 			output := runtime.Outputs
 			if device.Spec.AccessMethod.Type == apis.AccessByAbility {
-				abilityManager := ability.NewAbilityManager(device.Spec.AccessMethod.URL, runtime.Image)
-				err = abilityManager.TerminateAbility()
+				_, err = ability.PublishAbilityInst(runtime.Image, &device, "terminate")
 				if err != nil {
 					logs.Errorf("Action[%s] Runtime[%s] terminate Ability failed\n", action.Spec.Name, runtime.Name)
 					return err
 				}
-				logs.Infof("ability%s is terminated......", abilityManager.Name)
+
+				nowTime := apis.Time{Time: time.Now()}
+				dr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Killed, nowTime, nowTime)
+				action.Status.Phase = apis.Killed
+				group.Spec.Actions[actionIndex] = *action
+				group.Status.Phase = apis.Killed
+
+				_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
+				// 对group进行更新
+
+				clientset, err := InitClient()
+				if err != nil {
+					logs.Errorf("error")
+				}
+				groupClient := clientset.Core().Groups("test")
+				_, err = groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
+				if err != nil {
+					logs.Errorf("update group fail")
+				}
+				logs.Infof("..")
 			} else if device.Spec.AccessMethod.Type == apis.AccessByRmf {
 				// 发布指令
 				_, err = rmf.PublishCancelTaskInstruction(device, output.Value)
@@ -310,31 +331,6 @@ func (dr *DeviceRuntime) monitorDeviceRMF(action *apis.Action, groupName string,
 
 }
 
-func (dr *DeviceRuntime) monitorDeviceAbility(action *apis.Action, groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, taskId string, device *apis.Device, am *ability.Manager) {
-	logs.Infof("monitoring the AbilityFrameWork status....")
-	go func() {
-		for {
-			hb, err := inst.GetAbilityHeartBeat(am.Url)
-			if err != nil {
-				logs.Errorf("get heartbeats fail")
-			}
-			logs.Infof("[AbilityFrameWork Monitor]ability: %v  status:%v", am.Name, hb[0].State)
-			time.Sleep(time.Millisecond * 1500)
-		}
-	}()
-	logs.Infof("monitoring the mock ability status....")
-	go func() {
-		for {
-			as, err := inst.GetAbilityExeStatus(am.UUid, am.Url)
-			if err != nil {
-				logs.Errorf("get mock status fail")
-			}
-			logs.Infof("[AbilityExe Monitor]ability: %v status %v", am.Name, as)
-			time.Sleep(time.Millisecond * 1500)
-		}
-	}()
-
-}
 func (dr *DeviceRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
 	//TODO implement me
 	panic("implement me")
@@ -358,4 +354,35 @@ func (dr *DeviceRuntime) InitRuntime(group *apis.Group, action *apis.Action, run
 func (dr *DeviceRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	//TODO implement me
 	panic("implement me")
+}
+
+func InitClient() (*clients.ClientSet, error) {
+	//初始化ClientSet客户端
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 10 * time.Second,
+	}
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
+	}
+	return clientSet, nil
 }

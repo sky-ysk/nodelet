@@ -123,6 +123,7 @@ func (g *groupWorkers) groupWorkerLoop(groupUpdates <-chan *UpdateGroupOptions) 
 		case GroupDelete:
 			g.deleteGroup(update.Group)
 		case GroupKill:
+			logs.Infof("kill 2...")
 			g.killGroup(update.Group)
 		default:
 			logs.Error("Unhandled default case")
@@ -284,15 +285,17 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 	if g.runtimeManager == nil {
 		logs.Error("RuntimeManager is nil")
 	}
+
 	for i := range group.Spec.Actions {
+		logs.Infof("action %v", group.Spec.Actions)
 		action := &group.Spec.Actions[i]
 		for j := range action.Spec.Runtimes {
 			ru := &action.Spec.Runtimes[j]
-			if action.Status.RuntimeStatus[j].Phase == apis.Successed {
+			if action.Status.RuntimeStatus[j].Phase == apis.Successed || action.Status.RuntimeStatus[j].Phase == apis.DeployCheck || action.Status.RuntimeStatus[j].Phase == apis.Killed {
 				// runtime已经执行完成，不用再kill了
 				continue
 			}
-			err := g.runtimeManager.Kill(group, action, ru)
+			err := g.runtimeManager.Kill(group, action, ru, i, j)
 			if err != nil {
 				logs.Errorf("Kill task err:%v", err)
 			}
@@ -338,7 +341,7 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 		// 说明Action是第一次启动，这里添加一个操作，将action上传到etcd当中----修改一下改成patch
 		action := &groupSpec.Actions[i]
 		//action.Status = groupStatus.ActionStatus[i]
-
+		
 		_, err := gw.actionClient.Create(context.TODO(), action, metav1.CreateOptions{})
 		if err != nil {
 			logs.Errorf("Create action failed,err:%v", err)

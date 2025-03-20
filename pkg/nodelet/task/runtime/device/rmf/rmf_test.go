@@ -11,7 +11,7 @@ import (
 // move指令的测试
 func TestRmfPublishMoveInst(t *testing.T) {
 	// 构造示例
-	logs.Infof("start to test move inst......\n")
+	logs.Infof("start to test move manager......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -44,7 +44,7 @@ func TestRmfPublishMoveInst(t *testing.T) {
 
 // grab指令的测试
 func TestRmfPublishArmInst(t *testing.T) {
-	logs.Infof("start to test grab inst......\n")
+	logs.Infof("start to test grab manager......\n")
 	// 构造示例
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
@@ -81,7 +81,7 @@ func TestRmfPublishArmInst(t *testing.T) {
 }
 
 func TestRmfPublishLiftInst(t *testing.T) {
-	logs.Infof("start to test lift inst......\n")
+	logs.Infof("start to test lift manager......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -111,7 +111,7 @@ func TestRmfPublishLiftInst(t *testing.T) {
 
 func TestPublishCancelTaskInstruction(t *testing.T) {
 	// 保存旧的标准输入
-	logs.Infof("start to test cancel task inst......\n")
+	logs.Infof("start to test cancel task manager......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -132,11 +132,11 @@ func TestPublishCancelTaskInstruction(t *testing.T) {
 		logs.Errorf("PublishCancelTaskInstruction is not successful: %s \n", taskId)
 		t.Error("PublishCancelTaskInstruction is not successful\n")
 	}
-	logs.Info("publish cancel task inst is successful\n")
+	logs.Info("publish cancel task manager is successful\n")
 }
 
 func TestPublishCancelPhaseInstruction(t *testing.T) {
-	logs.Infof("start to test cancel phase inst......\n")
+	logs.Infof("start to test cancel phase manager......\n")
 	device := apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -160,7 +160,7 @@ func TestPublishCancelPhaseInstruction(t *testing.T) {
 		logs.Errorf("PublishCancelPhaseInstruction is not successful: %s \n", taskId)
 		t.Error("PublishCancelPhaseInstruction is not successful\n")
 	}
-	logs.Info("publish cancel phase inst is successful\n")
+	logs.Info("publish cancel phase manager is successful\n")
 }
 
 func TestGetTaskState(t *testing.T) {

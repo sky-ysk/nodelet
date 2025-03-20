@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	ty "hit.edu/framework/pkg/apimachinery/types"
+	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
+	meta "hit.edu/framework/pkg/apis/meta"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
@@ -31,12 +33,13 @@ type GroupHandler struct {
 	//
 	eventBus *eventbus.EventBus
 	// eventRecorder 记录事件
-	recorder recorder.EventRecorder
+	recorder    recorder.EventRecorder
+	eventClient core.EventInterface
 
 	stopCh chan struct{}
 }
 
-func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, eb *eventbus.EventBus, recorder recorder.EventRecorder) *GroupHandler {
+func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, eb *eventbus.EventBus, recorder recorder.EventRecorder, eventClient core.EventInterface) *GroupHandler {
 	return &GroupHandler{
 		groupManager: groupManager,
 		groupWorkers: groupWorkers,
@@ -44,6 +47,7 @@ func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers
 		groupClient:  groupClient,
 		eventBus:     eb,
 		recorder:     recorder,
+		eventClient:  eventClient,
 		stopCh:       make(chan struct{}),
 	}
 }
@@ -168,6 +172,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 			groupCopyName := "Reason-Copy"                                        // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
 			groupCopy := controller.NewGroupInfoCopy(gr, true, groupCopyName, "") // 第二个参数为true，表示的是提前写入etcd
+			go gh.CheckEventForSchedulerResult(gr, groupCopyName)
 			gh.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
 		}
 		// TODO 这里得让调度器那边发送一个事件给我，我在这监听
@@ -218,4 +223,54 @@ func (gh *GroupHandler) checkResource(g *apis.Group) bool {
 	//检查当前节点是否满足Group的条件
 
 	return true
+}
+
+// TODO 监听事件：当调度器调决定将group放置在哪个域上的时候，这时候需要往本域的etcd发送一个事件，这样的话我这里如果监听到这个事件，将将副本所在域的连接信息写入到源任务的copyInfo当中
+func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupName string) {
+	nowtime := time.Now()
+	fieldSelector := fmt.Sprintf("reason=%v", events.ScheduledToOtherDomain)
+	watchOptions := meta.ListOptions{
+		FieldSelector: fieldSelector,
+	}
+	watcher, err := gh.eventClient.Watch(context.TODO(), watchOptions)
+	if err != nil {
+		logs.Errorf("Watch group error:%v", err)
+	}
+	defer watcher.Stop() // 确保 watcher 被停止
+	watchChan := watcher.ResultChan()
+	for {
+		select {
+		case event, ok := <-watchChan:
+			if !ok {
+				logs.Infof("watchChan closed")
+				return
+			}
+			// 打印事件类型和对象的相关信息
+			logs.Infof("接收到事件类型: %v\n", event.Type)
+			switch event.Type {
+			case watch.Added:
+				logs.Infof("资源被添加: ", event.Object)
+				newEvent := event.Object.(*apis.Event)
+				if newEvent.InvolvedObject.Name == copyGroupName && newEvent.EventTime.Time.After(nowtime) { //前者晚于后者返回true
+					message := newEvent.Message
+					// 将跨域的连接写入到源的copyInfo当中
+					patchGroup, err := json.Marshal(map[string]interface{}{
+						"spec": map[string]interface{}{
+							"copy_info": map[string]string{copyGroupName: message},
+						},
+					})
+					if err != nil {
+						logs.Errorf("Json Marshal failed, err:%v", err)
+					}
+					_, err = gh.groupClient.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+					if err != nil {
+						logs.Errorf("Patch group error:%v", err)
+					}
+					return
+				}
+			default:
+				logs.Infof("未识别的事件类型: ", event.Type)
+			}
+		}
+	}
 }

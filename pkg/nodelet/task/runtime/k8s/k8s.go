@@ -36,7 +36,7 @@ func NewK8sRuntime() *K8sRuntime {
 	}
 	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient}
 }
-func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("k8s runtime kill task: %s", group.Name)
 	return nil
 }

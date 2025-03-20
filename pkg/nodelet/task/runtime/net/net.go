@@ -15,7 +15,7 @@ func (nr NetRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	logs.Infof("net runtime for task:%s", group.Name)
 	return nil
 }
-func (nr NetRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (nr NetRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("net runtime kill task:%s", group.Name)
 	return nil
 }

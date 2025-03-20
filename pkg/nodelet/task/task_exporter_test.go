@@ -358,7 +358,7 @@ func testTaskDeviceCreateGroup_Ability() *apis.Group {
 
 	// 填写url和image
 	var url string = "http://127.0.0.1:8123"
-	var image string = "Mock"
+	var image string = "manage_Mock"
 	newGroup := apis.Group{
 		ObjectMeta: meta.ObjectMeta{Name: "device_test"},
 		Spec: apis.GroupSpec{
@@ -762,6 +762,7 @@ func testTaskDeviceGroupKill(ctx context.Context, groupClient core.GroupInterfac
 		return nil, err
 	}
 	g.Status.Phase = apis.ReadyToKill
+	g.Spec.Actions[0].Status.RuntimeStatus[0].Phase = apis.Running
 	_, err = groupClient.Update(ctx, g, meta.UpdateOptions{})
 	if err != nil {
 		logs.Error(err)
@@ -825,12 +826,12 @@ func TestTaskExporter(t *testing.T) {
 	deviceDemo := createDemoDevice()
 	_, err = deviceClient.Create(context.TODO(), deviceDemo, metav1.CreateOptions{})
 
-	// 将group存到数据总线中
+	//将group存到数据总线中
 	_, err = te.gropsClient.Create(ctx, testGroup, metav1.CreateOptions{})
-	if err != nil {
-		logs.Errorf("Create group failed: %v", err)
-		return
-	}
+	//if err != nil {
+	//	logs.Errorf("Create group failed: %v", err)
+	//	return
+	//}
 
 	// 开一个协程去更改数据总线中的testgroup的状态，ReceiveGroupInfo会自动检测并执行kill
 

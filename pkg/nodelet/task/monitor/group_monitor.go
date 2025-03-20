@@ -257,7 +257,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 										// 关闭runtime
 										logs.Info("(((((((((((((((((((((((((((((((((((((((")
 										//gmo.runtimeManager.StopRuntime(group, action, runtime, actionIndex, runtimeIndex) // 如果是细粒度控制的话Action状态也被修改了
-										gmo.runtimeManager.Kill(group, action, runtime)
+										gmo.runtimeManager.Kill(group, action, runtime, i, runtimeIndex)
 									} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的，所以这里需要主动修改runtime的状态为Succeed
 										gmo.handleRuntimeSucceedUpdate(group, actionIndex, runtimeIndex)
 									}
@@ -418,7 +418,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								}
 							} else {
 								// ①副本任务，但没有细粒度控制 ②原任务（没有副本） 采用Run方式启动任务
-								logs.Infof("****************************ashdkhaskldhklashdk****************************************")
+								//logs.Infof("****************************ashdkhaskldhklashdk****************************************")
 								if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
 									go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
 									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true

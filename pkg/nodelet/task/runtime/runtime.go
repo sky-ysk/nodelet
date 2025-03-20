@@ -20,7 +20,7 @@ import (
 
 type Runtime interface {
 	Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
-	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error
+	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
 	CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error)
 	StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string
 	RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
@@ -95,12 +95,12 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 func (rm *RuntimeManager) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	return rm.GetRuntime(runtime.Type).Run(group, action, runtime, actionIndex, runtimeIndex)
 }
-func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	if rm == nil {
 		logs.Error("runtime manager is nil")
 		return fmt.Errorf("RuntimeManager is not initialized")
 	}
-	return rm.GetRuntime(runtime.Type).Kill(group, action, runtime)
+	return rm.GetRuntime(runtime.Type).Kill(group, action, runtime, actionIndex, runtimeIndex)
 }
 func (rm *RuntimeManager) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 	//TODO

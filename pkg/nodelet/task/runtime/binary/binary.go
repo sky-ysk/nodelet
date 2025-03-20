@@ -15,7 +15,7 @@ func (br BinaryRuntime) Run(group *apis.Group, action *apis.Action, runtime *api
 	logs.Infof("binary runtime for task:%s", group.Name)
 	return nil
 }
-func (br BinaryRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime) error {
+func (br BinaryRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("binary runtime kill task:%s", group.Name)
 	return nil
 }
