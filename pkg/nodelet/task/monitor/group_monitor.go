@@ -55,7 +55,7 @@ type GroupMonitor struct {
 	stopCh       chan struct{}
 }
 
-func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, dependencyManager *dependency.DependencyManager, actionClient core.ActionInterface) *GroupMonitor {
+func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface, dependencyManager *dependency.DependencyManager) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:      groupManager,
 		taskManager:       taskManager,
