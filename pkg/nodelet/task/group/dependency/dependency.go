@@ -26,14 +26,14 @@ import (
 // }
 
 type DependencyManager struct {
-	lock 	sync.Mutex
-	allEnv	[]string
-	envsPackage	map[string][]apis.Requirement
+	lock        sync.Mutex
+	allEnv      []string
+	envsPackage map[string][]apis.Requirement
 }
 
 func NewDependencyManager() *DependencyManager {
 	dm := &DependencyManager{
-		allEnv: make([]string, 0),
+		allEnv:      make([]string, 0),
 		envsPackage: make(map[string][]apis.Requirement),
 	}
 	return dm
@@ -97,7 +97,7 @@ func (dm *DependencyManager) GetInstalledPackages(envName string) ([]apis.Requir
 	// fmt.Println("GetInstalledPackages cost %s time", timeCost)
 	InstalledRequirements := make([]apis.Requirement, 0)
 	for name, version := range installed {
-		InstalledRequirements = append(InstalledRequirements, apis.Requirement{Name:name, Version: version})
+		InstalledRequirements = append(InstalledRequirements, apis.Requirement{Name: name, Version: version})
 	}
 
 	return InstalledRequirements, nil
@@ -130,7 +130,7 @@ func GetCondaEnvPath(envName string) (string, error) {
 	return "", fmt.Errorf("environment '%s' not found", envName)
 }
 
-func (dm *DependencyManager)UpdateEnvs() error {
+func (dm *DependencyManager) UpdateEnvs() error {
 	startTime := time.Now()
 	envNames, err := GetAllCondaEnv()
 	if err != nil {
@@ -140,14 +140,14 @@ func (dm *DependencyManager)UpdateEnvs() error {
 	dm.lock.Lock()
 	defer dm.lock.Unlock()
 	dm.allEnv = envNames
-	
+
 	timeCost := time.Since(startTime)
-	fmt.Println("GetInstalledPackages cost %s time", timeCost)
-	logs.Info("UpdateEnvs success")
+	logs.Trace("GetInstalledPackages cost %v time", timeCost)
+	logs.Trace("UpdateEnvs success")
 	return nil
 }
 
-func (dm *DependencyManager)UpdateEnvPackages() error {
+func (dm *DependencyManager) UpdateEnvPackages() error {
 	startTime := time.Now()
 	dm.lock.Lock()
 	defer dm.lock.Unlock()
@@ -161,12 +161,12 @@ func (dm *DependencyManager)UpdateEnvPackages() error {
 	}
 
 	timeCost := time.Since(startTime)
-	fmt.Println("GetInstalledPackages cost %s time", timeCost)
-	logs.Info("UpdateEnvPackages success")
+	logs.Trace("GetInstalledPackages cost %v time", timeCost)
+	logs.Trace("UpdateEnvPackages success")
 	return nil
 }
 
-func (dm* DependencyManager)UpdateRuntimePackages(filePath string) ([]apis.Requirement, error) {
+func (dm *DependencyManager) UpdateRuntimePackages(filePath string) ([]apis.Requirement, error) {
 	startTime := time.Now()
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -203,13 +203,13 @@ func (dm* DependencyManager)UpdateRuntimePackages(filePath string) ([]apis.Requi
 }
 
 // 查找当前conda的  所有虚拟环境，判断是否有虚拟环境满足这个requirements.txt的依赖
-func (dm* DependencyManager)CheckEnvironmentSatisfy(requirements []apis.Requirement) (string, bool) {
+func (dm *DependencyManager) CheckEnvironmentSatisfy(requirements []apis.Requirement) (string, bool) {
 	//for遍历所有虚拟环境
 	envNames := dm.allEnv
 	for _, envname := range envNames {
 		installedRequire := dm.envsPackage[envname]
 		if CheckRequirements(requirements, installedRequire, envname) {
-			logs.Info("All requirements are satisfied. EnvName:%v", envname)
+			logs.Trace("All requirements are satisfied. EnvName:%v", envname)
 			return envname, true
 		} else {
 			// logs.Info("Some requirements are not satisfied. EnvName:%v", envname)
@@ -219,7 +219,7 @@ func (dm* DependencyManager)CheckEnvironmentSatisfy(requirements []apis.Requirem
 }
 
 // 解析requirements.txt文件，返回包的切片
-func (dm* DependencyManager)ParseRequirements(filePath string) ([]apis.Requirement, error) {
+func (dm *DependencyManager) ParseRequirements(filePath string) ([]apis.Requirement, error) {
 	startTime := time.Now()
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -253,8 +253,6 @@ func (dm* DependencyManager)ParseRequirements(filePath string) ([]apis.Requireme
 	fmt.Println("ParseRequirements cost %s time", timeCost)
 	return requirements, nil
 }
-
-
 
 // 将获取到的requirements.txt的内容与已有的installed的内容比较
 func CheckRequirements(requirements []apis.Requirement, installed []apis.Requirement, envName string) bool {
@@ -431,7 +429,6 @@ func IdParser(Idstr string) (Task, Group, Action, runtime string, err error) {
 		return "", "", "", "", fmt.Errorf("未匹配到: %v", Idstr)
 	}
 }
-
 
 func runCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)

@@ -92,10 +92,10 @@ func (gmo *GroupMonitor) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done(): // 如果父进程通知关闭
-				logs.Info("依赖检查协程收到关闭通知，正在退出...")
+				logs.Trace("依赖检查协程收到关闭通知，正在退出...")
 				return // 退出协程
 			case <-ticker.C: // 每隔一段时间执行一次更新依赖操作
-				logs.Info("定期检查机器的虚拟环境依赖")
+				logs.Trace("定期检查机器的虚拟环境依赖")
 				gmo.dependencyManager.UpdateEnvs()
 				gmo.dependencyManager.UpdateEnvPackages()
 			}

@@ -12,10 +12,11 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	nodeName := "CloudNode1" // 如果是边集群，这里修改为  "EdgeNode1"
+	nodeName := "CloudNode1"   // 如果是边集群，这里修改为  "EdgeNode1"
+	clusterCategory := "Cloud" // "Edge"
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
-		nc: node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, "Cloud"),
+		nc: node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory),
 		tc: task.NewConfig(nodeName),
 	}
 }
