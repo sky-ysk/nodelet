@@ -6,6 +6,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/lib"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -26,7 +27,7 @@ func PublishAbilityInst(Inst string, device *apis.Device, operation string) (api
 			return apis.Output{}, err
 		}
 
-		err := abilityManager.StartupAbility()
+		heartBeat, err := abilityManager.StartupAbility()
 		if err != nil {
 			logs.Errorf("start ability frame fail...")
 			return apis.Output{}, err
@@ -35,9 +36,9 @@ func PublishAbilityInst(Inst string, device *apis.Device, operation string) (api
 		// 单独开一个协程来监控运行结果
 		go monitorDeviceAbility(abilityManager)
 		return apis.Output{
-			Value:     abilityManager.TaskId,
-			Name:      "task_id",
-			ValueType: "string",
+			Value:     strconv.Itoa(heartBeat.AbilityPort),
+			Name:      "port",
+			ValueType: "int",
 			Type:      apis.ResultsData,
 		}, nil
 

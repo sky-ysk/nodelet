@@ -44,31 +44,33 @@ func (am *ManagerOfAbility) GetUUID() (string, error) {
 }
 
 // StartupAbility 启动一个能力
-func (am *ManagerOfAbility) StartupAbility() error {
+func (am *ManagerOfAbility) StartupAbility() (HeartBeat, error) {
 	// 获取能力的uuid
 	id, err := am.GetUUID()
 	if err != nil {
 		logs.Info("can not get uuid\n")
-		return err
+		return HeartBeat{}, err
 	}
 	logs.Info("find ability's uuid\n")
 	// 获取能力的taskId
 	taskId, err := PostLifeCycleRequest(id, Start, am.Url)
 	if err != nil {
 		logs.Info("can not post lifecycle request and obtain taskId\n")
-		return err
+		return HeartBeat{}, err
 	}
 	am.TaskId = taskId
 	fmt.Println("taskId is ", taskId)
 	for {
 		time.Sleep(2000 * time.Millisecond)
 		var state AbilityState
+		var heartBeat HeartBeat
 		logs.Infof("getting ability state\n")
 		logs.Infof("uuid is%v", am.UUid)
-		state, err = GetAbilityState(am.Url, am.UUid)
+		heartBeat, err = GetAbilityState(am.Url, am.UUid)
+		state = heartBeat.State
 		if err != nil {
 			logs.Info("can not get ability state\n")
-			return err
+			return HeartBeat{}, err
 		}
 		switch state {
 		case Standby: // 进入standby状态说明启动成功，可以connect了
@@ -77,18 +79,18 @@ func (am *ManagerOfAbility) StartupAbility() error {
 			taskId, err = PostLifeCycleRequest(id, Connect, am.Url)
 			if err != nil {
 				logs.Info("can not post lifecycle request and obtain taskId\n")
-				return err
+				return HeartBeat{}, err
 			}
 			logs.Info("successfully post lifecycle request and obtain taskId\n")
 
 		case Running: // 进入running状态说明程序正在运行了
 			logs.Info("the ability state is running, startup ability successfully\n")
 			am.State = state
-			return nil
+			return heartBeat, nil
 		case Error: // 进入error状态说明程序进入错误
 			logs.Info("the ability state is error, startup ability fail\n")
 			am.State = state
-			return fmt.Errorf("ability is in error state")
+			return HeartBeat{}, fmt.Errorf("ability is in error state")
 		default:
 			logs.Infof("the ability state is %v", state)
 			am.State = state
@@ -124,8 +126,10 @@ func (am *ManagerOfAbility) TerminateAbility() error {
 	for {
 		time.Sleep(200 * time.Millisecond)
 		var state AbilityState
+		var heartBeat HeartBeat
 		logs.Infof("getting ability state\n")
-		state, err = GetAbilityState(am.Url, am.UUid)
+		heartBeat, err = GetAbilityState(am.Url, am.UUid)
+		state = heartBeat.State
 		if err != nil {
 			return err
 		}

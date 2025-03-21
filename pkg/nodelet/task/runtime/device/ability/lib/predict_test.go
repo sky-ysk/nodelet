@@ -3,14 +3,16 @@ package lib
 import (
 	"fmt"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
 func TestPublishPredictInst(t *testing.T) {
 	logs.Init("test")
-
+	managerUrl := "" // 能力框架url
 	// 获取当前测试文件的目录
 	testDir, err := os.Getwd()
 	if err != nil {
@@ -19,12 +21,29 @@ func TestPublishPredictInst(t *testing.T) {
 
 	// 构建相对路径
 	imagePath := filepath.Join(testDir, "testpics", "orange.jpg")
-	url := "http://192.168.8.165:48479"
-	resp, err := PublishPredictInst(imagePath, url)
+	abilityName := ""
+	url := "" // 业务的url
+	am := manager.NewAbilityManager(managerUrl, abilityName)
+	heartBeat, err := am.StartupAbility()
+
+	//// 终止能力[备用]
+	//err =am.TerminateAbility()
+	//if err!=nil{
+	//	logs.Errorf("error is %v",err)
+	//}
 	if err != nil {
-		logs.Errorf("error publish predict inst %v", err)
+		logs.Errorf("start up %s fail", abilityName)
 	} else {
-		logs.Infof("predict result is %v", resp)
-		fmt.Println(resp)
+
+		// 通过heartbeat中的abilityPort拼接成新的url
+
+		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		resp, err := PublishPredictInst(imagePath, serviceUrl)
+		if err != nil {
+			logs.Errorf("error publish ArmAngle inst %v", err)
+		} else {
+			logs.Infof("predict resp is %v", resp)
+		}
+
 	}
 }

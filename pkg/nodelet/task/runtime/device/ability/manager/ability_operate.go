@@ -155,30 +155,29 @@ func GetTaskState(taskId string, url string) (TaskState, error) {
 	return taskState, nil
 }
 
-func FindStateByUUID(hearBeats []HeartBeat, uuid string) (AbilityState, error) {
+func FindHeartBeatByUUID(hearBeats []HeartBeat, uuid string) (HeartBeat, error) {
 	for _, hearBeat := range hearBeats {
 		if hearBeat.ID == uuid {
-			return hearBeat.State, nil
+			return hearBeat, nil
 		}
 	}
-	return "", errors.New(uuid)
+	return HeartBeat{}, errors.New(uuid)
 }
 
-func GetAbilityState(url string, uuid string) (AbilityState, error) {
+func GetAbilityState(url string, uuid string) (HeartBeat, error) {
 	logs.Infof("getting heart beat......\n")
 	hearBeats, err := GetAbilityHeartBeat(url)
 	if err != nil {
 		logs.Error("get heart beats error\n")
-		return "", err
+		return HeartBeat{}, err
 	}
 	logs.Info("get heart beats successfully\n")
-
 	logs.Info("try to find state by UUID\n")
-	state, err := FindStateByUUID(hearBeats, uuid)
+	heartBeat, err := FindHeartBeatByUUID(hearBeats, uuid)
 	if err != nil {
 		logs.Error("find state by UUID error\n")
-		return "", err
+		return HeartBeat{}, err
 	}
 	logs.Infof("find state by UUID successfully\n")
-	return state, nil
+	return heartBeat, nil
 }
