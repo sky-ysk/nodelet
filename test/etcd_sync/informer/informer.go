@@ -20,6 +20,8 @@ const ()
 // 转发目的地的地址列表
 var URL string
 
+var SyncConfig Config
+
 type Controller struct {
 	indexer  cache.Indexer
 	informer cache.Controller
@@ -152,6 +154,7 @@ func AddFunc(obj interface{}) {
 		logs.Errorf("unexpected error: %v", err)
 	}
 	request.Header.Set("FlowType", "etcd")
+	request.Header.Set("ClusterID", "pve2")
 	client := &http.Client{}
 	wg := sync.WaitGroup{}
 	wg.Add(1)

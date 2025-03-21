@@ -131,6 +131,32 @@ var testAPIGroup = "resources"
 var testAPIVersion = "v1"
 var testGroupVersion = schema.GroupVersion{Group: testAPIGroup, Version: testAPIVersion}
 
+func NodeCreateRequestSender() {
+	node := &apis.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-nodessss",
+			Namespace: "Test",
+			Labels: map[string]string{
+				"sync": "true",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Node",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.NodeSpec{
+			NodeName: "demo-node",
+			HostName: "master",
+		},
+	}
+
+	Create(context.TODO(), node, metav1.CreateOptions{})
+}
+
+func NodeGetRequestSender() {
+	Get(context.TODO(), "demo-nodes", metav1.GetOptions{})
+}
+
 func EventTestSender(URLs string) {
 	node := &apis.Node{
 		ObjectMeta: metav1.ObjectMeta{

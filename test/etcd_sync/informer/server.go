@@ -15,32 +15,42 @@ func printHTTPRequest(r *http.Request) {
 	// 打印请求的完整URL
 	fmt.Printf("Request URL: %s\n", r.URL.String())
 	// 打印请求头
-	//fmt.Printf("Request Headers: %v\n", r.Header)
+	fmt.Printf("Request Headers: %v\n", r.Header)
 	// 打印查询参数
-	//fmt.Printf("Query Parameters: %v\n", r.URL.Query())
+	fmt.Printf("Query Parameters: %v\n", r.URL.Query())
 
 	// 如果请求体存在，读取并打印请求体
 	if r.Body != nil {
 		defer r.Body.Close()
 		_, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			//fmt.Printf("Failed to read request body: %v", err)
+			fmt.Printf("Failed to read request body: %v", err)
 		} else {
 			//fmt.Printf("Request Body: %s", string(bodyBytes))
 		}
 	}
 }
 
-// TODO： 消除label
 func handler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	resource := vars["resource"]
 	//fmt.Printf("Received request for resource: %s\n", resource)
-	printHTTPRequest(r)
+	//printHTTPRequest(r)
 	//TODO: 转发给apiserver
+
+	switch r.Method {
+	case "POST":
+		PostHandler(r)
+	case "PUT":
+		PutHandler(r)
+	case "DELETE":
+		DeleteHandler(r)
+	case "GET":
+		GetHandler(r)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
 	response := fmt.Sprintf(`{"message": "Received request for resource: %s"}`, resource)
 	w.Write([]byte(response))
 	_, err := w.Write([]byte(response))

@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -10,8 +13,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"time"
 )
 
 // 测试了一下client-go的selector功能，包括了labelSelector的各种用法，以及labelSelector和fieldSelector一起使用的用法。
