@@ -8,27 +8,11 @@ import (
 	"testing"
 )
 
-// go test -run TestPublishArmAngleTerminate  -v
-func TestPublishArmAngleTerminate(t *testing.T) {
-	logs.Init("test")
-	managerUrl := "http://192.168.8.165:8080" // 能力框架url
-	abilityName := "ArmControl.Leju.Guochuang"
-
-	am := manager.NewAbilityManager(managerUrl, abilityName)
-
-	// 终止能力[备用]
-	err := am.TerminateAbility()
-	if err != nil {
-		logs.Errorf("error is %v", err)
-	}
-}
-
-// go test -run TestPublishArmAngleInst  -v
 func TestPublishArmAngleInst(t *testing.T) {
 	logs.Init("test")
-	managerUrl := "http://192.168.8.165:8080" // 能力框架url
-	abilityName := "ArmControl.Leju.Guochuang"
-	url := "http://192.168.8.165" // 业务url
+	managerUrl := "" // 能力框架url
+	abilityName := ""
+	url := "" // 业务url
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 
@@ -54,4 +38,47 @@ func TestPublishArmAngleInst(t *testing.T) {
 		}
 	}
 
+}
+
+func TestPublishLeftArmDownInst(t *testing.T) {
+	logs.Init("test")
+	managerUrl := "" // 能力框架url
+	abilityName := ""
+	url := "" // 业务url
+	am := manager.NewAbilityManager(managerUrl, abilityName)
+	heartBeat, err := am.StartupAbility()
+	if err != nil {
+		logs.Errorf("start up %s fail", abilityName)
+	} else {
+		logs.Infof("heartBeat is %v", heartBeat)
+		// 通过heartbeat中的abilityPort拼接成新的url
+
+		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		err := PublishLeftArmDownInst(serviceUrl)
+		if err != nil {
+			logs.Errorf("error publish LeftArmDown inst %v", err)
+		}
+	}
+}
+
+func TestPublishLeftArmUpInst(t *testing.T) {
+	logs.Init("test")
+	managerUrl := "" // 能力框架url
+	abilityName := ""
+	url := "" // 业务url
+	am := manager.NewAbilityManager(managerUrl, abilityName)
+	heartBeat, err := am.StartupAbility()
+	if err != nil {
+		logs.Errorf("start up %s fail", abilityName)
+	} else {
+		logs.Infof("heartBeat is %v", heartBeat)
+
+		// 通过heartbeat中的abilityPort拼接成新的url
+
+		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		err := PublishLeftArmUpInst(serviceUrl)
+		if err != nil {
+			logs.Errorf("error publish LeftArmUp inst %v", err)
+		}
+	}
 }

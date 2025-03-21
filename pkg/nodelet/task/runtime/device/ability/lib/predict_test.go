@@ -56,7 +56,7 @@ func TestPublishPredictInst(t *testing.T) {
 		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
 		resp, err := PublishPredictInst(imagePath, serviceUrl)
 		if err != nil {
-			logs.Errorf("error publish ArmAngle inst %v", err)
+			logs.Errorf("error publish predict inst %v", err)
 		} else {
 			fmt.Println("predict resp is ", resp)
 			logs.Infof("predict resp is %v", resp)

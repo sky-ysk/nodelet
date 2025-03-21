@@ -54,3 +54,42 @@ func PublishArmAngleInst(params map[string][]float64, baseUrl string) error {
 		return fmt.Errorf("StatusCode is %v", resp.StatusCode)
 	}
 }
+
+func PublishLeftArmUpInst(baseUrl string) error {
+	url := fmt.Sprintf("%s/api/control/left_arm_up", baseUrl)
+	// 创建 HTTP GET 请求
+	resp, err := http.Get(url)
+	if err != nil {
+		logs.Errorf("发送请求失败: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// 检查 HTTP 响应状态码
+	if resp.StatusCode != http.StatusOK {
+		logs.Errorf("请求失败，状态码: %d", resp.StatusCode)
+		return err
+	}
+	logs.Infof("left arm up successfully")
+	return nil
+}
+
+func PublishLeftArmDownInst(baseUrl string) error {
+	url := fmt.Sprintf("%s/api/control/left_arm_down", baseUrl)
+	// 创建 HTTP GET 请求
+	resp, err := http.Get(url)
+	if err != nil {
+		logs.Errorf("发送请求失败: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// 检查 HTTP 响应状态码
+	if resp.StatusCode != http.StatusOK {
+		logs.Errorf("请求失败，状态码: %d", resp.StatusCode)
+		return err
+	}
+
+	logs.Infof("left arm down successfully")
+	return nil
+}
