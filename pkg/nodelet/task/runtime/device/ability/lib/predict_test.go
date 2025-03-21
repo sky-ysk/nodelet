@@ -10,8 +10,10 @@ import (
 
 func TestPublishPredictInst(t *testing.T) {
 	logs.Init("test")
-	managerUrl := ""
+	managerUrl := "" // 能力框架url
+	imagePath := ""
 	abilityName := ""
+	url := "" // 业务的url
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 
@@ -23,10 +25,9 @@ func TestPublishPredictInst(t *testing.T) {
 	if err != nil {
 		logs.Errorf("start up %s fail", abilityName)
 	} else {
-		imagePath := ""
 
 		// 通过heartbeat中的abilityPort拼接成新的url
-		url := ""
+
 		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
 		resp, err := PublishPredictInst(imagePath, serviceUrl)
 		if err != nil {

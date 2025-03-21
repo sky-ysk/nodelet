@@ -10,8 +10,9 @@ import (
 
 func TestPublishArmAngleInst(t *testing.T) {
 	logs.Init("test")
-	managerUrl := ""
+	managerUrl := "" // 能力框架url
 	abilityName := ""
+	url := "" // 业务url
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 
@@ -28,7 +29,7 @@ func TestPublishArmAngleInst(t *testing.T) {
 		params["right"] = []float64{0, 0, 0, 0, 0, 0, 0}
 
 		// 通过heartbeat中的abilityPort拼接成新的url
-		url := ""
+
 		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
 		err := PublishArmAngleInst(params, serviceUrl)
 		if err != nil {
