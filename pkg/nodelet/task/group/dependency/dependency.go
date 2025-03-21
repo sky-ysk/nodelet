@@ -250,7 +250,7 @@ func (dm *DependencyManager) ParseRequirements(filePath string) ([]apis.Requirem
 		return nil, err
 	}
 	timeCost := time.Since(startTime)
-	fmt.Println("ParseRequirements cost %s time", timeCost)
+	logs.Trace("ParseRequirements cost %s time", timeCost)
 	return requirements, nil
 }
 
@@ -284,7 +284,7 @@ func CheckRequirements(requirements []apis.Requirement, installed []apis.Require
 	}
 	// logs.Info("requirements satisfied envName: %v", envName)
 	timeCost := time.Since(startTime)
-	fmt.Println("CheckRequirements cost %s time", timeCost)
+	logs.Trace("CheckRequirements cost %s time", timeCost)
 	return allSatisfied
 }
 

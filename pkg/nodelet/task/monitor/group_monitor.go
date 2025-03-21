@@ -1297,7 +1297,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				// logs.Info("dependency do not satisfy,runtime name:%v", runtime.Name)
 				//需要使用协程，但是还要防止在monitor监控的时候多次创建
 				if !rtStatus.DepenPreparing {
-					logs.Info("installing dependency for runtime name:%v", runtime.Name)
+					logs.Trace("installing dependency for runtime name:%v", runtime.Name)
 					rtStatus.DepenPreparing = true
 					// go dependency.SetupEnvironment(dependencyFile, runtime.Name)
 				} else {

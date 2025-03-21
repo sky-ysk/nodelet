@@ -19,9 +19,9 @@ import (
 
 const (
 	thresholdbattery float64 = 5
-	thresholdCPU     float64 = 70
+	thresholdCPU     float64 = 90
 	thresholdGPU     float64 = 90
-	thresholdMemory  float64 = 80
+	thresholdMemory  float64 = 90
 	thresholdNetWork float64 = 50
 	thresholdStorage float64 = 60
 	eventCooldown            = 5 * time.Minute
