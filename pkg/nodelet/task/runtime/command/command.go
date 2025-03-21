@@ -126,15 +126,15 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	if err := CMD.Wait(); err != nil {
 		// 检查 stopSignal 通道是否被关闭，判断进程是否是外部停止的
 		select {
-			case <- cr.stopSignals[runtime.Name]: // 如果接收到停止信号
-				logs.Info("Goroutine 收到停止信号，退出...")
-				logs.Info("command killed externally by stopCMD")
-				cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
-			default:
-				logs.Info("Goroutine 正在运行...")
-				logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
-				// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
-				cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		case <-cr.stopSignals[runtime.Name]: // 如果接收到停止信号
+			logs.Info("Goroutine 收到停止信号，退出...")
+			logs.Info("command killed externally by stopCMD")
+			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+		default:
+			logs.Info("Goroutine 正在运行...")
+			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
+			// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
+			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		}
 		cr.processManager.RemoveProcess(runtime.Name)
 		delete(cr.stopSignals, runtime.Name)
@@ -160,7 +160,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 // 停止某个CMD对应的进程
 // TODO：保存现场
 func (cr *CommandRuntime) stopCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime) error {
-	nowTime := apis.Time{time.Now()}
+	//nowTime := apis.Time{time.Now()}
 	CMD, exists := cr.processManager.GetProcess(runtime.Name)
 	if !exists {
 		logs.Errorf("Failed to find task:\t ", runtime.Name)
@@ -172,7 +172,7 @@ func (cr *CommandRuntime) stopCMD(groupName string, actionIndex, runtimeIndex in
 			logs.Errorf("Failed to kill task:\t ", runtime.Name)
 			return fmt.Errorf("failed to stop task '%s': %w", runtime.Name, err)
 		}
-		cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Killed, nowTime, nowTime)
+		//cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Killed, nowTime, nowTime)
 		fmt.Printf("Task '%s' with PID %d has been stopped.\n", runtime.Name, CMD.Process.Pid)
 	} else {
 		logs.Infof("Task '%s' is already stopped.", runtime.Name)
@@ -288,16 +288,20 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 // 细粒度控制（grpc）：启动任务状态
 func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	// 运行任务进程
-	cr.Run(group, action, runtime, actionIndex, runtimeIndex)
+	go cr.Run(group, action, runtime, actionIndex, runtimeIndex) // 这里需要加协程进行启动
 	// 初始化rpc客户端
 	//if cr.client == nil {
 	//	cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, runtime.Name)
 	//}
 	client := cr.getClient(runtime.EnableFineGrainedControlPort)
+	if client == nil {
+		logs.Info("client is nil")
+	}
 	// rpc调用start()
 	_, error := client.RunAppStart()
 	if error != nil {
 		logs.Errorf("任务启动失败: %e", error)
+		return error
 	}
 	//cr.recorder.Event(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStart()", runtime.Name))
 

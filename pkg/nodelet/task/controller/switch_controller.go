@@ -432,7 +432,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				}
 			}
 		}
-		// 将源group从Running队列迁移到Completed队列
+		// 将源group从Running队列迁移到Migrated队列
 		logs.Info("--------------DeleteFromRunningAndAddToMigratedQueue=====================")
 		ok := mc.groupQueues.DeleteFromRunningAndAddToMigrated(group.Status.GroupID)
 		if !ok {
@@ -477,6 +477,7 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, copyGroupName string, nodeNam
 	groupCopy.Spec.Replicas = []int32{0, 0}
 	for i := range groupCopy.Spec.Actions {
 		action := &groupCopy.Spec.Actions[i]
+		action.Name = action.Name + "Copy"
 		if action.Status.Phase == apis.Successed {
 			continue
 		} else {

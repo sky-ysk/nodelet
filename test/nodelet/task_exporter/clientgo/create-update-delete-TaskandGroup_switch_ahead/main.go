@@ -9,6 +9,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/apis/meta"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
@@ -62,9 +63,10 @@ func main() {
 	// 获取访问Task的客户端
 	// 默认访问的Namespace是 ""
 
-	tasksClient := clientSet.Core().Tasks("")
-	groupsClient := clientSet.Core().Groups("")
-
+	tasksClient := clientSet.Core().Tasks("test")
+	groupsClient := clientSet.Core().Groups("test")
+	actionsClient := clientSet.Core().Actions("test")
+	eventsClient := clientSet.Core().Events("test")
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "TrainInferTask-1" // 第一个Task的Name
 	task1ID := "TrainInferTaskID-1" // 第一个Task的ID
@@ -78,7 +80,7 @@ func main() {
 	//group1_3ID := "GroupID-3"                 // 第一个Task下的第三个GroupID
 
 	// group副本数量
-	group1_1Replicas := int32(1)
+	group1_1Replicas := []int32{1, 0}
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -117,7 +119,29 @@ func main() {
 	//runtime1_2_1_2FineGrainedControlPort := "1121"
 	//runtime1_3_1_1FineGrainedControlPort := "3141"
 	//runtime1_3_1_2FineGrainedControlPort := "5161"
-
+	runtime1_1_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			apis.ConditionFormula{
+				LeftValue: apis.ConditionValue{
+					Type:      apis.ResultsData,
+					Name:      "ProgramDependency",
+					Value:     "0",
+					ValueType: "string",
+					From:      "/home/public/goprojects/myProject/test/nodelet/task_exporter/dependency/requirements1.txt",
+				},
+				RightValue: apis.ConditionValue{
+					Type:      apis.ConstData,
+					Name:      "ProgramDependency",
+					Value:     "1",
+					ValueType: "string",
+					From:      "",
+				},
+				Signal: apis.Equal,
+				Join:   "",
+				Result: false,
+			},
+		},
+	}
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧--改为Name
 
@@ -136,9 +160,10 @@ func main() {
 							apis.Runtime{
 								Name:                         runtime1_1_1_1Name,
 								Type:                         apis.ByCommand,
-								Command:                      []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                      []string{"python"},
 								Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner.py"},
 								Parents:                      make([]string, 0), // 加入Parents
+								Conditions:                   runtime1_1_1_1Condition,
 								Image:                        "/home/public/workspace/yolo_projects/yolo-runner.py",
 								EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
@@ -246,25 +271,36 @@ func main() {
 				logs.Infof("接收到事件类型: %v\n", event.Type)
 				switch event.Type {
 				case watch.Added:
-					logs.Infof("资源被添加: ", event.Object)
+					logs.Trace("资源被添加: ", event.Object)
 				case watch.Modified:
-					logs.Infof("资源被修改: ", event.Object)
+					logs.Trace("资源被修改: ", event.Object)
 				case watch.Deleted:
-					logs.Infof("资源被删除: ", event.Object)
+					logs.Trace("资源被删除: ", event.Object)
 				case watch.Error:
-					logs.Infof("发生错误: ", event.Object)
+					logs.Trace("发生错误: ", event.Object)
 				default:
-					logs.Infof("未识别的事件类型: ", event.Type)
+					logs.Trace("未识别的事件类型: ", event.Type)
 				}
 			}
 		}
 	}()
-
+	// 删除事件
+	list, err := eventsClient.List(context.TODO(), meta.ListOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+	}
+	for _, item := range list.Items {
+		err := eventsClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
+		if err != nil {
+			logs.Error(err.Error())
+		}
+	}
 	//如果已经存在，先删掉
-	////err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
-	err = tasksClient.Delete(context.TODO(), "TrainInferTask-1", metav1.DeleteOptions{})
-	err1 := groupsClient.Delete(context.TODO(), "TrainGroup-1", metav1.DeleteOptions{})
+	err = tasksClient.Delete(context.TODO(), task1Name, metav1.DeleteOptions{})
+	err1 := groupsClient.Delete(context.TODO(), group1_1Name, metav1.DeleteOptions{})
 	err2 := groupsClient.Delete(context.TODO(), "Reason-Copy", metav1.DeleteOptions{})
+	_ = actionsClient.Delete(context.TODO(), action1_1_1Name, metav1.DeleteOptions{})
+
 	//err2 := groupsClient.Delete(context.TODO(), "ReasonGroup-2", metav1.DeleteOptions{})
 	//err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup-3", metav1.DeleteOptions{})
 	if err != nil {

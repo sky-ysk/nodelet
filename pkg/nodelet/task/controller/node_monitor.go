@@ -23,7 +23,7 @@ const (
 	thresholdGPU     float64 = 90
 	thresholdMemory  float64 = 90
 	thresholdNetWork float64 = 50
-	thresholdStorage float64 = 60
+	thresholdStorage float64 = 90
 	eventCooldown            = 5 * time.Minute
 )
 
@@ -44,44 +44,44 @@ func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface,
 	nodeOptions := cache.InformerOptions{
 		ListerWatcher: nodeListWatcher,
 		ObjectType:    &apis.Node{}, // 要监听的资源类型
-		Handler: cache.ResourceEventHandlerFuncs{
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldNode, okOld := oldObj.(*apis.Node)
-				newNode, okNew := newObj.(*apis.Node)
-				if !okOld || !okNew || newNode.Name != nodeName { // 只处理本节点的Node的资源不足的触发
-					return
-				}
-				// 状态变化检查：从正常变为超过阈值
-				oldExceeded := checkNodeThreshold(oldNode)
-				newExceeded := checkNodeThreshold(newNode)
-				if !oldExceeded && newExceeded {
-					key, err := cache.MetaNamespaceKeyFunc(newObj)
-					if err != nil {
-						logs.Errorf("get node key failed: %v", err)
-						return
-					}
-					queue.Add(key)
-					logs.Infof("Node:%s resource exceeds the threshold and is added to the queue", newNode.Name)
-				}
-			},
-		},
 		//Handler: cache.ResourceEventHandlerFuncs{
 		//	UpdateFunc: func(oldObj, newObj interface{}) {
+		//		oldNode, okOld := oldObj.(*apis.Node)
 		//		newNode, okNew := newObj.(*apis.Node)
-		//		if !okNew || newNode.Name != node.NodeName {
+		//		if !okOld || !okNew || newNode.Name != nodeName { // 只处理本节点的Node的资源不足的触发
 		//			return
 		//		}
+		//		// 状态变化检查：从正常变为超过阈值
+		//		oldExceeded := checkNodeThreshold(oldNode)
 		//		newExceeded := checkNodeThreshold(newNode)
-		//		if newExceeded { // 只要新状态超限就触发
+		//		if !oldExceeded && newExceeded {
 		//			key, err := cache.MetaNamespaceKeyFunc(newObj)
 		//			if err != nil {
 		//				logs.Errorf("get node key failed: %v", err)
 		//				return
 		//			}
 		//			queue.Add(key)
+		//			logs.Infof("Node:%s resource exceeds the threshold and is added to the queue", newNode.Name)
 		//		}
 		//	},
 		//},
+		Handler: cache.ResourceEventHandlerFuncs{
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				newNode, okNew := newObj.(*apis.Node)
+				if !okNew || newNode.Name != nodeName {
+					return
+				}
+				newExceeded := checkNodeThreshold(newNode)
+				if newExceeded { // 只要新状态超限就触发
+					key, err := cache.MetaNamespaceKeyFunc(newObj)
+					if err != nil {
+						logs.Errorf("get node key failed: %v", err)
+						return
+					}
+					queue.Add(key)
+				}
+			},
+		},
 		ResyncPeriod: 0, // ResyncPeriod，0表示不定期重新同步
 		Indexers:     cache.Indexers{},
 	}
@@ -104,9 +104,9 @@ func checkNodeThreshold(node *apis.Node) bool {
 	cpuAveUtil := getFloatValue(node.Status.Usage["cpu"][0].Values["AveUtil"])
 	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
 	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
-	//logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
-	//time.Sleep(6 * time.Second)
-	//logs.Info("6秒结束-=-------------------------------------------=")
+	logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
+	//time.Sleep(15 * time.Second)
+	logs.Info("6秒结束-=-------------------------------------------=")
 	//return true
 	return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
 }

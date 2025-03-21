@@ -20,9 +20,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
-// 创建一个Rest Client
-// 验证xxx动词
-// 与API Server通信，并执行基础操作
+// 测试部署
 // 3个group，3个Action，每个Action两个Runtime， 一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
 func main() {
 	moduleName := "testModule"
@@ -538,10 +536,10 @@ func main() {
 								Name:                     runtime1_3_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_3_1_1Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
 							},
@@ -549,10 +547,10 @@ func main() {
 								Name:                     runtime1_3_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
 								Conditions:               runtime1_3_1_2Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_2FineGrainedControl,
 							},
@@ -726,6 +724,7 @@ func main() {
 	}()
 
 	//如果已经存在，先删掉
+	//	"hit.edu/framework/pkg/apis/meta"
 	list, err := eventsClient.List(context.TODO(), meta.ListOptions{})
 	if err != nil {
 		logs.Error(err.Error())

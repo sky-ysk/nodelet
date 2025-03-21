@@ -256,7 +256,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						actionStatus := &group.Status.ActionStatus[actionIndex]
 						action := &group.Spec.Actions[actionIndex]
 						isSuccess = true
-						if actionStatus.CopyStatus == "Running" { //说明源任务已经启动了，那么这里需要遍历runtime，找到源任务当中运行的runtime，然后init初始化runtime
+						if actionStatus.CopyStatus == "Running" {
 							isSuccess = false
 							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
 							if err != nil {
@@ -315,6 +315,9 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 							if !ok {
 								logs.Error("Delete group from copypending queue and add to completed pending queue failed")
 							}
+						}
+						if actionStatus.CopyStatus == "" {
+							isSuccess = false
 						}
 					}
 					if isSuccess { //说明源任务，还没有迁移就完成了全部的工作，那么直接将副本迁移到Completed队列就OK了
@@ -434,8 +437,10 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting { //TODO 这个参数好像可以删了，有Waiting是不是就够了？
 									logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
 									if runtimeStatus.KeyStatus == "" { // 说明不是副本任务，还没初始化---TODO 这里需要这个检查的原因：有可能是即时的迁移迁移，那迁移过去的group是没有进入init状态的，所以这边迁移过去的副本是处于DeployCheck的状态开始恢复任务状态
+										logs.Info("))))))))))))))))))))))))))))))))))))))))))))))")
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
 									} else {
+										logs.Info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex) //这句好像会阻塞
 										go gmo.runtimeManager.RestoreData(group, action, runtime, actionIndex, runtimeIndex)
 									}
@@ -903,11 +908,15 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	}
 	actionIndex := event.ActionIndex
 	runtimeIndex := event.RuntimeIndex
-	phase := event.Phase                                             //当前phase可能为Succeed、Failed、Unknown（Failed、Migrated）
-	if phase == apis.Unknown && get.Status.Phase == apis.Migrating { // 这里有三种情况，①主动关闭，则为Failed ②异常退出，也为Failed ③主动迁移关闭，为Migrated
-		// 判断为Migrated的情况 查group.Status.Phase，如果为Migrating则为迁移，否则为用户主动关闭任务的操作
-		gmo.handleRuntimeMigratedUpdate(get, actionIndex, runtimeIndex)
-		return
+	phase := event.Phase       //当前phase可能为Succeed、Failed、Unknown（Failed、Migrated）
+	if phase == apis.Unknown { // 这里有三种情况，①主动关闭，则为Killed  ②主动迁移关闭，为Migrated
+		if get.Status.Phase == apis.Migrating {
+			// 判断为Migrated的情况 查group.Status.Phase，如果为Migrating则为迁移，否则为用户主动关闭任务的操作
+			gmo.handleRuntimeMigratedUpdate(get, actionIndex, runtimeIndex)
+			return
+		}
+		//为用户主动关闭
+		phase = apis.Killed
 	}
 	logs.Infof("Get runtime finish event notify, the phase:%s", phase)
 	finshTime := event.FinishAt
@@ -1842,7 +1851,7 @@ func (gmo *GroupMonitor) updateCopyIngfoForRuntime(groupSpec *apis.GroupSpec, ph
 func (gmo *GroupMonitor) updateCopyIngfoForAction(groupSpec *apis.GroupSpec, phase apis.Phase, actionIndex int) {
 	logs.Trace("Start#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas[0], groupSpec.Replicas[0] > 0)
 	if groupSpec.Replicas[0] > 0 { // 当前group有副本，那么需要将该任务对应的副本任务的action的结束状态也设置一下
-		logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running")
+		logs.Infof("#######################groupSpec.Replicas > 0#########设置副本action的状态为%v", phase)
 		// 设置副本runtime的状态为Phase（Succeed or Failed）  如果是跨域的话，这里估计还得再修改
 		for key := range groupSpec.CopyInfo {
 			if groupSpec.CopyInfo[key] != "local" {

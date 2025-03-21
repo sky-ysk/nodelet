@@ -20,6 +20,10 @@ type RuntimeClient struct {
 
 func NewRuntimeClient(port string, pool *pool.ConnectionPool) *RuntimeClient {
 	client := &RuntimeClient{ServerIPAndPort: "127.0.0.1:" + port, connPool: pool}
+	// 首次创建时尝试预连接
+	if ok := client.checkConnection1(); !ok {
+		logs.Errorf("初次连接 gRPC 服务端失败")
+	}
 	//for {
 	//	success := client.checkConnection()
 	//	if success {
@@ -62,13 +66,14 @@ func (c *RuntimeClient) checkConnection1() bool {
 	defer c.mu.Unlock()
 
 	// 从连接池获取或创建连接
-	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 20, 100*time.Millisecond)
+	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 30, 500*time.Millisecond)
 	if err != nil {
-		logs.Debug("failed to connect to grpc server:%v", err)
+		logs.Infof("failed to connect to grpc server:%v", err)
 		return false
 	}
 	if c.grpcClient == nil {
 		c.grpcClient = pb.NewRuntimeIntentClient(conn)
+		logs.Info("gRPC 客户端初始化成功")
 	}
 	return true
 }
@@ -103,7 +108,7 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 	result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	for err != nil {
 		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
-		logs.Debug("retry to runAppStart")
+		logs.Info("retry to runAppStart")
 		result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	}
 	logs.Infof("runAppStart: result:%v", result)
