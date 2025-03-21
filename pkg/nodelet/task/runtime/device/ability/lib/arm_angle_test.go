@@ -24,6 +24,7 @@ func TestPublishArmAngleInst(t *testing.T) {
 	if err != nil {
 		logs.Errorf("start up %s fail", abilityName)
 	} else {
+		logs.Infof("heartBeat is %v", heartBeat)
 		var params map[string][]float64 = make(map[string][]float64)
 		params["left"] = []float64{-1.221, 0.0872, 0, 0, 0, 0, 0}
 		params["right"] = []float64{0, 0, 0, 0, 0, 0, 0}

@@ -19,7 +19,8 @@ func TestGetHeartBeats(t *testing.T) {
 		t.Error(err)
 	}
 
-	fmt.Println(heartBeats)
+	logs.Infof("heart beats is %v", heartBeats)
+
 }
 
 func TestNewOperatorStr(t *testing.T) {
