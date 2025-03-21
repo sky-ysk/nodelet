@@ -10,9 +10,23 @@ import (
 	"testing"
 )
 
+// go test -run TestTerminate  -v
+func TestTerminate(t *testing.T) {
+	logs.Init("test")
+	managerUrl := "http://192.168.8.165:8080" // 能力框架url
+	abilityName := "Detect"
+	am := manager.NewAbilityManager(managerUrl, abilityName)
+
+	// 终止能力[备用]
+	err := am.TerminateAbility()
+	if err != nil {
+		logs.Errorf("error is %v", err)
+	}
+}
+
 func TestPublishPredictInst(t *testing.T) {
 	logs.Init("test")
-	managerUrl := "192.168.8.165" // 能力框架url
+	managerUrl := "http://192.168.8.165:8080" // 能力框架url
 	// 获取当前测试文件的目录
 	testDir, err := os.Getwd()
 	if err != nil {
@@ -21,8 +35,8 @@ func TestPublishPredictInst(t *testing.T) {
 
 	// 构建相对路径
 	imagePath := filepath.Join(testDir, "testpics", "orange.jpg")
-	abilityName := "Detect-hpr"
-	url := "192.168.8.165" // 业务的url
+	abilityName := "Detect"
+	url := "http://192.168.8.165" // 业务的url
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 
@@ -44,8 +58,8 @@ func TestPublishPredictInst(t *testing.T) {
 		if err != nil {
 			logs.Errorf("error publish ArmAngle inst %v", err)
 		} else {
+			fmt.Println("predict resp is ", resp)
 			logs.Infof("predict resp is %v", resp)
 		}
-
 	}
 }

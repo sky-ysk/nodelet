@@ -84,7 +84,17 @@ func PostLifeCycleRequest(Id string, command Command, url string) (string, error
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
+		// 读取响应的 Body 内容
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			fmt.Printf("读取响应 Body 时出错: %v\n", err)
+			return "", err
+		}
+
+		// 输出响应的 Body 内容
 		logs.Errorf("response code is %v\n", response.StatusCode)
+		fmt.Println("response code is", string(body))
+
 		return "", fmt.Errorf("response code is %v\n", response.StatusCode)
 	}
 	responseBody, err := io.ReadAll(response.Body)
@@ -158,6 +168,7 @@ func GetTaskState(taskId string, url string) (TaskState, error) {
 func FindHeartBeatByUUID(hearBeats []HeartBeat, uuid string) (HeartBeat, error) {
 	for _, hearBeat := range hearBeats {
 		if hearBeat.ID == uuid {
+			fmt.Println("now find ", hearBeat)
 			return hearBeat, nil
 		}
 	}
@@ -178,6 +189,7 @@ func GetAbilityState(url string, uuid string) (HeartBeat, error) {
 		logs.Error("find state by UUID error\n")
 		return HeartBeat{}, err
 	}
-	logs.Infof("find state by UUID successfully\n")
+	logs.Info("find state by UUID successfully  heart beat :  ", heartBeat)
+	fmt.Println(heartBeat)
 	return heartBeat, nil
 }

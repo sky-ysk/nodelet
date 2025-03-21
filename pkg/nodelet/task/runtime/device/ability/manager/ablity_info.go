@@ -112,6 +112,9 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 // FindIdByAbilityName 根据能力名字寻找uuid
 func FindIdByAbilityName(abilityName string, abilityInstances []AbilityInstance) (string, error) {
 	for _, abilityInstance := range abilityInstances {
+		fmt.Println("instance is", abilityInstance, abilityInstance.MetaData.Name)
+		fmt.Println("hh", abilityInstance.Spec.AbilityName)
+
 		if abilityInstance.Spec.AbilityName == abilityName {
 			return abilityInstance.Id, nil
 		}

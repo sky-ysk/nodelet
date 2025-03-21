@@ -146,6 +146,9 @@ func (am *ManagerOfAbility) TerminateAbility() error {
 			logs.Info("the ability state is terminated, terminate successfully\n")
 			am.State = state
 			return nil
+		default:
+			return fmt.Errorf("can not get ability state")
 		}
+
 	}
 }
