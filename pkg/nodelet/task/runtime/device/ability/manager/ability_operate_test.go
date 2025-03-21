@@ -18,7 +18,7 @@ func TestGetHeartBeats(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
+	fmt.Println("heart beat is", heartBeats)
 	logs.Infof("heart beats is %v", heartBeats)
 
 }
