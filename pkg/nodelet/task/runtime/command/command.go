@@ -66,7 +66,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	// 目前只接受Command中第一个元素
 	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, false)
 	if err != nil {
-		logs.Error("Failed to start action:\t", action.Spec.Name)
+		logs.Info("Receive info:\t", err)
 		return err
 	}
 	return nil
@@ -123,22 +123,23 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	logs.Infof("process id:\t %d is Running", CMD.Process.Pid)
 
 	// return nil
-	if err := CMD.Wait(); err != nil {
+	if err := CMD.Wait(); err != nil { // err := CMD.Wait()会阻塞
 		// 检查 stopSignal 通道是否被关闭，判断进程是否是外部停止的
 		select {
 		case <-cr.stopSignals[runtime.Name]: // 如果接收到停止信号
-			logs.Info("Goroutine 收到停止信号，退出...")
 			logs.Info("command killed externally by stopCMD")
 			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.processManager.RemoveProcess(runtime.Name)
+			delete(cr.stopSignals, runtime.Name)
+			return fmt.Errorf("Receive killed command:\t %s is Stopped", runtime.Name)
 		default:
-			logs.Info("Goroutine 正在运行...")
 			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
 			// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
 			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.processManager.RemoveProcess(runtime.Name)
+			delete(cr.stopSignals, runtime.Name)
+			return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
 		}
-		cr.processManager.RemoveProcess(runtime.Name)
-		delete(cr.stopSignals, runtime.Name)
-		return err
 	}
 	logs.Infof("command %s completed", runtime.Name)
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
@@ -317,13 +318,13 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
 	args := runtime.Args
 	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, true)
-	if err != nil {
-
-		logs.Error("Failed to start action:\t", action.Spec.Name)
-		return err
-		// TODO: 输出Action的详细信息
-	}
+	go func() {
+		err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, true)
+		if err != nil {
+			logs.Infof("Receive -1 :%v", err)
+			// TODO: 输出Action的详细信息
+		}
+	}()
 	// TODO: 输出Action的详细信息，等级为Debug
 	logs.Infof("Action Name:\t %s is Running", action.Spec.Name)
 

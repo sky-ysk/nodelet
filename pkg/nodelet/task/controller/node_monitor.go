@@ -105,10 +105,10 @@ func checkNodeThreshold(node *apis.Node) bool {
 	memoryUsage := getFloatValue(node.Status.Usage["memory"][0].Values["Usage"])
 	storageUsage := getFloatValue(node.Status.Usage["storage"][0].Values["Usage"])
 	logs.Infof("检查任务状态----CPU利用率：%v,内存利用率：%v，存储利用率：%v", cpuAveUtil, memoryUsage, storageUsage)
-	//time.Sleep(15 * time.Second)
-	logs.Info("6秒结束-=-------------------------------------------=")
-	//return true
-	return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
+	time.Sleep(20 * time.Second)
+	//logs.Info("20秒结束-=-------------------------------------------=")
+	return true
+	//return cpuAveUtil > thresholdCPU || memoryUsage > thresholdMemory || storageUsage > thresholdStorage
 }
 
 func (nm *NodeMonitor) Run(workers int, stopCh <-chan struct{}) {

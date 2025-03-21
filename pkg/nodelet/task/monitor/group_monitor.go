@@ -258,6 +258,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						isSuccess = true
 						if actionStatus.CopyStatus == "Running" {
 							isSuccess = false
+							//logs.Info("***************************************************************Running")
 							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
 							if err != nil {
 								logs.Errorf("Get group by id failed, err:%v", err)
@@ -279,9 +280,9 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 								}
 								if runtimeStatus.CopyStatus == "Succeeded" { // 说明源任务当中的runtime已经运行完成了
 									// 这里将副本group中的该runtime进行判断，如果是细粒度控制的，且进行了初始化的工作话，就关闭Init初始化
-									if runtime.EnableFineGrainedControl && grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing {
+									if runtime.EnableFineGrainedControl && grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing { // 注意这里是用内存当中的group_manager当中的信息Initing
 										// 关闭runtime，直接关闭runtime进程
-										logs.Info("(((((((((((((((((((((((((((((((((((((((")
+										logs.Info("(((((((((((((((((((((((((((((((((((((((-1")
 										gmo.runtimeManager.Kill(group, action, runtime, actionIndex, runtimeIndex)
 									} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的（因为副本runtime没启动无法调用Kill函数来修改runtime状态），所以这里需要主动修改runtime的状态为Succeed
 										gmo.handleRuntimeSucceedUpdate(group, actionIndex, runtimeIndex)
@@ -298,8 +299,23 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 							//if err != nil {
 							//	logs.Errorf("Get group by id failed, err:%v", err)
 							//}
-							gmo.handleCopyActionSucceedUpdate(group, actionIndex) //修改副本任务的Action、Runtime为Successed的状态（因为源任务的Action、Runtime执行完了，副本任务的Action、Runtime没必要执行，直接设置phase为成功即可）
-							continue                                              //说明当前Action执行完成了，接着查看下一个Action的执行情况
+							// 遍历下面的runtime，如果没有关闭要进行关闭
+							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
+							if err != nil {
+								logs.Errorf("Get group by id failed, err:%v", err)
+							}
+							logs.Info("***************************************************************Succeeed")
+							for runtimeIndex := range actionStatus.RuntimeStatus {
+								runtime := &action.Spec.Runtimes[runtimeIndex]
+								if runtime.EnableFineGrainedControl && grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing { // 如果是细粒度控制的，且进行了初始化的工作话，就关闭Init初始化
+									logs.Info("(((((((((((((((((((((((((((((((((((((((-2")
+									gmo.runtimeManager.Kill(group, action, runtime, actionIndex, runtimeIndex)
+								} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的（因为副本runtime没启动无法调用Kill函数来修改runtime状态），所以这里需要主动修改runtime的状态为Succeed
+									gmo.handleRuntimeSucceedUpdate(group, actionIndex, runtimeIndex)
+								}
+							}
+							//gmo.handleCopyActionSucceedUpdate(group, actionIndex) //修改副本任务的Action、Runtime为Successed的状态（因为源任务的Action、Runtime执行完了，副本任务的Action、Runtime没必要执行，直接设置phase为成功即可）
+							continue //说明当前Action执行完成了，接着查看下一个Action的执行情况
 						}
 						if actionStatus.CopyStatus == "Failed" { //TODO 这里有个小插曲，就是对于副本任务里面的其他Action、Runtime的状态没有改为Failed，以后可以补充进来
 							isSuccess = false
@@ -909,14 +925,18 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	actionIndex := event.ActionIndex
 	runtimeIndex := event.RuntimeIndex
 	phase := event.Phase       //当前phase可能为Succeed、Failed、Unknown（Failed、Migrated）
-	if phase == apis.Unknown { // 这里有三种情况，①主动关闭，则为Killed  ②主动迁移关闭，为Migrated
+	if phase == apis.Unknown { // 这里有三种情况，①主动关闭，则为Killed  ②主动迁移关闭，为Migrated  ③副本任务的runtime，Init初始化了，但是没有迁移过来，最终源任务完成，这里要将init的副本runtime进行关闭，为Succeed状态
 		if get.Status.Phase == apis.Migrating {
 			// 判断为Migrated的情况 查group.Status.Phase，如果为Migrating则为迁移，否则为用户主动关闭任务的操作
-			gmo.handleRuntimeMigratedUpdate(get, actionIndex, runtimeIndex)
+			gmo.handleRuntimeMigratedUpdate(get, actionIndex, runtimeIndex) //对于②情况
 			return
 		}
-		//为用户主动关闭
-		phase = apis.Killed
+		if get.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Phase == apis.Init { // 对应③情况
+			phase = apis.Successed
+		} else {
+			//为用户主动关闭，对应①情况
+			phase = apis.Killed
+		}
 	}
 	logs.Infof("Get runtime finish event notify, the phase:%s", phase)
 	finshTime := event.FinishAt
