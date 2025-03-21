@@ -167,7 +167,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
 			}
 
-			// TODO 这里需要将副本信息写入到Copyinfo当中
+			// TODO 这里需要将副本信息写入到源任务的Copyinfo当中
 			patchGroup, err := json.Marshal(map[string]interface{}{
 				"spec": map[string]interface{}{
 					"copy_info": map[string]string{groupCopy.Name: "local"}, //value值不同
@@ -176,7 +176,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			if err != nil {
 				logs.Errorf("Json Marshal failed, err:%v", err)
 			}
-			patchResult, err := gh.groupClient.Patch(context.TODO(), groupCopy.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+			patchResult, err := gh.groupClient.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 			if err != nil {
 				logs.Errorf("Patch group error:%v", err)
 			}

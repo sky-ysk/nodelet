@@ -1814,17 +1814,19 @@ func (gmo *GroupMonitor) updateCopyIngfoForRuntime(groupSpec *apis.GroupSpec, ph
 				continue
 			}
 			copyGroupName := key
-			patchGroup, err := json.Marshal(map[string]interface{}{
-				"op":    "replace",
-				"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/copy_status",
-				"value": phase,
+			patchGroup, err := json.Marshal([]map[string]interface{}{
+				{
+					"op":    "replace",
+					"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/copy_status",
+					"value": phase,
+				},
 			})
 			if err != nil {
 				logs.Errorf("Marshal patch group err:%v", err)
 			}
 			_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
 			if err != nil {
-				logs.Errorf("Patch group err-7:%v", err)
+				logs.Errorf("Patch group err-8:%v", err)
 			}
 			logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running----成功")
 		}
@@ -1858,6 +1860,7 @@ func (gmo *GroupMonitor) updateCopyIngfoForAction(groupSpec *apis.GroupSpec, pha
 				continue
 			}
 			copyGroupName := key
+			logs.Infof("==================key：%v", key)
 			patchGroup, err := json.Marshal([]map[string]interface{}{
 				{
 					"op":    "replace",

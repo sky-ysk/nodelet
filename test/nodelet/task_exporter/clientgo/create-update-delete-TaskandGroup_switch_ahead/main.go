@@ -300,7 +300,7 @@ func main() {
 	err1 := groupsClient.Delete(context.TODO(), group1_1Name, metav1.DeleteOptions{})
 	err2 := groupsClient.Delete(context.TODO(), "Reason-Copy", metav1.DeleteOptions{})
 	_ = actionsClient.Delete(context.TODO(), action1_1_1Name, metav1.DeleteOptions{})
-
+	_ = actionsClient.Delete(context.TODO(), action1_1_1Name+"Copy", metav1.DeleteOptions{})
 	//err2 := groupsClient.Delete(context.TODO(), "ReasonGroup-2", metav1.DeleteOptions{})
 	//err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup-3", metav1.DeleteOptions{})
 	if err != nil {
