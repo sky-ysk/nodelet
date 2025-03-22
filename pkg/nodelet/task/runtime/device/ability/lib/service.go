@@ -32,6 +32,54 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			Value:     strconv.Itoa(predictResult.Prediction),
 			ValueType: "int",
 		}, err
+	case "LeftArmUp":
+		url := device.Spec.AccessMethod.URL
+		err := PublishLeftArmUpInst(url)
+		if err != nil {
+			logs.Error("publish predict inst failed, error is %v", err)
+			return apis.Output{}, err
+		}
+
+		return apis.Output{}, err
+
+	case "LeftArmDown":
+		url := device.Spec.AccessMethod.URL
+		err := PublishLeftArmDownInst(url)
+		if err != nil {
+			logs.Error("publish predict inst failed, error is %v", err)
+			return apis.Output{}, err
+		}
+		return apis.Output{}, err
+
+	case "PredictByUrl":
+		url := device.Spec.AccessMethod.URL
+
+		// 构建参数
+		logs.Infof("construct params for predict by url")
+
+		compressed, err := strconv.ParseBool(device.Spec.ExpectedProperties["compressed"].Value)
+		if err != nil {
+			logs.Errorf("parse compressed value failed, error is %v", err)
+			return apis.Output{}, err
+		}
+		imageType := device.Spec.ExpectedProperties["imageType"].Value
+		position := device.Spec.ExpectedProperties["position"].Value
+		cameraUrl := device.Spec.ExpectedProperties["cameraUrl"].Value
+
+		// 构建完毕
+		logs.Infof("construct params for predict by url finished")
+		predictResult, err := PublishPredictByUrlInst(compressed, cameraUrl, position, imageType, url)
+		if err != nil {
+			logs.Error("publish predict inst failed, error is %v", err)
+			return apis.Output{}, err
+		}
+
+		return apis.Output{
+			Type:      apis.ResultsData,
+			Name:      "predict_result",
+			Value:     strconv.Itoa(predictResult.Prediction),
+			ValueType: "int",
+		}, err
 	}
 	logs.Errorf("Do not support ability:%v", ability)
 	return apis.Output{}, nil
