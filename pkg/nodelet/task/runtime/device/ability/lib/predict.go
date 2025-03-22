@@ -34,7 +34,7 @@ func PublishPredictInst(imagePath, baseUrl string) (PredictSuccessRes, error) {
 	writer := multipart.NewWriter(&buffer)
 
 	// 添加文件到请求
-	part, err := writer.CreateFormFile("file", imagePath)
+	part, err := writer.CreateFormFile("image", imagePath)
 	if err != nil {
 		logs.Errorf("Create form file error: %v\n", err)
 		return PredictSuccessRes{}, err
@@ -97,3 +97,67 @@ func PublishPredictInst(imagePath, baseUrl string) (PredictSuccessRes, error) {
 		return PredictSuccessRes{}, err
 	}
 }
+
+//
+//func main() {
+//	// Image file path to test with
+//	imagePath := "test_image.jpg" // Replace with your image path
+//
+//	// API endpoint URL
+//	url := "http://localhost:8080/predict" // Adjust port if needed
+//
+//	// Create buffer for multipart form data
+//	var body bytes.Buffer
+//	writer := multipart.NewWriter(&body)
+//
+//	// Open image file
+//	file, err := os.Open(imagePath)
+//	if err != nil {
+//		log.Fatalf("Failed to open image: %v", err)
+//	}
+//	defer file.Close()
+//
+//	// Create form file field
+//	part, err := writer.CreateFormFile("image", filepath.Base(imagePath))
+//	if err != nil {
+//		log.Fatalf("Failed to create form file: %v", err)
+//	}
+//
+//	// Copy image content to form
+//	_, err = io.Copy(part, file)
+//	if err != nil {
+//		log.Fatalf("Failed to copy image content: %v", err)
+//	}
+//
+//	// Close writer to finalize multipart form
+//	err = writer.Close()
+//	if err != nil {
+//		log.Fatalf("Failed to close writer: %v", err)
+//	}
+//
+//	// Create HTTP request
+//	req, err := http.NewRequest("POST", url, &body)
+//	if err != nil {
+//		log.Fatalf("Failed to create request: %v", err)
+//	}
+//
+//	// Set content type with boundary
+//
+//	// Send request
+//	client := &http.Client{}
+//	resp, err := client.Do(req)
+//	if err != nil {
+//		log.Fatalf("Failed to send request: %v", err)
+//	}
+//	defer resp.Body.Close()
+//
+//	// Read response
+//	respBody, err := io.ReadAll(resp.Body)
+//	if err != nil {
+//		log.Fatalf("Failed to read response: %v", err)
+//	}
+//
+//	// Print results
+//	log.Printf("Status: %d", resp.StatusCode)
+//	log.Printf("Response: %s", string(respBody))
+//}
