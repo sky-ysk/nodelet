@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"hit.edu/framework/pkg/component-base/logs"
 	"sync"
 	"time"
 )
@@ -33,9 +34,7 @@ func (cp *ConnectionPool) GetConn(address string) (*grpc.ClientConn, error) {
 		return conn.(*grpc.ClientConn), nil
 	}
 
-	conn, err := grpc.Dial(address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithTimeout(5*time.Second))
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -54,11 +53,9 @@ func (cp *ConnectionPool) GetConnWithRetry(address string, maxRetries int, backo
 		if err == nil {
 			return conn, nil
 		}
-
-		if i < maxRetries-1 {
-			time.Sleep(backoff)
-			backoff = time.Duration(float64(backoff) * 1.5) // 指数退避
-		}
+		logs.Errorf("连接尝试 %d 失败: %v", i+1, err) // 明确错误日志
+		time.Sleep(backoff)
+		//backoff = time.Duration(float64(backoff) * 1.5)
 	}
 	return nil, fmt.Errorf("after %d retries: %v", maxRetries, err)
 }

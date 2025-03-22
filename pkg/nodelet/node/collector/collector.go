@@ -45,7 +45,7 @@ type NodeCollector struct {
 }
 
 func NewNodeCollector(enabledCollectors []string) (*NodeCollector, error) {
-	logs.Info("New NodeCollector------------")
+	logs.Info("New nodeCollector")
 	collectors := make(map[string]Collector)
 	var err error
 	var failedCollectors []string //如果感觉没有可以删除，记录无法初始化的XXCollector

@@ -55,7 +55,7 @@ type GroupMonitor struct {
 	stopCh       chan struct{}
 }
 
-func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, dependencyManager *dependency.DependencyManager, actionClient core.ActionInterface) *GroupMonitor {
+func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface, dependencyManager *dependency.DependencyManager) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:      groupManager,
 		taskManager:       taskManager,
@@ -67,7 +67,7 @@ func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, group
 		nodesClient:       nodeClient,
 		groupClient:       groupClient,
 		taskClient:        taskClient,
-		actionClient:   actionClient,
+		actionClient:      actionClient,
 		stopCh:            make(chan struct{}),
 	}
 }
@@ -92,10 +92,10 @@ func (gmo *GroupMonitor) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done(): // 如果父进程通知关闭
-				logs.Info("依赖检查协程收到关闭通知，正在退出...")
+				logs.Trace("依赖检查协程收到关闭通知，正在退出...")
 				return // 退出协程
 			case <-ticker.C: // 每隔一段时间执行一次更新依赖操作
-				logs.Info("定期检查机器的虚拟环境依赖")
+				logs.Trace("定期检查机器的虚拟环境依赖")
 				gmo.dependencyManager.UpdateEnvs()
 				gmo.dependencyManager.UpdateEnvPackages()
 			}
@@ -256,8 +256,9 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						actionStatus := &group.Status.ActionStatus[actionIndex]
 						action := &group.Spec.Actions[actionIndex]
 						isSuccess = true
-						if actionStatus.CopyStatus == "Running" { //说明源任务已经启动了，那么这里需要遍历runtime，找到源任务当中运行的runtime，然后init初始化runtime
+						if actionStatus.CopyStatus == "Running" {
 							isSuccess = false
+							//logs.Info("***************************************************************Running")
 							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
 							if err != nil {
 								logs.Errorf("Get group by id failed, err:%v", err)
@@ -267,7 +268,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 								runtime := &action.Spec.Runtimes[runtimeIndex]
 								if runtimeStatus.CopyStatus == "Running" { //说明源任务当中的该runtime已经Running了
 									// 这里将副本group中的该runtime进行判断，如果是细粒度控制的，就进行init
-									if runtime.EnableFineGrainedControl && !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing { //细粒度控制 且 还未Init初始化过
+									if runtime.EnableFineGrainedControl && !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing && gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) { //细粒度控制 且 还未Init初始化过
 										// 启动runtimeStatus的Init方法  --TODO 这里为啥不用依赖检查呢？因为源任务能Running，说明这个runtime是依赖是满足的，所以默认副本对应的runtime依赖也是满足的（所以这里得加一点，就是在init阶段，检查一下依赖再init也OK---最好是这样）
 										logs.Info("#############################Init#######################################")
 										go gmo.runtimeManager.InitRuntime(group, action, runtime, actionIndex, runtimeIndex) // TODO init方法当中最好也能发送一个事件
@@ -279,9 +280,9 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 								}
 								if runtimeStatus.CopyStatus == "Succeeded" { // 说明源任务当中的runtime已经运行完成了
 									// 这里将副本group中的该runtime进行判断，如果是细粒度控制的，且进行了初始化的工作话，就关闭Init初始化
-									if runtime.EnableFineGrainedControl && grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing {
+									if runtime.EnableFineGrainedControl && grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing { // 注意这里是用内存当中的group_manager当中的信息Initing
 										// 关闭runtime，直接关闭runtime进程
-										logs.Info("(((((((((((((((((((((((((((((((((((((((")
+										logs.Info("(((((((((((((((((((((((((((((((((((((((-1")
 										gmo.runtimeManager.Kill(group, action, runtime, actionIndex, runtimeIndex)
 									} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的（因为副本runtime没启动无法调用Kill函数来修改runtime状态），所以这里需要主动修改runtime的状态为Succeed
 										gmo.handleRuntimeSucceedUpdate(group, actionIndex, runtimeIndex)
@@ -298,8 +299,23 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 							//if err != nil {
 							//	logs.Errorf("Get group by id failed, err:%v", err)
 							//}
-							gmo.handleCopyActionSucceedUpdate(group, actionIndex) //修改副本任务的Action、Runtime为Successed的状态（因为源任务的Action、Runtime执行完了，副本任务的Action、Runtime没必要执行，直接设置phase为成功即可）
-							continue                                              //说明当前Action执行完成了，接着查看下一个Action的执行情况
+							// 遍历下面的runtime，如果没有关闭要进行关闭
+							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
+							if err != nil {
+								logs.Errorf("Get group by id failed, err:%v", err)
+							}
+							logs.Info("***************************************************************Succeeed")
+							for runtimeIndex := range actionStatus.RuntimeStatus {
+								runtime := &action.Spec.Runtimes[runtimeIndex]
+								if runtime.EnableFineGrainedControl && grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing { // 如果是细粒度控制的，且进行了初始化的工作话，就关闭Init初始化
+									logs.Info("(((((((((((((((((((((((((((((((((((((((-2")
+									gmo.runtimeManager.Kill(group, action, runtime, actionIndex, runtimeIndex)
+								} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的（因为副本runtime没启动无法调用Kill函数来修改runtime状态），所以这里需要主动修改runtime的状态为Succeed
+									gmo.handleRuntimeSucceedUpdate(group, actionIndex, runtimeIndex)
+								}
+							}
+							//gmo.handleCopyActionSucceedUpdate(group, actionIndex) //修改副本任务的Action、Runtime为Successed的状态（因为源任务的Action、Runtime执行完了，副本任务的Action、Runtime没必要执行，直接设置phase为成功即可）
+							continue //说明当前Action执行完成了，接着查看下一个Action的执行情况
 						}
 						if actionStatus.CopyStatus == "Failed" { //TODO 这里有个小插曲，就是对于副本任务里面的其他Action、Runtime的状态没有改为Failed，以后可以补充进来
 							isSuccess = false
@@ -315,6 +331,9 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 							if !ok {
 								logs.Error("Delete group from copypending queue and add to completed pending queue failed")
 							}
+						}
+						if actionStatus.CopyStatus == "" {
+							isSuccess = false
 						}
 					}
 					if isSuccess { //说明源任务，还没有迁移就完成了全部的工作，那么直接将副本迁移到Completed队列就OK了
@@ -343,7 +362,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						continue
 					}
 				} else if group.Status.CopyStatus == "Starting" {
-					//logs.Infof("=============CopyPending--Starting")
+					logs.Infof("=============CopyPending--Starting")
 					ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToRunning(group.Status.GroupID) // 有两种情况，一种是无副本情况的瞬时迁移，另一种是副本任务触发了迁移
 					if !ok {
 						logs.Error("Delete group from copy checking queue and add to running queue failed")
@@ -434,8 +453,10 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting { //TODO 这个参数好像可以删了，有Waiting是不是就够了？
 									logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
 									if runtimeStatus.KeyStatus == "" { // 说明不是副本任务，还没初始化---TODO 这里需要这个检查的原因：有可能是即时的迁移迁移，那迁移过去的group是没有进入init状态的，所以这边迁移过去的副本是处于DeployCheck的状态开始恢复任务状态
+										logs.Info("))))))))))))))))))))))))))))))))))))))))))))))")
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
 									} else {
+										logs.Info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex) //这句好像会阻塞
 										go gmo.runtimeManager.RestoreData(group, action, runtime, actionIndex, runtimeIndex)
 									}
@@ -443,7 +464,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								}
 							} else {
 								// ①副本任务，但没有细粒度控制 ②原任务（没有副本） 采用Run方式启动任务
-								logs.Infof("****************************ashdkhaskldhklashdk****************************************")
+								//logs.Infof("****************************ashdkhaskldhklashdk****************************************")
 								if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
 									go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
 									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
@@ -490,6 +511,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 					}
 					//之后这里要考虑迁移的情况，遇到Action为Init的情况，就将Init的runtime启动run/Start起来
 					if action.Status.Phase == apis.Init { //说明当前action下面有Init的runtime了（即：有细粒度控制的runtime）
+						//logs.Info("========================================Init")
 						isSuccess = false
 						for runtimeIndex := range action.Spec.Runtimes {
 							runtime := &action.Spec.Runtimes[runtimeIndex]
@@ -498,16 +520,19 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							if err != nil {
 								logs.Errorf("Get group by id failed, err:%v", err)
 							}
+							//logs.Info("========================================Init----grou")
 							if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) { // 这里需要runtime的父亲节点的状态也为Successed，所以源runtime成功后，同样需要将副本runtime的Phase设置为Succeed，这个很关键
 								grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true
 								continue
 							}
+							//logs.Info("========================================Init----runtimeDepenSatisfy")
 							// 当前遍历到的runtime肯定有Init，当然也会有DeployCheck，执行到此处表示满足依赖，在上面加入一个依赖检查就完美了
 							if runtimeStatus.Phase == apis.Init {
 								if grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting { // 当前runtime等待启动，这里也是防止多次运行这个runtime，所以上面copyPending队列当中InitRuntime方法下面的Waiting=true是必要的
 									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false // 标记当前runtime马上要启动了，不再Waiting了
 									// 将初始化的runtime真正启动 为了适配迁移，这里先回复runtime的状态
 									logs.Infof("****************************Restore****************************************")
+									// 注意这里调用RestoreData后直接启动，需要添加一个设置为Running状态的一个步骤
 									go gmo.runtimeManager.RestoreData(group, action, runtime, actionIndex, runtimeIndex)
 									//// 将runtime真正的启动
 									//time.Sleep(1 * time.Second)
@@ -545,7 +570,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 
 // 迁移控制的时候，正在运行的任务触发迁移，会迁移到该队列当中，该队列主要是存放源任务的，去监听副本任务是否执行完成，目前的逻辑可能就是只要有一个副本任务执行完成。就算完成了--TODO 后续可能要改成查Condition，是一个副本完成就OK了，还是说得所有副本完成，原任务才OK
 func (gmo *GroupMonitor) MigratedQueueCheck(ctx context.Context) {
-	logs.Info("migrated queue start checking")
+	logs.Info("Migrated queue start checking")
 	for {
 		select {
 		case <-ctx.Done():
@@ -673,7 +698,7 @@ func (gmo *GroupMonitor) ErrorQueueCheck(ctx context.Context) {
 // 处理 Runtime运行时启动，如果runtime是action下的首个执行的runtime，同时标记action的状态为Running，如果是第一个action启动，则group的状态也标记为running
 func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhaseEvent1) {
 	// 更新 Runtime 的状态，依据实际变化更新相应字段
-	logs.Info("Handling Runtime Start Status Update")
+	logs.Info("Handling runtime start status update")
 	groupName := event.GroupName
 	processId := event.ProcessId
 	getGroup, err := gmo.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
@@ -743,7 +768,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 		if j != actionIndex {                        // 判断是否是当前处理的Action
 			continue
 		}
-		logs.Infof("=======================================================0")
+		logs.Trace("=======================================================0")
 		for k := range actionStatus.RuntimeStatus { //RuntimeStatus
 			rs := &actionStatus.RuntimeStatus[k]
 			//if rs.Phase == apis.Running || rs.Phase == apis.Successed || rs.Phase == apis.Failed {
@@ -753,19 +778,21 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 				if phase == apis.Failed { //对于Phase等于Failed，标记startTime
 					rs.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
 				} else {
-					rs.ProcessId = processId
+					if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
+						rs.ProcessId = processId
+					}
 				}
 				rs.StartAt = startTime
 				rs.Phase = phase // 这里的Phase有可能是Failed，也有可能是running
 				rs.LastTime = lastTime
 				// 设置副本runtime的状态为Phase（running or failed），如果是跨域的话，这里估计还得再修改
 				gmo.updateCopyIngfoForRuntime(groupSpec, phase, actionIndex, runtimeIndex)
-				logs.Infof("=======================================================3")
+				logs.Trace("=======================================================3")
 			}
 		}
 		// TODO 待解决 有Init--时间的问题
 		if actionStatus.Phase == apis.DeployCheck || actionStatus.Phase == apis.Init { // 说明action的刚从DeployCheck(Init)切换到启动状态，需要更改状态
-			logs.Infof("=======================================================4")
+			logs.Trace("=======================================================4")
 			if phase == apis.Failed {
 				actionStatus.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
 			}
@@ -819,7 +846,9 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 				rs.StartAt = startTime
 				rs.Phase = phase
 				rs.LastTime = lastTime
-				rs.ProcessId = processId
+				if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
+					rs.ProcessId = processId
+				}
 			}
 		}
 		// TODO 待解决 有Init--时间的问题
@@ -903,11 +932,19 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	}
 	actionIndex := event.ActionIndex
 	runtimeIndex := event.RuntimeIndex
-	phase := event.Phase                                             //当前phase可能为Succeed、Failed、Unknown（Failed、Migrated）
-	if phase == apis.Unknown && get.Status.Phase == apis.Migrating { // 这里有三种情况，①主动关闭，则为Failed ②异常退出，也为Failed ③主动迁移关闭，为Migrated
-		// 判断为Migrated的情况 查group.Status.Phase，如果为Migrating则为迁移，否则为用户主动关闭任务的操作
-		gmo.handleRuntimeMigratedUpdate(get, actionIndex, runtimeIndex)
-		return
+	phase := event.Phase       //当前phase可能为Succeed、Failed、Unknown（Failed、Migrated）
+	if phase == apis.Unknown { // 这里有三种情况，①主动关闭，则为Killed  ②主动迁移关闭，为Migrated  ③副本任务的runtime，Init初始化了，但是没有迁移过来，最终源任务完成，这里要将init的副本runtime进行关闭，为Succeed状态
+		if get.Status.Phase == apis.Migrating {
+			// 判断为Migrated的情况 查group.Status.Phase，如果为Migrating则为迁移，否则为用户主动关闭任务的操作
+			gmo.handleRuntimeMigratedUpdate(get, actionIndex, runtimeIndex) //对于②情况
+			return
+		}
+		if get.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Phase == apis.Init { // 对应③情况
+			phase = apis.Successed
+		} else {
+			//为用户主动关闭，对应①情况
+			phase = apis.Killed
+		}
 	}
 	logs.Infof("Get runtime finish event notify, the phase:%s", phase)
 	finshTime := event.FinishAt
@@ -1251,6 +1288,10 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
 	rtStatus := &group.Spec.Actions[actionIndex].Status.RuntimeStatus[runtimeIndex]
+	rsStatus2 := &group.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex]
+	if rsStatus2.IsDependencySatisf {
+		return true
+	}
 	for _, i := range runtime.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
 			//正则匹配选择parents的pahse
@@ -1284,20 +1325,50 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			if !rtStatus.IsParsed {
 				// runtimeReqPackages := make([]apis.Requirement, 0)
 				runtimeReqPackages, err := gmo.dependencyManager.ParseRequirements(dependencyFile)
-				rtStatus.IsParsed = true
 				if err != nil {
 					logs.Info("parse Runtime Requirements error!")
 					rtStatus.IsParsed = false
 					return false
 				}
+				rtStatus.IsParsed = true
 				runtime.Packages = runtimeReqPackages
+				// 这里需要将Package写到etcd上去
+				// 为runtime添加一个依赖是否已经满足的参数，如果已经满足的话则标记为true
+				//patchGroup, err := json.Marshal([]map[string]interface{}{
+				//	{
+				//		"op":    "replace",
+				//		"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/isparsed",
+				//		"value": true,
+				//	},
+				//})
+				//if err != nil {
+				//	logs.Errorf("Marshal patch group err:%v", err)
+				//}
+				//_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+				//if err != nil {
+				//	logs.Errorf("Patch group err-32:%v", err)
+				//}
+				//patchGroup2, err := json.Marshal([]map[string]interface{}{
+				//	{
+				//		"op":    "replace",
+				//		"path":  "/spec/actions/" + strconv.Itoa(actionIndex) + "/spec/runtimes/" + strconv.Itoa(runtimeIndex) + "package",
+				//		"value": runtimeReqPackages,
+				//	},
+				//})
+				//if err != nil {
+				//	logs.Errorf("Marshal patch group err:%v", err)
+				//}
+				//_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup2, metav1.PatchOptions{})
+				//if err != nil {
+				//	logs.Errorf("Patch group err-33:%v", err)
+				//}
 			}
 			envName, err := gmo.dependencyManager.CheckEnvironmentSatisfy(runtime.Packages)
 			if !err {
 				// logs.Info("dependency do not satisfy,runtime name:%v", runtime.Name)
 				//需要使用协程，但是还要防止在monitor监控的时候多次创建
 				if !rtStatus.DepenPreparing {
-					logs.Info("installing dependency for runtime name:%v", runtime.Name)
+					logs.Trace("installing dependency for runtime name:%v", runtime.Name)
 					rtStatus.DepenPreparing = true
 					// go dependency.SetupEnvironment(dependencyFile, runtime.Name)
 				} else {
@@ -1336,6 +1407,24 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			// envVar = append(envVar, apis.EnvVar{Name: "python", Value: envPath})
 			runtime.EnvVar = append(runtime.EnvVar, envVar...)
 		}
+	}
+	if !rsStatus2.IsDependencySatisf {
+		// 为runtime添加一个依赖是否已经满足的参数，如果已经满足的话则标记为true
+		patchGroup, err := json.Marshal([]map[string]interface{}{
+			{
+				"op":    "replace",
+				"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/dependency_satisf",
+				"value": true,
+			},
+		})
+		if err != nil {
+			logs.Errorf("Marshal patch group err:%v", err)
+		}
+		_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+		if err != nil {
+			logs.Errorf("Patch group err-23:%v", err)
+		}
+		logs.Info("=================set  rtStatus.IsDependencySatisf  = true")
 	}
 	return true
 }
@@ -1533,7 +1622,7 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, actionIn
 
 		_, err3 := gmo.taskClient.Update(context.TODO(), task, metav1.UpdateOptions{})
 		if err3 != nil {
-			logs.Errorf("Update group-runtiem-start info error-3:%v", err3)
+			logs.Errorf("Update group-runtiem-start info error-88:%v", err3)
 			time.Sleep(100 * time.Millisecond)
 			_, err3 = gmo.taskClient.Update(context.TODO(), task, metav1.UpdateOptions{})
 		}
@@ -1795,8 +1884,8 @@ func (gmo *GroupMonitor) handleTaskSucceedUpdate(gro *apis.Group) {
 
 // 源任务的Runtime已完成，修改副本Group的Runtime的状态，这样副本的Runtime就不用实际去执行，维护这个状态即可
 func (gmo *GroupMonitor) updateCopyIngfoForRuntime(groupSpec *apis.GroupSpec, phase apis.Phase, actionIndex, runtimeIndex int) {
-	logs.Infof("=======================================================1")
-	logs.Infof("#########runtime#############groupSpec.Replicas:%v,groupSpec.Replicas[0] > 0:%v,groupSpec.Replicas[1] > 0:%v", groupSpec.Replicas, groupSpec.Replicas[0] > 0, groupSpec.Replicas[1] > 0)
+	logs.Trace("=======================================================1")
+	logs.Trace("#########runtime#############groupSpec.Replicas:%v,groupSpec.Replicas[0] > 0:%v,groupSpec.Replicas[1] > 0:%v", groupSpec.Replicas, groupSpec.Replicas[0] > 0, groupSpec.Replicas[1] > 0)
 	if groupSpec.Replicas[0] > 0 { // 当前group有副本，那么需要将该任务对应的副本任务的runtime的结束状态也设置一下
 		logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running")
 		// 设置副本runtime的状态为Phase（Succeed or Failed）  如果是跨域的话，这里估计还得再修改
@@ -1805,17 +1894,19 @@ func (gmo *GroupMonitor) updateCopyIngfoForRuntime(groupSpec *apis.GroupSpec, ph
 				continue
 			}
 			copyGroupName := key
-			patchGroup, err := json.Marshal(map[string]interface{}{
-				"op":    "replace",
-				"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/copy_status",
-				"value": phase,
+			patchGroup, err := json.Marshal([]map[string]interface{}{
+				{
+					"op":    "replace",
+					"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/copy_status",
+					"value": phase,
+				},
 			})
 			if err != nil {
 				logs.Errorf("Marshal patch group err:%v", err)
 			}
 			_, err = gmo.groupClient.Patch(context.TODO(), copyGroupName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
 			if err != nil {
-				logs.Errorf("Patch group err-7:%v", err)
+				logs.Errorf("Patch group err-8:%v", err)
 			}
 			logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running----成功")
 		}
@@ -1840,15 +1931,16 @@ func (gmo *GroupMonitor) updateCopyIngfoForRuntime(groupSpec *apis.GroupSpec, ph
 
 // 源任务的Action已完成，修改副本Group的Action的状态，这样副本Action就不用实际去执行，维护这个状态即可
 func (gmo *GroupMonitor) updateCopyIngfoForAction(groupSpec *apis.GroupSpec, phase apis.Phase, actionIndex int) {
-	logs.Infof("Start#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas[0], groupSpec.Replicas[0] > 0)
+	logs.Trace("Start#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", groupSpec.Replicas[0], groupSpec.Replicas[0] > 0)
 	if groupSpec.Replicas[0] > 0 { // 当前group有副本，那么需要将该任务对应的副本任务的action的结束状态也设置一下
-		logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running")
+		logs.Infof("#######################groupSpec.Replicas > 0#########设置副本action的状态为%v", phase)
 		// 设置副本runtime的状态为Phase（Succeed or Failed）  如果是跨域的话，这里估计还得再修改
 		for key := range groupSpec.CopyInfo {
 			if groupSpec.CopyInfo[key] != "local" {
 				continue
 			}
 			copyGroupName := key
+			logs.Infof("==================key：%v", key)
 			patchGroup, err := json.Marshal([]map[string]interface{}{
 				{
 					"op":    "replace",

@@ -83,16 +83,18 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 				//}
 				// 类型断言放在最外层，避免重复断言
 				event, ok := obj.(*apis.Event)
+				logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, ctrl.startTime)
 				if !ok {
 					return
 				}
-				logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
+				//logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
 				// 合并时间判断和事件条件判断
 				if event.EventTime.Time.Before(ctrl.startTime) ||
 					event.InvolvedObject.Name != nodeName ||
 					(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
 					return // 跳过历史事件/非本节点事件/非迁移触发事件
 				}
+				logs.Info("++++++++++++++++++++++Events--------事件为迁移事件")
 				// 所有条件满足时入队
 				logs.Infof("switch controller: event informer AddFunc(): %v", event.Name)
 				key, _ := cache.MetaNamespaceKeyFunc(obj)
@@ -126,7 +128,7 @@ func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 		logs.Errorf("Timed out waiting for caches to sync")
 		return
 	}
-	logs.Info("缓存同步完成=======================")
+	logs.Trace("缓存同步完成=======================")
 	wg.Add(workers)
 	for i := 0; i < workers; i++ {
 		go func() {
@@ -422,7 +424,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						// 关闭源任务当中的runtime
 						logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 						//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
-						time.Sleep(1 * time.Second)
+						//time.Sleep(1 * time.Second)
 
 					}
 					err = mc.runtimeManager.Kill(group, action, runtime, i, j) //最后都需要将runtime进程关闭
@@ -432,7 +434,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				}
 			}
 		}
-		// 将源group从Running队列迁移到Completed队列
+		// 将源group从Running队列迁移到Migrated队列
 		logs.Info("--------------DeleteFromRunningAndAddToMigratedQueue=====================")
 		ok := mc.groupQueues.DeleteFromRunningAndAddToMigrated(group.Status.GroupID)
 		if !ok {
@@ -477,6 +479,7 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, copyGroupName string, nodeNam
 	groupCopy.Spec.Replicas = []int32{0, 0}
 	for i := range groupCopy.Spec.Actions {
 		action := &groupCopy.Spec.Actions[i]
+		action.Name = action.Name + "Copy"
 		if action.Status.Phase == apis.Successed {
 			continue
 		} else {

@@ -99,6 +99,12 @@ func (rm *RBACManager) createClusterRole() error {
 				Resources: []string{"services", "pods", "deployments"},
 				Verbs:     []string{"get", "list", "watch", "create"},
 			},
+			// 新增 namespaces 权限
+			{
+				APIGroups: []string{""},
+				Resources: []string{"namespaces"},
+				Verbs:     []string{"get", "create"},
+			},
 		},
 	}
 

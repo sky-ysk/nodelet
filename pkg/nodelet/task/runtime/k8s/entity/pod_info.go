@@ -2,6 +2,8 @@ package entity
 
 import (
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -48,10 +50,10 @@ import (
 func GetPodFromParam1(customPod *apis.Pod) *corev1.Pod {
 	spec := convertPodSpec(customPod.Spec)
 	labels := customPod.ObjectMeta.Labels
-	if labels != nil {
+	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels["app.kubernetes.io/create-by"] = "deploy-system"
+	labels[monitor.CreateorLabel] = monitor.SystemName
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: customPod.TypeMeta.APIVersion,
@@ -75,8 +77,251 @@ func convertPodSpec(spec apis.PodSpec) corev1.PodSpec {
 		DNSPolicy:          corev1.DNSPolicy(spec.DnsPolicy),
 		NodeSelector:       spec.NodeSelector,
 		ServiceAccountName: spec.ServiceAccountName,
+		Affinity:           convertAffinity(spec.Affinity),
 	}
 }
+
+// ----------------------------[ Affinity 转换 ]----------------------------
+func convertAffinity(affinity apis.Affinity) *corev1.Affinity {
+	if isEmptyAffinity(affinity) {
+		return nil
+	}
+
+	return &corev1.Affinity{
+		NodeAffinity:    convertNodeAffinity(affinity.NodeAffinity),
+		PodAffinity:     convertPodAffinity(affinity.PodAffinity),
+		PodAntiAffinity: convertPodAntiAffinity(affinity.PodAntiAffinity),
+	}
+}
+
+// ----------------------------[ 空值判断逻辑 ]----------------------------
+// 总空值判断
+func isEmptyAffinity(a apis.Affinity) bool {
+	return isEmptyNodeAffinity(a.NodeAffinity) &&
+		isEmptyPodAffinity(a.PodAffinity) &&
+		isEmptyPodAntiAffinity(a.PodAntiAffinity)
+}
+
+// NodeAffinity 空值判断
+func isEmptyNodeAffinity(na apis.NodeAffinity) bool {
+	return isEmptyNodeSelector(na.RequiredDuringSchedulingIgnoredDuringExecution) &&
+		len(na.PreferredDuringSchedulingIgnoredDuringExecution) == 0
+}
+
+// NodeSelector 空值判断
+func isEmptyNodeSelector(ns apis.NodeSelector) bool {
+	return len(ns.NodeSelectorTerms) == 0
+}
+
+// PodAffinity/PodAntiAffinity 空值判断（根据你的实际结构补充）
+func isEmptyPodAffinity(pa apis.PodAffinity) bool {
+	// 示例：根据实际字段判断
+	return len(pa.RequiredDuringSchedulingIgnoredDuringExecution) == 0 &&
+		len(pa.PreferredDuringSchedulingIgnoredDuringExecution) == 0
+}
+
+func isEmptyPodAntiAffinity(paa apis.PodAntiAffinity) bool {
+	// 示例：同上
+	return len(paa.RequiredDuringSchedulingIgnoredDuringExecution) == 0 &&
+		len(paa.PreferredDuringSchedulingIgnoredDuringExecution) == 0
+}
+
+// ----------------------------[ NodeAffinity 转换 ]----------------------------
+func convertNodeAffinity(src apis.NodeAffinity) *corev1.NodeAffinity {
+	if isEmptyNodeAffinity(src) {
+		return nil
+	}
+
+	dst := &corev1.NodeAffinity{}
+
+	// 转换 RequiredDuringScheduling...
+	if !isEmptyNodeSelector(src.RequiredDuringSchedulingIgnoredDuringExecution) {
+		dst.RequiredDuringSchedulingIgnoredDuringExecution = convertNodeSelector(src.RequiredDuringSchedulingIgnoredDuringExecution)
+	}
+
+	// 转换 PreferredDuringScheduling...
+	if len(src.PreferredDuringSchedulingIgnoredDuringExecution) > 0 {
+		dst.PreferredDuringSchedulingIgnoredDuringExecution = convertPreferredSchedulingTerms(src.PreferredDuringSchedulingIgnoredDuringExecution)
+	}
+
+	return dst
+}
+
+func convertNodeSelector(src apis.NodeSelector) *corev1.NodeSelector {
+	if isEmptyNodeSelector(src) {
+		return nil
+	}
+
+	return &corev1.NodeSelector{
+		NodeSelectorTerms: convertNodeSelectorTerms(src.NodeSelectorTerms),
+	}
+}
+
+// ----------------------------[ NodeSelectorTerm 转换 ]----------------------------
+func convertNodeSelectorTerms(src []apis.NodeSelectorTerm) []corev1.NodeSelectorTerm {
+	var dst []corev1.NodeSelectorTerm
+	for _, term := range src {
+		if converted := convertNodeSelectorTerm(term); converted != nil {
+			dst = append(dst, *converted)
+		}
+	}
+	return dst
+}
+
+func convertNodeSelectorTerm(src apis.NodeSelectorTerm) *corev1.NodeSelectorTerm {
+	if isEmptyNodeSelectorTerm(src) {
+		return nil
+	}
+
+	return &corev1.NodeSelectorTerm{
+		MatchExpressions: convertNodeSelectorRequirements(src.MatchExpressions),
+		MatchFields:      convertNodeSelectorRequirements(src.MatchFields),
+	}
+}
+
+func isEmptyNodeSelectorTerm(nst apis.NodeSelectorTerm) bool {
+	return len(nst.MatchExpressions) == 0 && len(nst.MatchFields) == 0
+}
+
+// ----------------------------[ NodeSelectorRequirement 转换 ]----------------------------
+func convertNodeSelectorRequirements(src []apis.NodeSelectorRequirement) []corev1.NodeSelectorRequirement {
+	var dst []corev1.NodeSelectorRequirement
+	for _, req := range src {
+		dst = append(dst, corev1.NodeSelectorRequirement{
+			Key:      req.Key,
+			Operator: corev1.NodeSelectorOperator(req.Operator),
+			Values:   req.Values,
+		})
+	}
+	return dst
+}
+
+// ----------------------------[ PreferredSchedulingTerm 转换 ]----------------------------
+func convertPreferredSchedulingTerms(src []apis.PreferredSchedulingTerm) []corev1.PreferredSchedulingTerm {
+	var dst []corev1.PreferredSchedulingTerm
+	for _, term := range src {
+		if converted := convertPreferredSchedulingTerm(term); converted != nil {
+			dst = append(dst, *converted)
+		}
+	}
+	return dst
+}
+
+func convertPreferredSchedulingTerm(src apis.PreferredSchedulingTerm) *corev1.PreferredSchedulingTerm {
+	if src.Weight == 0 || isEmptyNodeSelectorTerm(src.Preference) {
+		return nil
+	}
+
+	return &corev1.PreferredSchedulingTerm{
+		Weight:     src.Weight,
+		Preference: *convertNodeSelectorTerm(src.Preference),
+	}
+}
+
+// ----------------------------[ PodAffinity 转换 ]----------------------------
+func convertPodAffinity(pa apis.PodAffinity) *corev1.PodAffinity {
+	if isEmptyPodAffinity(pa) {
+		return nil
+	}
+
+	return &corev1.PodAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution:  convertPodAffinityTerms(pa.RequiredDuringSchedulingIgnoredDuringExecution),
+		PreferredDuringSchedulingIgnoredDuringExecution: convertWeightedPodAffinityTerms(pa.PreferredDuringSchedulingIgnoredDuringExecution),
+	}
+}
+
+// ----------------------------[ PodAntiAffinity 转换 ]----------------------------
+func convertPodAntiAffinity(paa apis.PodAntiAffinity) *corev1.PodAntiAffinity {
+	if isEmptyPodAntiAffinity(paa) {
+		return nil
+	}
+
+	return &corev1.PodAntiAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution:  convertPodAffinityTerms(paa.RequiredDuringSchedulingIgnoredDuringExecution),
+		PreferredDuringSchedulingIgnoredDuringExecution: convertWeightedPodAffinityTerms(paa.PreferredDuringSchedulingIgnoredDuringExecution),
+	}
+}
+
+// ----------------------------[ 通用转换工具函数 ]----------------------------
+// 转换 PodAffinityTerm 列表
+func convertPodAffinityTerms(terms []apis.PodAffinityTerm) []corev1.PodAffinityTerm {
+	var dst []corev1.PodAffinityTerm
+	for _, term := range terms {
+		if converted := convertPodAffinityTerm(term); converted != nil {
+			dst = append(dst, *converted)
+		}
+	}
+	return dst
+}
+
+// 转换单个 PodAffinityTerm
+func convertPodAffinityTerm(term apis.PodAffinityTerm) *corev1.PodAffinityTerm {
+	if isEmptyPodAffinityTerm(term) {
+		return nil
+	}
+
+	return &corev1.PodAffinityTerm{
+		LabelSelector:     convertLabelSelector(term.LabelSelector),
+		Namespaces:        term.Namespaces,
+		TopologyKey:       term.TopologyKey,
+		NamespaceSelector: convertLabelSelector(term.NamespaceSelector),
+	}
+}
+
+// PodAffinityTerm 空值判断
+func isEmptyPodAffinityTerm(term apis.PodAffinityTerm) bool {
+	return term.TopologyKey == "" && // TopologyKey 是必填字段
+		convertLabelSelector(term.LabelSelector) == nil &&
+		convertLabelSelector(term.NamespaceSelector) == nil &&
+		len(term.Namespaces) == 0
+}
+
+// 转换带权重的 PodAffinityTerm
+func convertWeightedPodAffinityTerms(terms []apis.WeightedPodAffinityTerm) []corev1.WeightedPodAffinityTerm {
+	var dst []corev1.WeightedPodAffinityTerm
+	for _, term := range terms {
+		if converted := convertWeightedPodAffinityTerm(term); converted != nil {
+			dst = append(dst, *converted)
+		}
+	}
+	return dst
+}
+
+func convertWeightedPodAffinityTerm(term apis.WeightedPodAffinityTerm) *corev1.WeightedPodAffinityTerm {
+	if term.Weight == 0 || isEmptyPodAffinityTerm(term.PodAffinityTerm) {
+		return nil
+	}
+
+	return &corev1.WeightedPodAffinityTerm{
+		Weight:          term.Weight,
+		PodAffinityTerm: *convertPodAffinityTerm(term.PodAffinityTerm),
+	}
+}
+
+// ----------------------------[ LabelSelector 转换 ]----------------------------
+func convertLabelSelector(selector meta.LabelSelector) *metav1.LabelSelector {
+	if selector.MatchLabels == nil && len(selector.MatchExpressions) == 0 {
+		return nil
+	}
+
+	return &metav1.LabelSelector{
+		MatchLabels:      selector.MatchLabels,
+		MatchExpressions: convertLabelSelectorRequirements(selector.MatchExpressions),
+	}
+}
+
+//func convertLabelSelectorRequirements(reqs []meta.LabelSelectorRequirement) []metav1.LabelSelectorRequirement {
+//	var dst []metav1.LabelSelectorRequirement
+//	for _, req := range reqs {
+//		dst = append(dst, metav1.LabelSelectorRequirement{
+//			Key:      req.Key,
+//			Operator: metav1.LabelSelectorOperator(req.Operator),
+//			Values:   req.Values,
+//		})
+//	}
+//	return dst
+//}
+
 func convertVolumes(volumes []apis.Volume) []corev1.Volume {
 	var k8sVolumes []corev1.Volume
 	for _, v := range volumes {

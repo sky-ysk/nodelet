@@ -394,6 +394,15 @@ const (
 	NotEqual SignalType = "!="
 )
 
+// 符号判断
+type ResultType string
+
+const (
+	True     ResultType = "True"
+	False    ResultType = "False"
+	NotReady ResultType = "NotReady"
+)
+
 // 流程执行条件
 // LeftValue ==或!= RightValue
 // 输出结果为Bool类型的值
@@ -407,7 +416,7 @@ type ConditionFormula struct {
 	// 类型包含 and 或者 or
 	Join JoinType `json:"join,omitempty" yaml:"join"`
 	// TODO: 符号判断结果
-	Result bool `json:"result,omitempty" yaml:"result"`
+	Result ResultType `json:"result_type,omitempty" yaml:"result_type"`
 }
 
 // 不建议使用过于复杂的逻辑
@@ -700,6 +709,7 @@ const (
 	ByPod        RuntimeType = "pod"
 	//添加-hzy ---这个要讨论是否有该选项，被删除了？
 	ByWasm RuntimeType = "wasm"
+	ByK8s  RuntimeType = "k8s"
 )
 
 // 环境变量
@@ -1139,9 +1149,8 @@ type Runtime struct {
 	Service     Service           `json:"service,omitempty" yaml:"service"`
 	Deployment  Deployment        `json:"deployment,omitempty" yaml:"deployment"`
 	//ysk添加
-	Dependency     string `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
-	Packages		   []Requirement `json:"package,omitempty" yaml:"package"`	//解析之后的包
-	
+	Dependency string        `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
+	Packages   []Requirement `json:"package,omitempty" yaml:"package"`       //解析之后的包
 
 }
 
@@ -1246,14 +1255,15 @@ type RuntimeStatus struct {
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数0hzy
-	RuntimeID  string `json:"runtime_id,omitempty" yaml:"runtime_id"`
-	Waiting    bool   `json:"waiting" yaml:"waiting"`
-	Initing    bool   `json:"initing,omitempty" yaml:"initing"`
-	Starting   bool   `json:"starting,omitempty" yaml:"starting"`
-	KeyStatus  string `json:"key_status" yaml:"key_status"`
-	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
-	IsParsed		bool `json:"isparsed" yaml:"isparsed"`		//是否已经被解析过
-	DepenPreparing bool   `json:"DepenPreparing" yaml:"DepenPreparing"`   //是否正在创建虚拟环境，防止多次创建
+	RuntimeID          string `json:"runtime_id,omitempty" yaml:"runtime_id"`
+	Waiting            bool   `json:"waiting" yaml:"waiting"`
+	Initing            bool   `json:"initing,omitempty" yaml:"initing"`
+	Starting           bool   `json:"starting,omitempty" yaml:"starting"`
+	KeyStatus          string `json:"key_status" yaml:"key_status"`
+	CopyStatus         string `json:"copy_status,omitempty" yaml:"copy_status"`
+	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
+	IsParsed           bool   `json:"isparsed" yaml:"isparsed"`             //是否已经被解析过
+	DepenPreparing     bool   `json:"DepenPreparing" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
 }
 
 // 任务的输出结果
@@ -1296,6 +1306,7 @@ type PodSpec struct {
 	DnsPolicy          DNSPolicy         `json:"dns_policy,omitempty" yaml:"dns_policy"`                     // DNS解析策略（ClusterFirst/Default/None）
 	NodeSelector       map[string]string `json:"node_selector,omitempty" yaml:"node_selector"`               // 节点标签选择器（强制调度到匹配节点）
 	ServiceAccountName string            `json:"service_account_name,omitempty" yaml:"service_account_name"` // 关联的ServiceAccount名称
+	Affinity           Affinity          `json:"affinity,omitempty" yaml:"affinity"`
 }
 type Volume struct {
 	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
@@ -1658,7 +1669,7 @@ type RollingUpdateDeployment struct {
 type VM struct{}
 
 // 后续需要可以扩展
-//依赖解析成包的结构体
+// 依赖解析成包的结构体
 type Requirement struct {
 	Name    string
 	Version string

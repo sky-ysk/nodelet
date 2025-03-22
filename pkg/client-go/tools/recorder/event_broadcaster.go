@@ -27,7 +27,7 @@ type eventKey struct {
 
 // 创建新EventBroadcaster
 func NewBroadcaster(opts ...BroadcasterOption) EventBroadcaster {
-	logs.Info("fn NewBroadcaster")
+	logs.Trace("fn NewBroadcaster")
 	c := config{
 		sleepDuration: defaultSleepDuration,
 	}
@@ -80,14 +80,14 @@ func (e *eventBroadcaster) StartEventWatcher(eventHandler func(*apis.Event)) (fu
 	e.wg.Add(1)
 	go func() {
 		defer e.wg.Done()
-		logs.Info("go routine : start event watcher")
+		logs.Trace("go routine : start event watcher")
 		for {
 			select {
 			case <-e.cancelationCtx.Done():
 				watcher.Stop()
 				return
 			case watchEvent := <-watcher.ResultChan(): // 从 watcher result channel 中取出 event
-				logs.Info("watcher has received the event")
+				logs.Trace("watcher has received the event")
 				event, ok := watchEvent.Object.(*apis.Event)
 				if !ok {
 					logs.Trace("Incorrect event format, the event has been discarded")
@@ -117,7 +117,7 @@ func (e *eventBroadcaster) StartRecordingToSink(ctx context.Context, sink EventS
 }
 
 func (e *eventBroadcaster) recordToSink(sink EventSink, event *apis.Event) {
-	logs.Info("---recordToSink---")
+	logs.Trace("---recordToSink---")
 	// todo：实现eventsink，向apiserver进行patch、create
 	eventCopy := *event
 	event = &eventCopy
@@ -161,7 +161,7 @@ func (e *eventBroadcaster) StartLogging(ctx context.Context, logf func(format st
 
 // 实例Recorder，与该broadcaster绑定
 func (e *eventBroadcaster) NewRecorder(scheme *runtime.Scheme, reportingComponent string) EventRecorder {
-	logs.Info("fn NewRecorder")
+	logs.Trace("fn NewRecorder")
 	hostname, _ := os.Hostname()
 	// todo: 将当前的node name写入eventsource
 	return &recorder{scheme, apis.EventSource{Component: reportingComponent, Host: hostname}, e.Broadcaster}

@@ -65,17 +65,17 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	switch runtime.Type {
 	case apis.ByDeployment:
 		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
-		logs.Info("-----------------k8s deployment created----------------------------")
+		logs.Info("[RUN]-----------------k8s deployment created----------------------------")
 		CreateDeployment(k.clientset, deployment1) // 创建Deployment
 		return nil
 	case apis.ByService:
 		service1 := entity.GetServiceFromParam1(&runtime.Service)
-		logs.Info("-----------------k8s Service created----------------------------")
+		logs.Info("[RUN]-----------------k8s Service created----------------------------")
 		CreateService(k.clientset, service1)
 		return nil
 	case apis.ByPod:
 		podInfo1 := entity.GetPodFromParam1(&runtime.Pod)
-		logs.Info("-----------------k8s Pod created----------------------------")
+		logs.Info("[RUN]-----------------k8s Pod created----------------------------")
 		CreatePod(k.clientset, podInfo1)
 		return nil
 	default:
@@ -115,16 +115,17 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 	switch runtime.Type {
 	case apis.ByDeployment:
 		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
-		logs.Info("-----------------k8s deployment created----------------------------")
+		logs.Info("[StartRuntime]-----------------k8s deployment created----------------------------")
 		CreateDeployment(k.clientset, deployment1) // 创建Deployment
 	case apis.ByPod:
 		podInfo1 := entity.GetPodFromParam1(&runtime.Pod)
-		logs.Info("-----------------k8s Pod created----------------------------")
+		logs.Info("[StartRuntime]-----------------k8s Pod created----------------------------")
 		CreatePod(k.clientset, podInfo1)
 	default:
 		err := fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 		logs.Error(err, "Runtime type not supported")
 	}
+	logs.Infof("开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
 	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
 	_, error := client.RunAppStart()
 	if error != nil {
@@ -133,14 +134,15 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 	return error
 }
 func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+	k.monitor.SetState(group, action, runtime, actionIndex, runtimeIndex)
 	switch runtime.Type {
 	case apis.ByDeployment:
 		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
-		logs.Info("-----------------k8s deployment created----------------------------")
+		logs.Info("[InitRuntime]-----------------k8s deployment created----------------------------")
 		CreateDeployment(k.clientset, deployment1) // 创建Deployment
 	case apis.ByPod:
 		podInfo1 := entity.GetPodFromParam1(&runtime.Pod)
-		logs.Info("-----------------k8s Pod created----------------------------")
+		logs.Info("[InitRuntime]-----------------k8s Pod created----------------------------")
 		CreatePod(k.clientset, podInfo1)
 	default:
 		err := fmt.Errorf("unsupported runtime type: %s", runtime.Type)

@@ -2,13 +2,13 @@ package core
 
 import (
 	"context"
+	"hit.edu/framework/pkg/component-base/logs"
 
 	// "hit.edu/framework/pkg/apimachinery/runtime"
 	// "hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/component-base/logs"
 )
 
 // The EventExpansion interface allows manually adding extra methods to the EventInterface.
@@ -22,8 +22,8 @@ type EventExpansion interface {
 }
 
 func (e *events) CreateForEventSink(event *apis.Event) (*apis.Event, error) {
-	logs.Info("---CreateForEventSink---")
-	logs.Info("将该event post到api server")
+	logs.Trace("---CreateForEventSink---")
+	logs.Trace("将该event post到api server")
 	result, err := e.Create(context.TODO(), event, meta.CreateOptions{})
 	return result, err
 }

@@ -31,7 +31,7 @@ var (
 func init() { //它在包级别的变量初始化之后，自动调用，不需要显式调用 ---也就是说main入口函数导入了collector包，他就会被调用
 	// 向NodeCollector注册自身
 	RegisterCollector(StorageCollectorName, enableStoInfo, NewStorageCollector)
-	logs.Info("init StorageCollector==========")
+	logs.Info("Init StorageCollector")
 }
 func NewStorageCollector() (Collector, error) {
 	var provider stoinfo.StorageInfoProvider

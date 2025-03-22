@@ -55,7 +55,7 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 	// event.ReportingInstance = recorder.source.Host
 	// event.ReportingController = recorder.source.Component
 
-	logs.Info("generateEvent--recorder.ActionOrDrop")
+	logs.Trace("generateEvent--recorder.ActionOrDrop")
 	sent, err := recorder.ActionOrDrop(watch.Added, event)
 	// 这个 broadcaster 已经结束了
 	if err != nil {

@@ -64,7 +64,8 @@ func main() {
 
 	tasksClient := clientSet.Core().Tasks("")
 	groupsClient := clientSet.Core().Groups("")
-
+	actionsClient := clientSet.Core().Actions("test")
+	eventsClient := clientSet.Core().Events("test")
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "TrainInferTask-1" // 第一个Task的Name
 	task1ID := "TrainInferTaskID-1" // 第一个Task的ID
@@ -78,7 +79,9 @@ func main() {
 	group1_3ID := "GroupID-3"                 // 第一个Task下的第三个GroupID
 
 	// group副本数量
-	group1_1Replicas := int32(1)
+	group1_1Replicas := []int32{1, 0}
+	group1_2Replicas := []int32{0, 0}
+	group1_3Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -136,7 +139,7 @@ func main() {
 							apis.Runtime{
 								Name:                         runtime1_1_1_1Name,
 								Type:                         apis.ByCommand,
-								Command:                      []string{"/home/public/anaconda3/envs/yolo/bin/python"},
+								Command:                      []string{"python"},
 								Args:                         []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                      make([]string, 0), // 加入Parents
 								Image:                        "/home/public/workspace/heongtong_yolo_linux/train.py",
@@ -213,10 +216,10 @@ func main() {
 							apis.Runtime{
 								Name:                     runtime1_2_1_1Name,
 								Type:                     apis.ByCommand,
-								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict_simple.py"},
+								Command:                  []string{"python"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict_simple.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
 							},
@@ -224,9 +227,9 @@ func main() {
 								Name:                     runtime1_2_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict_simple.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_2_1_1Name}, // 加入Parents
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict_simple.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_2FineGrainedControl,
 							},
@@ -289,9 +292,9 @@ func main() {
 								Name:                     runtime1_3_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict_simple.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  make([]string, 0), // 加入Parents
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict_simple.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
 							},
@@ -299,9 +302,9 @@ func main() {
 								Name:                     runtime1_3_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"/home/public/anaconda3/envs/yolo/bin/python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict_simple.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict_simple.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_2FineGrainedControl,
 							},
