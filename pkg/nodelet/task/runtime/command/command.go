@@ -265,6 +265,7 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 // 细粒度控制（grpc）：恢复任务状态
 func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	// 恢复任务状态，调用grpc接口通知任务恢复任务状态，任务状态存放在etcd当中（group下对应runtime下的runtimeStatus下的keyStatus属性）
+	nowTime := apis.Time{time.Now()}
 	// keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
 	keyStatus := ""
 	//logs.Infof("keyStatus: %s", keyStatus)
@@ -281,6 +282,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	if error != nil {
 		logs.Errorf("任务恢复状态失败: %e", error)
 	}
+	cr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Running, nowTime, nowTime)
 	cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
 
 	return error

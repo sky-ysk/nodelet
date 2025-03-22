@@ -387,7 +387,6 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 			return
 		case <-time.After(time.Millisecond * 100):
 			runningGroups := gmo.groupQueues.GetAllRunning()
-			logs.Info("Geting running queue")
 			for i := range runningGroups {
 				gro := runningGroups[i] //不用再加&&
 				// 从etcd当中读取group信息
@@ -512,7 +511,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 					}
 					//之后这里要考虑迁移的情况，遇到Action为Init的情况，就将Init的runtime启动run/Start起来
 					if action.Status.Phase == apis.Init { //说明当前action下面有Init的runtime了（即：有细粒度控制的runtime）
-						logs.Info("========================================Init")
+						//logs.Info("========================================Init")
 						isSuccess = false
 						for runtimeIndex := range action.Spec.Runtimes {
 							runtime := &action.Spec.Runtimes[runtimeIndex]
@@ -521,17 +520,19 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							if err != nil {
 								logs.Errorf("Get group by id failed, err:%v", err)
 							}
-							logs.Info("========================================Init----grou")
+							//logs.Info("========================================Init----grou")
 							if !gmo.runtimeDepenSatisfy(actionIndex, runtimeIndex, group) { // 这里需要runtime的父亲节点的状态也为Successed，所以源runtime成功后，同样需要将副本runtime的Phase设置为Succeed，这个很关键
 								grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true
 								continue
 							}
+							//logs.Info("========================================Init----runtimeDepenSatisfy")
 							// 当前遍历到的runtime肯定有Init，当然也会有DeployCheck，执行到此处表示满足依赖，在上面加入一个依赖检查就完美了
 							if runtimeStatus.Phase == apis.Init {
 								if grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting { // 当前runtime等待启动，这里也是防止多次运行这个runtime，所以上面copyPending队列当中InitRuntime方法下面的Waiting=true是必要的
 									grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false // 标记当前runtime马上要启动了，不再Waiting了
 									// 将初始化的runtime真正启动 为了适配迁移，这里先回复runtime的状态
 									logs.Infof("****************************Restore****************************************")
+									// 注意这里调用RestoreData后直接启动，需要添加一个设置为Running状态的一个步骤
 									go gmo.runtimeManager.RestoreData(group, action, runtime, actionIndex, runtimeIndex)
 									//// 将runtime真正的启动
 									//time.Sleep(1 * time.Second)
@@ -777,7 +778,9 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 				if phase == apis.Failed { //对于Phase等于Failed，标记startTime
 					rs.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
 				} else {
-					rs.ProcessId = processId
+					if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
+						rs.ProcessId = processId
+					}
 				}
 				rs.StartAt = startTime
 				rs.Phase = phase // 这里的Phase有可能是Failed，也有可能是running
@@ -843,7 +846,9 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 				rs.StartAt = startTime
 				rs.Phase = phase
 				rs.LastTime = lastTime
-				rs.ProcessId = processId
+				if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
+					rs.ProcessId = processId
+				}
 			}
 		}
 		// TODO 待解决 有Init--时间的问题
@@ -1283,7 +1288,8 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
 	runtime := &group.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
 	rtStatus := &group.Spec.Actions[actionIndex].Status.RuntimeStatus[runtimeIndex]
-	if rtStatus.IsDependencySatisf {
+	rsStatus2 := &group.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex]
+	if rsStatus2.IsDependencySatisf {
 		return true
 	}
 	for _, i := range runtime.Conditions.Formulas {
@@ -1328,25 +1334,34 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				runtime.Packages = runtimeReqPackages
 				// 这里需要将Package写到etcd上去
 				// 为runtime添加一个依赖是否已经满足的参数，如果已经满足的话则标记为true
-				patchGroup, err := json.Marshal([]map[string]interface{}{
-					{
-						"op":    "replace",
-						"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/isparsed",
-						"value": true,
-					},
-					{
-						"op":    "replace",
-						"path":  "/spec/actions/" + strconv.Itoa(actionIndex) + "/spec/runtimes/" + strconv.Itoa(runtimeIndex) + "package",
-						"value": runtimeReqPackages,
-					},
-				})
-				if err != nil {
-					logs.Errorf("Marshal patch group err:%v", err)
-				}
-				_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-				if err != nil {
-					logs.Errorf("Patch group err-22:%v", err)
-				}
+				//patchGroup, err := json.Marshal([]map[string]interface{}{
+				//	{
+				//		"op":    "replace",
+				//		"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/isparsed",
+				//		"value": true,
+				//	},
+				//})
+				//if err != nil {
+				//	logs.Errorf("Marshal patch group err:%v", err)
+				//}
+				//_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+				//if err != nil {
+				//	logs.Errorf("Patch group err-32:%v", err)
+				//}
+				//patchGroup2, err := json.Marshal([]map[string]interface{}{
+				//	{
+				//		"op":    "replace",
+				//		"path":  "/spec/actions/" + strconv.Itoa(actionIndex) + "/spec/runtimes/" + strconv.Itoa(runtimeIndex) + "package",
+				//		"value": runtimeReqPackages,
+				//	},
+				//})
+				//if err != nil {
+				//	logs.Errorf("Marshal patch group err:%v", err)
+				//}
+				//_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup2, metav1.PatchOptions{})
+				//if err != nil {
+				//	logs.Errorf("Patch group err-33:%v", err)
+				//}
 			}
 			envName, err := gmo.dependencyManager.CheckEnvironmentSatisfy(runtime.Packages)
 			if !err {
@@ -1393,20 +1408,23 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			runtime.EnvVar = append(runtime.EnvVar, envVar...)
 		}
 	}
-	// 为runtime添加一个依赖是否已经满足的参数，如果已经满足的话则标记为true
-	patchGroup, err := json.Marshal([]map[string]interface{}{
-		{
-			"op":    "replace",
-			"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/dependency_satisf",
-			"value": true,
-		},
-	})
-	if err != nil {
-		logs.Errorf("Marshal patch group err:%v", err)
-	}
-	_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-	if err != nil {
-		logs.Errorf("Patch group err-22:%v", err)
+	if !rsStatus2.IsDependencySatisf {
+		// 为runtime添加一个依赖是否已经满足的参数，如果已经满足的话则标记为true
+		patchGroup, err := json.Marshal([]map[string]interface{}{
+			{
+				"op":    "replace",
+				"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/dependency_satisf",
+				"value": true,
+			},
+		})
+		if err != nil {
+			logs.Errorf("Marshal patch group err:%v", err)
+		}
+		_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+		if err != nil {
+			logs.Errorf("Patch group err-23:%v", err)
+		}
+		logs.Info("=================set  rtStatus.IsDependencySatisf  = true")
 	}
 	return true
 }

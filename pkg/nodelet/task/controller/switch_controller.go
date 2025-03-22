@@ -83,6 +83,7 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 				//}
 				// 类型断言放在最外层，避免重复断言
 				event, ok := obj.(*apis.Event)
+				logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, ctrl.startTime)
 				if !ok {
 					return
 				}
@@ -93,6 +94,7 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 					(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
 					return // 跳过历史事件/非本节点事件/非迁移触发事件
 				}
+				logs.Info("++++++++++++++++++++++Events--------事件为迁移事件")
 				// 所有条件满足时入队
 				logs.Infof("switch controller: event informer AddFunc(): %v", event.Name)
 				key, _ := cache.MetaNamespaceKeyFunc(obj)
