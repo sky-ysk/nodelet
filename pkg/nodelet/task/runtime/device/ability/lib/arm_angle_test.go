@@ -56,7 +56,7 @@ func TestPublishArmAngleInst(t *testing.T) {
 
 }
 
-// go test -run TestPublishLeftArmUpInst -v
+// go test -run TestPublishLeftArmDownInst -v
 func TestPublishLeftArmDownInst(t *testing.T) {
 	logs.Init("test")
 	managerUrl := "http://192.168.8.165:8080" // 能力框架url
