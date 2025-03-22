@@ -80,3 +80,43 @@ func TestPostPic(t *testing.T) {
 	_, err = PublishPredictInst(imagePath, managerUrl)
 
 }
+
+// 测试predict by url 接口
+func TestPublishPredictByUrlInst(t *testing.T) {
+	logs.Init("test")
+	managerUrl := "http://192.168.8.165:8080" // 能力框架url
+
+	abilityName := "Detect"
+	url := "http://192.168.8.165" // 业务的url
+	am := manager.NewAbilityManager(managerUrl, abilityName)
+	heartBeat, err := am.StartupAbility()
+
+	//// 终止能力[备用]
+	//err =am.TerminateAbility()
+	//if err!=nil{
+	//	logs.Errorf("error is %v",err)
+	//}
+
+	// predict by url 参数
+	compressed := false
+	cameraUrl := ""
+	position := ""
+	imageType := ""
+	if err != nil {
+		logs.Errorf("start up %s fail", abilityName)
+		fmt.Println(err)
+	} else {
+		fmt.Println("heart beat is ", heartBeat)
+
+		// 通过heartbeat中的abilityPort拼接成新的url
+
+		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		resp, err := PublishPredictByUrlInst(compressed, cameraUrl, position, imageType, serviceUrl)
+		if err != nil {
+			logs.Errorf("error publish predict inst %v", err)
+		} else {
+			fmt.Println("predict resp is ", resp)
+			logs.Infof("predict resp is %v", resp)
+		}
+	}
+}

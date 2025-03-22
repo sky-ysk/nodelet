@@ -18,6 +18,12 @@ type PredictSuccessRes struct {
 type PredictFailRes struct {
 	Error string `json:"error"`
 }
+type PredictByUrlReq struct {
+	Url        string `json:"url"`
+	Position   string `json:"position"`
+	Type       string `json:"type"`
+	Compressed bool   `json:"compressed"`
+}
 
 func PublishPredictInst(imagePath, baseUrl string) (PredictSuccessRes, error) {
 
@@ -161,3 +167,63 @@ func PublishPredictInst(imagePath, baseUrl string) (PredictSuccessRes, error) {
 //	log.Printf("Status: %d", resp.StatusCode)
 //	log.Printf("Response: %s", string(respBody))
 //}
+
+func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string, imageType string, baseUrl string) (PredictSuccessRes, error) {
+	url := fmt.Sprintf("%s/predict_by_url", baseUrl)
+
+	// 序列化 predictByUrl 为 JSON
+	predictByUrl := PredictByUrlReq{
+		Url:        cameraUrl,
+		Position:   position,
+		Type:       imageType,
+		Compressed: compressed,
+	}
+	jsonData, err := json.Marshal(predictByUrl)
+	if err != nil {
+		logs.Errorf("JSON 序列化错误: %v\n", err)
+		return PredictSuccessRes{}, err
+	}
+	logs.Infof("the json data is %s", string(jsonData))
+	// 创建 POST 请求
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		logs.Errorf("创建请求错误: %v\n", err)
+		return PredictSuccessRes{}, err
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		logs.Errorf("发送请求错误: %v\n", err)
+		return PredictSuccessRes{}, err
+	}
+	defer resp.Body.Close()
+	// 读取响应
+	respData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Read response error: %v\n", err)
+		return PredictSuccessRes{}, err
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		var successRes PredictSuccessRes
+		err = json.Unmarshal(respData, &successRes)
+		if err != nil {
+			return PredictSuccessRes{}, err
+		}
+		return successRes, err
+
+	} else {
+		var failRes PredictFailRes
+		err = json.Unmarshal(respData, &failRes)
+		if err != nil {
+			return PredictSuccessRes{}, err
+		}
+		logs.Errorf("predict failed, the reason is %v", failRes.Error)
+		return PredictSuccessRes{}, err
+	}
+}
