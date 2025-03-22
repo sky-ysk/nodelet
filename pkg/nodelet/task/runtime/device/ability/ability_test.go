@@ -6,18 +6,19 @@ import (
 	"testing"
 )
 
+// go test -run TestPublishAbilityInst -v
 func TestPublishAbilityInst(t *testing.T) {
 
 	// 发布指令 service开头为业务请求 manage开头为能力框架操作
-	//inst := "service_{具体业务}"
-	inst := "manage_{能力名}"
+	inst := "service_LeftArmUp"
+	//inst := "manage_ArmControl.Leju.Guochuang"
 
 	logs.Init("test")
 
 	// 选择不同的测试device
 	// 在创建device测试函数中填写参数
-	device := CreateArmAngleDevice()
-	//device := CreateLeftArmUpDevice()
+	//device := CreateArmAngleDevice()
+	device := CreateLeftArmUpDevice()
 	//device := CreateLeftArmDownDevice()
 	//device := CreatePredictDevice()
 	//device := CreatePredictByUrlDevice()
@@ -35,9 +36,10 @@ func TestPublishAbilityInst(t *testing.T) {
 			service.Port = output.Value
 		}
 	}
+	//time.Sleep(5 * time.Second)
 
 	// 能力框架的终止方式通过操作字段operation来进行
-	output, err = PublishAbilityInst(inst, device, "terminate")
+	//output, err = PublishAbilityInst(inst, device, "terminate")
 }
 
 // 创建ArmAngle的测试device
@@ -86,7 +88,7 @@ func CreateArmAngleDevice() *apis.Device {
 
 // 创建LeftArmUp的测试device
 func CreateLeftArmUpDevice() *apis.Device {
-	url := "" // 填写框架url
+	url := "http://192.168.8.165:8080" // 填写框架url
 	device := &apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
