@@ -55,11 +55,13 @@ func TestPublishArmAngleInst(t *testing.T) {
 	}
 
 }
+
+// go test -run TestPublishLeftArmUpInst -v
 func TestPublishLeftArmDownInst(t *testing.T) {
 	logs.Init("test")
-	managerUrl := "" // 能力框架url
-	abilityName := ""
-	url := "" // 业务url
+	managerUrl := "http://192.168.8.165:8080" // 能力框架url
+	abilityName := "ArmControl.Leju.Guochuang"
+	url := "http://192.168.8.165" // 业务url
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 	if err != nil {
@@ -76,11 +78,12 @@ func TestPublishLeftArmDownInst(t *testing.T) {
 	}
 }
 
+// go test -run TestPublishLeftArmUpInst -v
 func TestPublishLeftArmUpInst(t *testing.T) {
 	logs.Init("test")
-	managerUrl := "" // 能力框架url
-	abilityName := ""
-	url := "" // 业务url
+	managerUrl := "http://192.168.8.165:8080" // 能力框架url
+	abilityName := "ArmControl.Leju.Guochuang"
+	url := "http://192.168.8.165" // 业务url
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 	if err != nil {

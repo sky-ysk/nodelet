@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// go test -run TestGetAbilityInstances -v
 func TestGetAbilityInstances(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
