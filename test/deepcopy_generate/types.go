@@ -77,6 +77,14 @@ type Resource_NodeList struct {
 	Items []Resource_Node `json:"items" yaml:"items"`
 }
 
+type Quantity struct {
+	// 定量数据
+	i int64
+
+	// 单位
+	format string
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Event struct {
 	//TODO: 定义Event
@@ -109,7 +117,6 @@ const (
 	EventTypeWarning string = "Warning"
 )
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ObjectReference struct {
 	// GVK
 	APIVersion string
@@ -770,6 +777,7 @@ const (
 	Networkbps      ResourceUnit = "bps"
 )
 
+// 增加设备定义
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Device struct {
 	//
@@ -921,9 +929,43 @@ type DeviceSpec struct {
 
 	// 设备的期望属性
 	ExpectedProperties map[string]Property
+
+	Abilities []AbilitySpec
 }
 
+// AbilitySpec 描述一个能力
+type AbilitySpec struct {
+	Name     string
+	Services []AbilityService // 一个能力对应的多个业务
+}
+
+// AbilityService 描述一个能力的具体业务
+type AbilityService struct {
+	Name        string
+	Description string
+	Interface   string
+}
+type AbilityServiceStatus struct {
+	Name      string
+	Ip        string
+	Port      string
+	Interface string
+	Model     string
+}
+
+// AbilityStatus 描述一个能力是否启动
+type AbilityStatus struct {
+	Name       string
+	Status     string
+	InstanceID string
+	Services   []AbilityServiceStatus
+	State      AbilityState
+}
+
+type AbilityState int
+
 type DeviceStatus struct {
+	Abilities []AbilityStatus
 	// DeviceID, Name+NodeID
 	DeviceID string
 
@@ -1249,11 +1291,3 @@ type Deployment struct{}
 type VM struct{}
 
 // 后续需要可以扩展
-
-type Quantity struct {
-	// 定量数据
-	i int64
-
-	// 单位
-	format string
-}

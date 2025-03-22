@@ -1,3 +1,4 @@
+// +k8s:deepcopy-gen=package
 package apis
 
 import (
@@ -20,48 +21,56 @@ type Time struct {
 	time.Time `json:"time" yaml:"time"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type WorkflowList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Workflow `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TaskList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Task `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type GroupList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Group `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ActionList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Action `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DataList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Data `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SceneList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Scene `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DeviceList struct {
 	meta.TypeMeta
 	meta.ListMeta
 	Items []Device `json:"items" yaml:"items"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Resource_NodeList struct {
 	meta.TypeMeta
 	meta.ListMeta
@@ -100,7 +109,6 @@ const (
 	EventTypeWarning string = "Warning"
 )
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ObjectReference struct {
 	// GVK
 	APIVersion string
@@ -114,6 +122,7 @@ type ObjectReference struct {
 }
 type UID string
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type EventList struct {
 	meta.TypeMeta
 
@@ -122,7 +131,7 @@ type EventList struct {
 	Events []Event `json:"events" yaml:"events"`
 }
 
-// Node
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Node struct {
 	//
 	meta.TypeMeta
@@ -151,6 +160,7 @@ type NodeSpec struct {
 	// TODO: 节点Label
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type NodeList struct {
 	meta.TypeMeta
 
@@ -394,6 +404,7 @@ type IDRef struct {
 	ActionID   string `json:"action_id,omitempty" yaml:"action_id"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Workflow struct {
 	//
 	meta.TypeMeta
@@ -442,7 +453,7 @@ type WorkflowStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
-// --------- Task
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Task struct {
 	//
 	meta.TypeMeta
@@ -506,7 +517,7 @@ type TaskStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
-// ---------- Group
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Group struct {
 	//
 	meta.TypeMeta
@@ -599,7 +610,7 @@ type GroupStatus struct {
 }
 
 // ---------- Action
-
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Action struct {
 	//
 	meta.TypeMeta
@@ -671,6 +682,7 @@ type EnvVar struct {
 	// TODO: 动态获取相关字段
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Resource_Node struct {
 	meta.TypeMeta
 
@@ -681,6 +693,7 @@ type Resource_Node struct {
 	Status ResourceStatus `json:"status,omitempty" yaml:"status"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Data struct {
 	meta.TypeMeta
 
@@ -691,6 +704,7 @@ type Data struct {
 	Status DataStatus `json:"status,omitempty" yaml:"status"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Scene struct {
 	meta.TypeMeta
 
@@ -756,6 +770,7 @@ const (
 )
 
 // 增加设备定义
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Device struct {
 	//
 	meta.TypeMeta
@@ -906,9 +921,43 @@ type DeviceSpec struct {
 
 	// 设备的期望属性
 	ExpectedProperties map[string]Property
+
+	Abilities []AbilitySpec
 }
 
+// AbilitySpec 描述一个能力
+type AbilitySpec struct {
+	Name     string
+	Services []AbilityService // 一个能力对应的多个业务
+}
+
+// AbilityService 描述一个能力的具体业务
+type AbilityService struct {
+	Name        string
+	Description string
+	Interface   string
+}
+type AbilityServiceStatus struct {
+	Name      string
+	Ip        string
+	Port      string
+	Interface string
+	Model     string
+}
+
+// AbilityStatus 描述一个能力是否启动
+type AbilityStatus struct {
+	Name       string
+	Status     string
+	InstanceID string
+	Services   []AbilityServiceStatus
+	State      AbilityState
+}
+
+type AbilityState int
+
 type DeviceStatus struct {
+	Abilities []AbilityStatus
 	// DeviceID, Name+NodeID
 	DeviceID string
 
