@@ -177,10 +177,8 @@ func CreateLeftArmDownDevice() *apis.Device {
 // 创建predict能力的测试device
 func CreatePredictDevice() *apis.Device {
 	url := ""
-	cameraUrl := ""
-	compressed := "false"
-	imageType := ""
-	position := ""
+
+	path := ""
 	device := &apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -192,10 +190,8 @@ func CreatePredictDevice() *apis.Device {
 			Abilities: make([]apis.AbilityStatus, 0),
 		},
 	}
-	device.Spec.ExpectedProperties["cameraUrl"] = apis.Property{Value: cameraUrl}
-	device.Spec.ExpectedProperties["compressed"] = apis.Property{Value: compressed}
-	device.Spec.ExpectedProperties["imageType"] = apis.Property{Value: imageType}
-	device.Spec.ExpectedProperties["position"] = apis.Property{Value: position}
+	device.Spec.ExpectedProperties["path"] = apis.Property{Value: path}
+
 	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
 		Name: "Predict",
 		Services: []apis.AbilityServiceStatus{
