@@ -66,6 +66,12 @@ func PublishLeftArmUpInst(url string) error {
 	// 检查 HTTP 响应状态码
 	if resp.StatusCode != http.StatusOK {
 		logs.Errorf("请求失败，状态码: %d", resp.StatusCode)
+		//body, err1 := io.ReadAll(resp.Body)
+		//if err1 != nil {
+		//	fmt.Printf("读取响应 Body 时出错: %v\n", err)
+		//	return err1
+		//}
+		//fmt.Println(string(body))
 		return err
 	}
 	logs.Infof("left arm up successfully")
@@ -73,17 +79,24 @@ func PublishLeftArmUpInst(url string) error {
 }
 
 func PublishLeftArmDownInst(url string) error {
-
 	// 创建 HTTP GET 请求
+	logs.Infof(url)
 	resp, err := http.Get(url)
 	if err != nil {
 		logs.Errorf("发送请求失败: %v", err)
 		return err
 	}
 	defer resp.Body.Close()
-
 	// 检查 HTTP 响应状态码
 	if resp.StatusCode != http.StatusOK {
+		//body, err1 := io.ReadAll(resp.Body)
+		//if err1 != nil {
+		//	fmt.Printf("读取响应 Body 时出错: %v\n", err)
+		//	return err1
+		//}
+		//logs.Errorf("body : %d", resp.StatusCode)
+		//fmt.Println("body is ")
+		//fmt.Println(string(body))
 		logs.Errorf("请求失败，状态码: %d", resp.StatusCode)
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // go test -run TestPublishArmAngleTerminate  -v
@@ -70,13 +71,16 @@ func TestPublishLeftArmDownInst(t *testing.T) {
 		logs.Infof("heartBeat is %v", heartBeat)
 		// 通过heartbeat中的abilityPort拼接成新的url
 
-		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/left_arm_down")
+		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/control/left_arm_down")
+		logs.Infof("go into down ...")
 		err := PublishLeftArmDownInst(serviceUrl)
 		if err != nil {
 			logs.Errorf("error publish LeftArmDown inst %v", err)
 		}
 	}
 	// 终止能力[备用]
+	time.Sleep(3 * time.Second)
+
 	err = am.TerminateAbility()
 	if err != nil {
 		logs.Errorf("error is %v", err)
@@ -104,7 +108,8 @@ func TestPublishLeftArmUpInst(t *testing.T) {
 			logs.Errorf("error publish LeftArmUp inst %v", err)
 		}
 	}
-	// 终止能力[备用]
+	time.Sleep(3 * time.Second)
+	//终止能力[备用]
 	err = am.TerminateAbility()
 	if err != nil {
 		logs.Errorf("error is %v", err)
