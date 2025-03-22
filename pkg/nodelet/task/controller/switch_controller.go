@@ -422,7 +422,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						// 关闭源任务当中的runtime
 						logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 						//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
-						time.Sleep(1 * time.Second)
+						//time.Sleep(1 * time.Second)
 
 					}
 					err = mc.runtimeManager.Kill(group, action, runtime, i, j) //最后都需要将runtime进程关闭

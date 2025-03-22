@@ -1244,14 +1244,15 @@ type RuntimeStatus struct {
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数0hzy
-	RuntimeID      string `json:"runtime_id,omitempty" yaml:"runtime_id"`
-	Waiting        bool   `json:"waiting" yaml:"waiting"`
-	Initing        bool   `json:"initing,omitempty" yaml:"initing"`
-	Starting       bool   `json:"starting,omitempty" yaml:"starting"`
-	KeyStatus      string `json:"key_status" yaml:"key_status"`
-	CopyStatus     string `json:"copy_status,omitempty" yaml:"copy_status"`
-	IsParsed       bool   `json:"isparsed" yaml:"isparsed"`             //是否已经被解析过
-	DepenPreparing bool   `json:"DepenPreparing" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
+	RuntimeID          string `json:"runtime_id,omitempty" yaml:"runtime_id"`
+	Waiting            bool   `json:"waiting" yaml:"waiting"`
+	Initing            bool   `json:"initing,omitempty" yaml:"initing"`
+	Starting           bool   `json:"starting,omitempty" yaml:"starting"`
+	KeyStatus          string `json:"key_status" yaml:"key_status"`
+	CopyStatus         string `json:"copy_status,omitempty" yaml:"copy_status"`
+	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
+	IsParsed           bool   `json:"isparsed" yaml:"isparsed"`             //是否已经被解析过
+	DepenPreparing     bool   `json:"DepenPreparing" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
 }
 
 // 任务的输出结果

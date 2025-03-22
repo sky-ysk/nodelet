@@ -66,7 +66,7 @@ func (c *RuntimeClient) checkConnection1() bool {
 	defer c.mu.Unlock()
 
 	// 从连接池获取或创建连接
-	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 30, 500*time.Millisecond)
+	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 100, 50*time.Millisecond)
 	if err != nil {
 		logs.Infof("failed to connect to grpc server:%v", err)
 		return false
