@@ -514,3 +514,119 @@ func TestRun(t *testing.T) {
 //		fmt.Println(err)
 //	}
 //}
+
+func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime) {
+
+	// 能力框架的url
+	manageUrl := ""
+	imageType := ""
+	cameraUrl := ""
+	position := ""
+	// 创建device
+	device := &apis.Device{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "devicePredict",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Device",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DeviceSpec{
+			Name: "devicePredict",
+			AccessMethod: apis.AccessMethod{
+				Type: apis.AccessByAbility,
+				URL:  manageUrl,
+			},
+			ExpectedProperties: map[string]apis.Property{},
+			Abilities:          make([]apis.AbilitySpec, 0),
+		},
+		Status: apis.DeviceStatus{
+			DeviceID: "devicePredict",
+			Phase:    apis.DeviceIdle,
+			Status:   "idle",
+			ActionID: "",
+			Lock: apis.Lock{
+				IsLocked: true,
+			},
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Predict",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "Predict",
+				Ip:        "192.168.8.165",
+				Interface: "/predict",
+			},
+			{
+				Name:      "PredictByUrl",
+				Ip:        "192.168.8.165",
+				Interface: "/predict_by_url",
+			},
+		},
+	})
+
+	runtime := &apis.Runtime{
+		Image: "manage_Detect",
+		Name:  "RuntimeTest",
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: apis.Output{
+
+		},
+		Inputs:  []apis.Input{
+			{
+				Name: "imageType",
+				Type: "string",
+				Value: imageType,
+			},
+			{
+				Name: "position",
+				Type: "string",
+				Value: position,
+			},
+			{
+				Name: "cameraUrl",
+				Type: "string",
+				Value: cameraUrl,
+			},
+		},
+	}
+
+
+	action := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action",
+			Runtimes: []apis.Runtime{
+				*runtime,
+			},
+		},
+		Status: apis.ActionStatus{
+			ActionID: "Action1",
+			Devices: []apis.DeviceStatus{
+
+			},
+		}
+	}
+
+
+	return _, _, runtime
+}

@@ -99,7 +99,7 @@ func TestPublishPredictByUrlInst(t *testing.T) {
 
 	// predict by url 参数
 	compressed := false
-	cameraUrl := ""
+	cameraUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/status/camera")
 	position := ""
 	imageType := ""
 	if err != nil {
