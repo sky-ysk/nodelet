@@ -12,7 +12,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/config"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/entity"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/rbac"
 	"k8s.io/client-go/kubernetes"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -20,7 +19,6 @@ import (
 type K8sRuntime struct {
 	clientset     *kubernetes.Clientset
 	metricsClient *metricsclientset.Clientset //go get k8s.io/metrics/pkg/client/clientset/versioned 从 Metrics Server 获取的实时监控数据
-	rabcManager   *rbac.RBACManager
 	//client         *grpc_client.RuntimeClient
 	connectionPool *pool.ConnectionPool
 	// 全局事件发送的组件
@@ -47,10 +45,9 @@ func NewK8sRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecorder,
 		logs.Error("clientset or metricsClient is nil---")
 		return nil
 	}
-	rbacManager := rbac.NewRBACManager(clientset)
 	k8sMonitor := monitor.NewMonitor(clientset, eventBus)
 	k8sMonitor.Start()
-	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, rabcManager: rbacManager, connectionPool: pool, recorder: recorder, monitor: k8sMonitor}
+	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, recorder: recorder, monitor: k8sMonitor}
 }
 func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("k8s runtime kill task: %s", group.Name)
