@@ -32,11 +32,6 @@ func TestPublishArmAngleInst(t *testing.T) {
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 
-	//// 终止能力[备用]
-	//err =am.TerminateAbility()
-	//if err!=nil{
-	//	logs.Errorf("error is %v",err)
-	//}
 	if err != nil {
 		logs.Errorf("start up %s fail", abilityName)
 	} else {
@@ -47,13 +42,18 @@ func TestPublishArmAngleInst(t *testing.T) {
 
 		// 通过heartbeat中的abilityPort拼接成新的url
 
-		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/control/arm_angle")
 		err := PublishArmAngleInst(params, serviceUrl)
 		if err != nil {
 			logs.Errorf("error publish ArmAngle inst %v", err)
 		}
 	}
 
+	// 终止能力[备用]
+	err = am.TerminateAbility()
+	if err != nil {
+		logs.Errorf("error is %v", err)
+	}
 }
 
 // go test -run TestPublishLeftArmDownInst -v
@@ -70,11 +70,16 @@ func TestPublishLeftArmDownInst(t *testing.T) {
 		logs.Infof("heartBeat is %v", heartBeat)
 		// 通过heartbeat中的abilityPort拼接成新的url
 
-		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/left_arm_down")
 		err := PublishLeftArmDownInst(serviceUrl)
 		if err != nil {
 			logs.Errorf("error publish LeftArmDown inst %v", err)
 		}
+	}
+	// 终止能力[备用]
+	err = am.TerminateAbility()
+	if err != nil {
+		logs.Errorf("error is %v", err)
 	}
 }
 
@@ -93,10 +98,15 @@ func TestPublishLeftArmUpInst(t *testing.T) {
 
 		// 通过heartbeat中的abilityPort拼接成新的url
 
-		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/control/left_arm_up")
 		err := PublishLeftArmUpInst(serviceUrl)
 		if err != nil {
 			logs.Errorf("error publish LeftArmUp inst %v", err)
 		}
+	}
+	// 终止能力[备用]
+	err = am.TerminateAbility()
+	if err != nil {
+		logs.Errorf("error is %v", err)
 	}
 }

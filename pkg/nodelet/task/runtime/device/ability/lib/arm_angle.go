@@ -13,9 +13,7 @@ type ArmAngle struct {
 	Right []float64 `json:"right"`
 }
 
-func PublishArmAngleInst(params map[string][]float64, baseUrl string) error {
-
-	url := fmt.Sprintf("%s/api/control/arm_angle", baseUrl)
+func PublishArmAngleInst(params map[string][]float64, url string) error {
 
 	armAngle := ArmAngle{
 		Left:  params["left"],
@@ -55,8 +53,8 @@ func PublishArmAngleInst(params map[string][]float64, baseUrl string) error {
 	}
 }
 
-func PublishLeftArmUpInst(baseUrl string) error {
-	url := fmt.Sprintf("%s/api/control/left_arm_up", baseUrl)
+func PublishLeftArmUpInst(url string) error {
+
 	// 创建 HTTP GET 请求
 	resp, err := http.Get(url)
 	if err != nil {
@@ -74,8 +72,8 @@ func PublishLeftArmUpInst(baseUrl string) error {
 	return nil
 }
 
-func PublishLeftArmDownInst(baseUrl string) error {
-	url := fmt.Sprintf("%s/api/control/left_arm_down", baseUrl)
+func PublishLeftArmDownInst(url string) error {
+
 	// 创建 HTTP GET 请求
 	resp, err := http.Get(url)
 	if err != nil {

@@ -948,17 +948,43 @@ type DeviceSpec struct {
 
 	// 设备的期望属性
 	ExpectedProperties map[string]Property
-	
-	Ability []Ability
+
+	Abilities []AbilitySpec
 }
 
-type Ability struct {
-	Name  string
-	IP    string
-	Port  string
-	State string
+// AbilitySpec 描述一个能力
+type AbilitySpec struct {
+	Name     string
+	Services []AbilityService // 一个能力对应的多个业务
 }
+
+// AbilityService 描述一个能力的具体业务
+type AbilityService struct {
+	Name        string
+	Description string
+	Interface   string
+}
+type AbilityServiceStatus struct {
+	Name      string
+	Ip        string
+	Port      string
+	Interface string
+	Model     string
+}
+
+// AbilityStatus 描述一个能力是否启动
+type AbilityStatus struct {
+	Name       string
+	Status     string
+	InstanceID string
+	Services   []AbilityServiceStatus
+	State      AbilityState
+}
+
+type AbilityState int
+
 type DeviceStatus struct {
+	Abilities []AbilityStatus
 	// DeviceID, Name+NodeID
 	DeviceID string
 
@@ -973,7 +999,6 @@ type DeviceStatus struct {
 	// 设备的运行阶段
 	Phase DevicePhase
 
-	ReadyAbility []string
 	// 运行时中，设备的实际状态
 	// 当Phase与Status不一致时，机器人出现运行错误
 	Status string
@@ -1300,8 +1325,8 @@ type PodSpec struct {
 	ServiceAccountName string            `json:"service_account_name,omitempty" yaml:"service_account_name"` // 关联的ServiceAccount名称
 }
 type Volume struct {
-	Name         string `json:"name" yaml:"name"` // 存储卷名称
-	VolumeSource `json:",inline" yaml:",inline"`  // 存储卷来源（如ConfigMap、Secret）
+	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
+	VolumeSource `json:",inline" yaml:",inline"` // 存储卷来源（如ConfigMap、Secret）
 }
 
 // VolumeSource 定义存储卷的数据来源（必须且常用的类型）

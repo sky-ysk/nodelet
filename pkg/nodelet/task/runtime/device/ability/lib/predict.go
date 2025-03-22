@@ -25,7 +25,7 @@ type PredictByUrlReq struct {
 	Compressed bool   `json:"compressed"`
 }
 
-func PublishPredictInst(imagePath, baseUrl string) (PredictSuccessRes, error) {
+func PublishPredictInst(imagePath, url string) (PredictSuccessRes, error) {
 
 	// 打开文件
 	file, err := os.Open(imagePath)
@@ -57,8 +57,6 @@ func PublishPredictInst(imagePath, baseUrl string) (PredictSuccessRes, error) {
 		fmt.Printf("Close writer error: %v\n", err)
 		return PredictSuccessRes{}, err
 	}
-
-	url := fmt.Sprintf("%s/predict", baseUrl)
 	// 创建 POST 请求
 	req, err := http.NewRequest("POST", url, &buffer)
 	if err != nil {
@@ -168,8 +166,7 @@ func PublishPredictInst(imagePath, baseUrl string) (PredictSuccessRes, error) {
 //	log.Printf("Response: %s", string(respBody))
 //}
 
-func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string, imageType string, baseUrl string) (PredictSuccessRes, error) {
-	url := fmt.Sprintf("%s/predict_by_url", baseUrl)
+func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string, imageType string, url string) (PredictSuccessRes, error) {
 
 	// 序列化 predictByUrl 为 JSON
 	predictByUrl := PredictByUrlReq{

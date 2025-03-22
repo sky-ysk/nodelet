@@ -54,7 +54,7 @@ func TestPublishPredictInst(t *testing.T) {
 
 		// 通过heartbeat中的abilityPort拼接成新的url
 
-		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/predict")
 		resp, err := PublishPredictInst(imagePath, serviceUrl)
 		if err != nil {
 			logs.Errorf("error publish predict inst %v", err)
@@ -110,7 +110,7 @@ func TestPublishPredictByUrlInst(t *testing.T) {
 
 		// 通过heartbeat中的abilityPort拼接成新的url
 
-		serviceUrl := fmt.Sprintf("%s:%s", url, strconv.Itoa(heartBeat.AbilityPort))
+		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/predict_by_url")
 		resp, err := PublishPredictByUrlInst(compressed, cameraUrl, position, imageType, serviceUrl)
 		if err != nil {
 			logs.Errorf("error publish predict inst %v", err)

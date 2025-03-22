@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"strconv"
@@ -11,15 +12,23 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 	switch ability {
 	case "ArmAngle":
 		params := constructArmAngleParams(device)
-		url := device.Spec.AccessMethod.URL
-		err := PublishArmAngleInst(params, url)
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		err = PublishArmAngleInst(params, url)
 		if err != nil {
 			logs.Errorf("publish armangle inst failed, error is %v", err)
 			return apis.Output{}, err
 		}
 	case "Predict":
 		imagePath := device.Spec.ExpectedProperties["path"].Value
-		url := device.Spec.AccessMethod.URL
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
 		predictResult, err := PublishPredictInst(imagePath, url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
@@ -33,8 +42,12 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			ValueType: "int",
 		}, err
 	case "LeftArmUp":
-		url := device.Spec.AccessMethod.URL
-		err := PublishLeftArmUpInst(url)
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		err = PublishLeftArmUpInst(url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
 			return apis.Output{}, err
@@ -43,8 +56,12 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 		return apis.Output{}, err
 
 	case "LeftArmDown":
-		url := device.Spec.AccessMethod.URL
-		err := PublishLeftArmDownInst(url)
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		err = PublishLeftArmDownInst(url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
 			return apis.Output{}, err
@@ -52,7 +69,11 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 		return apis.Output{}, err
 
 	case "PredictByUrl":
-		url := device.Spec.AccessMethod.URL
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
 
 		// 构建参数
 		logs.Infof("construct params for predict by url")
@@ -105,4 +126,21 @@ func constructArmAngleParams(device *apis.Device) map[string][]float64 {
 		params[name] = result
 	}
 	return params
+}
+
+func GetServiceUrl(name string, device *apis.Device) (string, error) {
+	var url string
+	for _, abilityStatus := range device.Status.Abilities {
+		for _, serviceStatus := range abilityStatus.Services {
+			if serviceStatus.Name == name {
+				// 按照ip 端口 接口的方式来构造url
+				url = fmt.Sprintf("http://%s:%s%s", serviceStatus.Ip, serviceStatus.Port, serviceStatus.Interface)
+				break
+			} else {
+				logs.Errorf("service %s is not exist", name)
+				return "", fmt.Errorf("service %s is not exist", name)
+			}
+		}
+	}
+	return url, nil
 }
