@@ -3,6 +3,7 @@ package lib
 import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
 	"testing"
 )
 
@@ -16,6 +17,16 @@ func TestSendServiceRequest(t *testing.T) {
 	//device := CreateLeftArmDownDevice()
 	//device := CreatePredictDevice()
 	//device := CreatePredictByUrlDevice()
+
+	// 能力框架的操作
+	managerUrl := "" // 能力框架url
+	abilityName := ""
+
+	am := manager.NewAbilityManager(managerUrl, abilityName)
+	am.StartupAbility()
+	//// 终止能力[备用]
+	//err := am.TerminateAbility()
+
 	output, err := SendServiceRequest(ability, device)
 	if err != nil {
 		logs.Errorf("send service request fail..")
