@@ -669,8 +669,8 @@ func (in *EventList) DeepCopyInto(out *EventList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
-	if in.Events != nil {
-		in, out := &in.Events, &out.Events
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
 		*out = make([]Event, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

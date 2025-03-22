@@ -136,7 +136,7 @@ type EventList struct {
 
 	meta.ListMeta
 
-	Events []Event `json:"events" yaml:"events"`
+	Items []Event `json:"items" yaml:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
