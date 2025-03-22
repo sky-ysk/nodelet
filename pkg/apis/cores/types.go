@@ -2,8 +2,9 @@
 package apis
 
 import (
-	"hit.edu/framework/pkg/apis/meta"
 	"time"
+
+	"hit.edu/framework/pkg/apis/meta"
 )
 
 const (
@@ -129,8 +130,9 @@ type EventSource struct {
 
 // event type 常量
 const (
-	EventTypeNormal  string = "Normal"
-	EventTypeWarning string = "Warning"
+	EventTypeNormal    string = "Normal"
+	EventTypeWarning   string = "Warning"
+	EventTypeMigration string = "Migration"
 )
 
 // todo:改objereference

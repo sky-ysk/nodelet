@@ -97,7 +97,7 @@ func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason
 
 func ValidateEventType(eventtype string) bool {
 	switch eventtype {
-	case apis.EventTypeNormal, apis.EventTypeWarning:
+	case apis.EventTypeNormal, apis.EventTypeWarning, apis.EventTypeMigration:
 		return true
 	}
 	return false
