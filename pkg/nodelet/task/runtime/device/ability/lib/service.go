@@ -135,12 +135,11 @@ func GetServiceUrl(name string, device *apis.Device) (string, error) {
 			if serviceStatus.Name == name {
 				// 按照ip 端口 接口的方式来构造url
 				url = fmt.Sprintf("http://%s:%s%s", serviceStatus.Ip, serviceStatus.Port, serviceStatus.Interface)
-				break
-			} else {
-				logs.Errorf("service %s is not exist", name)
-				return "", fmt.Errorf("service %s is not exist", name)
+				return url, nil
 			}
 		}
 	}
-	return url, nil
+	logs.Errorf("service %s is not exist", name)
+	return "", fmt.Errorf("service %s is not exist", name)
+
 }
