@@ -392,6 +392,15 @@ const (
 	NotEqual SignalType = "!="
 )
 
+// 符号判断
+type ResultType string
+
+const (
+	True     ResultType = "True"
+	False    ResultType = "False"
+	NotReady ResultType = "NotReady"
+)
+
 // 流程执行条件
 // LeftValue ==或!= RightValue
 // 输出结果为Bool类型的值
@@ -405,7 +414,7 @@ type ConditionFormula struct {
 	// 类型包含 and 或者 or
 	Join JoinType `json:"join,omitempty" yaml:"join"`
 	// TODO: 符号判断结果
-	Result bool `json:"result,omitempty" yaml:"result"`
+	Result ResultType `json:"result_type,omitempty" yaml:"result_type"`
 }
 
 // 不建议使用过于复杂的逻辑
