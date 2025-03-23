@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// TestRegisterResourceHandler 测试路由
 func TestRegisterResourceHandler(t *testing.T) {
 	restStorage, embedEtcdServer := getTestRESTStorage(t)
 	defer embedEtcdServer.Terminate(t)
@@ -41,7 +42,6 @@ func TestRegisterResourceHandler(t *testing.T) {
 		Path   string
 		Func   string
 	}{
-		//TODO:实现rest.Scoper后添加无命名空间的nodes
 		//{"POST", "/apis/resources/v1/nodes", "restfulCreateResource"},
 		//{"DELETE", "/apis/resources/v1/nodes", "restfulDeleteCollection"},
 		//{"GET", "/apis/resources/v1/nodes/{name}", "restfulGetResource"},

@@ -19,28 +19,24 @@ package responsewriters
 import (
 	"fmt"
 	"hit.edu/framework/pkg/apis/meta"
-	"net/http"
-	
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"hit.edu/framework/pkg/apiserver/registry/storage"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apiserver/pkg/storage"
+	"net/http"
 )
 
 // From k8s
-// TODO:替换k8s
-
-// statusError is an object that can be converted into an metav1.Status
+// statusError is an object that can be converted into an meta.Status
 type statusError interface {
 	Status() meta.Status
 }
 
-// ErrorToAPIStatus converts an error to an metav1.Status object.
+// ErrorToAPIStatus converts an error to an meta.Status object.
 func ErrorToAPIStatus(err error) *meta.Status {
 	switch t := err.(type) {
 	case statusError:
 		status := t.Status()
 		if len(status.Status) == 0 {
-			status.Status = metav1.StatusFailure
+			status.Status = meta.StatusFailure
 		}
 		switch status.Status {
 		case meta.StatusSuccess:
@@ -64,7 +60,6 @@ func ErrorToAPIStatus(err error) *meta.Status {
 	default:
 		status := http.StatusInternalServerError
 		switch {
-		//TODO: replace me with NewConflictErr
 		case storage.IsConflict(err):
 			status = http.StatusConflict
 		}
@@ -80,7 +75,7 @@ func ErrorToAPIStatus(err error) *meta.Status {
 			},
 			Status:  meta.StatusFailure,
 			Code:    int32(status),
-			Reason:  meta.StatusReason(metav1.StatusReasonUnknown),
+			Reason:  meta.StatusReasonUnknown,
 			Message: err.Error(),
 		}
 	}

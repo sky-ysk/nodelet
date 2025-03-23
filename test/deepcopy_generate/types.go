@@ -16,26 +16,9 @@ const (
 // 节点资源信息
 // TODO: 接口版本
 
-type Quantity struct {
-	// 定量数据
-	i int64
-
-	// 单位
-	format string
-}
-
 // TODO: 独立配置
-// +k8s:deepcopy-gen=false
 type Time struct {
 	time.Time `json:"time" yaml:"time"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type NodeList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	// TODO: List Options
-	Items []Node `json:"items" yaml:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -67,6 +50,13 @@ type ActionList struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type DataList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Data `json:"items" yaml:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SceneList struct {
 	meta.TypeMeta
 	meta.ListMeta
@@ -87,13 +77,12 @@ type Resource_NodeList struct {
 	Items []Resource_Node `json:"items" yaml:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type EventList struct {
-	meta.TypeMeta
+type Quantity struct {
+	// 定量数据
+	i int64
 
-	meta.ListMeta
-
-	Events []Event `json:"events" yaml:"events"`
+	// 单位
+	format string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -102,7 +91,7 @@ type Event struct {
 	//TODO: ObjectReference设计
 	meta.TypeMeta
 	meta.ObjectMeta
-	ObjectReference ObjectReference
+	InvolvedObject ObjectReference
 	// 事件产生原因，机器可读，供handler判断
 	Reason string
 	// 描述，应有用户可读性
@@ -128,7 +117,6 @@ const (
 	EventTypeWarning string = "Warning"
 )
 
-// todo:改objereference
 type ObjectReference struct {
 	// GVK
 	APIVersion string
@@ -138,10 +126,19 @@ type ObjectReference struct {
 	Name            string
 	UID             UID
 	ResourceVersion string
+	FieldPath       string
 }
 type UID string
 
-// Node
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type EventList struct {
+	meta.TypeMeta
+
+	meta.ListMeta
+
+	Items []Event `json:"items" yaml:"items"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Node struct {
 	//
@@ -166,7 +163,19 @@ type NodeSpec struct {
 
 	// 不能被调度的节点
 	Unschedulable bool `json:"unschedulable,omitempty" yaml:"unschedulable"`
+	// 设备固有资源
+	Resource map[string][]Item `json:"resource,omitempty" yaml:"resource"`
 	// TODO: 节点Label
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type NodeList struct {
+	meta.TypeMeta
+
+	meta.ListMeta
+	// TODO: List Options
+
+	Items []Node `json:"items" yaml:"items"`
 }
 
 // 计算、网络、存储等定量资源
@@ -180,6 +189,8 @@ type NodeStatus struct {
 	// 节点上当前可以分配的资源
 	Allocatable ResourceList `json:"allocatable,omitempty" yaml:"allocatable"`
 
+	// 节点上的资源的动态资源
+	Usage map[string][]Item `json:"usage,omitempty" yaml:"usage"`
 	// 这里只表示连接关系，对硬件的调用放到能力中
 	// TODO: 节点上的硬件资源
 
@@ -198,6 +209,12 @@ type NodeStatus struct {
 
 	// 节点系统信息
 	NodeInfo NodeSystemInfo `json:"info,omitempty" yaml:"info"`
+}
+type Item struct {
+	Name   string            `json:"name,omitempty" yaml:"name"`
+	Desc   string            `json:"desc,omitempty" yaml:"desc"`
+	Labels []string          `json:"labels,omitempty" yaml:"labels"`
+	Values map[string]string `json:"values,omitempty" yaml:"values"`
 }
 
 // From K8s
@@ -283,11 +300,14 @@ type Phase string
 
 const (
 	// 任务相关状态
-	Pending   Phase = "Pending"
-	Running   Phase = "Running"
-	Successed Phase = "Succeeded"
-	Failed    Phase = "Failed"
-	Unknown   Phase = "Unknown"
+	Pending       Phase = "Pending"
+	Running       Phase = "Running"
+	Successed     Phase = "Succeeded"
+	Failed        Phase = "Failed"
+	Unknown       Phase = "Unknown"
+	ReadyToDeploy Phase = "ReadyToDeploy"
+	DeployCheck   Phase = "DeployCheck"
+	ReadyToKill   Phase = "ReadyToKill"
 	// 迁移相关状态
 	Migrating Phase = "Migrating"
 	Migrated  Phase = "Migrated"
@@ -441,7 +461,6 @@ type WorkflowStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
-// --------- Task
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Task struct {
 	//
@@ -506,7 +525,6 @@ type TaskStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
-// ---------- Group
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Group struct {
 	//
@@ -562,6 +580,11 @@ type GroupSpec struct {
 	SkipScorePlugins []string `json:"skip_score_plugins,omitempty" yaml:"skip_score_plugins"`
 
 	SkipFilterPlugins []string `json:"skip_filter_plugins,omitempty" yaml:"skip_filter_plugins"`
+	//添加-hzy
+	Replicas int32 `json:"replicas,omitempty" yaml:"replicas"`
+
+	//-临时添加-k8s运行时相关，还未重构，后期会重构
+	Labels map[string]string // 添加 Labels 字段，用于选择器
 }
 
 type GroupStatus struct {
@@ -581,12 +604,17 @@ type GroupStatus struct {
 
 	// TODO: Events定义
 
+	//部署在哪个节点
+	Node string `json:"node,omitempty" yaml:"node"`
+
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`
 	// 结束时间
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+	//添加-hzy
+	CheckDependencyCount int32 `json:"check_dependency_count" yaml:"check_dependency_count"`
 }
 
 // ---------- Action
@@ -650,6 +678,8 @@ const (
 	ByService    RuntimeType = "service"
 	ByDeployment RuntimeType = "deployment"
 	ByPod        RuntimeType = "pod"
+	//添加-hzy ---这个要讨论是否有该选项，被删除了？
+	ByWasm RuntimeType = "wasm"
 )
 
 // 环境变量
@@ -663,12 +693,38 @@ type EnvVar struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Resource_Node struct {
 	meta.TypeMeta
+
 	meta.ObjectMeta
-	Spec   ResourceSpec   `json:"spec,omitempty" yaml:"spec"`
+
+	Spec ResourceSpec `json:"spec,omitempty" yaml:"spec"`
+
 	Status ResourceStatus `json:"status,omitempty" yaml:"status"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type Data struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec DataSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status DataStatus `json:"status,omitempty" yaml:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type Scene struct {
+	meta.TypeMeta
+
+	meta.ObjectMeta
+
+	Spec SceneSpec `json:"spec,omitempty" yaml:"spec"`
+
+	Status SceneStatus `json:"status,omitempty" yaml:"status"`
+}
+
 // TODO: 后续补充完整
+
 // TODO:node字段
 type ResourceSpec struct {
 	// 描述期待占用多少资源 资源的单位是什么
@@ -695,6 +751,7 @@ type ResourceStatus struct {
 	Reserved     float64
 	ReservedUnit ResourceUnit
 }
+
 type ResourceType string
 
 const (
@@ -872,9 +929,43 @@ type DeviceSpec struct {
 
 	// 设备的期望属性
 	ExpectedProperties map[string]Property
+
+	Abilities []AbilitySpec
 }
 
+// AbilitySpec 描述一个能力
+type AbilitySpec struct {
+	Name     string
+	Services []AbilityService // 一个能力对应的多个业务
+}
+
+// AbilityService 描述一个能力的具体业务
+type AbilityService struct {
+	Name        string
+	Description string
+	Interface   string
+}
+type AbilityServiceStatus struct {
+	Name      string
+	Ip        string
+	Port      string
+	Interface string
+	Model     string
+}
+
+// AbilityStatus 描述一个能力是否启动
+type AbilityStatus struct {
+	Name       string
+	Status     string
+	InstanceID string
+	Services   []AbilityServiceStatus
+	State      AbilityState
+}
+
+type AbilityState int
+
 type DeviceStatus struct {
+	Abilities []AbilityStatus
 	// DeviceID, Name+NodeID
 	DeviceID string
 
@@ -916,21 +1007,7 @@ type DataSpec struct {
 
 type DataStatus struct{}
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type Scene struct {
-	//
-	meta.TypeMeta
-
-	//
-	meta.ObjectMeta
-
-	//
-	Spec SceneSpec
-
-	//
-	Status SceneStatus
-}
-
+// SceneSpec 描述scene的固有属性和期待属性
 type SceneSpec struct {
 	// 每一个scene的标识
 	SceneID string
@@ -949,6 +1026,7 @@ type SceneDesc struct {
 	Label []string
 	Value map[string]string
 }
+
 type SceneType string
 
 const (
@@ -1049,11 +1127,23 @@ type Runtime struct {
 	// 需要的数据
 	// 输入数据
 	// 	输入数据作为参数注入到命令参数中
-	Inputs Input `json:"inputs,omitempty" yaml:"inputs"`
+	Inputs []Input `json:"inputs,omitempty" yaml:"inputs"`
 
 	// 输出数据
 	//  输出数据作为参数注入到命令参数中
-	Outputs Output `json:"outputs,omitempty" yaml:"outputs"`
+	Outputs []Output `json:"outputs,omitempty" yaml:"outputs"`
+
+	//添加-hzy
+	Parents []string `json:"parents,omitempty" yaml:"parents"`
+	Waiting bool     `json:"waiting" yaml:"waiting"`
+
+	//-hzy暂时添加
+	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
+	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
+	Ports       []Port            `json:"ports,omitempty" yaml:"ports"`             // 容器/服务端口
+	ServiceType string            `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
+	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
+	Replicas    int32             `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
 }
 
 //	 输入的数据有以下几类
@@ -1117,13 +1207,13 @@ type ActionStatus struct {
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 	// 当前资源使用情况
-	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"`
+	Resources map[string]ResourceStatus `json:"resources,omitempty" yaml:"resources"`
 	// 当前设备使用情况
-	Devices []DeviceStatus `json:"devices,omitempty" yaml:"devices"`
+	Devices map[string]DeviceStatus `json:"devices,omitempty" yaml:"devices"`
 	// 当前数据使用情况
-	Data []DataStatus `json:"data,omitempty" yaml:"data"`
+	Data map[string]DataStatus `json:"data,omitempty" yaml:"data"`
 	// 当前场景更新情况
-	Scenes []SceneStatus `json:"scenes,omitempty" yaml:"scenes"`
+	Scenes map[string]SceneStatus `json:"scenes,omitempty" yaml:"scenes"`
 	// 当前Runtime执行状态
 	RuntimeStatus []RuntimeStatus `json:"status,omitempty" yaml:"status"`
 	// 任务执行结果
@@ -1136,6 +1226,9 @@ type ActionStatus struct {
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+
+	//增加一个参数-hzy
+	Waiting bool `json:"waiting" yaml:"waiting"`
 }
 
 type RuntimeStatus struct {
@@ -1153,6 +1246,10 @@ type RuntimeStatus struct {
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+
+	//增加一个参数0hzy
+	RuntimeID string `json:"runtime_id,omitempty" yaml:"runtime_id"`
+	//Waiting   bool   `json:"waiting" yaml:"waiting"`
 }
 
 // 任务的输出结果

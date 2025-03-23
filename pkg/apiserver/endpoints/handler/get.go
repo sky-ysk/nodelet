@@ -66,15 +66,6 @@ func GetResource(r rest.Getter, scope *RequestScope) http.HandlerFunc {
 				logs.Info("decode GetOptions succeed,about to Get from storage")
 			}
 
-			//TODO:临时测试使用
-			//out := &apis.Node{}
-			//key := fmt.Sprintf("/%s/%s", scope.Resource.Resource, name)
-			//
-			//err := r.Get(ctx, key, storage.GetOptions{}, out)
-			//if err != nil {
-			//	return nil, err
-			//}
-
 			return r.Get(ctx, name, &options)
 		})
 }

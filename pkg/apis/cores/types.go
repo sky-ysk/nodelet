@@ -2,8 +2,9 @@
 package apis
 
 import (
-	"hit.edu/framework/pkg/apis/meta"
 	"time"
+
+	"hit.edu/framework/pkg/apis/meta"
 )
 
 const (
@@ -15,33 +16,9 @@ const (
 // 节点资源信息
 // TODO: 接口版本
 
-type Item struct {
-	Name   string            `json:"name,omitempty" yaml:"name"`
-	Desc   string            `json:"desc,omitempty" yaml:"desc"`
-	Labels []string          `json:"labels,omitempty" yaml:"labels"`
-	Values map[string]string `json:"values,omitempty" yaml:"values"`
-}
-
-type Quantity struct {
-	// 定量数据
-	i int64
-
-	// 单位
-	format string
-}
-
 // TODO: 独立配置
-// +k8s:deepcopy-gen=false
 type Time struct {
 	time.Time `json:"time" yaml:"time"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type NodeList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	// TODO: List Options
-	Items []Node `json:"items" yaml:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -100,7 +77,6 @@ type Resource_NodeList struct {
 	Items []Resource_Node `json:"items" yaml:"items"`
 }
 
-// TODO: 独立配置
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Event struct {
 	//TODO: 定义Event
@@ -133,8 +109,6 @@ const (
 	EventTypeWarning string = "Warning"
 )
 
-// todo:改objereference
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ObjectReference struct {
 	// GVK
 	APIVersion string
@@ -157,7 +131,6 @@ type EventList struct {
 	Items []Event `json:"items" yaml:"items"`
 }
 
-// Node
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Node struct {
 	//
@@ -185,9 +158,16 @@ type NodeSpec struct {
 	// 设备固有资源
 	Resource map[string][]Item `json:"resource,omitempty" yaml:"resource"`
 	// TODO: 节点Label
+}
 
-	//  +个字段（Cloud、Edge、End）
-	ClusterCategory string `json:"clusterCategory,omitempty" yaml:"clusterCategory"` //该节点所在的集群类别：1、云集群 2、边集群 3、端集群
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type NodeList struct {
+	meta.TypeMeta
+
+	meta.ListMeta
+	// TODO: List Options
+
+	Items []Node `json:"items" yaml:"items"`
 }
 
 // 计算、网络、存储等定量资源
@@ -221,6 +201,12 @@ type NodeStatus struct {
 
 	// 节点系统信息
 	NodeInfo NodeSystemInfo `json:"info,omitempty" yaml:"info"`
+}
+type Item struct {
+	Name   string            `json:"name,omitempty" yaml:"name"`
+	Desc   string            `json:"desc,omitempty" yaml:"desc"`
+	Labels []string          `json:"labels,omitempty" yaml:"labels"`
+	Values map[string]string `json:"values,omitempty" yaml:"values"`
 }
 
 // From K8s
@@ -314,13 +300,9 @@ const (
 	ReadyToDeploy Phase = "ReadyToDeploy"
 	DeployCheck   Phase = "DeployCheck"
 	ReadyToKill   Phase = "ReadyToKill"
-	Killed        Phase = "Killed"
 	// 迁移相关状态
-	CopyPending Phase = "CopyPending" //副本就绪状态-B
-	Restoring   Phase = "Restoring"   //副本恢复任务状态-B
-	Migrating   Phase = "Migrating"   //迁移状态-A
-	Migrated    Phase = "Migrated"    //迁移完成状态-A
-	Init        Phase = "Init"
+	Migrating Phase = "Migrating"
+	Migrated  Phase = "Migrated"
 )
 
 // 定义流程类型，用于表示有条件的DAG
@@ -369,8 +351,6 @@ type ConditionValue struct {
 	// TODO: 动态类型的Value,数据来源,需要对应的Controller Watch相关变量
 	// +Optional
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
-	//从对应的地方获取需要的数据
-	From string `json:"from,omitempty" yaml:"from"`
 }
 
 // 条件连接符，支持大小写
@@ -404,7 +384,6 @@ type ConditionFormula struct {
 	// 类型包含 and 或者 or
 	Join JoinType `json:"join,omitempty" yaml:"join"`
 	// TODO: 符号判断结果
-	Result bool `json:"result,omitempty" yaml:"result"`
 }
 
 // 不建议使用过于复杂的逻辑
@@ -474,7 +453,6 @@ type WorkflowStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
-// --------- Task
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Task struct {
 	//
@@ -539,7 +517,6 @@ type TaskStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
-// ---------- Group
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Group struct {
 	//
@@ -596,10 +573,7 @@ type GroupSpec struct {
 
 	SkipFilterPlugins []string `json:"skip_filter_plugins,omitempty" yaml:"skip_filter_plugins"`
 	//添加-hzy
-	Replicas []int32 `json:"replicas,omitempty" yaml:"replicas"` //group的副本数量，用户需要输入,例如：[2,0] 第一个值表示本域想部署的副本数量，第二个值表示其他域想部署的副本数量
-
-	IsCopy   bool              `json:"is_copy,omitempty" yaml:"is_copy"`     //标记当前group是否是副本
-	CopyInfo map[string]string `json:"copy_info,omitempty" yaml:"copy_info"` //存放任务的副本信息的  key：副本的ObjectMeta.Name  value:副本在本域还是在哪个域  如果是本域为："local" ,如果是跨域，则为连接那个域的ip或者是XX（待定）
+	Replicas int32 `json:"replicas,omitempty" yaml:"replicas"`
 
 	//-临时添加-k8s运行时相关，还未重构，后期会重构
 	Labels map[string]string // 添加 Labels 字段，用于选择器
@@ -621,8 +595,10 @@ type GroupStatus struct {
 	// TODO: 整体资源使用情况
 
 	// TODO: Events定义
+
 	//部署在哪个节点
 	Node string `json:"node,omitempty" yaml:"node"`
+
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`
 	// 结束时间
@@ -630,8 +606,7 @@ type GroupStatus struct {
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//添加-hzy
-	CheckDependencyCount int32  `json:"check_dependency_count" yaml:"check_dependency_count"`
-	CopyStatus           string `json:"copy_status,omitempty" yaml:"copy_status"` //如果是源任务，这个参数可以标记其副本任务的执行状态    如果是副本任务，这个参数可以标记其是预部署还是说直接切换
+	CheckDependencyCount int32 `json:"check_dependency_count" yaml:"check_dependency_count"`
 }
 
 // ---------- Action
@@ -760,9 +735,7 @@ type ResourceDetail struct {
 	Type string
 }
 type ResourceStatus struct {
-	Name string
 	// 资源的使用量和他的单位
-	// TODO
 	Usage     float64
 	UsageUnit ResourceUnit
 
@@ -770,6 +743,7 @@ type ResourceStatus struct {
 	Reserved     float64
 	ReservedUnit ResourceUnit
 }
+
 type ResourceType string
 
 const (
@@ -818,7 +792,6 @@ const (
 	DeviceRunning      DevicePhase = "Running"
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
-	DeviceComplete     DevicePhase = "Complete"
 	DeviceDisconnected DevicePhase = "Disconnected"
 )
 
@@ -910,7 +883,7 @@ type Lock struct {
 	Type LockType
 
 	// 调度时 ref为0时释放
-	IsLocked bool
+	Lock bool
 
 	// 资源引用数 部署时
 	Ref int
@@ -1017,6 +990,15 @@ type DeviceStatus struct {
 	LastTime Time
 }
 
+type DataSpec struct {
+	// 对于文件类型的Data
+	// 文件格式
+	// 文件大小
+	// SHA文件校验
+}
+
+type DataStatus struct{}
+
 // SceneSpec 描述scene的固有属性和期待属性
 type SceneSpec struct {
 	// 每一个scene的标识
@@ -1036,6 +1018,7 @@ type SceneDesc struct {
 	Label []string
 	Value map[string]string
 }
+
 type SceneType string
 
 const (
@@ -1069,14 +1052,6 @@ type SceneStatus struct {
 	// 锁
 	Lock Lock
 }
-type DataSpec struct {
-	// 对于文件类型的Data
-	// 文件格式
-	// 文件大小
-	// SHA文件校验
-}
-
-type DataStatus struct{}
 
 // Action所需执行环境
 type Runtime struct {
@@ -1141,10 +1116,6 @@ type Runtime struct {
 	// +Optional
 	EnvVar []EnvVar `json:"env_var,omitempty" yaml:"env_var"`
 
-	// Runtime条件
-	// +Optional
-	Conditions Conditions `json:"conditions,omitempty" yaml:"conditions"`
-
 	// 需要的数据
 	// 输入数据
 	// 	输入数据作为参数注入到命令参数中
@@ -1152,12 +1123,12 @@ type Runtime struct {
 
 	// 输出数据
 	//  输出数据作为参数注入到命令参数中
-	Outputs Output `json:"outputs,omitempty" yaml:"outputs"`
+	Outputs []Output `json:"outputs,omitempty" yaml:"outputs"`
+
 	//添加-hzy
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
-	//Waiting                      bool     `json:"waiting" yaml:"waiting"`
-	EnableFineGrainedControl     bool   `json:"enable_control,omitempty" yaml:"enable_control"`
-	EnableFineGrainedControlPort string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
+	Waiting bool     `json:"waiting" yaml:"waiting"`
+
 	//-hzy暂时添加
 	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
 	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
@@ -1165,13 +1136,6 @@ type Runtime struct {
 	ServiceType string            `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
 	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
 	Replicas    int32             `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
-	Pod         Pod               `json:"pod,omitempty" yaml:"pod"`                 // 如果是Pod，则放入该参数
-	Service     Service           `json:"service,omitempty" yaml:"service"`
-	Deployment  Deployment        `json:"deployment,omitempty" yaml:"deployment"`
-	//ysk添加
-	Dependency     string `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的名称，后续改成多种依赖
-	DepenPreparing bool   `json:"DepenPreparing" yaml:"DepenPreparing"`   //是否正在创建虚拟环境，防止多次创建
-
 }
 
 //	 输入的数据有以下几类
@@ -1235,13 +1199,13 @@ type ActionStatus struct {
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 	// 当前资源使用情况
-	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"`
+	Resources map[string]ResourceStatus `json:"resources,omitempty" yaml:"resources"`
 	// 当前设备使用情况
-	Devices []DeviceStatus `json:"devices,omitempty" yaml:"devices"`
+	Devices map[string]DeviceStatus `json:"devices,omitempty" yaml:"devices"`
 	// 当前数据使用情况
-	Data []DataStatus `json:"data,omitempty" yaml:"data"`
+	Data map[string]DataStatus `json:"data,omitempty" yaml:"data"`
 	// 当前场景更新情况
-	Scenes []SceneStatus `json:"scenes,omitempty" yaml:"scenes"`
+	Scenes map[string]SceneStatus `json:"scenes,omitempty" yaml:"scenes"`
 	// 当前Runtime执行状态
 	RuntimeStatus []RuntimeStatus `json:"status,omitempty" yaml:"status"`
 	// 任务执行结果
@@ -1254,9 +1218,9 @@ type ActionStatus struct {
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+
 	//增加一个参数-hzy
-	Waiting    bool   `json:"waiting" yaml:"waiting"`
-	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
+	Waiting bool `json:"waiting" yaml:"waiting"`
 }
 
 type RuntimeStatus struct {
@@ -1274,18 +1238,15 @@ type RuntimeStatus struct {
 	FinishAt Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+
 	//增加一个参数0hzy
-	RuntimeID  string `json:"runtime_id,omitempty" yaml:"runtime_id"`
-	Waiting    bool   `json:"waiting" yaml:"waiting"`
-	Initing    bool   `json:"initing,omitempty" yaml:"initing"`
-	Starting   bool   `json:"starting,omitempty" yaml:"starting"`
-	KeyStatus  string `json:"key_status" yaml:"key_status"`
-	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
+	RuntimeID string `json:"runtime_id,omitempty" yaml:"runtime_id"`
+	//Waiting   bool   `json:"waiting" yaml:"waiting"`
 }
 
 // 任务的输出结果
 // 单独作为一个资源，方便其他节点获取该资源
-// 数据结果的类型---
+// 数据结果的类型
 type Result struct {
 	//Result唯一表示，由ActionID
 	ResultID string `json:"result_id,omitempty" yaml:"result_id"`
@@ -1310,376 +1271,13 @@ type Port struct {
 // 系统运行时相关信息，表示长时间部署执行的内容
 // 云边侧模块使用相关字段
 // TODO: Pod From K8s
-type Pod struct {
-	meta.TypeMeta
-	meta.ObjectMeta
-	Spec PodSpec `json:"spec,omitempty" yaml:"spec"`
-}
-type PodSpec struct {
-	Volumes            []Volume          `json:"volumes,omitempty" yaml:"volumes"`                           // Pod挂载的存储卷列表（如ConfigMap、Secret、PVC等）
-	InitContainers     []Container       `json:"init_containers,omitempty" yaml:"init_containers"`           // 初始化容器（主容器启动前运行）
-	Containers         []Container       `json:"containers" yaml:"containers"`                               // 应用容器列表（必须至少一个）
-	RestartPolicy      RestartPolicy     `json:"restart_policy,omitempty" yaml:"restart_policy"`             // 容器失败重启策略（Always/OnFailure/Never）
-	DnsPolicy          DNSPolicy         `json:"dns_policy,omitempty" yaml:"dns_policy"`                     // DNS解析策略（ClusterFirst/Default/None）
-	NodeSelector       map[string]string `json:"node_selector,omitempty" yaml:"node_selector"`               // 节点标签选择器（强制调度到匹配节点）
-	ServiceAccountName string            `json:"service_account_name,omitempty" yaml:"service_account_name"` // 关联的ServiceAccount名称
-}
-type Volume struct {
-	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
-	VolumeSource `json:",inline" yaml:",inline"` // 存储卷来源（如ConfigMap、Secret）
-}
-
-// VolumeSource 定义存储卷的数据来源（必须且常用的类型）
-type VolumeSource struct {
-	ConfigMap             ConfigMapVolumeSource             `json:"config_map,omitempty" yaml:"config_map,omitempty"`                           // 从ConfigMap挂载键值对到文件
-	Secret                SecretVolumeSource                `json:"secret,omitempty" yaml:"secret,omitempty"`                                   // 从Secret挂载敏感数据到文件
-	HostPath              HostPathVolumeSource              `json:"host_path,omitempty" yaml:"host_path,omitempty"`                             // 挂载宿主机目录或文件
-	EmptyDir              EmptyDirVolumeSource              `json:"empty_dir,omitempty" yaml:"empty_dir,omitempty"`                             // 临时空目录（Pod生命周期内有效）
-	PersistentVolumeClaim PersistentVolumeClaimVolumeSource `json:"persistent_volume_claim,omitempty" yaml:"persistent_volume_claim,omitempty"` // 挂载持久化存储卷（PVC）
-}
-
-// ConfigMapVolumeSource ConfigMap类型的存储卷配置
-type ConfigMapVolumeSource struct {
-	Name  string      `json:"name" yaml:"name"`                       // ConfigMap名称（必须字段）
-	Items []KeyToPath `json:"items,omitempty" yaml:"items,omitempty"` // 选择特定键挂载为文件
-}
-
-// SecretVolumeSource Secret类型的存储卷配置
-type SecretVolumeSource struct {
-	SecretName string      `json:"secret_name" yaml:"secret_name"`         // Secret名称（必须字段）
-	Items      []KeyToPath `json:"items,omitempty" yaml:"items,omitempty"` // 选择特定键挂载为文件
-}
-
-// HostPathVolumeSource 宿主机目录挂载配置
-type HostPathVolumeSource struct {
-	Path string       `json:"path" yaml:"path"`                     // 宿主机绝对路径（必须字段）
-	Type HostPathType `json:"type,omitempty" yaml:"type,omitempty"` // 路径类型检查（如DirectoryOrCreate）
-}
-
-// EmptyDirVolumeSource 临时空目录配置
-type EmptyDirVolumeSource struct {
-	Medium StorageMedium `json:"medium,omitempty" yaml:"medium,omitempty"` // 存储介质（Memory/默认空为磁盘）
-}
-
-// PersistentVolumeClaimVolumeSource 持久化存储卷声明配置
-type PersistentVolumeClaimVolumeSource struct {
-	ClaimName string `json:"claim_name" yaml:"claim_name"` // PVC名称（必须字段）
-}
-
-// 辅助结构体
-type KeyToPath struct {
-	Key  string `json:"key" yaml:"key"`   // ConfigMap/Secret中的键名
-	Path string `json:"path" yaml:"path"` // 挂载目标路径（如"config.yaml"）
-}
-
-// 枚举类型
-type HostPathType string
-
-const (
-	HostPathDirectoryOrCreate HostPathType = "DirectoryOrCreate" // 目录不存在则创建
-	HostPathDirectory         HostPathType = "Directory"         // 必须存在目录
-	HostPathFileOrCreate      HostPathType = "FileOrCreate"      // 文件不存在则创建空文件
-	HostPathFile              HostPathType = "File"              // 必须存在文件
-)
-
-type StorageMedium string
-
-const (
-	StorageMediumDefault StorageMedium = ""       // 默认磁盘存储
-	StorageMediumMemory  StorageMedium = "Memory" // 内存临时存储（tmpfs）
-)
-
-type Container struct {
-	Name         string          `json:"name" yaml:"name"`                             // 容器名称（必须唯一）
-	Image        string          `json:"image" yaml:"image"`                           // 容器镜像地址（必须）
-	Command      []string        `json:"command,omitempty" yaml:"command"`             // 容器启动命令（覆盖镜像默认值）
-	Args         []string        `json:"args,omitempty" yaml:"args"`                   // 容器启动参数
-	Ports        []ContainerPort `json:"ports,omitempty" yaml:"ports"`                 // 容器暴露的端口
-	Env          []EnvVar        `json:"env,omitempty" yaml:"env"`                     // 容器环境变量
-	VolumeMounts []VolumeMount   `json:"volume_mounts,omitempty" yaml:"volume_mounts"` // 存储卷挂载配置
-}
-
-// 存储卷挂载点配置
-type VolumeMount struct {
-	Name      string `json:"name" yaml:"name"`                     // 引用的存储卷名称（必须与volumes[*].name对应）
-	MountPath string `json:"mount_path" yaml:"mount_path"`         // 容器内的挂载路径（必须）
-	ReadOnly  bool   `json:"read_only,omitempty" yaml:"read_only"` // 是否以只读方式挂载（默认false）
-}
-
-// 容器端口配置
-type ContainerPort struct {
-	ContainerPort int32    `json:"container_port" yaml:"container_port"` // 容器内监听端口（必须）
-	Protocol      Protocol `json:"protocol,omitempty" yaml:"protocol"`   // 协议类型（TCP/UDP，默认TCP）
-}
-type Protocol string
-
-const (
-	// ProtocolTCP is the TCP protocol.
-	ProtocolTCP Protocol = "TCP"
-	// ProtocolUDP is the UDP protocol.
-	ProtocolUDP Protocol = "UDP"
-	// ProtocolSCTP is the SCTP protocol.
-	ProtocolSCTP Protocol = "SCTP"
-)
-
-// 污点容忍规则
-type Toleration struct {
-	Key      string             `json:"key,omitempty" yaml:"key"`       // 污点键名
-	Operator TolerationOperator `json:"operator" yaml:"operator"`       // 匹配操作符（Exists/Equal）
-	Effect   TaintEffect        `json:"effect,omitempty" yaml:"effect"` // 污点效果（NoSchedule/NoExecute）
-}
-type TaintEffect string
-
-const (
-	// Do not allow new pods to schedule onto the node unless they tolerate the taint,
-	// but allow all pods submitted to Kubelet without going through the scheduler
-	// to start, and allow all already-running pods to continue running.
-	// Enforced by the scheduler.
-	TaintEffectNoSchedule TaintEffect = "NoSchedule"
-	// Like TaintEffectNoSchedule, but the scheduler tries not to schedule
-	// new pods onto the node, rather than prohibiting new pods from scheduling
-	// onto the node entirely. Enforced by the scheduler.
-	TaintEffectPreferNoSchedule TaintEffect = "PreferNoSchedule"
-	// NOT YET IMPLEMENTED. TODO: Uncomment field once it is implemented.
-	// Like TaintEffectNoSchedule, but additionally do not allow pods submitted to
-	// Kubelet without going through the scheduler to start.
-	// Enforced by Kubelet and the scheduler.
-	// TaintEffectNoScheduleNoAdmit TaintEffect = "NoScheduleNoAdmit"
-
-	// Evict any already-running pods that do not tolerate the taint.
-	// Currently enforced by NodeController.
-	TaintEffectNoExecute TaintEffect = "NoExecute"
-)
-
-// A toleration operator is the set of operators that can be used in a toleration.
-// +enum
-type TolerationOperator string
-
-const (
-	TolerationOpExists TolerationOperator = "Exists"
-	TolerationOpEqual  TolerationOperator = "Equal"
-)
-
-type RestartPolicy string
-
-const (
-	RestartPolicyAlways    RestartPolicy = "Always"
-	RestartPolicyOnFailure RestartPolicy = "OnFailure"
-	RestartPolicyNever     RestartPolicy = "Never"
-)
-
-type DNSPolicy string
-
-const (
-	// DNSClusterFirstWithHostNet indicates that the pod should use cluster DNS
-	// first, if it is available, then fall back on the default
-	// (as determined by kubelet) DNS settings.
-	DNSClusterFirstWithHostNet DNSPolicy = "ClusterFirstWithHostNet"
-
-	// DNSClusterFirst indicates that the pod should use cluster DNS
-	// first unless hostNetwork is true, if it is available, then
-	// fall back on the default (as determined by kubelet) DNS settings.
-	DNSClusterFirst DNSPolicy = "ClusterFirst"
-
-	// DNSDefault indicates that the pod should use the default (as
-	// determined by kubelet) DNS settings.
-	DNSDefault DNSPolicy = "Default"
-
-	// DNSNone indicates that the pod should use empty DNS settings. DNS
-	// parameters such as nameservers and search paths should be defined via
-	// DNSConfig.
-	DNSNone DNSPolicy = "None"
-)
-
-type Affinity struct {
-	NodeAffinity    NodeAffinity    `json:"node_affinity,omitempty" yaml:"node_affinity"`
-	PodAffinity     PodAffinity     `json:"pod_affinity,omitempty" yaml:"pod_affinity"`
-	PodAntiAffinity PodAntiAffinity `json:"pod_anti_affinity,omitempty" yaml:"pod_anti_affinity"`
-}
-
-// Pod亲和性调度规则
-type PodAffinity struct {
-	RequiredDuringSchedulingIgnoredDuringExecution  []PodAffinityTerm         `json:"required_during_scheduling_ignored_during_execution,omitempty" yaml:"required_during_scheduling_ignored_during_execution"`
-	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPodAffinityTerm `json:"preferred_during_scheduling_ignored_during_execution,omitempty" yaml:"preferred_during_scheduling_ignored_during_execution"`
-}
-
-// Pod反亲和性调度规则
-type PodAntiAffinity struct {
-	RequiredDuringSchedulingIgnoredDuringExecution  []PodAffinityTerm         `json:"required_during_scheduling_ignored_during_execution,omitempty" yaml:"required_during_scheduling_ignored_during_execution"`
-	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPodAffinityTerm `json:"preferred_during_scheduling_ignored_during_execution,omitempty" yaml:"preferred_during_scheduling_ignored_during_execution"`
-}
-
-// 带权重的Pod亲和性规则
-type WeightedPodAffinityTerm struct {
-	Weight          int32           `json:"weight" yaml:"weight"`
-	PodAffinityTerm PodAffinityTerm `json:"pod_affinity_term" yaml:"pod_affinity_term"`
-}
-
-// Pod亲和性规则条件
-type PodAffinityTerm struct {
-	LabelSelector     meta.LabelSelector `json:"label_selector,omitempty" yaml:"label_selector"`
-	Namespaces        []string           `json:"namespaces,omitempty" yaml:"namespaces"`
-	TopologyKey       string             `json:"topology_key" yaml:"topology_key"`
-	NamespaceSelector meta.LabelSelector `json:"namespace_selector,omitempty" yaml:"namespace_selector"`
-}
-
-// 节点亲和性调度规则
-type NodeAffinity struct {
-	RequiredDuringSchedulingIgnoredDuringExecution  NodeSelector              `json:"required_during_scheduling_ignored_during_execution,omitempty" yaml:"required_during_scheduling_ignored_during_execution"`
-	PreferredDuringSchedulingIgnoredDuringExecution []PreferredSchedulingTerm `json:"preferred_during_scheduling_ignored_during_execution,omitempty" yaml:"preferred_during_scheduling_ignored_during_execution"`
-}
-type PreferredSchedulingTerm struct {
-	// Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.
-	Weight int32 `json:"weight,omitempty" yaml:"weight"`
-	// A node selector term, associated with the corresponding weight.
-	Preference NodeSelectorTerm `json:"preference,omitempty" yaml:"preference"`
-}
-
-// 节点选择器
-type NodeSelector struct {
-	NodeSelectorTerms []NodeSelectorTerm `json:"node_selector_terms" yaml:"node_selector_terms"`
-}
-
-// 节点选择条件
-type NodeSelectorTerm struct {
-	MatchExpressions []NodeSelectorRequirement `json:"match_expressions,omitempty" yaml:"match_expressions"`
-	MatchFields      []NodeSelectorRequirement `json:"match_fields,omitempty" yaml:"match_fields"`
-}
-
-// 节点选择器条件
-type NodeSelectorRequirement struct {
-	Key      string               `json:"key" yaml:"key"`
-	Operator NodeSelectorOperator `json:"operator" yaml:"operator"`
-	Values   []string             `json:"values,omitempty" yaml:"values"`
-}
-type NodeSelectorOperator string
-
-const (
-	NodeSelectorOpIn           NodeSelectorOperator = "In"
-	NodeSelectorOpNotIn        NodeSelectorOperator = "NotIn"
-	NodeSelectorOpExists       NodeSelectorOperator = "Exists"
-	NodeSelectorOpDoesNotExist NodeSelectorOperator = "DoesNotExist"
-	NodeSelectorOpGt           NodeSelectorOperator = "Gt"
-	NodeSelectorOpLt           NodeSelectorOperator = "Lt"
-)
+type Pod struct{}
 
 // TODO: Service From K8s
-type Service struct {
-	meta.TypeMeta
-	meta.ObjectMeta
-	Spec ServiceSpec `json:"spec,omitempty" yaml:"spec"`
-}
-type ServiceSpec struct {
-	Type     ServiceType       `json:"type,omitempty" yaml:"type"`         // 服务类型：ClusterIP/NodePort/LoadBalancer/ExternalName
-	Selector map[string]string `json:"selector,omitempty" yaml:"selector"` // 后端Pod标签选择器（必需字段）
-
-	Ports []ServicePort `json:"ports,omitempty" yaml:"ports"` // 服务端口映射列表（至少一个）
-
-	SessionAffinity SessionAffinity `json:"sessionAffinity,omitempty" yaml:"session_affinity"` // 会话亲和性（None/ClientIP）
-	ClusterIP       string          `json:"clusterIP,omitempty" yaml:"cluster_ip"`             // 虚拟IP地址（留空自动分配）
-
-	ExternalIPs  []string `json:"externalIPs,omitempty" yaml:"external_ips"`   // 外部可达的IP地址列表（非云环境使用）
-	ExternalName string   `json:"externalName,omitempty" yaml:"external_name"` // ExternalName类型时指向的外部服务域名
-
-	ExternalTrafficPolicy string `json:"externalTrafficPolicy,omitempty" yaml:"external_traffic_policy"` // 外部流量策略（Local/Cluster）
-}
-
-// 服务类型枚举
-type ServiceType string
-
-const (
-	ServiceTypeClusterIP    ServiceType = "ClusterIP"    // 集群内部访问（默认）
-	ServiceTypeNodePort     ServiceType = "NodePort"     // 通过节点端口暴露
-	ServiceTypeLoadBalancer ServiceType = "LoadBalancer" // 云厂商负载均衡器
-	ServiceTypeExternalName ServiceType = "ExternalName" // 映射到外部服务
-)
-
-type ServicePort struct {
-	Name       string      `json:"name,omitempty" yaml:"name"`              // 端口名称（DNS_LABEL格式）
-	Protocol   Protocol    `json:"protocol,omitempty" yaml:"protocol"`      // 协议类型（TCP/UDP，默认TCP）
-	Port       int32       `json:"port" yaml:"port"`                        // 服务暴露端口（必需）
-	TargetPort IntOrString `json:"targetPort,omitempty" yaml:"target_port"` // 容器监听端口（默认与Port相同）
-	NodePort   int32       `json:"nodePort,omitempty" yaml:"node_port"`     // NodePort类型时分配的节点端口
-}
-type IntOrString struct {
-	Type   Type   `protobuf:"varint,1,opt,name=type,casttype=Type"`
-	IntVal int32  `protobuf:"varint,2,opt,name=intVal"`
-	StrVal string `protobuf:"bytes,3,opt,name=strVal"`
-}
-type Type int64
-
-const (
-	Int    Type = iota // The IntOrString holds an int.
-	String             // The IntOrString holds a string.
-)
-
-// 会话亲和性类型
-type SessionAffinity string
-
-const (
-	SessionAffinityNone     SessionAffinity = "None"     // 不保持会话
-	SessionAffinityClientIP SessionAffinity = "ClientIP" // 基于客户端IP保持会话
-)
+type Service struct{}
 
 // TODO: Deployment From K8s
-type Deployment struct {
-	meta.TypeMeta
-	meta.ObjectMeta
-	Spec DeploymentSpec `json:"spec,omitempty" yaml:"spec"`
-}
-type DeploymentSpec struct {
-	// 副本数量，指定期望运行的 Pod 副本数
-	Replicas int32 `json:"replicas,omitempty" yaml:"replicas,omitempty"`
-
-	// 标签选择器，用于匹配要管理的 Pod
-	Selector meta.LabelSelector `json:"selector" yaml:"selector"`
-
-	// Pod 模板定义（必须字段）
-	Template PodTemplateSpec `json:"template" yaml:"template"`
-
-	// 更新策略（默认 RollingUpdate）
-	Strategy DeploymentStrategy `json:"strategy,omitempty" yaml:"strategy,omitempty"`
-
-	// 新 Pod 就绪后需等待的秒数（默认 0）
-	MinReadySeconds int32 `json:"minReadySeconds,omitempty" yaml:"minReadySeconds,omitempty"`
-
-	// 保留的历史版本数量（用于回滚，默认 10）
-	RevisionHistoryLimit int32 `json:"revisionHistoryLimit,omitempty" yaml:"revisionHistoryLimit,omitempty"`
-
-	// 部署进度超时时间（秒，默认 600）
-	ProgressDeadlineSeconds int32 `json:"progressDeadlineSeconds,omitempty" yaml:"progressDeadlineSeconds,omitempty"`
-}
-type PodTemplateSpec struct {
-	meta.ObjectMeta
-	Spec PodSpec `json:"spec,omitempty" yaml:"spec"`
-}
-
-// 更新策略结构体
-type DeploymentStrategy struct {
-	// 策略类型：RollingUpdate 或 Recreate
-	Type DeploymentStrategyType `json:"type,omitempty" yaml:"type,omitempty"`
-
-	// 滚动更新配置
-	RollingUpdate RollingUpdateDeployment `json:"rollingUpdate,omitempty" yaml:"rollingUpdate,omitempty"`
-}
-type DeploymentStrategyType string
-
-const (
-	// Kill all existing pods before creating new ones.
-	RecreateDeploymentStrategyType DeploymentStrategyType = "Recreate"
-
-	// Replace the old ReplicaSets by new one using rolling update i.e gradually scale down the old ReplicaSets and scale up the new one.
-	RollingUpdateDeploymentStrategyType DeploymentStrategyType = "RollingUpdate"
-)
-
-// 滚动更新配置结构体
-type RollingUpdateDeployment struct {
-	// 最大超量 Pod 数（如 25% 或绝对数 2）
-	MaxSurge IntOrString `json:"maxSurge,omitempty" yaml:"maxSurge,omitempty"`
-
-	// 最大不可用 Pod 数（如 25% 或绝对数 1）
-	MaxUnavailable IntOrString `json:"maxUnavailable,omitempty" yaml:"maxUnavailable,omitempty"`
-}
+type Deployment struct{}
 
 // TODO: VM From K8s
 type VM struct{}

@@ -50,8 +50,6 @@ type Extra struct {
 }
 
 func NewConfig(opts *options.Options) *Config {
-	//FIXME: 如果端口已经被占用，错误处理
-
 	// 在这里设置各种选项
 	// 创建Serving Info
 	servingInfo := NewServingInfo(opts.ServingOptions)

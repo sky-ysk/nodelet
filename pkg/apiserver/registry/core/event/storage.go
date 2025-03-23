@@ -39,8 +39,8 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	}
 	// return labels.Set(Event.ObjectMeta.Labels), generic.ObjectMetaFieldsSet(&Event.ObjectMeta, true), nil
 	return labels.Set(Event.ObjectMeta.Labels), ToSelectableFields(Event), nil
-
 }
+
 func Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
 		Label:    label,

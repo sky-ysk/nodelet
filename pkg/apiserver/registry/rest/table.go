@@ -1,15 +1,14 @@
-// 这个文件提供了默认的表格生成器，表格生成的部分通过metav1实现
-// 这部分是完全抄过来的，后面可能要修改
 package rest
 
 import (
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/apis/meta"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"net/http"
 	"time"
-	
+
+	"hit.edu/framework/pkg/apis/meta"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 )
@@ -57,17 +56,7 @@ func (c defaultTableConvertor) ConvertToTable(ctx context.Context, object runtim
 		table.ResourceVersion = m.GetResourceVersion()
 		table.Continue = m.GetContinue()
 		table.RemainingItemCount = m.GetRemainingItemCount()
-	} else {
-		//if m, err := meta.CommonAccessor(object); err == nil {
-		//	table.ResourceVersion = m.GetResourceVersion()
-		//}
 	}
-	//if opt, ok := tableOptions.(*meta.TableOptions); !ok || !opt.NoHeaders {
-	//	table.ColumnDefinitions = []meta.TableColumnDefinition{
-	//		{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
-	//		{Name: "Created At", Type: "date", Description: swaggerMetadataDescriptions["creationTimestamp"]},
-	//	}
-	//}
 	return &table, nil
 }
 

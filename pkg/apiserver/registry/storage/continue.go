@@ -1,5 +1,3 @@
-// 这个文件的作用是支持分页查询，处理continue token
-// 目前基本上是从apiserver中照搬过来的，可能需要进行部分修改,比如所有的apiVersion都是"meta.k8s.io/v1"
 package storage
 
 import (
@@ -12,8 +10,8 @@ import (
 )
 
 var (
-	ErrInvalidStartRV             = errors.New("continue key is not valid: incorrect encoded start resourceVersion (version meta.k8s.io/v1)")
-	ErrEmptyStartKey              = errors.New("continue key is not valid: encoded start key empty (version meta.k8s.io/v1)")
+	ErrInvalidStartRV             = errors.New("continue key is not valid: incorrect encoded start resourceVersion (version meta.io/v1)")
+	ErrEmptyStartKey              = errors.New("continue key is not valid: encoded start key empty (version meta.io/v1)")
 	ErrGenericInvalidKey          = errors.New("continue key is not valid")
 	ErrUnrecognizedEncodedVersion = errors.New("continue key is not valid: server does not recognize this encoded version")
 )
@@ -36,7 +34,7 @@ func DecodeContinue(continueValue, keyPrefix string) (fromKey string, rv int64, 
 		return "", 0, fmt.Errorf("%w: %v", ErrGenericInvalidKey, err)
 	}
 	switch c.APIVersion {
-	case "meta.k8s.io/v1":
+	case "meta.io/v1":
 		if c.ResourceVersion == 0 {
 			return "", 0, ErrInvalidStartRV
 		}
@@ -63,7 +61,7 @@ func EncodeContinue(key, keyPrefix string, resourceVersion int64) (string, error
 	if nextKey == key {
 		return "", fmt.Errorf("unable to encode next field: the key and key prefix do not match")
 	}
-	out, err := json.Marshal(&continueToken{APIVersion: "meta.k8s.io/v1", ResourceVersion: resourceVersion, StartKey: nextKey})
+	out, err := json.Marshal(&continueToken{APIVersion: "meta.io/v1", ResourceVersion: resourceVersion, StartKey: nextKey})
 	if err != nil {
 		return "", err
 	}

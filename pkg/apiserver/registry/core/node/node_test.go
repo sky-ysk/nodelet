@@ -192,12 +192,12 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	defer nodestorage.Node.Store.DestroyFunc()
 	nodeA := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo"},
 		Spec:       apis.NodeSpec{NodeName: "test", HostName: "testhost", Unschedulable: false},
 		Status:     apis.NodeStatus{},
 	}
 	nodeA1 := &apis.Node{
-		ObjectMeta: meta.ObjectMeta{Name: "foo", Namespace: "aaa"},
+		ObjectMeta: meta.ObjectMeta{Name: "foo"},
 		Spec:       apis.NodeSpec{NodeName: "test1", HostName: "testhost1", Unschedulable: false},
 		Status:     apis.NodeStatus{},
 	}

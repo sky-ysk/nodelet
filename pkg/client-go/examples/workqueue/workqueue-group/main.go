@@ -52,7 +52,7 @@ func (c *Controller) Run(workers int, stopCh chan struct{}) {
 		logs.Infof("Timed out waiting for caches to sync")
 		return
 	}
-	logs.Info("缓存同步完成================")
+	logs.Trace("缓存同步完成")
 
 	//启动worker
 	for i := 0; i < workers; i++ {
@@ -111,7 +111,7 @@ func main() {
 	//注册资源
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	logs.Info(scheme)
+	logs.Trace(scheme)
 
 	// 参数配置
 	c := &rest.Config{
@@ -228,15 +228,15 @@ func main() {
 	// 创建Controller
 	controller := NewController(queue, indexer, informer)
 
-	////设置Indexer对象格式
-	//indexer.Add(&apis.Group{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name: "demo-groups",
-	//	},
-	//})
-	//
-	//// 设置Indexer对象格式
-	//indexer.Add(group)
+	//设置Indexer对象格式
+	indexer.Add(&apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "demo-groups",
+		},
+	})
+
+	// 设置Indexer对象格式
+	indexer.Add(group)
 
 	// Now let's start the controller
 	stop := make(chan struct{})
@@ -244,7 +244,7 @@ func main() {
 	go controller.Run(1, stop)
 
 	// Create一个Group
-	logs.Info("creating")
+	logs.Trace("creating")
 	_, err = groupsClient.Create(context.TODO(), group, metav1.CreateOptions{})
 	_, _ = groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
 	_, _ = groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
@@ -252,10 +252,10 @@ func main() {
 	if err != nil {
 		logs.Infof("Failed to create group: %v", err)
 	}
-	logs.Info("Created group 1")
+	logs.Trace("Created group 1")
 
 	//Update一个Group
-	logs.Info("updating group 1")
+	logs.Trace("updating group 1")
 	// 部分更改一个参数
 	// 先Get一个Group ,更改Group的参数, UpdateGroup
 	result, getErr := groupsClient.Get(context.TODO(), "demo-groups", metav1.GetOptions{})
@@ -268,37 +268,36 @@ func main() {
 	if updateErr != nil {
 		logs.Infof("Update failed: %v", updateErr)
 	}
-	logs.Info("1 group Updated group...")
+	logs.Trace("1 group Updated group...")
 
 	// List 所有Group
-	logs.Info("listing")
+	logs.Trace("listing")
 	lstOpts := metav1.ListOptions{}
 	list, err := groupsClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Info(err)
 	}
 	for _, d := range list.Items {
-		logs.Info(d)
+		logs.Trace(d)
 	}
 
-	logs.Info("listing done")
+	logs.Trace("listing done")
 
 	// Delete一个Group
 	// 删除Group后，Indexer就查询不到结点了
-	logs.Info("deleting")
+	logs.Trace("deleting")
 	err = groupsClient.Delete(context.TODO(), "demo-groups", metav1.DeleteOptions{})
 	if err != nil {
 		logs.Info(err)
 	}
-	logs.Info("Deleted group...demo-groups")
+	logs.Trace("Deleted group...")
 
 	//为了验证功能，每5秒删一个Group
 	time.Sleep(5 * time.Second)
 	err = groupsClient.Delete(context.TODO(), "demo-group2", metav1.DeleteOptions{})
-	logs.Info("Deleted group...demo-group2")
 	time.Sleep(5 * time.Second)
 	err = groupsClient.Delete(context.TODO(), "demo-group3", metav1.DeleteOptions{})
-	logs.Info("Deleted group...demo-group3")
+
 	// Wait forever
 	select {}
 

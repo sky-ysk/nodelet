@@ -1,5 +1,4 @@
 // errors.go主要负责处理与store操作相关的部分，包括与资源版本和分页相关的错误
-// 目前基本上是从apiserver中照搬过来的
 package etcd3
 
 import (

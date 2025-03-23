@@ -62,8 +62,6 @@ type documentable interface {
 }
 
 func (a *APIInstaller) Install() (*restful.WebService, []error) {
-	// TODO: 增加存储相关节点
-
 	var apiResources []meta.APIResource
 	var errors []error
 	// WebService
@@ -296,7 +294,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 		// list or post across namespace.
 		// For ex: LIST all pods in all namespaces by sending a LIST request at /api/apiVersion/pods.
-		// TODO: more strongly type whether a resource allows these actions on "all namespaces" (bulk delete)
 		if !isSubresource {
 			actions = appendIf(actions, action{"LIST", resource, namer, params, true}, isLister)
 		}
@@ -710,6 +707,7 @@ func AddObjectParams(ws *restful.WebService, route *restful.RouteBuilder, obj in
 	return nil
 }
 
+// From k8s
 func typeToJSON(typeName string) string {
 	switch typeName {
 	case "bool", "*bool":

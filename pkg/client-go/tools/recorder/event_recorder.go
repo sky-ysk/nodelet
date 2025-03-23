@@ -14,6 +14,9 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
+// "k8s.io/apimachinery/pkg/watch"
+// "k8s.io/utils/clock"
+
 type recorder struct {
 	scheme *runtime.Scheme
 	source apis.EventSource
@@ -89,9 +92,8 @@ func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason
 		Message:        message,
 		// FirstTimestamp: t,
 		// LastTimestamp:  t,
-		Count:     1,
-		Type:      eventtype,
-		EventTime: apis.Time{time.Now()},
+		Count: 1,
+		Type:  eventtype,
 	}
 }
 
