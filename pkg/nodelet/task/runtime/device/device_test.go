@@ -6,6 +6,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	"strconv"
 	"testing"
 )
 
@@ -515,13 +516,16 @@ func TestRun(t *testing.T) {
 //	}
 //}
 
-func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime) {
+// predict 的测试
+func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime, *apis.Device) {
 
 	// 能力框架的url
 	manageUrl := ""
 	imageType := ""
 	cameraUrl := ""
 	position := ""
+	compressed := false
+	path := ""
 	// 创建device
 	device := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
@@ -578,28 +582,35 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 		Devices: []apis.DeviceSpec{
 			device.Spec,
 		},
-		Outputs: apis.Output{
-
-		},
-		Inputs:  []apis.Input{
+		Outputs: apis.Output{},
+		Inputs: []apis.Input{
 			{
-				Name: "imageType",
-				Type: "string",
+				Name:  "imageType",
+				Type:  "string",
 				Value: imageType,
 			},
 			{
-				Name: "position",
-				Type: "string",
+				Name:  "position",
+				Type:  "string",
 				Value: position,
 			},
 			{
-				Name: "cameraUrl",
-				Type: "string",
+				Name:  "cameraUrl",
+				Type:  "string",
 				Value: cameraUrl,
+			},
+			{
+				Name:  "compressed",
+				Type:  "bool",
+				Value: strconv.FormatBool(compressed),
+			},
+			{
+				Name:  "path",
+				Type:  "string",
+				Value: path,
 			},
 		},
 	}
-
 
 	action := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -621,12 +632,162 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 		},
 		Status: apis.ActionStatus{
 			ActionID: "Action1",
-			Devices: []apis.DeviceStatus{
-
-			},
-		}
+			Devices:  []apis.DeviceStatus{},
+		},
 	}
 
+	group := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "group",
+			Namespace: "test",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.GroupSpec{
+			Name: "group",
+			Actions: []apis.Action{
+				*action,
+			},
+		},
+		Status: apis.GroupStatus{
+			GroupID: "group",
+			ActionStatus: []apis.ActionStatus{
+				action.Status,
+			},
+		},
+	}
 
-	return _, _, runtime
+	return group, action, runtime, device
+}
+
+func CreateGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runtime, *apis.Device) {
+
+	// 能力框架的url
+	manageUrl := ""
+	left := "-1.221,0.0872,0,0,0,0,0"
+	right := "-0,0,0,0,0,0,0"
+	// 创建device
+	device := &apis.Device{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deviceArm",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Device",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DeviceSpec{
+			Name: "deviceArm",
+			AccessMethod: apis.AccessMethod{
+				Type: apis.AccessByAbility,
+				URL:  manageUrl,
+			},
+			ExpectedProperties: map[string]apis.Property{},
+			Abilities:          make([]apis.AbilitySpec, 0),
+		},
+		Status: apis.DeviceStatus{
+			DeviceID: "deviceArm",
+			Phase:    apis.DeviceIdle,
+			Status:   "idle",
+			ActionID: "",
+			Lock: apis.Lock{
+				IsLocked: true,
+			},
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Arm",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "ArmAngle",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/arm_angle",
+			},
+			{
+				Name:      "LeftArmUp",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/left_arm_up",
+			},
+			{
+				Name:      "LeftArmDown",
+				Ip:        "192.168.8.165",
+				Interface: " /api/control/left_arm_down",
+			},
+		},
+	})
+
+	runtime := &apis.Runtime{
+		Image: "manage_ArmControl.Leju.Guochuang",
+		Name:  "RuntimeTest",
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: apis.Output{},
+		Inputs: []apis.Input{
+			{
+				Name:  "left",
+				Value: left,
+			},
+			{
+				Name:  "right",
+				Value: right,
+			},
+		},
+	}
+
+	action := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action",
+			Runtimes: []apis.Runtime{
+				*runtime,
+			},
+		},
+		Status: apis.ActionStatus{
+			ActionID: "Action1",
+			Devices:  []apis.DeviceStatus{},
+		},
+	}
+
+	group := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "group",
+			Namespace: "test",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.GroupSpec{
+			Name: "group",
+			Actions: []apis.Action{
+				*action,
+			},
+		},
+		Status: apis.GroupStatus{
+			GroupID: "group",
+			ActionStatus: []apis.ActionStatus{
+				action.Status,
+			},
+		},
+	}
+
+	return group, action, runtime, device
 }
