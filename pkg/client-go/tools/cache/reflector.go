@@ -302,19 +302,91 @@ func (r *Reflector) syncWith(items []runtime.Object, resourceVersion string) err
 	return r.store.Replace(found, resourceVersion)
 }
 
+//多层调用有bug，将函数嵌入wachList中
+//func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
+//	var w watch.Interface
+//	var err error
+//	var temporaryStore Store
+//	var resourceVersion string
+//
+//	// 实现指数回退机制
+//	backoff := 1 * time.Second     // 初始等待时间
+//	maxBackoff := 30 * time.Second // 最大等待时间
+//	retryCount := 0
+//
+//	for {
+//		//这里的resourceVersion 并不是api版本（如resources/v1）
+//		resourceVersion = ""
+//		lastKnownRV := r.rewatchResourceVersion()
+//
+//		select {
+//		case <-stopCh:
+//			return nil, nil
+//		default:
+//		}
+//
+//		//这里先用写入temporaryStore，然后通过replace到deltafifo 并且计数器加1，在pop到时会-1，以此判断同步是否完成
+//		temporaryStore = NewStore(DeletionHandlingMetaNamespaceKeyFunc)
+//		//timeoutSeconds := int64(defaultMinWatchTimeout.Seconds())
+//		timeoutSeconds := int64(5)
+//		//options 用来控制和定制如何进行资源监听
+//		options := metav1.ListOptions{
+//			ResourceVersion:      lastKnownRV,
+//			AllowWatchBookmarks:  true,
+//			SendInitialEvents:    pointer.Bool(true),
+//			ResourceVersionMatch: metav1.ResourceVersionMatchNotOlderThan,
+//			TimeoutSeconds:       &timeoutSeconds,
+//		}
+//
+//		w, err = r.listerWatcher.Watch(options)
+//
+//		if err != nil {
+//			// 如果请求失败，执行回退
+//			time.Sleep(backoff)
+//			// 使用指数回退增加等待时间
+//			backoff = time.Duration(float64(backoff) * 2.0) // 指数回退
+//			if backoff > maxBackoff {
+//				backoff = maxBackoff // 达到最大等待时间
+//			}
+//			retryCount++
+//			continue
+//		}
+//
+//		// 重置回退时间
+//		backoff = 1 * time.Second
+//		retryCount = 0
+//
+//		watchListBookmarkReceived, err := handleListWatch(
+//			w, temporaryStore, r.expectedType, r.expectedGVK,
+//			func(rv string) { resourceVersion = rv },
+//			stopCh,
+//		)
+//		if err != nil {
+//			w.Stop()
+//			continue
+//		}
+//		if watchListBookmarkReceived {
+//			break
+//		}
+//	}
+//	r.setIsLastSyncResourceVersionUnavailable(false)
+//
+//	if err := r.store.Replace(temporaryStore.List(), resourceVersion); err != nil {
+//		logs.Infof("failed to replace temporary store:", err)
+//		return nil, fmt.Errorf("unable to sync watch-list result: %w", err)
+//	}
+//
+//	r.setLastSyncResourceVersion(resourceVersion)
+//	return w, nil
+//}
+
+// 多层调用有bug，将函数嵌入wachList中
 func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 	var w watch.Interface
-	var err error
 	var temporaryStore Store
 	var resourceVersion string
 
-	// 实现指数回退机制
-	backoff := 1 * time.Second     // 初始等待时间
-	maxBackoff := 30 * time.Second // 最大等待时间
-	retryCount := 0
-
 	for {
-		//这里的resourceVersion 并不是api版本（如resources/v1）
 		resourceVersion = ""
 		lastKnownRV := r.rewatchResourceVersion()
 
@@ -324,11 +396,8 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 		default:
 		}
 
-		//这里先用写入temporaryStore，然后通过replace到deltafifo 并且计数器加1，在pop到时会-1，以此判断同步是否完成
 		temporaryStore = NewStore(DeletionHandlingMetaNamespaceKeyFunc)
-		//timeoutSeconds := int64(defaultMinWatchTimeout.Seconds())
-		timeoutSeconds := int64(5)
-		//options 用来控制和定制如何进行资源监听
+		timeoutSeconds := int64(10000)
 		options := metav1.ListOptions{
 			ResourceVersion:      lastKnownRV,
 			AllowWatchBookmarks:  true,
@@ -337,43 +406,73 @@ func (r *Reflector) watchList(stopCh <-chan struct{}) (watch.Interface, error) {
 			TimeoutSeconds:       &timeoutSeconds,
 		}
 
-		w, err = r.listerWatcher.Watch(options)
-
+		w, err := r.listerWatcher.Watch(options)
 		if err != nil {
-			// 如果请求失败，执行回退
-			time.Sleep(backoff)
-			// 使用指数回退增加等待时间
-			backoff = time.Duration(float64(backoff) * 2.0) // 指数回退
-			if backoff > maxBackoff {
-				backoff = maxBackoff // 达到最大等待时间
-			}
-			retryCount++
+			fmt.Printf("err: %v", err)
+			w.Stop()
 			continue
 		}
 
-		// 重置回退时间
-		backoff = 1 * time.Second
-		retryCount = 0
+		watchListBookmarkReceived := false
+	loop:
+		for {
+			select {
+			case <-stopCh:
+				return nil, nil
+			case event, ok := <-w.ResultChan():
+				if !ok {
+					break loop
+				}
+				if event.Type == watch.Error {
+					logs.Info("event.Type == watch.Error")
+				}
+				if r.expectedType != nil && reflect.TypeOf(event.Object) != nil && r.expectedType != reflect.TypeOf(event.Object) {
+					logs.Info("类型验证不匹配的事件")
+					continue
+				}
+				if r.expectedGVK != nil && *r.expectedGVK != event.Object.GetObjectKind().GroupVersionKind() {
+					logs.Info("GVK验证不匹配的事件")
+					continue
+				}
+				metaObj, err := meta.Accessor(event.Object)
+				if err != nil {
+					panic(fmt.Errorf("%s: unable to understand watch event %#v", event))
+				}
+				resourceVersion = metaObj.GetResourceVersion()
 
-		watchListBookmarkReceived, err := handleListWatch(
-			w, temporaryStore, r.expectedType, r.expectedGVK,
-			func(rv string) { resourceVersion = rv },
-			stopCh,
-		)
-		if err != nil {
-			w.Stop()
-			continue
+				switch event.Type {
+				case watch.Added:
+					if err := temporaryStore.Add(event.Object); err != nil {
+						logs.Errorf("unable to add watch event object: %#v", event.Object)
+					}
+				case watch.Modified:
+					if err := temporaryStore.Update(event.Object); err != nil {
+						logs.Errorf("unable to update watch event object: %#v", event.Object)
+					}
+				case watch.Deleted:
+					if err := temporaryStore.Delete(event.Object); err != nil {
+						logs.Errorf("unable to delete watch event object: %#v", event.Object)
+					}
+				case watch.Bookmark:
+					if metaObj.GetAnnotations()[metav1.InitialEventsAnnotationKey] == "true" {
+						watchListBookmarkReceived = true
+					}
+					watchListBookmarkReceived = true
+					if err := r.store.Replace(temporaryStore.List(), resourceVersion); err != nil {
+						logs.Infof("failed to replace temporary store: %v", err)
+						return nil, fmt.Errorf("unable to sync watch - list result: %w", err)
+					}
+				default:
+					logs.Errorf("unknown watch event: %#v", event)
+				}
+				func(rv string) { resourceVersion = rv }(resourceVersion)
+			}
 		}
 		if watchListBookmarkReceived {
 			break
 		}
 	}
 	r.setIsLastSyncResourceVersionUnavailable(false)
-
-	if err := r.store.Replace(temporaryStore.List(), resourceVersion); err != nil {
-		logs.Infof("failed to replace temporary store:", err)
-		return nil, fmt.Errorf("unable to sync watch-list result: %w", err)
-	}
 
 	r.setLastSyncResourceVersion(resourceVersion)
 	return w, nil
