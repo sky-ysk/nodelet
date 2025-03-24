@@ -1238,10 +1238,10 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 					i.LeftValue.Value = "1"
 				}
 				if i.LeftValue.Value == i.RightValue.Value {
-					i.Result = true
+					i.Result = apis.True
 				}
 			}
-			if !i.Result {
+			if i.Result != apis.True {
 				//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
 				return false
 			} else {
@@ -1270,10 +1270,10 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 				}
 			}
 			if i.LeftValue.Value == i.RightValue.Value {
-				i.Result = true
+				i.Result = apis.True
 			}
 		}
-		if !i.Result {
+		if i.Result != apis.True {
 			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
@@ -1292,7 +1292,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	if rsStatus2.IsDependencySatisf {
 		return true
 	}
-	for _, i := range runtime.Conditions.Formulas {
+	for index, i := range runtime.Conditions.Formulas {
 		if i.LeftValue.Name == string(apis.NodeDependency) {
 			//正则匹配选择parents的pahse
 			runtimeParentName := i.LeftValue.From
@@ -1328,9 +1328,9 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				}
 			}
 			if i.LeftValue.Value == i.RightValue.Value {
-				i.Result = true
+				i.Result = apis.True
 			}
-			if !i.Result {
+			if i.Result != apis.True {
 				//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 				return false
 			} else {
@@ -1404,7 +1404,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				i.LeftValue.Value = "1"
 				if i.Signal == apis.Equal {
 					if i.LeftValue.Value == i.RightValue.Value {
-						i.Result = true
+						i.Result = apis.True
 					}
 					//暂时没想到 ！= 如何使用，暂定判断条件相等 ==
 					// }else {
@@ -1412,11 +1412,11 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 					// 		runtime.Conditions.Formulas[conditionIndex].Result = true
 					// 	}
 				}
-				if !i.Result {
-					//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
+				if i.Result != apis.True {
+					logs.Trace("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 					return false
 				} else {
-					// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+					logs.Trace("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 				}
 			}
 			path, err := dependency.EnvForInput(envName)
