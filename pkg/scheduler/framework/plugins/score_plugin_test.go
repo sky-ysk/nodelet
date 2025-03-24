@@ -215,6 +215,129 @@ func mockGetTask() apis.Task {
 	}
 }
 
+// go test -run TestAddNode -v
+func TestAddNode(t *testing.T) {
+	logs.Init("main")
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	//参数配置
+	// TODO: 填写参数
+	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        10000,            // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 1000 * time.Second,
+	}
+
+	//创建ClientSet
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+	// 资源定义在 pkg/apis/xxx/type.go 下
+	// 这里以访问资源Node为例，
+	// 获取访问Node的客户端
+	// 默认访问的Namespace是 ""
+
+	nodesClient := clientSet.Core().Nodes("test")
+
+	node := &apis.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-nodes",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Node",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.NodeSpec{
+			NodeName: "demo-node",
+		},
+	}
+	node2 := &apis.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-node2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Node",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.NodeSpec{
+			NodeName: "demo-node",
+		},
+	}
+	node3 := &apis.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-node3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "qa",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Node",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.NodeSpec{
+			NodeName: "demo-node",
+		},
+	}
+
+	logs.Trace("creating")
+	result, err := nodesClient.Create(context.TODO(), node, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("Failed to create node: %v", err)
+	} else {
+		logs.Info("created node", result)
+	}
+	_, err = nodesClient.Create(context.TODO(), node2, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("Failed to create node: %v", err)
+	} else {
+		logs.Info("created node", result)
+	}
+	_, err = nodesClient.Create(context.TODO(), node3, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("Failed to create node: %v", err)
+	} else {
+		logs.Info("created node", result)
+	}
+	time.Sleep(3 * time.Second)
+	logs.Info("listing 筛选的node")
+	lstOpts := metav1.ListOptions{
+		LabelSelector: "environment",
+	}
+	list, err := nodesClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		logs.Error(err)
+	}
+	for _, d := range list.Items {
+		logs.Info(d)
+	}
+}
+
 // 机器人A拿盘子到远处 -> 机器人B放橙子 -> 机器人A拿盘子到近处 -> 机器人B拿出橙子 (loop)
 //func mockGetOrangeTask() apis.Task {
 //
