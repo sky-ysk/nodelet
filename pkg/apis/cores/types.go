@@ -1192,6 +1192,7 @@ type Input struct {
 	//      Local类型的数据对其他节点不可见
 	Value     string `json:"value,omitempty" yaml:"value"`
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	From	string  `json:"from,omitempty" yaml:"from"`
 }
 
 // TODO: 数据格式后续还需要调整
@@ -1674,3 +1675,13 @@ type Requirement struct {
 	Name    string
 	Version string
 }
+
+type conditionType string
+
+const (
+	NodeDependency conditionType = "NodeDependency"
+	DataDependency conditionType = "DataDependency"
+	ResourceDependency conditionType = "ResourceDependency"
+	ProgramDependency conditionType = "ProgramDependency"
+)
+

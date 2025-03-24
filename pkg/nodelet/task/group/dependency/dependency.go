@@ -411,23 +411,35 @@ func EnvForInput(envName string) (string, bool) {
 //				Devices.{Name}: 从本地设备里列表中获取
 //				Scenes.{Name}： 从本地场景中获取
 //				Data.{Name}： 从本地数据中获取
-func IdParser(Idstr string) (Task, Group, Action, runtime string, err error) {
+func Parse(Idstr string) (TaskID, GroupID, ActionID, RuntimeID, TypeName string, TypeID int, err error) {
 	//两类数据类型对应两类正则解析式
 	// 定义正则表达式
 	//TODO Local格式的正则匹配，目前没使用到
-	re := regexp.MustCompile(`(?:Task\{(\d+)\}\.)?(?:Group\{(\d+)\}\.)?Action\{(\d+)\}\.Runtime\{(\d+)\}`)
-	// 匹配并提取 ID
+	re := regexp.MustCompile(`^(?:Task\{(\d+)\}\.)?(?:Group\{(\d+)\}\.)?(?:Action\{(\d+)\}\.)?Runtime\{(\d+)\}\.(.*)$`)
+
+	// // 测试字符串
+	// testCases := []string{
+	// 	"Task{1}.Group{2}.Action{3}.Runtime{4}.ExampleName",
+	// 	"Group{2}.Action{3}.Runtime{4}.AnotherName",
+	// 	"Action{3}.Runtime{4}.YetAnotherName",
+	// 	"Runtime{4}.FinalName{}",
+	// }
+
+	// 匹配并提取值
 
 	matches := re.FindStringSubmatch(Idstr)
 	if matches != nil {
-		logs.Info("匹配的字符串: %v", Idstr)
-		logs.Info("提取的 ID: TaskID=%v, GroupID=%v, ActionID=%v, RuntimeID=%v",
-			matches[1], matches[2], matches[3], matches[4])
-		return matches[1], matches[2], matches[3], matches[4], nil
+		fmt.Printf("匹配的字符串: %s\n", Idstr)
+		fmt.Printf("提取的值: TaskID=%s, GroupID=%s, ActionID=%s, RuntimeID=%s, Name=%s\n",
+			matches[1], matches[2], matches[3], matches[4], matches[5])
 	} else {
-		logs.Error("未匹配到: %v", Idstr)
-		return "", "", "", "", fmt.Errorf("未匹配到: %v", Idstr)
+		fmt.Printf("未匹配到: %s\n", Idstr)
 	}
+	cnt := 0
+	if matches[1] == "" {cnt++}
+	if matches[2] == "" {cnt++}
+	if matches[3] == "" {cnt++}
+	return matches[1], matches[2], matches[3], matches[4], matches[5], cnt, nil
 }
 
 func runCommand(name string, args ...string) error {
