@@ -269,7 +269,7 @@ func TestAddNode(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.NodeSpec{
-			NodeName: "demo-node",
+			NodeName: "EndNode1",
 		},
 	}
 	node2 := &apis.Node{
@@ -285,7 +285,7 @@ func TestAddNode(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.NodeSpec{
-			NodeName: "demo-node",
+			NodeName: "EndNode2",
 		},
 	}
 	node3 := &apis.Node{
@@ -301,7 +301,7 @@ func TestAddNode(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.NodeSpec{
-			NodeName: "demo-node",
+			NodeName: "EndNode3",
 		},
 	}
 
@@ -324,10 +324,13 @@ func TestAddNode(t *testing.T) {
 	} else {
 		logs.Info("created node", result)
 	}
-	time.Sleep(3 * time.Second)
+
+	if err != nil {
+		logs.Error(err)
+	}
 	logs.Info("listing 筛选的node")
 	lstOpts := metav1.ListOptions{
-		LabelSelector: "environment",
+		//LabelSelector: "environment",
 	}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
