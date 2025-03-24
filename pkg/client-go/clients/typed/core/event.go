@@ -1,7 +1,8 @@
 package core
 
 import (
-	context "context"
+	"context"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 
 	"hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/watch"
@@ -24,6 +25,7 @@ type EventInterface interface {
 	Create(ctx context.Context, event *apis.Event, opts meta.CreateOptions) (*apis.Event, error)
 	Update(ctx context.Context, event *apis.Event, opts meta.UpdateOptions) (*apis.Event, error)
 	Delete(ctx context.Context, name string, opts meta.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts meta.GetOptions) (*apis.Event, error)
 	List(ctx context.Context, opts meta.ListOptions) (*apis.EventList, error)
 	Watch(ctx context.Context, opts meta.ListOptions) (watch.Interface, error)
