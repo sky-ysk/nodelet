@@ -78,8 +78,16 @@ func main() {
 		},
 		Spec: apis.DeviceSpec{
 			Name: "demo-device",
+			Abilities: []apis.AbilitySpec{
+				{
+					Name:     "arm",
+					Services: nil,
+				},
+			},
 		},
 	}
+
+	err = devicesClient.Delete(context.TODO(), "demo-devices", metav1.DeleteOptions{})
 	device2 := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-device2",

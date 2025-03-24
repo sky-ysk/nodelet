@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // go test -run TestTerminate  -v
@@ -91,17 +92,11 @@ func TestPublishPredictByUrlInst(t *testing.T) {
 	am := manager.NewAbilityManager(managerUrl, abilityName)
 	heartBeat, err := am.StartupAbility()
 
-	//// 终止能力[备用]
-	//err =am.TerminateAbility()
-	//if err!=nil{
-	//	logs.Errorf("error is %v",err)
-	//}
-
 	// predict by url 参数
 	compressed := false
-	cameraUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/status/camera")
-	position := ""
-	imageType := ""
+	cameraUrl := fmt.Sprintf("%s:%s%s", "http://127.0.0.1", "58561", "/api/status/camera")
+	position := "head"
+	imageType := "rgb"
 	if err != nil {
 		logs.Errorf("start up %s fail", abilityName)
 		fmt.Println(err)
@@ -119,4 +114,32 @@ func TestPublishPredictByUrlInst(t *testing.T) {
 			logs.Infof("predict resp is %v", resp)
 		}
 	}
+
+	time.Sleep(time.Second * 2)
+	// 终止能力[备用]
+	err = am.TerminateAbility()
+	if err != nil {
+		logs.Errorf("error is %v", err)
+	}
+}
+
+func TestStartupCameraAbility(t *testing.T) {
+	logs.Init("test")
+	managerUrl := "http://192.168.8.165:8080" // 能力框架url
+
+	abilityName := "Camera.Leju.Guochuang"
+	am := manager.NewAbilityManager(managerUrl, abilityName)
+	heartBeat, err := am.StartupAbility()
+	if err != nil {
+		logs.Errorf("start up %s fail", abilityName)
+	} else {
+		fmt.Println("heart beat is ", heartBeat)
+	}
+
+	//time.Sleep(time.Second * 5)
+	//// 终止能力[备用]
+	//err = am.TerminateAbility()
+	//if err != nil {
+	//	logs.Errorf("error is %v", err)
+	//}
 }

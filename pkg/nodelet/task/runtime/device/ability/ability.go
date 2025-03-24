@@ -35,6 +35,14 @@ func PublishAbilityInst(Inst string, device *apis.Device, operation string) (api
 		logs.Info("start AbilityFramework successfully")
 		// 单独开一个协程来监控运行结果
 		go monitorDeviceAbility(abilityManager)
+		for index, a := range device.Status.Abilities {
+			for index, s := range a.Services {
+				port := strconv.Itoa(heartBeat.AbilityPort)
+				s.Port = port
+				a.Services[index] = s
+			}
+			device.Status.Abilities[index] = a
+		}
 		return apis.Output{
 			Value:     strconv.Itoa(heartBeat.AbilityPort),
 			Name:      "port",

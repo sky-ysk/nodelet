@@ -39,65 +39,70 @@ func NewDeviceRuntime(deviceClient core.DeviceInterface, actionClient core.Actio
 
 func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 
+	// 将group设置为running状态
 	clientset, _ := InitClient()
 	groupClient := clientset.Core().Groups("test")
 	group.Status.Phase = apis.Running
-	groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
-	// 首先获取action
+	_, err := groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Errorf("Update group status failed.%v", err)
+		return err
+	}
+
+	// 获取action
 	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("can not get action from etcd!")
 	}
+
+	// 构建一个device map
+	devices := make(map[string]*apis.Device)
+	for _, d := range runtime.Devices {
+		device, err := dr.deviceClient.Get(context.TODO(), d.Name, metav1.GetOptions{})
+		if err != nil {
+			logs.Errorf("can not get device: %s from etcd!", d.Name)
+		}
+		devices[d.Name] = device
+	}
+
 	// 检查Device
 	logs.Infof("Action[%s] Runtime[%s] CheckDevice start\n", action.Spec.Name, runtime.Name)
-	err, devices := utils.CheckDevice(runtime, action)
+	err = utils.CheckDevice(devices)
 	if err != nil {
 		logs.Errorf("Action[%s] Runtime[%s] CheckDevice failed\n", action.Spec.Name, runtime.Name)
 		return err
 	}
 	logs.Infof("Action[%s] Runtime[%s] CheckDevice is successful\n", action.Spec.Name, runtime.Name)
 
-	//// 检查Resource
-	//logs.Infof("Action[%s] Runtime[%s] CheckResource start\n", action.Spec.Name, runtime.Name)
-	//err = utils.CheckResource(runtime, action)
-	//if err != nil {
-	//	logs.Errorf("Action[%s] Runtime[%s] check resource failed\n", action.Spec.Name, runtime.Name)
-	//	return err
-	//}
-	//logs.Infof("Action[%s] Runtime[%s] CheckResource is successful\n", action.Spec.Name, runtime.Name)
-	//
-	//// 检查Scene
-	//logs.Infof("Action[%s] Runtime[%s] CheckScene start\n", action.Spec.Name, runtime.Name)
-	//err = utils.CheckScene(runtime, action)
-	//if err != nil {
-	//	logs.Errorf("Action[%s] Runtime[%s] check scene failed\n", action.Spec.Name, runtime.Name)
-	//	return err
-	//}
-	//logs.Infof("Action[%s] Runtime[%s] CheckScene success\n", action.Spec.Name, runtime.Name)
-	// 拉起任务
-	logs.Infof("Action[%s] Runtime[%s] ConstructDevice start", action.Spec.Name, runtime.Name)
+	// 遍历device
 	for name, device := range devices {
 		var taskId string
+		// ability方式
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
 			err = utils.ConstructParamAbility(devices, runtime)
 			if err != nil {
 				logs.Errorf("Action[%s] Runtime[%s] construct param failed\n", action.Spec.Name, runtime.Name)
 				return err
 			}
-			output, err := ability.PublishAbilityInst(runtime.Image, device, "")
 
+			logs.Infof("publish ability inst...")
+			output, err := ability.PublishAbilityInst(runtime.Image, device, "")
 			if err != nil {
-				logs.Errorf("Action[%s] Runtime[%s] startup Ability failed\n", action.Spec.Name, runtime.Name)
+				logs.Errorf("Action[%s] Runtime[%s] publish Ability failed\n", action.Spec.Name, runtime.Name)
 				// processId 字段保留
 				dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 				return err
 			}
+			logs.Infof("publish ability successfully")
+			logs.Infof("publish ability inst output:%v", output)
 
-			runtime.Outputs = output
+			runtime.Outputs = append(runtime.Outputs, output)
+
 			action.Spec.Runtimes[runtimeIndex] = *runtime
 			action.Status.Phase = apis.Running
+
 			//go dr.monitorDeviceAbility(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device, abilityManager)
-		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf {
+		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf { // rmf方式
 
 			// 构造任务的请求参数
 			logs.Infof("Action[%s] Runtime[%s] ConstructParamRMF start\n", action.Spec.Name, runtime.Name)
@@ -121,49 +126,41 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 				ValueType: "string",
 				Type:      apis.ResultsData,
 			}
-			runtime.Outputs = output
+
+			runtime.Outputs = append(runtime.Outputs, output)
+
 			action.Spec.Runtimes[runtimeIndex] = *runtime
 			action.Status.Phase = apis.Running
+
 			//go dr.monitorDeviceRMF(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device)
 		}
+
+		//修改Device状态
+		logs.Infof("Action[%s] Runtime[%s] update device  start\n", action.Spec.Name, runtime.Name)
+		err = utils.UpdateDevice(runtime, device, taskId, dr.deviceClient)
+		if err != nil {
+			logs.Errorf("Action[%s] Runtime[%s] update device failed\n", action.Spec.Name, runtime.Name)
+		}
+		logs.Infof("Action[%s] Runtime[%s] update device finished\n", action.Spec.Name, runtime.Name)
+
 		_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
 		if err != nil {
 			logs.Errorf("Action[%s] Runtime[%s] Update failed\n", action.Spec.Name, runtime.Name)
 		}
 		logs.Infof("update action success")
+		devices[name] = device
+		action.Status.Devices[name] = device.Status
 	}
-
-	//修改Device状态
-	logs.Infof("Action[%s] Runtime[%s] update device status start\n", action.Spec.Name, runtime.Name)
-	if err = utils.UpdateDeviceStatusList(runtime, action, action.Status.ActionID, devices, dr.deviceClient); err != nil {
-		logs.Errorf(err.Error())
-		logs.Errorf("Action[%s] Runtime[%s] update device status failed", action.Spec.Name, runtime.Name)
-		return fmt.Errorf("Action[%s] Runtime[%s] update device status failed ", action.Spec.Name, runtime.Name)
+	action.Status.RuntimeStatus[runtimeIndex].Phase = apis.Running
+	_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Errorf("Action[%s] Runtime[%s] Update action failed\n", action.Spec.Name, runtime.Name)
 	}
-	logs.Infof("Action[%s] Runtime[%s] update device status is finished\n", action.Spec.Name, runtime.Name)
-
-	////修改Resource状态
-	//logs.Infof("Action[%s] Runtime[%s] update resource status start\n", action.Spec.Name, runtime.Name)
-	//err = utils.UpdateResourceStatus(runtime, action)
-	//if err != nil {
-	//	logs.Errorf("Action[%s] Runtime[%s] update status failed", action.Spec.Name, runtime.Name)
-	//	return fmt.Errorf("Action[%s] Runtime[%s] update status failed ", action.Spec.Name, runtime.Name)
-	//}
-	//logs.Infof("Action[%s] Runtime[%s] update resource status  is finished\n", action.Spec.Name, runtime.Name)
-	//
-	////修改Scene状态
-	//logs.Infof("Action[%s] Runtime[%s] update scene status  start\n", action.Spec.Name, runtime.Name)
-	//err = utils.UpdateSceneStatus(runtime, action, len(devices), action.Status.ActionID)
-	//if err != nil {
-	//	logs.Errorf("Action[%s] Runtime[%s] update scene status failed", action.Spec.Name, runtime.Name)
-	//	return fmt.Errorf("Action[%s] Runtime[%s] update scene status failed ", action.Spec.Name, runtime.Name)
-	//}
-	//logs.Infof("Action[%s] Runtime[%s] update scene status is finished\n", action.Spec.Name, runtime.Name)
-	//
-	//// etcd更改
-
-	group.Spec.Actions[0].Status.RuntimeStatus[0].Phase = apis.Running
-	groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
+	group.Spec.Actions[actionIndex] = *action
+	_, err = groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Errorf("Action[%s] Runtime[%s] Update group failed\n", action.Spec.Name, runtime.Name)
+	}
 	return nil
 }
 
@@ -185,7 +182,7 @@ func (dr *DeviceRuntime) Kill(group *apis.Group, a *apis.Action, runtime *apis.R
 		for _, device := range devices {
 			fmt.Println("this is a string")
 			// device的taskId存储在output中，同时取出
-			output := runtime.Outputs
+			output := runtime.Outputs[0]
 			if device.Spec.AccessMethod.Type == apis.AccessByAbility {
 				_, err = ability.PublishAbilityInst(runtime.Image, &device, "terminate")
 				if err != nil {

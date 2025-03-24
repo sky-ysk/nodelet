@@ -22,6 +22,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			logs.Errorf("publish armangle inst failed, error is %v", err)
 			return apis.Output{}, err
 		}
+		return apis.Output{}, nil
 	case "Predict":
 		imagePath := device.Spec.ExpectedProperties["path"].Value
 		url, err := GetServiceUrl(ability, device)
@@ -57,6 +58,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 
 	case "LeftArmDown":
 		url, err := GetServiceUrl(ability, device)
+		logs.Infof("URL IS %v", url)
 		if err != nil {
 			logs.Error(err)
 			return apis.Output{}, err
@@ -101,7 +103,67 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			Value:     strconv.Itoa(predictResult.Prediction),
 			ValueType: "int",
 		}, err
+	case "TaskState":
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		taskState, err := PublishTaskState(url)
+		if err != nil {
+			logs.Error("publish predict inst failed, error is %v", err)
+			return apis.Output{}, err
+		}
+		return apis.Output{
+			Type:  apis.ResultsData,
+			Name:  "task_state",
+			Value: strconv.Itoa(taskState.TaskState),
+		}, err
+	case "GoStandBy":
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		taskType, err := strconv.Atoi(device.Spec.ExpectedProperties["taskType"].Value)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		logs.Infof("construct params for GoStandBy finished")
+		resp, err := PublishGoStandBy(taskType, url)
+		if err != nil {
+			logs.Error("publish go stand by inst failed, error is %v", err)
+		}
+		return apis.Output{
+			Type:  apis.ResultsData,
+			Name:  "status",
+			Value: resp.Status,
+		}, err
+	case "StartTask":
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		taskType, err := strconv.Atoi(device.Spec.ExpectedProperties["taskType"].Value)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		logs.Infof("construct params for GoStandBy finished")
+		resp, err := PublishStartTask(taskType, url)
+		if err != nil {
+			logs.Error("publish start task inst failed, error is %v", err)
+			return apis.Output{}, err
+		}
+		return apis.Output{
+			Type:  apis.ResultsData,
+			Name:  "status",
+			Value: resp.Status,
+		}, err
 	}
+
 	logs.Errorf("Do not support ability:%v", ability)
 	return apis.Output{}, nil
 }

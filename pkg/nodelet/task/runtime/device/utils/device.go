@@ -7,6 +7,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
+	"strings"
 	"time"
 )
 
@@ -18,42 +19,40 @@ type DeviceWorker interface {
 }
 
 // CheckDevice 检查设备情况
-func CheckDevice(runtime *apis.Runtime, action *apis.Action) (error, map[string]*apis.Device) {
-	devices := make(map[string]*apis.Device)
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
-		// device必须已经被上锁（已经经过检查)
-		//TODO:
-		if status.Lock.IsLocked == false {
-			logs.Errorf("Device %s is not locked", status.DeviceID)
-			return fmt.Errorf("Device %s is not locked\n", status.DeviceID), nil
+func CheckDevice(devices map[string]*apis.Device) error {
+
+	for name, device := range devices {
+		logs.Infof("check device %s status", name)
+		status := device.Status
+		if status.Lock.Lock == false {
+			logs.Errorf("Device %s is not locked", device.Name)
+			return fmt.Errorf("device %s is not locked", device.Name)
 		}
 
 		// device状态为idle(系统内状态和运行时状态)
-		if status.Status != "idle" || status.Phase != apis.DeviceIdle {
-			logs.Errorf("device %s is busy", spec.Name)
-			return fmt.Errorf("device %s is busy", spec.Name), nil
+		if status.Status != "idle" || (status.Phase != apis.DeviceIdle && status.Phase != apis.DeviceInit) {
+			logs.Errorf("device %s is busy", device.Name)
+			return fmt.Errorf("device %s is busy", device.Name)
 		}
 
 		// device的Task ID应该为空
 		if status.InstanceID != "" || status.ActionID != "" {
-			logs.Errorf("device %s's task_id is not null", spec.Name)
-			return fmt.Errorf("device %s's task_id is not null", spec.Name), nil
+			logs.Errorf("device %s's task_id is not null", device.Name)
+			return fmt.Errorf("device %s's task_id is not null", device.Name)
 		}
-		devices[spec.Name] = &apis.Device{Spec: spec, Status: status}
 	}
 
-	return nil, devices
+	return nil
 }
 
 // GetDevices 获取所有设备
 func GetDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Device) {
 	devices := make([]apis.Device, 0)
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
+	for _, spec := range runtime.Devices {
+		status := action.Status.Devices[spec.Name]
 		// device必须已经被上锁（已经经过检查)
 		//TODO:
-		if !status.Lock.IsLocked {
+		if !status.Lock.Lock {
 			logs.Errorf("device %s is not locked", spec.Name)
 			return fmt.Errorf("device %s is not locked", spec.Name), nil
 		}
@@ -79,8 +78,8 @@ func GetDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Devic
 // GetDevices 获取所有设备
 func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Device) {
 	devices := make([]apis.Device, 0)
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
+	for _, spec := range runtime.Devices {
+		status := action.Status.Devices[spec.Name]
 		device := apis.Device{Spec: spec, Status: status}
 		devices = append(devices, device)
 	}
@@ -91,21 +90,21 @@ func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.De
 // UpdateDeviceStatus 更新DeviceStatus
 func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]*apis.Device, deviceClient core.DeviceInterface) error {
 
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
+	for _, spec := range runtime.Devices {
+		status := action.Status.Devices[spec.Name]
 		name := spec.Name
 		logs.Infof("device name is %s\n", name)
 		status.Status = "running"
 		status.Phase = apis.DeviceRunning
 		status.InstanceID = taskId
-		status.Lock = apis.Lock{Type: status.Lock.Type, IsLocked: true, Ref: status.Lock.Ref}
+		status.Lock = apis.Lock{Type: status.Lock.Type, Lock: true, Ref: status.Lock.Ref}
 		status.LastTime = apis.Time{Time: time.Now()}
 
-		action.Status.Devices[index] = status
+		action.Status.Devices[spec.Name] = status
 
 		newDevice := &apis.Device{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "deviceTest",
+				Name:      spec.Name,
 				Namespace: "test",
 				Labels: map[string]string{
 					"environment": "dev",
@@ -129,6 +128,26 @@ func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId s
 	return nil
 }
 
+func UpdateDevice(runtime *apis.Runtime, device *apis.Device, taskId string, deviceClient core.DeviceInterface) error {
+	parts := strings.Split(runtime.Name, "_")
+	if parts[0] == "manage" {
+		device.Status.Status = "Init"
+		device.Status.Phase = apis.DeviceInit
+	} else if parts[0] == "service" {
+		device.Status.Status = "Running"
+		device.Status.Phase = apis.DeviceRunning
+	}
+	device.Status.InstanceID = taskId
+
+	_, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Errorf("update device %s  failed, %s", device.Name, err)
+		return err
+	}
+
+	return nil
+}
+
 func UpdateDeviceStatusFailed(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
 	device.Status.Status = "failed"
 	device.Status.Phase = apis.DeviceError
@@ -138,9 +157,9 @@ func UpdateDeviceStatusFailed(runtime *apis.Runtime, action *apis.Action, device
 		return err
 	}
 
-	for index, spec := range runtime.Devices {
+	for _, spec := range runtime.Devices {
 		if spec.Name == device.Spec.Name {
-			action.Status.Devices[index] = device.Status
+			action.Status.Devices[spec.Name] = device.Status
 
 		}
 	}
@@ -149,16 +168,16 @@ func UpdateDeviceStatusFailed(runtime *apis.Runtime, action *apis.Action, device
 
 func UpdateDeviceStatusCompleted(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
 	device.Status.Status = "completed"
-	device.Status.Phase = apis.DeviceComplete
+	//device.Status.Phase = apis.DeviceComplete
 	device.Status.LastTime = apis.Time{time.Now()}
 	if _, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
 		logs.Errorf("update device %s status failed, %s", device.Name, err)
 		return err
 	}
 
-	for index, spec := range runtime.Devices {
+	for _, spec := range runtime.Devices {
 		if spec.Name == device.Spec.Name {
-			action.Status.Devices[index] = device.Status
+			action.Status.Devices[spec.Name] = device.Status
 
 		}
 	}
@@ -176,7 +195,7 @@ func RecoverDeviceStatus(action *apis.Action) error {
 			InstanceID: "",
 			Status:     "idle",
 			ActionID:   "",
-			Lock:       apis.Lock{Type: device.Lock.Type, IsLocked: false, Ref: device.Lock.Ref - 1},
+			Lock:       apis.Lock{Type: device.Lock.Type, Lock: false, Ref: device.Lock.Ref - 1},
 			LastTime:   apis.Time{Time: time.Now()},
 
 			// 不需要更新的字段直接复制

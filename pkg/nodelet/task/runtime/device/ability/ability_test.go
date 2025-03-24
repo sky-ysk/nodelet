@@ -1,51 +1,70 @@
 package ability
 
 import (
+	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"testing"
+	"time"
 )
 
 // go test -run TestPublishAbilityInst -v
 func TestPublishAbilityInst(t *testing.T) {
 
 	// 发布指令 service开头为业务请求 manage开头为能力框架操作
-	inst := "service_LeftArmUp"
-	//inst := "manage_ArmControl.Leju.Guochuang"
+	instService := "service_PredictByUrl"
+	instManage := "manage_Detect"
 
 	logs.Init("test")
 
 	// 选择不同的测试device
 	// 在创建device测试函数中填写参数
 	//device := CreateArmAngleDevice()
-	device := CreateLeftArmUpDevice()
+	//device := CreateLeftArmUpDevice()
 	//device := CreateLeftArmDownDevice()
 	//device := CreatePredictDevice()
-	//device := CreatePredictByUrlDevice()
+	device := CreatePredictByUrlDevice()
 
-	output, err := PublishAbilityInst(inst, device, "")
-
+	output, err := PublishAbilityInst(instManage, device, "")
 	if err != nil {
-		logs.Errorf("publish ability inst err")
+		logs.Errorf("error is %v", err)
+		return
+	}
+	logs.Infof("output is %v", output)
+	for _, a := range device.Status.Abilities {
+		for _, service := range a.Services {
+			fmt.Println(service.Port)
+		}
+	}
+
+	logs.Infof("output is %v", output)
+	output, err = PublishAbilityInst(instService, device, "")
+	if err != nil {
 		return
 	}
 
 	logs.Infof("output is %v", output)
-	for _, a := range device.Status.Abilities {
-		for _, service := range a.Services {
-			service.Port = output.Value
-		}
-	}
-	//time.Sleep(5 * time.Second)
 
-	// 能力框架的终止方式通过操作字段operation来进行
-	//output, err = PublishAbilityInst(inst, device, "terminate")
+	time.Sleep(5 * time.Second)
+
+	//能力框架的终止方式通过操作字段operation来进行
+	output, err = PublishAbilityInst(instManage, device, "terminate")
+}
+
+func TestTerminateAbilityInst(t *testing.T) {
+	instManage := "manage_ArmControl.Leju.Guochuang"
+	device := CreateLeftArmUpDevice()
+	output, err := PublishAbilityInst(instManage, device, "terminate")
+	if err != nil {
+		logs.Errorf("error is %v", err)
+	}
+	logs.Infof("output is %v", output)
 }
 
 // 创建ArmAngle的测试device
 func CreateArmAngleDevice() *apis.Device {
 
-	url := "" // 填写框架url
+	url := "http://192.168.8.165:8080"
 	device := &apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -131,7 +150,7 @@ func CreateLeftArmUpDevice() *apis.Device {
 
 // // 创建LeftArmDown能力的测试device
 func CreateLeftArmDownDevice() *apis.Device {
-	url := "" // 填写框架url
+	url := "http://192.168.8.165:8080"
 	device := &apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
@@ -174,7 +193,7 @@ func CreateLeftArmDownDevice() *apis.Device {
 
 // 创建predict能力的测试device
 func CreatePredictDevice() *apis.Device {
-	url := ""
+	url := "http://192.168.8.165:8080"
 
 	path := ""
 	device := &apis.Device{
@@ -210,11 +229,11 @@ func CreatePredictDevice() *apis.Device {
 
 // 创建predictByUrl能力的测试device
 func CreatePredictByUrlDevice() *apis.Device {
-	url := ""
-	cameraUrl := ""
+	url := "http://192.168.8.165:8080"
+	cameraUrl := "http://127.0.0.1:51169/api/status/camera"
 	compressed := "false"
-	imageType := ""
-	position := ""
+	imageType := "rgb"
+	position := "head"
 	device := &apis.Device{
 		Spec: apis.DeviceSpec{
 			AccessMethod: apis.AccessMethod{
