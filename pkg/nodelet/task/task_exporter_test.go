@@ -1310,6 +1310,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 	return group, action1, runtime1, device
 }
 
+// go test -run TestWorkFlow -v
 func TestWorkFlow(t *testing.T) {
 	// 初始化logs
 	moduleName := "testModule"
