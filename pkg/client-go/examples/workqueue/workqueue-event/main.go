@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -14,8 +17,6 @@ import (
 	"hit.edu/framework/pkg/client-go/tools/cache"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"time"
 )
 
 // 验证Watch功能
@@ -52,7 +53,7 @@ func (c *Controller) Run(workers int, stopCh chan struct{}) {
 		logs.Infof("Timed out waiting for caches to sync")
 		return
 	}
-	logs.Info("缓存同步完成================")
+	logs.Trace("缓存同步完成")
 
 	//启动worker
 	for i := 0; i < workers; i++ {
@@ -111,7 +112,7 @@ func main() {
 	//注册资源
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	logs.Info(scheme)
+	logs.Trace(scheme)
 
 	// 参数配置
 	c := &rest.Config{
@@ -186,12 +187,14 @@ func main() {
 
 	sourceEventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			logs.Infof("AddFunc")
 			key, err := cache.MetaNamespaceKeyFunc(obj)
 			if err == nil {
 				queue.Add(key)
 			}
 		},
 		UpdateFunc: func(old interface{}, new interface{}) {
+			logs.Infof("UpdateFunc")
 			key, err := cache.MetaNamespaceKeyFunc(new)
 			if err == nil {
 				queue.Add(key)
@@ -200,6 +203,7 @@ func main() {
 		DeleteFunc: func(obj interface{}) {
 			// IndexerInformer uses a delta queue, therefore for deletes we have to use this
 			// key function.
+			logs.Infof("DeleteFunc")
 			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 			if err == nil {
 				queue.Add(key)
@@ -219,15 +223,15 @@ func main() {
 	// 创建Controller
 	controller := NewController(queue, indexer, informer)
 
-	////设置Indexer对象格式
-	//indexer.Add(&apis.Event{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name: "demo-events",
-	//	},
-	//})
-	//
-	//// 设置Indexer对象格式
-	//indexer.Add(event)
+	//设置Indexer对象格式
+	indexer.Add(&apis.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "demo-events",
+		},
+	})
+
+	// 设置Indexer对象格式
+	indexer.Add(event)
 
 	// Now let's start the controller
 	stop := make(chan struct{})
@@ -235,7 +239,7 @@ func main() {
 	go controller.Run(1, stop)
 
 	// Create一个Event
-	logs.Info("creating")
+	logs.Trace("creating")
 	_, err = eventsClient.Create(context.TODO(), event, metav1.CreateOptions{})
 	_, _ = eventsClient.Create(context.TODO(), event2, metav1.CreateOptions{})
 	_, _ = eventsClient.Create(context.TODO(), event3, metav1.CreateOptions{})
@@ -243,53 +247,36 @@ func main() {
 	if err != nil {
 		logs.Infof("Failed to create event: %v", err)
 	}
-	logs.Info("Created event 1")
-
-	//Update一个Event
-	logs.Info("updating event 1")
-	// 部分更改一个参数
-	// 先Get一个Event ,更改Event的参数, UpdateEvent
-	result, getErr := eventsClient.Get(context.TODO(), "demo-events", metav1.GetOptions{})
-	if getErr != nil {
-		logs.Errorf("Failed to get : %v", getErr)
-	}
-
-	result.Reason = "sss"
-	_, updateErr := eventsClient.Update(context.TODO(), result, metav1.UpdateOptions{})
-	if updateErr != nil {
-		logs.Infof("Update failed: %v", updateErr)
-	}
-	logs.Info("1 event Updated event...")
+	logs.Trace("Created event 1")
 
 	// List 所有Event
-	logs.Info("listing")
+	logs.Trace("listing")
 	lstOpts := metav1.ListOptions{}
-	_, err = eventsClient.List(context.TODO(), lstOpts)
+	list, err := eventsClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Info(err)
 	}
-	//for _, d := range list.Items {
-	//	logs.Info(d)
-	//}
+	for _, d := range list.Items {
+		logs.Trace(d)
+	}
 
-	logs.Info("listing done")
+	logs.Trace("listing done")
 
 	// Delete一个Event
 	// 删除Event后，Indexer就查询不到结点了
-	logs.Info("deleting")
+	logs.Trace("deleting")
 	err = eventsClient.Delete(context.TODO(), "demo-events", metav1.DeleteOptions{})
 	if err != nil {
 		logs.Info(err)
 	}
-	logs.Info("Deleted event...demo-events")
+	logs.Trace("Deleted event...")
 
 	//为了验证功能，每5秒删一个Event
 	time.Sleep(5 * time.Second)
 	err = eventsClient.Delete(context.TODO(), "demo-event2", metav1.DeleteOptions{})
-	logs.Info("Deleted event...demo-event2")
 	time.Sleep(5 * time.Second)
 	err = eventsClient.Delete(context.TODO(), "demo-event3", metav1.DeleteOptions{})
-	logs.Info("Deleted event...demo-event3")
+
 	// Wait forever
 	select {}
 
