@@ -757,7 +757,7 @@ func TestTaskExporter(t *testing.T) {
 	// 创建测试用的group
 	//testGroup := testTaskDeviceCreateGroup_RMF()
 
-	g, a, _, d := CreateGroupActionRuntimeArm()
+	g, a, _, d := CreateGroupActionRuntimeGrab()
 	actionClient := clientSet.Core().Actions("test")
 	deviceClient := clientSet.Core().Devices("test")
 
@@ -766,6 +766,16 @@ func TestTaskExporter(t *testing.T) {
 		logs.Errorf("Failed to delete action: %v", err)
 	}
 	err = actionClient.Delete(context.TODO(), "action2", metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("Failed to delete action: %v", err)
+	}
+	err = deviceClient.Delete(context.TODO(), d.Name, metav1.DeleteOptions{})
+	err = actionClient.Delete(context.TODO(), "action3", metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("Failed to delete action: %v", err)
+	}
+	err = deviceClient.Delete(context.TODO(), d.Name, metav1.DeleteOptions{})
+	err = actionClient.Delete(context.TODO(), "action4", metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("Failed to delete action: %v", err)
 	}
@@ -830,6 +840,474 @@ func TestTaskExporter(t *testing.T) {
 	//
 	//time.Sleep(5 * time.Second)
 	//ReceiveGroupInfo(Groups, "create")
+}
+
+func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *apis.Device) {
+	// 能力框架的url
+	manageUrl := "http://192.168.8.197:8080"
+	taskType := "0"
+	// 创建device
+	device := &apis.Device{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deviceGrab",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Device",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DeviceSpec{
+			Name: "deviceGrab",
+			AccessMethod: apis.AccessMethod{
+				Type: apis.AccessByAbility,
+				URL:  manageUrl,
+			},
+			ExpectedProperties: map[string]apis.Property{},
+			Abilities:          make([]apis.AbilitySpec, 0),
+		},
+		Status: apis.DeviceStatus{
+			DeviceID: "deviceGrab",
+			Phase:    apis.DeviceIdle,
+			Status:   "idle",
+			ActionID: "",
+			Lock: apis.Lock{
+				Lock: true,
+			},
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Grab",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "TaskState",
+				Ip:        "192.168.8.197",
+				Interface: "/api/task_state",
+			},
+			{
+				Name:      "GoStandBy",
+				Ip:        "192.168.8.197",
+				Interface: "/api/go_standby",
+			},
+			{
+				Name:      "StartTask",
+				Ip:        "192.168.8.197",
+				Interface: "/api/start_task",
+			},
+			{
+				Name:      "GoInit",
+				Ip:        "192.168.8.197",
+				Interface: "/api/go_initial",
+			},
+		},
+	})
+
+	runtime1 := &apis.Runtime{
+		Image: "manage_ActInferenceAbility",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskType,
+			},
+		},
+	}
+	runtime2 := &apis.Runtime{
+		Image: "service_GoInit",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskType,
+			},
+		},
+	}
+
+	runtime3 := &apis.Runtime{
+		Image: "service_TaskState",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskType,
+			},
+		},
+	}
+
+	runtime4 := &apis.Runtime{
+		Image: "service_GoStandBy",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskType,
+			},
+		},
+	}
+
+	runtime5 := &apis.Runtime{
+		Image: "service_TaskState",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskType,
+			},
+		},
+	}
+
+	runtime6 := &apis.Runtime{
+		Image: "service_StartTask",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskType,
+			},
+		},
+	}
+
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action1",
+			Runtimes: []apis.Runtime{
+				*runtime1,
+			},
+		},
+		Status: apis.ActionStatus{
+			ActionID:      "Action1",
+			Devices:       make(map[string]apis.DeviceStatus),
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+		},
+	}
+
+	action2 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action2",
+			Runtimes: []apis.Runtime{
+				*runtime2,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action1.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action2",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
+	action3 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action3",
+			Runtimes: []apis.Runtime{
+				*runtime3,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action2.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action3",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+	action4 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action4",
+			Runtimes: []apis.Runtime{
+				*runtime4,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action3.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action4",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
+	action5 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action5",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action5",
+			Runtimes: []apis.Runtime{
+				*runtime5,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action4.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action5",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
+	action6 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action6",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action6",
+			Runtimes: []apis.Runtime{
+				*runtime6,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action5.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action6",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
+	action1.Status.Devices["deviceArm"] = device.Status
+	action2.Status.Devices["deviceArm"] = device.Status
+	action3.Status.Devices["deviceArm"] = device.Status
+	action4.Status.Devices["deviceArm"] = device.Status
+	action5.Status.Devices["deviceArm"] = device.Status
+	action6.Status.Devices["deviceArm"] = device.Status
+
+	group := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "group",
+			Namespace: "test",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.GroupSpec{
+			Replicas: []int32{0, 0},
+			Name:     "group",
+			Actions:  make([]apis.Action, 6),
+		},
+		Status: apis.GroupStatus{
+			Node:    "test-node",
+			GroupID: "group",
+			Phase:   apis.ReadyToDeploy,
+			ActionStatus: []apis.ActionStatus{
+				action1.Status,
+				action2.Status,
+				action3.Status,
+				action4.Status,
+				action5.Status,
+				action6.Status,
+			},
+		},
+	}
+	group.Spec.Actions[0] = *action1
+	group.Spec.Actions[1] = *action2
+	group.Spec.Actions[2] = *action3
+	group.Spec.Actions[3] = *action4
+	group.Spec.Actions[4] = *action5
+	group.Spec.Actions[5] = *action6
+
+	return group, action1, runtime1, device
 }
 
 func TestWorkFlow(t *testing.T) {

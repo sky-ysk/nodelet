@@ -37,11 +37,12 @@ func NewDeviceRuntime(deviceClient core.DeviceInterface, actionClient core.Actio
 	}
 }
 
-func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (dr *DeviceRuntime) Run(g *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 
 	// 将group设置为running状态
 	clientset, _ := InitClient()
 	groupClient := clientset.Core().Groups("test")
+	group, err := groupClient.Get(context.TODO(), g.Name, metav1.GetOptions{})
 	group.Status.Phase = apis.Running
 	//_, err := groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
 	//if err != nil {

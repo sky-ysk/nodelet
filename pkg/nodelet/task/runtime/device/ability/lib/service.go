@@ -117,7 +117,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 		logs.Infof("publish %s service", ability)
 		taskState, err := PublishTaskState(url)
 		if err != nil {
-			logs.Error("publish predict inst failed, error is %v", err)
+			logs.Error("publish TaskState inst failed, error is %v", err)
 			return apis.Output{}, err
 		}
 		return apis.Output{
@@ -158,9 +158,33 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			logs.Error(err)
 			return apis.Output{}, err
 		}
-		logs.Infof("construct params for GoStandBy finished")
+		logs.Infof("construct params for StartTask finished")
 		logs.Infof("publish %s service", ability)
 		resp, err := PublishStartTask(taskType, url)
+		if err != nil {
+			logs.Error("publish start task inst failed, error is %v", err)
+			return apis.Output{}, err
+		}
+		return apis.Output{
+			Type:  apis.ResultsData,
+			Name:  "status",
+			Value: resp.Status,
+		}, err
+
+	case "GoInit":
+		url, err := GetServiceUrl(ability, device)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		taskType, err := strconv.Atoi(device.Spec.ExpectedProperties["taskType"].Value)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		logs.Infof("construct params for go init finished")
+		logs.Infof("publish %s service", ability)
+		resp, err := PublishGoInit(taskType, url)
 		if err != nil {
 			logs.Error("publish start task inst failed, error is %v", err)
 			return apis.Output{}, err

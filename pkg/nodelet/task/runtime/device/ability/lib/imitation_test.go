@@ -63,7 +63,20 @@ func TestPublishGoStandBy(t *testing.T) {
 		}
 		logs.Infof("resp is %v", resp1)
 
-		time.Sleep(4 * time.Second)
+		for {
+			time.Sleep(1 * time.Second)
+			serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/task_state")
+			resp, err := PublishTaskState(serviceUrl)
+			if err != nil {
+				logs.Errorf("error publish task_state inst %v", err)
+			}
+			logs.Infof("resp is %v", resp)
+			if resp.TaskState == 0 {
+				break
+			}
+		}
+
+		//time.Sleep(10 * time.Second)
 
 		param = 0
 		serviceUrl2 := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/start_task")
