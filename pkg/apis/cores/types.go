@@ -354,6 +354,15 @@ const (
 	Dynamic   ConditionValueType = "Dynamic"
 )
 
+type ValueType string
+
+const (
+	//true
+	ConstantType ValueType = "Constant"
+
+	ArgumentRefType ValueType = "ArgumentRef"
+)
+
 // TODO: 参考Inputs,重新定义
 type ConditionValue struct {
 	// Condition的变量有以下类型
@@ -367,11 +376,12 @@ type ConditionValue struct {
 	//
 	Name string `json:"name,omitempty" yaml:"name"`
 	// 实际的值
+
 	Value string `json:"value,omitempty" yaml:"value"`
 	// TODO: From
 	// TODO: 动态类型的Value,数据来源,需要对应的Controller Watch相关变量
 	// +Optional
-	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	ValueType ValueType `json:"value_type,omitempty" yaml:"value_type"`
 	//从对应的地方获取需要的数据
 	From string `json:"from,omitempty" yaml:"from"`
 }

@@ -57,5 +57,29 @@ func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis
 // TODO 解析具体的值，返回bool表示值是否就绪，string表示值
 func (engine *ConditionEngine) extractValue(value apis.ConditionValue) (bool, string) {
 
+	switch value.ValueType {
+	case apis.ConstantType:
+		return true, value.Value
+
+	//Task{task1}.Group{group1}.Action{action1}.Output{completed}
+	//
+	//Succeed Group状态
+	//目前做一些特殊逻辑，只去捞Action里面的东西
+	case apis.ArgumentRefType:
+		//re := regexp.MustCompile(`Action\{([^}]+)}`)
+
+		// 查找子匹配
+		//match := re.FindStringSubmatch(value.Value)
+		//if len(match) < 2 {
+		//	logs.Error("no action found ", value.Value)
+		//	return false, "" // 没有找到匹配项
+		//}
+		////
+		//actionName := match[1]
+		////TODO 从client里面拿结果 校验
+	default:
+		logs.Fatal("unsupported value type ", value.ValueType)
+		return false, ""
+	}
 	return false, ""
 }
