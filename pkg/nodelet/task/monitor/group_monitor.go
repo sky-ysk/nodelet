@@ -1238,10 +1238,10 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 					i.LeftValue.Value = "1"
 				}
 				if i.LeftValue.Value == i.RightValue.Value {
-					i.Result = true
+					i.Result = apis.True
 				}
 			}
-			if !i.Result {
+			if i.Result != apis.True {
 				//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
 				return false
 			} else {
@@ -1270,10 +1270,10 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 				}
 			}
 			if i.LeftValue.Value == i.RightValue.Value {
-				i.Result = true
+				i.Result = apis.True
 			}
 		}
-		if !i.Result {
+		if i.Result != apis.True {
 			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
@@ -1292,10 +1292,30 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	if rsStatus2.IsDependencySatisf {
 		return true
 	}
-	for _, i := range runtime.Conditions.Formulas {
-		if i.LeftValue.Name == "NodeDependency" {
+	for index, i := range runtime.Conditions.Formulas {
+		if i.LeftValue.Name == string(apis.NodeDependency) {
 			//正则匹配选择parents的pahse
 			runtimeParentName := i.LeftValue.From
+			//Task、group、action的Name都是独一的，全部使用Name
+			// TaskID, GroupID, ActionID, RuntimeID, TypeName, TypeID, err := dependency.Parse(i.LeftValue.From)
+			// if err != nil {
+			// 	logs.Error("正则表达式解析失败! Group:%v, action:%v, runtime:%v", group, actionIndex, runtimeIndex)
+			// 	return false
+			// }
+			// switch TypeID {
+			// case 0:
+			// 	//TODO：使用Name去找，如何找到这个Task下面的group和action、runtime信息？ 单独在这里遍历查找吗？===遍历
+			// 	Task, err := gmo.actionClient.Get(context.TODO(), ActionID, metav1.GetOptions{})
+			// 	if err != nil {
+			// 		logs.Errorf("Failed get group:%v from etcd, err:%v", Task, err)
+			// 	}
+			// 	Group := Task.Spec.
+			// case 1:
+
+			// case 2:
+
+			// case 3:
+			// }
 			for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
 				rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
 				r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
@@ -1308,15 +1328,19 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				}
 			}
 			if i.LeftValue.Value == i.RightValue.Value {
-				i.Result = true
+				i.Result = apis.True
 			}
-			if !i.Result {
+			if i.Result != apis.True {
 				//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 				return false
 			} else {
 				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
-		} else if i.LeftValue.Name == "ProgramDependency" {
+		} else if i.LeftValue.Name == string(apis.DataDependency) {
+
+		} else if i.LeftValue.Name == string(apis.ResourceDependency){
+
+		} else if i.LeftValue.Name == string(apis. ProgramDependency) {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
@@ -1380,7 +1404,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				i.LeftValue.Value = "1"
 				if i.Signal == apis.Equal {
 					if i.LeftValue.Value == i.RightValue.Value {
-						i.Result = true
+						i.Result = apis.True
 					}
 					//暂时没想到 ！= 如何使用，暂定判断条件相等 ==
 					// }else {
@@ -1388,11 +1412,11 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 					// 		runtime.Conditions.Formulas[conditionIndex].Result = true
 					// 	}
 				}
-				if !i.Result {
-					//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
+				if i.Result != apis.True {
+					logs.Trace("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 					return false
 				} else {
-					// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+					logs.Trace("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 				}
 			}
 			path, err := dependency.EnvForInput(envName)
