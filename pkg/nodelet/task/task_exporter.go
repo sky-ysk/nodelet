@@ -171,9 +171,9 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 				//if err != nil {
 				//	logs.Errorf("get group:%s failed", groupName)
 				//}
-				logs.Infof("gr.status.node: %v", gr.Status.Node)
-				logs.Infof("te.nodeName :%v", te.nodeName)
-				logs.Infof("phase is %v", gr.Status.Phase)
+				//logs.Infof("gr.status.node: %v", gr.Status.Node)
+				//logs.Infof("te.nodeName :%v", te.nodeName)
+				//logs.Infof("phase is %v", gr.Status.Phase)
 				if gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 					//logs.Infof("phase is %v", gr.Status.Phase)
 					if gr.Status.Phase == apis.ReadyToDeploy {

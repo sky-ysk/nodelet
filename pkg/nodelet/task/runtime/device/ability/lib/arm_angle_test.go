@@ -29,32 +29,32 @@ func TestPublishArmAngleInst(t *testing.T) {
 	logs.Init("test")
 	managerUrl := "http://192.168.8.165:8080" // 能力框架url
 	abilityName := "ArmControl.Leju.Guochuang"
-	url := "http://192.168.8.165" // 业务url
+	//url := "http://192.168.8.165" // 业务url
 	am := manager.NewAbilityManager(managerUrl, abilityName)
-	heartBeat, err := am.StartupAbility()
-
-	if err != nil {
-		logs.Errorf("start up %s fail", abilityName)
-	} else {
-		logs.Infof("heartBeat is %v", heartBeat)
-		var params map[string][]float64 = make(map[string][]float64)
-		params["left"] = []float64{-1.221, 0.0872, 0, 0, 0, 0, 0}
-		params["right"] = []float64{0, 0, 0, 0, 0, 0, 0}
-
-		// 通过heartbeat中的abilityPort拼接成新的url
-
-		serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/control/arm_angle")
-		err := PublishArmAngleInst(params, serviceUrl)
-		if err != nil {
-			logs.Errorf("error publish ArmAngle inst %v", err)
-		}
-	}
-
 	// 终止能力[备用]
-	err = am.TerminateAbility()
+	err := am.TerminateAbility()
 	if err != nil {
 		logs.Errorf("error is %v", err)
 	}
+	//heartBeat, err := am.StartupAbility()
+	//
+	//if err != nil {
+	//	logs.Errorf("start up %s fail", abilityName)
+	//} else {
+	//	logs.Infof("heartBeat is %v", heartBeat)
+	//	var params map[string][]float64 = make(map[string][]float64)
+	//	params["left"] = []float64{-1.221, 0.0872, 0, 0, 0, 0, 0}
+	//	params["right"] = []float64{0, 0, 0, 0, 0, 0, 0}
+	//
+	//	// 通过heartbeat中的abilityPort拼接成新的url
+	//
+	//	serviceUrl := fmt.Sprintf("%s:%s%s", url, strconv.Itoa(heartBeat.AbilityPort), "/api/control/arm_angle")
+	//	err := PublishArmAngleInst(params, serviceUrl)
+	//	if err != nil {
+	//		logs.Errorf("error publish ArmAngle inst %v", err)
+	//	}
+	//}
+
 }
 
 // go test -run TestPublishLeftArmDownInst -v

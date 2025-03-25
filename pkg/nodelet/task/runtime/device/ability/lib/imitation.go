@@ -97,7 +97,7 @@ func PublishGoStandBy(param int, url string) (GoStandByResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		logs.Infof("arm angle control successfully")
+		logs.Infof("arm go stand by successfully")
 		var goStandByResp GoStandByResponse
 		respData, err := io.ReadAll(resp.Body)
 		err = json.Unmarshal(respData, &goStandByResp)
@@ -144,12 +144,12 @@ func PublishStartTask(param int, url string) (StartTaskResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		logs.Infof("arm angle control successfully")
+		logs.Infof("arm start task successfully")
 		var startTaskResponse StartTaskResponse
 		respData, err := io.ReadAll(resp.Body)
 		err = json.Unmarshal(respData, &startTaskResponse)
 		if err != nil {
-			logs.Errorf("unmarshal go stand by response failed: %v", err)
+			logs.Errorf("unmarshal go start task response failed: %v", err)
 			return StartTaskResponse{}, err
 		}
 		return startTaskResponse, nil

@@ -17,6 +17,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			logs.Error(err)
 			return apis.Output{}, err
 		}
+		logs.Infof("publish %s service", ability)
 		err = PublishArmAngleInst(params, url)
 		if err != nil {
 			logs.Errorf("publish armangle inst failed, error is %v", err)
@@ -30,6 +31,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			logs.Error(err)
 			return apis.Output{}, err
 		}
+		logs.Infof("publish %s service", ability)
 		predictResult, err := PublishPredictInst(imagePath, url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
@@ -48,6 +50,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			logs.Error(err)
 			return apis.Output{}, err
 		}
+		logs.Infof("publish %s service", ability)
 		err = PublishLeftArmUpInst(url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
@@ -63,6 +66,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			logs.Error(err)
 			return apis.Output{}, err
 		}
+		logs.Infof("publish %s service", ability)
 		err = PublishLeftArmDownInst(url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
@@ -91,6 +95,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 
 		// 构建完毕
 		logs.Infof("construct params for predict by url finished")
+		logs.Infof("publish %s service", ability)
 		predictResult, err := PublishPredictByUrlInst(compressed, cameraUrl, position, imageType, url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
@@ -109,6 +114,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			logs.Error(err)
 			return apis.Output{}, err
 		}
+		logs.Infof("publish %s service", ability)
 		taskState, err := PublishTaskState(url)
 		if err != nil {
 			logs.Error("publish predict inst failed, error is %v", err)
@@ -131,6 +137,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			return apis.Output{}, err
 		}
 		logs.Infof("construct params for GoStandBy finished")
+		logs.Infof("publish %s service", ability)
 		resp, err := PublishGoStandBy(taskType, url)
 		if err != nil {
 			logs.Error("publish go stand by inst failed, error is %v", err)
@@ -152,6 +159,7 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			return apis.Output{}, err
 		}
 		logs.Infof("construct params for GoStandBy finished")
+		logs.Infof("publish %s service", ability)
 		resp, err := PublishStartTask(taskType, url)
 		if err != nil {
 			logs.Error("publish start task inst failed, error is %v", err)
@@ -197,6 +205,7 @@ func GetServiceUrl(name string, device *apis.Device) (string, error) {
 			if serviceStatus.Name == name {
 				// 按照ip 端口 接口的方式来构造url
 				url = fmt.Sprintf("http://%s:%s%s", serviceStatus.Ip, serviceStatus.Port, serviceStatus.Interface)
+				logs.Infof("Get service url %s", url)
 				return url, nil
 			}
 		}

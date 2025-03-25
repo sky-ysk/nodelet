@@ -8,7 +8,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
 	"net/http"
 	"strconv"
@@ -273,7 +272,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 	// 能力框架的url
 	manageUrl := "http://192.168.8.165:8080"
 	imageType := "rgb"
-	cameraUrl := "http://127.0.0.1:33107/api/status/camera"
+	cameraUrl := "http://127.0.0.1:38735/api/status/camera"
 	position := "head"
 	compressed := false
 	path := ""
@@ -403,7 +402,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "action",
+			Name:      "action1",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -414,7 +413,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
-			Name: "action",
+			Name: "action1",
 			Runtimes: []apis.Runtime{
 				*runtime1,
 			},
@@ -427,7 +426,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 	}
 	action2 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "action",
+			Name:      "action2",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -438,7 +437,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
-			Name: "action",
+			Name: "action2",
 			Runtimes: []apis.Runtime{
 				*runtime2,
 			},
@@ -486,7 +485,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 		},
 		Spec: apis.GroupSpec{
 			Name:     "group",
-			Actions:  make([]apis.Action, 1),
+			Actions:  make([]apis.Action, 2),
 			Replicas: []int32{0, 0},
 		},
 		Status: apis.GroupStatus{
@@ -560,14 +559,34 @@ func CreateGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			{
 				Name:      "LeftArmDown",
 				Ip:        "192.168.8.165",
-				Interface: " /api/control/left_arm_down",
+				Interface: "/api/control/left_arm_down",
 			},
 		},
 	})
 
-	runtime := &apis.Runtime{
+	runtime1 := &apis.Runtime{
 		Image: "manage_ArmControl.Leju.Guochuang",
 		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "left",
+				Value: left,
+			},
+			{
+				Name:  "right",
+				Value: right,
+			},
+		},
+	}
+	runtime2 := &apis.Runtime{
+		Image: "service_LeftArmDown",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
 		Devices: []apis.DeviceSpec{
 			device.Spec,
 		},
@@ -584,9 +603,9 @@ func CreateGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runtime, *a
 		},
 	}
 
-	action := &apis.Action{
+	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "action",
+			Name:      "action1",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -597,17 +616,68 @@ func CreateGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
-			Name: "action",
+			Name: "action1",
 			Runtimes: []apis.Runtime{
-				*runtime,
+				*runtime1,
 			},
 		},
 		Status: apis.ActionStatus{
-			ActionID: "Action1",
-			Devices:  make(map[string]apis.DeviceStatus),
+			ActionID:      "Action1",
+			Devices:       make(map[string]apis.DeviceStatus),
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
 		},
 	}
-	action.Status.Devices["deviceArm"] = device.Status
+
+	action2 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action2",
+			Runtimes: []apis.Runtime{
+				*runtime2,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action1.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action2",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+	action1.Status.Devices["deviceArm"] = device.Status
+	action2.Status.Devices["deviceArm"] = device.Status
+
 	group := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "group",
@@ -618,19 +688,23 @@ func CreateGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
-			Name:    "group",
-			Actions: make([]apis.Action, 1),
+			Replicas: []int32{0, 0},
+			Name:     "group",
+			Actions:  make([]apis.Action, 2),
 		},
 		Status: apis.GroupStatus{
 			Node:    "test-node",
 			GroupID: "group",
+			Phase:   apis.ReadyToDeploy,
 			ActionStatus: []apis.ActionStatus{
-				action.Status,
+				action1.Status,
+				action2.Status,
 			},
 		},
 	}
-	group.Spec.Actions[0] = *action
-	return group, action, runtime, device
+	group.Spec.Actions[0] = *action1
+	group.Spec.Actions[1] = *action2
+	return group, action1, runtime1, device
 }
 
 func InitClient() (*clients.ClientSet, error) {
@@ -664,51 +738,6 @@ func InitClient() (*clients.ClientSet, error) {
 	return clientSet, nil
 }
 
-func testTaskDeviceGroupKill(ctx context.Context, groupClient core.GroupInterface, group apis.Group) (*apis.Group, error) {
-	g, err := groupClient.Get(ctx, group.Name, meta.GetOptions{})
-	if err != nil {
-		logs.Error(err)
-		return nil, err
-	}
-	g.Status.Phase = apis.ReadyToKill
-	g.Spec.Actions[0].Status.RuntimeStatus[0].Phase = apis.Running
-	_, err = groupClient.Update(ctx, g, meta.UpdateOptions{})
-	if err != nil {
-		logs.Error(err)
-		return nil, err
-	}
-	return g, nil
-}
-func createDemoDevice() *apis.Device {
-	deviceTest := &apis.Device{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "deviceTest",
-			Namespace: "test",
-			Labels: map[string]string{
-				"environment": "dev",
-			},
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Device",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DeviceSpec{
-			Name:               "mock test",
-			ExpectedProperties: map[string]apis.Property{},
-			AccessMethod: apis.AccessMethod{
-				Type:  apis.AccessByAbility,
-				URL:   "http://192.168.1.225:8000",
-				Group: "tinyRobot",
-				Alias: "patrolRobot",
-			},
-			Desc: apis.DeviceDesc{
-				Label: []string{"Move"},
-			},
-		},
-	}
-	return deviceTest
-}
-
 func TestTaskExporter(t *testing.T) {
 
 	// 初始化logs
@@ -728,11 +757,15 @@ func TestTaskExporter(t *testing.T) {
 	// 创建测试用的group
 	//testGroup := testTaskDeviceCreateGroup_RMF()
 
-	g, a, _, d := CreateGroupActionRuntimePredict()
+	g, a, _, d := CreateGroupActionRuntimeArm()
 	actionClient := clientSet.Core().Actions("test")
 	deviceClient := clientSet.Core().Devices("test")
 
 	err = actionClient.Delete(context.TODO(), a.Name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("Failed to delete action: %v", err)
+	}
+	err = actionClient.Delete(context.TODO(), "action2", metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("Failed to delete action: %v", err)
 	}

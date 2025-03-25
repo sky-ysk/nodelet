@@ -43,11 +43,11 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 	clientset, _ := InitClient()
 	groupClient := clientset.Core().Groups("test")
 	group.Status.Phase = apis.Running
-	_, err := groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
-	if err != nil {
-		logs.Errorf("Update group status failed.%v", err)
-		return err
-	}
+	//_, err := groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
+	//if err != nil {
+	//	logs.Errorf("Update group status failed.%v", err)
+	//	return err
+	//}
 
 	// 获取action
 	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
@@ -99,7 +99,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 			runtime.Outputs = append(runtime.Outputs, output)
 
 			action.Spec.Runtimes[runtimeIndex] = *runtime
-			action.Status.Phase = apis.Running
+			action.Status.Phase = apis.Successed
 
 			//go dr.monitorDeviceAbility(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device, abilityManager)
 		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf { // rmf方式
@@ -130,7 +130,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 			runtime.Outputs = append(runtime.Outputs, output)
 
 			action.Spec.Runtimes[runtimeIndex] = *runtime
-			action.Status.Phase = apis.Running
+			action.Status.Phase = apis.Successed
 
 			//go dr.monitorDeviceRMF(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device)
 		}
@@ -143,23 +143,24 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 		}
 		logs.Infof("Action[%s] Runtime[%s] update device finished\n", action.Spec.Name, runtime.Name)
 
-		_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
-		if err != nil {
-			logs.Errorf("Action[%s] Runtime[%s] Update failed\n", action.Spec.Name, runtime.Name)
-		}
-		logs.Infof("update action success")
+		//_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
+		//if err != nil {
+		//	logs.Errorf("Action[%s] Runtime[%s] Update failed\n", action.Spec.Name, runtime.Name)
+		//}
+		//logs.Infof("update action success")
 		devices[name] = device
 		action.Status.Devices[name] = device.Status
 	}
 	action.Status.RuntimeStatus[runtimeIndex].Phase = apis.Running
 	_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
 	if err != nil {
-		logs.Errorf("Action[%s] Runtime[%s] Update action failed\n", action.Spec.Name, runtime.Name)
+		logs.Errorf("Action[%s] Runtime[%s] Update action failed err:%v \n", action.Spec.Name, runtime.Name, err)
 	}
 	group.Spec.Actions[actionIndex] = *action
+	group.Status.ActionStatus[actionIndex] = action.Status
 	_, err = groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
 	if err != nil {
-		logs.Errorf("Action[%s] Runtime[%s] Update group failed\n", action.Spec.Name, runtime.Name)
+		logs.Errorf("Action[%s] Runtime[%s] Update group failed, err:%v\n", action.Spec.Name, runtime.Name, err)
 	}
 	return nil
 }

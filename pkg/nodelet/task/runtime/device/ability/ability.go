@@ -51,6 +51,7 @@ func PublishAbilityInst(Inst string, device *apis.Device, operation string) (api
 		}, nil
 
 	} else if parts[0] == "service" { // 以service开头的是每一次业务逻辑
+		logs.Infof("publish service %s inst ......", parts[1])
 		output, err := lib.SendServiceRequest(parts[1], device)
 		if err != nil {
 			return apis.Output{}, err
