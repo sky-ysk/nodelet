@@ -798,3 +798,89 @@ func TestTaskExporter(t *testing.T) {
 	//time.Sleep(5 * time.Second)
 	//ReceiveGroupInfo(Groups, "create")
 }
+
+func TestWorkFlow(t *testing.T) {
+	// 初始化logs
+	moduleName := "testModule"
+	logs.Init(moduleName)
+
+	ctx, _ := context.WithCancel(context.Background())
+
+	// 构造Task Exporter
+	tc := NewConfig("test-node")
+	clientSet, err := InitClient()
+	te, err := NewTaskExporter(tc, clientSet)
+	if err != nil {
+		panic(err)
+	}
+
+	// 先把task exporter拉起来
+	go func() {
+		err2 := te.Run(ctx)
+		if err2 != nil {
+			logs.Error("fail to run task exporter")
+		}
+	}()
+
+	// 测试predict
+	//构造任务和设备
+	predicrGroup, predictAction, _, predictDevice := CreateGroupActionRuntimePredict()
+	actionClient := clientSet.Core().Actions("test")
+	deviceClient := clientSet.Core().Devices("test")
+	//删除历史遗留的设备和任务（如果有的话）
+	err = deviceClient.Delete(ctx, predictDevice.Name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("fail to delete predictDevice: %v", err)
+	}
+	err = actionClient.Delete(ctx, predictAction.Name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("fail to delete predictAction: %v", err)
+	}
+	err = te.gropsClient.Delete(ctx, predicrGroup.Name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("Failed to delete predicrGroup: %v", err)
+	}
+	//添加任务和设备
+	_, err = deviceClient.Create(context.TODO(), predictDevice, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("create error %v", err)
+	}
+	//将group存到数据总线中
+	_, err = te.gropsClient.Create(ctx, predicrGroup, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("create error %v", err)
+	}
+
+	time.Sleep(3 * time.Second)
+
+	//查询predict任务完成状态
+	pg, err := te.gropsClient.Get(ctx, predicrGroup.Spec.Name, metav1.GetOptions{})
+	if err != nil {
+		logs.Errorf("get error %v", err)
+		return
+	}
+	if pg.Status.Phase != apis.Successed {
+		logs.Fatal("predict group is not succeed")
+	}
+
+	//再把东西删一遍
+	err = deviceClient.Delete(ctx, predictDevice.Name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("fail to delete predictDevice: %v", err)
+	}
+	err = actionClient.Delete(ctx, predictAction.Name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("fail to delete predictAction: %v", err)
+	}
+	err = te.gropsClient.Delete(ctx, predicrGroup.Name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("Failed to delete predicrGroup: %v", err)
+	}
+
+	//TODO 测试抬手臂
+
+	//TODO 测试放手臂
+
+	//TODO 测试夹爪
+
+}
