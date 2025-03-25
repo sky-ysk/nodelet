@@ -832,6 +832,7 @@ func TestTaskExporter(t *testing.T) {
 	//ReceiveGroupInfo(Groups, "create")
 }
 
+// go test -run TestWorkFlow -v
 func TestWorkFlow(t *testing.T) {
 	// 初始化logs
 	moduleName := "testModule"
@@ -915,5 +916,24 @@ func TestWorkFlow(t *testing.T) {
 	//TODO 测试放手臂
 
 	//TODO 测试夹爪
+}
 
+// go test -run TestGetAndDelete -v
+
+func TestGetAndDelete(t *testing.T) {
+	moduleName := "testModule"
+	logs.Init(moduleName)
+	ctx, _ := context.WithCancel(context.Background())
+	clientSet, err := InitClient()
+	if err != nil {
+		panic(err)
+	}
+	logs.Info("run delete ...")
+	actionClient := clientSet.Core().Actions("test")
+	_, predictAction, _, _ := CreateGroupActionRuntimePredict()
+	act, err := actionClient.Get(ctx, predictAction.Name, metav1.GetOptions{})
+	if err != nil {
+		logs.Errorf("fail to get predictAction: %v", err)
+	}
+	fmt.Println(act.Name)
 }
