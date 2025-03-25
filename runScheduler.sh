@@ -55,6 +55,7 @@ if [ -f "$NODELET_PATH" ]; then
       echo "The nodelet is already running. Restarting nodelet ..."
       killall nodelet
   fi
+  echo "run the nodelet"
     "$NODELET_PATH"
 else
     echo "The nodelet file at $NODELET_PATH does not exist."
