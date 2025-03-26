@@ -6,6 +6,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error) {
@@ -194,6 +195,14 @@ func SendServiceRequest(ability string, device *apis.Device) (apis.Output, error
 			Name:  "status",
 			Value: resp.Status,
 		}, err
+	case "Sleep":
+		sleepTime, err := strconv.ParseInt(device.Spec.ExpectedProperties["sleepTime"].Value, 10, 64)
+		if err != nil {
+			logs.Error(err)
+			return apis.Output{}, err
+		}
+		time.Sleep(time.Duration(sleepTime) * time.Second)
+		return apis.Output{}, nil
 	}
 
 	logs.Errorf("Do not support ability:%v", ability)
