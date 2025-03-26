@@ -1,0 +1,4 @@
+NodeName : "CloudNode1"
+ApiServerPort : 10000
+EtcdPort : 2379
+ApiServerAddr : "127.0.0.1"

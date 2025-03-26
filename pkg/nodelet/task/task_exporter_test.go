@@ -9,6 +9,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
 	"net/http"
 	"strconv"
 	"testing"
@@ -18,6 +19,8 @@ import (
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
 )
+
+//test 111
 
 func yoloTrainTaskGroup() []*apis.Group {
 	newGroup := apis.Group{
@@ -272,7 +275,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 	// 能力框架的url
 	manageUrl := "http://192.168.8.165:8080"
 	imageType := "rgb"
-	cameraUrl := "http://127.0.0.1:49227/api/status/camera"
+	cameraUrl := "http://127.0.0.1:54533/api/status/camera"
 	position := "head"
 	compressed := false
 	path := ""
@@ -584,7 +587,7 @@ func CreateGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runtime, *a
 		},
 	}
 	runtime2 := &apis.Runtime{
-		Image: "service_LeftArmDown",
+		Image: "service_LeftArmUp",
 		Name:  "RuntimeTest",
 		Type:  apis.ByDevice,
 		Devices: []apis.DeviceSpec{
@@ -935,7 +938,7 @@ func TestTaskExporter(t *testing.T) {
 	}
 	//_, err = actionClient.Create(context.TODO(), a, metav1.CreateOptions{})
 	//if err != nil {
-	//	logs.Errorf("create error %v", err)
+	// logs.Errorf("create error %v", err)
 	//}
 	//testGroup := CreateTest()
 
@@ -949,18 +952,18 @@ func TestTaskExporter(t *testing.T) {
 	//将group存到数据总线中
 	_, err = te.gropsClient.Create(ctx, g, metav1.CreateOptions{})
 	//if err != nil {
-	//	logs.Errorf("Create group failed: %v", err)
+	// logs.Errorf("Create group failed: %v", err)
 	//
 	//}
 
 	// 开一个协程去更改数据总线中的testgroup的状态，ReceiveGroupInfo会自动检测并执行kill
 
 	//go func() {
-	//	time.Sleep(15 * time.Second)
-	//	_, err = testTaskDeviceGroupKill(ctx, te.gropsClient, *testGroup)
-	//	if err != nil {
-	//		logs.Error(err)
-	//	}
+	// time.Sleep(15 * time.Second)
+	// _, err = testTaskDeviceGroupKill(ctx, te.gropsClient, *testGroup)
+	// if err != nil {
+	//    logs.Error(err)
+	// }
 	//}()
 
 	// 部署一个任务
@@ -991,7 +994,8 @@ func TestTaskExporter(t *testing.T) {
 func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *apis.Device) {
 	// 能力框架的url
 	manageUrl := "http://192.168.8.197:8080"
-	taskType := "0"
+	taskTypeGrab := "0"
+	taskTypePut := "1"
 	// 创建device
 	device := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1063,12 +1067,12 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Inputs: []apis.Input{
 			{
 				Name:  "taskType",
-				Value: taskType,
+				Value: taskTypeGrab,
 			},
 		},
 	}
 	runtime2 := &apis.Runtime{
-		Image: "service_GoInit",
+		Image: "service_GoStandBy",
 		Name:  "RuntimeTest",
 		Type:  apis.ByDevice,
 		Devices: []apis.DeviceSpec{
@@ -1078,7 +1082,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Inputs: []apis.Input{
 			{
 				Name:  "taskType",
-				Value: taskType,
+				Value: taskTypeGrab,
 			},
 		},
 	}
@@ -1094,13 +1098,13 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Inputs: []apis.Input{
 			{
 				Name:  "taskType",
-				Value: taskType,
+				Value: taskTypeGrab,
 			},
 		},
 	}
 
 	runtime4 := &apis.Runtime{
-		Image: "service_GoStandBy",
+		Image: "service_StartTask",
 		Name:  "RuntimeTest",
 		Type:  apis.ByDevice,
 		Devices: []apis.DeviceSpec{
@@ -1110,7 +1114,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Inputs: []apis.Input{
 			{
 				Name:  "taskType",
-				Value: taskType,
+				Value: taskTypeGrab,
 			},
 		},
 	}
@@ -1126,12 +1130,76 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Inputs: []apis.Input{
 			{
 				Name:  "taskType",
-				Value: taskType,
+				Value: taskTypeGrab,
 			},
 		},
 	}
 
 	runtime6 := &apis.Runtime{
+		Image: "service_GoInit",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskTypePut,
+			},
+		},
+	}
+
+	runtime7 := &apis.Runtime{
+		Image: "service_TaskState",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskTypePut,
+			},
+		},
+	}
+
+	runtime8 := &apis.Runtime{
+		Image: "service_GoStandBy",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskTypePut,
+			},
+		},
+	}
+
+	runtime9 := &apis.Runtime{
+		Image: "service_TaskState",
+		Name:  "RuntimeTest",
+		Type:  apis.ByDevice,
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs: []apis.Input{
+			{
+				Name:  "taskType",
+				Value: taskTypePut,
+			},
+		},
+	}
+
+	runtime10 := &apis.Runtime{
 		Image: "service_StartTask",
 		Name:  "RuntimeTest",
 		Type:  apis.ByDevice,
@@ -1142,7 +1210,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Inputs: []apis.Input{
 			{
 				Name:  "taskType",
-				Value: taskType,
+				Value: taskTypePut,
 			},
 		},
 	}
@@ -1411,12 +1479,208 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		},
 	}
 
+	action7 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action7grab",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action7grab",
+			Runtimes: []apis.Runtime{
+				*runtime7,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action6.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action7grab",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
+	action8 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action8grab",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action8grab",
+			Runtimes: []apis.Runtime{
+				*runtime8,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action7.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action8grab",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
+	action9 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action9grab",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action9grab",
+			Runtimes: []apis.Runtime{
+				*runtime9,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action8.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action9grab",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
+	action10 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action10grab",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action10grab",
+			Runtimes: []apis.Runtime{
+				*runtime10,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action9.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: false,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			ActionID:      "Action10grab",
+			Devices:       make(map[string]apis.DeviceStatus),
+		},
+	}
+
 	action1.Status.Devices["deviceArm"] = device.Status
 	action2.Status.Devices["deviceArm"] = device.Status
 	action3.Status.Devices["deviceArm"] = device.Status
 	action4.Status.Devices["deviceArm"] = device.Status
 	action5.Status.Devices["deviceArm"] = device.Status
 	action6.Status.Devices["deviceArm"] = device.Status
+	action7.Status.Devices["deviceArm"] = device.Status
+	action8.Status.Devices["deviceArm"] = device.Status
+	action9.Status.Devices["deviceArm"] = device.Status
+	action10.Status.Devices["deviceArm"] = device.Status
 
 	group := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1430,7 +1694,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Spec: apis.GroupSpec{
 			Replicas: []int32{0, 0},
 			Name:     "groupgrab",
-			Actions:  make([]apis.Action, 6),
+			Actions:  make([]apis.Action, 10),
 		},
 		Status: apis.GroupStatus{
 			Node:    "test-node",
@@ -1443,6 +1707,10 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 				action4.Status,
 				action5.Status,
 				action6.Status,
+				action7.Status,
+				action8.Status,
+				action9.Status,
+				action10.Status,
 			},
 		},
 	}
@@ -1452,7 +1720,10 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 	group.Spec.Actions[3] = *action4
 	group.Spec.Actions[4] = *action5
 	group.Spec.Actions[5] = *action6
-
+	group.Spec.Actions[6] = *action7
+	group.Spec.Actions[7] = *action8
+	group.Spec.Actions[8] = *action9
+	group.Spec.Actions[9] = *action10
 	return group, action1, runtime1, device
 }
 
@@ -1488,6 +1759,30 @@ func TestWorkFlow(t *testing.T) {
 	predicrGroup, predictAction, _, predictDevice := CreateGroupActionRuntimePredict()
 	actionClient := clientSet.Core().Actions("test")
 	deviceClient := clientSet.Core().Devices("test")
+
+	actionClient.Delete(ctx, "action10grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action9grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action8grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action7grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action6grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action5grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action4grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action3grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action2grab", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action1grab", metav1.DeleteOptions{})
+
+	actionClient.Delete(ctx, "action1arm", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action2arm", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action3arm", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action4arm", metav1.DeleteOptions{})
+
+	actionClient.Delete(ctx, "action1p", metav1.DeleteOptions{})
+	actionClient.Delete(ctx, "action2p", metav1.DeleteOptions{})
+
+	deviceClient.Delete(ctx, "deviceArm", metav1.DeleteOptions{})
+	deviceClient.Delete(ctx, "deviceGrab", metav1.DeleteOptions{})
+	deviceClient.Delete(ctx, "devicePredict", metav1.DeleteOptions{})
+
 	//删除历史遗留的设备和任务（如果有的话）
 	err = deviceClient.Delete(ctx, predictDevice.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -1529,27 +1824,27 @@ func TestWorkFlow(t *testing.T) {
 		return
 	}
 	if pg.Status.Phase != apis.Successed {
-		logs.Fatal("predict group is not succeed")
+		logs.Error("predict group is not succeed")
 	}
 
 	//再把东西删一遍
-	err = deviceClient.Delete(ctx, predictDevice.Name, metav1.DeleteOptions{})
-	if err != nil {
-		logs.Errorf("fail to delete predictDevice: %v", err)
-	}
-	err = actionClient.Delete(ctx, predictAction.Name, metav1.DeleteOptions{})
-	if err != nil {
-		logs.Errorf("fail to delete predictAction: %v", err)
-	}
-	err = te.gropsClient.Delete(ctx, predicrGroup.Name, metav1.DeleteOptions{})
-	if err != nil {
-		logs.Errorf("Failed to delete predicrGroup: %v", err)
-	}
-
+	//err = deviceClient.Delete(ctx, predictDevice.Name, metav1.DeleteOptions{})
+	//if err != nil {
+	// logs.Errorf("fail to delete predictDevice: %v", err)
+	//}
+	//err = actionClient.Delete(ctx, predictAction.Name, metav1.DeleteOptions{})
+	//if err != nil {
+	// logs.Errorf("fail to delete predictAction: %v", err)
+	//}
+	//err = te.gropsClient.Delete(ctx, predicrGroup.Name, metav1.DeleteOptions{})
+	//if err != nil {
+	// logs.Errorf("Failed to delete predicrGroup: %v", err)
+	//}
+	logs.Info("run arms ")
 	garm, _, _, darm := CreateGroupActionRuntimeArm()
 	_, err = deviceClient.Create(context.TODO(), darm, metav1.CreateOptions{})
 	_, err = te.gropsClient.Create(context.TODO(), garm, metav1.CreateOptions{})
-	time.Sleep(20 * time.Second)
+	time.Sleep(15 * time.Second)
 	//TODO 测试抬手臂
 
 	//TODO 测试放手臂
@@ -1560,4 +1855,25 @@ func TestWorkFlow(t *testing.T) {
 	_, err = te.gropsClient.Create(context.TODO(), ggrab, metav1.CreateOptions{})
 	//TODO 测试夹爪
 	select {}
+}
+
+// go test -run TestTerminate -v
+func TestTerminate(t *testing.T) {
+	url1 := "http://192.168.8.165:8080"
+	url2 := "http://192.168.8.197:8080"
+	abilityName1 := "ArmControl.Leju.Guochuang"
+	abilityName2 := "Detect"
+	abilityName3 := "ActInferenceAbility"
+	err := manager.NewAbilityManager(url1, abilityName1).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
+	err = manager.NewAbilityManager(url1, abilityName2).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
+	err = manager.NewAbilityManager(url2, abilityName3).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
 }

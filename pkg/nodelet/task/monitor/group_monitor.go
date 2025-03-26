@@ -1239,7 +1239,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 				as := &group.Status.ActionStatus[j]
 				a := &group.Spec.Actions[j]
 				if a.Name == actionParentName { //目前定义，Action的父亲Action必须是成功状态.更新action的conditions
-					logs.Infof("action %s phase is %v", as.ActionID, as.Phase)
+					logs.Tracef("action %s phase is %v", as.ActionID, as.Phase)
 					if as.Phase != apis.Successed {
 						i.LeftValue.Value = "0"
 					} else {
