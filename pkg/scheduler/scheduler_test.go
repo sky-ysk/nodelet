@@ -207,12 +207,47 @@ func TestCreateNode(t *testing.T) {
 }
 
 func TestListGroup(t *testing.T) {
+	clientSet, err := createClientSet()
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	groupsClient := clientSet.Core().Groups("")
+
+	lstOpts := metav1.ListOptions{
+		//FieldSelector: "ObjectMeta.Name=demo-groups",
+	}
+	list, err := groupsClient.List(context.TODO(), lstOpts)
+	if err != nil {
+		panic(err)
+	}
+	for _, d := range list.Items {
+		fmt.Println(d.ObjectMeta.Name)
+		fmt.Println(d.Status.Phase)
+		fmt.Println(d.Status.Node)
+	}
+}
+
+func TestClearEtcd(t *testing.T) {
+	ctx := context.Background()
+	cs, err := createClientSet()
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	groupClient := cs.Core().Groups("")
+	groups, err := groupClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+	for _, g := range groups.Items {
+		groupClient.Delete(ctx, g.Spec.Name, metav1.DeleteOptions{})
+	}
+}
+
+func createClientSet() (*clients.ClientSet, error) {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	//fmt.Println(scheme)
-	//参数配置
-	// TODO: 填写参数
-	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 
 	c := &rest.Config{
 		Host:    "http://localhost:10000",
@@ -236,27 +271,5 @@ func TestListGroup(t *testing.T) {
 	}
 
 	//创建ClientSet
-	clientSet, err := clients.NewForConfig(c)
-	if err != nil {
-		panic(err)
-	}
-	// 资源定义在 pkg/apis/xxx/type.go 下
-	// 这里以访问资源Group为例，
-	// 获取访问Group的客户端
-	// 默认访问的Namespace是 ""
-
-	groupsClient := clientSet.Core().Groups("")
-
-	lstOpts := metav1.ListOptions{
-		//FieldSelector: "ObjectMeta.Name=demo-groups",
-	}
-	list, err := groupsClient.List(context.TODO(), lstOpts)
-	if err != nil {
-		panic(err)
-	}
-	for _, d := range list.Items {
-		fmt.Println(d.ObjectMeta.Name)
-		fmt.Println(d.Status.Phase)
-		fmt.Println(d.Status.Node)
-	}
+	return clients.NewForConfig(c)
 }

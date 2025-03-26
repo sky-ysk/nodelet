@@ -217,7 +217,6 @@ func (sched *Scheduler) applyDefaultHandlers() {
 func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	fmt.Println(scheme)
 	//参数配置
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
@@ -278,13 +277,10 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
-			fmt.Printf(msg)
+			logs.Infof("scheduler接收到group事件类型: %v\n", event.Type)
 			switch event.Type {
 			case watch.Added:
 				{
-					addMsg := fmt.Sprintf("资源被添加: %s", event.Object)
-					fmt.Println(addMsg)
 					sched.handleGroupAdd(ctx, event)
 				}
 			case watch.Modified:
@@ -307,6 +303,7 @@ func GetAPIServerHost() string {
 }
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
+		logs.Info("group add: ", g.Name)
 		sched.SchedulingQueue.Add(ctx, g)
 	} else {
 		logs.Error("cannot convert to group")

@@ -48,8 +48,7 @@ const (
 
 func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
-	//fmt.Println("now schedule one running")
-	logs.Info("now schedule one running..test")
+	logs.Trace("now schedule one running")
 	groupInfo, err := sched.ReadyGroup(ctx)
 	msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
 	logs.Info(msg)
