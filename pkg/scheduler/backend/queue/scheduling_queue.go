@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sync"
@@ -51,15 +54,23 @@ type PriorityQueue struct {
 	pendingQueue PendingGroups
 
 	lock sync.RWMutex
+
+	groupClient core.GroupInterface
 }
 
 func NewPriorityQueue() *PriorityQueue {
 	logs.Info("NewPriorityQueue method")
+	cs, err := utils.CreateClientSetWithTimeOut(3600)
+	if err != nil {
+		panic(err)
+	}
+	client := cs.Core().Groups("test")
 	return &PriorityQueue{
 		stop:         make(chan struct{}),
 		readyQ:       newReadyQueue(),
 		pendingQueue: *newPendingQueue(),
 		lock:         sync.RWMutex{},
+		groupClient:  client,
 	}
 }
 
@@ -122,7 +133,7 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	//logs.Debug("now run the flush method")
 	//fmt.Println("now run the flush method")
 	for k, v := range p.pendingQueue.groupInfoMap {
-		if checkGroupReady(v) {
+		if p.checkGroupReady(ctx, v) {
 			removeGroupss = append(removeGroupss, v)
 			p.moveToActiveQ(ctx, v)
 			p.readyQ.cond.Signal()
@@ -140,7 +151,22 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 }
 
 // TODO 这个方法等待后续完善
-func checkGroupReady(gInfo *config.QueuedGroupInfo) bool {
+func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.QueuedGroupInfo) bool {
+	if gInfo == nil || gInfo.Group == nil {
+		logs.Error("group to check dependency is nil")
+		return false
+	}
+	for _, parent := range gInfo.Group.Spec.Parents {
+		parGroup, err := p.groupClient.Get(ctx, parent, metav1.GetOptions{})
+		if err != nil {
+			logs.Errorf("get parent error %s", parent)
+			return false
+		}
+		if parGroup.Status.Phase != apis.Successed {
+			logs.Infof("parent %s is not ready , status %s", parent, parGroup.Status.Phase)
+			return false
+		}
+	}
 	return true
 }
 
