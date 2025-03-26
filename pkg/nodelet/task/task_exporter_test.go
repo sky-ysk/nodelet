@@ -1518,17 +1518,19 @@ func TestWorkFlow(t *testing.T) {
 		logs.Errorf("create error %v", err)
 	}
 
-	time.Sleep(20 * time.Second)
+	logs.Info("create predict group done , wait for 10s")
 
-	////查询predict任务完成状态
-	//pg, err := te.gropsClient.Get(ctx, predicrGroup.Spec.Name, metav1.GetOptions{})
-	//if err != nil {
-	//	logs.Errorf("get error %v", err)
-	//	return
-	//}
-	//if pg.Status.Phase != apis.Successed {
-	//	logs.Fatal("predict group is not succeed")
-	//}
+	time.Sleep(10 * time.Second)
+
+	//查询predict任务完成状态
+	pg, err := te.gropsClient.Get(ctx, predicrGroup.Spec.Name, metav1.GetOptions{})
+	if err != nil {
+		logs.Errorf("get error %v", err)
+		return
+	}
+	if pg.Status.Phase != apis.Successed {
+		logs.Fatal("predict group is not succeed")
+	}
 
 	//再把东西删一遍
 	err = deviceClient.Delete(ctx, predictDevice.Name, metav1.DeleteOptions{})

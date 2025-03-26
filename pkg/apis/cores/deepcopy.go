@@ -939,6 +939,18 @@ func (in *GroupSpec) DeepCopyInto(out *GroupSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = make([]int32, len(*in))
+		copy(*out, *in)
+	}
+	if in.CopyInfo != nil {
+		in, out := &in.CopyInfo, &out.CopyInfo
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Labels != nil {
 		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))
