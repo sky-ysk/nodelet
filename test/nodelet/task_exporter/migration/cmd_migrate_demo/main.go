@@ -9,11 +9,9 @@ import (
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
-	"hit.edu/framework/pkg/nodelet/task/runtime/command"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 )
 
 func main() {
@@ -21,25 +19,25 @@ func main() {
 	logs.Init(moduleName)
 	logs.Infof("runtime for task cmd_migrate_demo")
 
-	runtime_test()
+	// runtime_test()
 
 }
 
-func runtime_test() {
-	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus(), &recorder.FakeRecorder{})
+// func runtime_test() {
+// 	commandRuntime := command.NewCommandRuntime(eventbus.NewEventBus(), &recorder.FakeRecorder{})
 
-	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
-	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
+// 	// commandRuntime.Run(newGroup, action, runtime, 0, 0)
+// 	// commandRuntime.InitRuntime(newGroup, action, runtime, 0, 0)
 
-	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
-	defer commandRuntime.Kill(newGroup, action, runtime)
+// 	commandRuntime.StartRuntime(newGroup, action, runtime, 0, 0)
+// 	defer commandRuntime.Kill(newGroup, action, runtime)
 
-	commandRuntime.StoreData(newGroup, action, runtime, 0, 0)
-	time.Sleep(2 * time.Second)
-	commandRuntime.RestoreData(newGroup, action, runtime, 0, 0)
+// 	commandRuntime.StoreData(newGroup, action, runtime, 0, 0)
+// 	time.Sleep(2 * time.Second)
+// 	commandRuntime.RestoreData(newGroup, action, runtime, 0, 0)
 
-	prompt()
-}
+// 	prompt()
+// }
 
 func prompt() {
 	fmt.Printf("-> Press Return key to continue.")
@@ -90,7 +88,7 @@ func rpc_client_test() {
 	defer stopCMD(cmd)
 
 	port := "5123"
-	client := grpc_client.NewRuntimeClient(port, "123")
+	client := grpc_client.NewRuntimeClient(port, pool.NewConnectionPool())
 
 	// rpc调用init()
 	_, error := client.RunAppInit()

@@ -11,7 +11,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
-	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
@@ -71,12 +70,13 @@ func main() {
 	groupsClient := clientSet.Core().Groups("test")
 
 	var runtimeCommand = apis.Runtime{
-		Name:                         "yolo-cmd",
-		Type:                         apis.ByCommand,
-		Command:                      []string{"python3"},
-		Args:                         []string{"/home/kcm/workplace/migration-demo-0116/yolo-runner.py"},
-		EnableFineGrainedControl:     true,
-		EnableFineGrainedControlPort: "5123",
+		Name:                     "yolo-cmd",
+		Type:                     apis.ByCommand,
+		Command:                  []string{"python3"},
+		Args:                     []string{"/home/kcm/workplace/migration-demo-0116/yolo-runner.py"},
+		EnableFineGrainedControl: false,
+		// EnableFineGrainedControl:     true,
+		// EnableFineGrainedControlPort: "5123",
 	}
 
 	// var runtimeWasm = apis.Runtime{
@@ -202,6 +202,7 @@ func main() {
 					},
 				},
 			},
+			Replicas: []int32{0, 0},
 		},
 		Status: apis.GroupStatus{
 			GroupID: "TestGroup-wasm:test-task",
@@ -221,45 +222,45 @@ func main() {
 		},
 	}
 
-	//监听事件并打印  监听resources/v1/tasks
-	go func() {
-		logs.Infof("watching")
-		watchOptions := metav1.ListOptions{}
+	// //监听事件并打印  监听resources/v1/tasks
+	// go func() {
+	// 	logs.Infof("watching")
+	// 	watchOptions := metav1.ListOptions{}
 
-		watcher, err := tasksClient.Watch(context.TODO(), watchOptions)
-		if err != nil {
-			panic(err)
-		}
-		defer watcher.Stop() // 确保 watcher 被停止
+	// 	watcher, err := tasksClient.Watch(context.TODO(), watchOptions)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	defer watcher.Stop() // 确保 watcher 被停止
 
-		// 获取事件通道
-		watchChan := watcher.ResultChan()
+	// 	// 获取事件通道
+	// 	watchChan := watcher.ResultChan()
 
-		for {
-			select {
-			case event, ok := <-watchChan:
-				if !ok {
-					logs.Infof("watchChan closed")
-					return
-				}
+	// 	for {
+	// 		select {
+	// 		case event, ok := <-watchChan:
+	// 			if !ok {
+	// 				logs.Infof("watchChan closed")
+	// 				return
+	// 			}
 
-				// 打印事件类型和对象的相关信息
-				logs.Infof("接收到事件类型: %v\n", event.Type)
-				switch event.Type {
-				case watch.Added:
-					logs.Infof("资源被添加: ", event.Object)
-				case watch.Modified:
-					logs.Infof("资源被修改: ", event.Object)
-				case watch.Deleted:
-					logs.Infof("资源被删除: ", event.Object)
-				case watch.Error:
-					logs.Infof("发生错误: ", event.Object)
-				default:
-					logs.Infof("未识别的事件类型: ", event.Type)
-				}
-			}
-		}
-	}()
+	// 			// 打印事件类型和对象的相关信息
+	// 			logs.Infof("接收到事件类型: %v\n", event.Type)
+	// 			switch event.Type {
+	// 			case watch.Added:
+	// 				logs.Infof("资源被添加: ", event.Object)
+	// 			case watch.Modified:
+	// 				logs.Infof("资源被修改: ", event.Object)
+	// 			case watch.Deleted:
+	// 				logs.Infof("资源被删除: ", event.Object)
+	// 			case watch.Error:
+	// 				logs.Infof("发生错误: ", event.Object)
+	// 			default:
+	// 				logs.Infof("未识别的事件类型: ", event.Type)
+	// 			}
+	// 		}
+	// 	}
+	// }()
 
 	//如果已经存在，先删掉
 

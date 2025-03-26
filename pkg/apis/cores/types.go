@@ -816,6 +816,7 @@ const (
 	NetworkMbps     ResourceUnit = "Mbps"
 	NetworkKbps     ResourceUnit = "Kbps"
 	Networkbps      ResourceUnit = "bps"
+	CPUPercentage   ResourceUnit = "percent"
 )
 
 // 增加设备定义
@@ -1202,7 +1203,7 @@ type Input struct {
 	//      Local类型的数据对其他节点不可见
 	Value     string `json:"value,omitempty" yaml:"value"`
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
-	From	string  `json:"from,omitempty" yaml:"from"`
+	From      string `json:"from,omitempty" yaml:"from"`
 }
 
 // TODO: 数据格式后续还需要调整
@@ -1275,6 +1276,8 @@ type RuntimeStatus struct {
 	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
 	IsParsed           bool   `json:"isparsed" yaml:"isparsed"`             //是否已经被解析过
 	DepenPreparing     bool   `json:"DepenPreparing" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
+	// 当前资源使用情况
+	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"`
 }
 
 // 任务的输出结果
@@ -1689,9 +1692,8 @@ type Requirement struct {
 type conditionType string
 
 const (
-	NodeDependency conditionType = "NodeDependency"
-	DataDependency conditionType = "DataDependency"
+	NodeDependency     conditionType = "NodeDependency"
+	DataDependency     conditionType = "DataDependency"
 	ResourceDependency conditionType = "ResourceDependency"
-	ProgramDependency conditionType = "ProgramDependency"
+	ProgramDependency  conditionType = "ProgramDependency"
 )
-
