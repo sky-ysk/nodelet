@@ -1387,7 +1387,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				//	logs.Errorf("Patch group err-33:%v", err)
 				//}
 			}
-			envName, err := gmo.dependencyManager.CheckEnvironmentSatisfy(runtime.Packages)
+			envName, envPath, err := gmo.dependencyManager.CheckEnvironmentSatisfy(runtime.Packages)
 			if !err {
 				// logs.Info("dependency do not satisfy,runtime name:%v", runtime.Name)
 				//需要使用协程，但是还要防止在monitor监控的时候多次创建
@@ -1419,13 +1419,12 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 					logs.Trace("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 				}
 			}
-			path, err := dependency.EnvForInput(envName)
 			if !err {
 				logs.Infof("%v: envName err:%v", runtime.Name, envName)
 				return false
 			}
 			envVar := []apis.EnvVar{}
-			envVar = append(envVar, apis.EnvVar{Name: "PATH", Value: path})
+			envVar = append(envVar, apis.EnvVar{Name: "PATH", Value: envPath})
 
 			//TODO 后续将envPath改为数组，返回多种程序依赖
 			// envVar = append(envVar, apis.EnvVar{Name: "python", Value: envPath})

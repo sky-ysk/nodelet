@@ -6,6 +6,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
+	"hit.edu/framework/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sync"
@@ -51,15 +52,18 @@ type PriorityQueue struct {
 	pendingQueue PendingGroups
 
 	lock sync.RWMutex
+
+	conditionEngine *utils.ConditionEngine
 }
 
 func NewPriorityQueue() *PriorityQueue {
 	logs.Info("NewPriorityQueue method")
 	return &PriorityQueue{
-		stop:         make(chan struct{}),
-		readyQ:       newReadyQueue(),
-		pendingQueue: *newPendingQueue(),
-		lock:         sync.RWMutex{},
+		stop:            make(chan struct{}),
+		readyQ:          newReadyQueue(),
+		pendingQueue:    *newPendingQueue(),
+		lock:            sync.RWMutex{},
+		conditionEngine: utils.NewConditionEngine(),
 	}
 }
 
@@ -122,7 +126,12 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	//logs.Debug("now run the flush method")
 	//fmt.Println("now run the flush method")
 	for k, v := range p.pendingQueue.groupInfoMap {
-		if checkGroupReady(v) {
+		readyRes, err := p.checkGroupReady(v)
+		if err != nil {
+			logs.Fatal(err)
+			continue
+		}
+		if readyRes == apis.True {
 			removeGroupss = append(removeGroupss, v)
 			p.moveToActiveQ(ctx, v)
 			p.readyQ.cond.Signal()
@@ -140,8 +149,8 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 }
 
 // TODO 这个方法等待后续完善
-func checkGroupReady(gInfo *config.QueuedGroupInfo) bool {
-	return true
+func (p *PriorityQueue) checkGroupReady(gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
+	return p.conditionEngine.CheckConditions(gInfo.Group.Spec.Conditions)
 }
 
 func (p *PriorityQueue) moveToActiveQ(ctx context.Context, gInfo *config.QueuedGroupInfo) bool {
