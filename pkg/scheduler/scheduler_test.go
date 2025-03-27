@@ -903,6 +903,7 @@ func CreateOrangeGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runti
 			Replicas: []int32{0, 0},
 			Name:     "grouparm",
 			Actions:  make([]apis.Action, 4),
+			Parents:  []string{"groupp"},
 		},
 		Status: apis.GroupStatus{
 			Node:    "test-node",
@@ -1637,6 +1638,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 			Replicas: []int32{0, 0},
 			Name:     "groupgrab",
 			Actions:  make([]apis.Action, 10),
+			Parents:  []string{"grouparm"},
 		},
 		Status: apis.GroupStatus{
 			Node:    "test-node",
