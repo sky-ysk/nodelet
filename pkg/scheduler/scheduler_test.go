@@ -13,8 +13,10 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/backend/queue"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -1665,6 +1667,72 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 	group.Spec.Actions[8] = *action9
 	group.Spec.Actions[9] = *action10
 	return group, action1, runtime1, device
+}
+
+func GenerateOrangeTask() apis.Task {
+	predicrGroup, _, _, _ := CreateOrangeGroupActionRuntimePredict()
+	garm, _, _, _ := CreateOrangeGroupActionRuntimeArm()
+	ggrab, _, _, _ := CreateOrangeGroupActionRuntimeGrab()
+	orangeTask := apis.Task{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "orange_task",
+			Namespace: "test",
+		},
+		Spec: apis.TaskSpec{
+			Name: "orange_task",
+			Desc: apis.Description{
+				Docs: "国创中心抓橙子演示任务",
+			},
+			Type:   apis.Norm,
+			Groups: []apis.Group{*predicrGroup, *garm, *ggrab},
+		},
+		Status: apis.TaskStatus{
+			Phase: apis.Unknown,
+		},
+	}
+	return orangeTask
+}
+
+// go test -run TestSendToProxy -v
+func TestSendToProxy(t *testing.T) {
+	logs.Init("testModule")
+	task := GenerateOrangeTask()
+	client := &http.Client{}
+	marshal, err := json.Marshal(task)
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	url := "http://192.168.8.191:8899/framework/v1/task"
+	logs.Info(url)
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(marshal)))
+	if err != nil {
+		logs.Fatal(err)
+	}
+	//Content-Type很重要，下文解释
+	//req.Header.Set("Content-Type", "application/x-www")
+	req.Header.Set("Content-Type", "application/json")
+	//req.Header.Set("Content-Type", "multipart/form-data")
+
+	rep, err := client.Do(req)
+	if err != nil {
+		logs.Fatal(err)
+	}
+	data, err := io.ReadAll(rep.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logs.Error(err)
+		}
+	}(rep.Body)
+	if err != nil {
+		logs.Fatal(err)
+	}
+	logs.Infof("resp is : %s", string(data))
 }
 
 // go test -run TestGenerateOrangeTask -v
