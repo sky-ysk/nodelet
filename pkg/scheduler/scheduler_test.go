@@ -13,6 +13,7 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/backend/queue"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"io"
 	"net/http"
 	"strconv"
@@ -1699,6 +1700,20 @@ func GenerateOrangeTask() apis.Task {
 	return orangeTask
 }
 
+// go test -run TestAddInDataBus -v
+func TestAddInDataBus(t *testing.T) {
+	logs.Init("testModule")
+	ctx := context.Background()
+	task := GenerateOrangeTask()
+	clientSet, _ := utils.CreateClientSet()
+	tclient := clientSet.Core().Tasks("test")
+	gclient := clientSet.Core().Groups("test")
+	_, _ = tclient.Create(ctx, &task, metav1.CreateOptions{})
+	for _, group := range task.Spec.Groups {
+		gclient.Create(ctx, &group, metav1.CreateOptions{})
+	}
+}
+
 // go test -run TestSendToProxy -v
 func TestSendToProxy(t *testing.T) {
 	logs.Init("testModule")
@@ -1709,7 +1724,7 @@ func TestSendToProxy(t *testing.T) {
 		logs.Error(err)
 		return
 	}
-	url := "http://192.168.8.191:8899/framework/v1/task"
+	url := "http://192.168.8.191:8899/framework/v1/task?Name=orange_task"
 	logs.Info(url)
 	req, err := http.NewRequest("POST", url, strings.NewReader(string(marshal)))
 	if err != nil {
@@ -1758,6 +1773,34 @@ func TestGenerateOrangeTask(t *testing.T) {
 			},
 			Type:   apis.Norm,
 			Groups: []apis.Group{*predicrGroup, *garm, *ggrab},
+		},
+		Status: apis.TaskStatus{
+			Phase: apis.Unknown,
+		},
+	}
+	marshal, err := json.Marshal(orangeTask)
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	fmt.Println(string(marshal))
+}
+
+// go test -run TestGenerateOrangeTask -v
+func TestGenerateSimpleTask(t *testing.T) {
+	orangeTask := apis.Task{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testtask",
+			Namespace: "test",
+		},
+		Spec: apis.TaskSpec{
+			Name:   "testtask",
+			Type:   apis.Norm,
+			Groups: []apis.Group{},
 		},
 		Status: apis.TaskStatus{
 			Phase: apis.Unknown,

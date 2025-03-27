@@ -93,53 +93,53 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 	logs.Info(patchResult)
 
 	//get belonged task
-	belongedTaskID := group.Status.Belongs.TaskID
-	task, err := bp.getTaskByID(ctx, belongedTaskID)
-	if err != nil {
-		return framework.NewStatus(framework.Error, err.Error())
-	}
-	logs.Info("get belonged task ", task)
-
-	//patch task phase
-	patchTaskStatus, err := json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			//TODO 后续修改状态
-			"phase": apis.ReadyToDeploy,
-		},
-	})
-	patchTaskResult, err := bp.taskClient.Patch(context.TODO(), task.ObjectMeta.Name, types.StrategicMergePatchType,
-		patchTaskStatus, metav1.PatchOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-		return framework.NewStatus(framework.Error, err.Error())
-	}
-	logs.Info(patchTaskResult)
-	//patch task groups
-	for i := range task.Spec.Groups {
-		if task.Spec.Groups[i].ObjectMeta.Name == group.ObjectMeta.Name {
-			if task.Spec.Groups[i].Status.Phase == apis.Pending {
-				task.Spec.Groups[i].Status.Phase = apis.ReadyToDeploy
-				task.Spec.Groups[i].Status.Node = nodeName
-			}
-		}
-	}
-	groupsJson, err := json.Marshal(task.Spec.Groups)
-	if err != nil {
-		logs.Error(err.Error())
-		return framework.NewStatus(framework.Error, err.Error())
-	}
-	patchTaskGroups, err := json.Marshal(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"groups": groupsJson,
-		},
-	})
-	patchTaskGroupsResult, err := bp.taskClient.Patch(context.TODO(), task.ObjectMeta.Name, types.StrategicMergePatchType,
-		patchTaskGroups, metav1.PatchOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-		return framework.NewStatus(framework.Error, err.Error())
-	}
-	logs.Info(patchTaskGroupsResult)
+	//belongedTaskID := group.Status.Belongs.TaskID
+	//task, err := bp.getTaskByID(ctx, belongedTaskID)
+	//if err != nil {
+	//	return framework.NewStatus(framework.Error, err.Error())
+	//}
+	//logs.Info("get belonged task ", task)
+	//
+	////patch task phase
+	//patchTaskStatus, err := json.Marshal(map[string]interface{}{
+	//	"status": map[string]interface{}{
+	//		//TODO 后续修改状态
+	//		"phase": apis.ReadyToDeploy,
+	//	},
+	//})
+	//patchTaskResult, err := bp.taskClient.Patch(context.TODO(), task.ObjectMeta.Name, types.StrategicMergePatchType,
+	//	patchTaskStatus, metav1.PatchOptions{})
+	//if err != nil {
+	//	logs.Error(err.Error())
+	//	return framework.NewStatus(framework.Error, err.Error())
+	//}
+	//logs.Info(patchTaskResult)
+	////patch task groups
+	//for i := range task.Spec.Groups {
+	//	if task.Spec.Groups[i].ObjectMeta.Name == group.ObjectMeta.Name {
+	//		if task.Spec.Groups[i].Status.Phase == apis.Pending {
+	//			task.Spec.Groups[i].Status.Phase = apis.ReadyToDeploy
+	//			task.Spec.Groups[i].Status.Node = nodeName
+	//		}
+	//	}
+	//}
+	//groupsJson, err := json.Marshal(task.Spec.Groups)
+	//if err != nil {
+	//	logs.Error(err.Error())
+	//	return framework.NewStatus(framework.Error, err.Error())
+	//}
+	//patchTaskGroups, err := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"groups": groupsJson,
+	//	},
+	//})
+	//patchTaskGroupsResult, err := bp.taskClient.Patch(context.TODO(), task.ObjectMeta.Name, types.StrategicMergePatchType,
+	//	patchTaskGroups, metav1.PatchOptions{})
+	//if err != nil {
+	//	logs.Error(err.Error())
+	//	return framework.NewStatus(framework.Error, err.Error())
+	//}
+	//logs.Info(patchTaskGroupsResult)
 	status = framework.NewStatus(framework.Success, "bind success")
 	return status
 }
