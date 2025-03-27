@@ -26,16 +26,23 @@ func NewNodesHandler(clientSet *clients.ClientSet) *NodesHandler {
 }
 
 func (h *NodesHandler) GetNodes(request *restful.Request, response *restful.Response) {
-	// 使用client-go实现查询
 	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Get nodes failed: %v", err)
-		response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(http.StatusInternalServerError, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
 	}
 
 	err = response.WriteEntity(results)
 	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(http.StatusInternalServerError, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
 	}
 	logs.Debugf("Get nodes")
 }
@@ -49,7 +56,6 @@ func (h *NodesHandler) NewGetWebService() *restful.WebService {
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("").
-		//Docs
 		Doc("Get all nodes").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		To(h.GetNodes).
@@ -57,5 +63,6 @@ func (h *NodesHandler) NewGetWebService() *restful.WebService {
 		Returns(200, "OK", []apis.Node{}).
 		Returns(400, "Not Found", nil),
 	)
+
 	return ws
 }
