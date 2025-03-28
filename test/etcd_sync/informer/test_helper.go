@@ -1,11 +1,9 @@
 package informer
 
 import (
-	"bytes"
 	"context"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -126,85 +124,86 @@ func CreateTestNodeEvents(clientSet *clients.ClientSet) {
 
 var codecs = legacyscheme.Codecs
 var codec = codecs.LegacyCodec()
+
 var testPrefix = "apis"
 var testAPIGroup = "resources"
 var testAPIVersion = "v1"
 var testGroupVersion = schema.GroupVersion{Group: testAPIGroup, Version: testAPIVersion}
 
-func NodeCreateRequestSender() {
-	node := &apis.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-nodessss",
-			Namespace: "Test",
-			Labels: map[string]string{
-				"sync": "true",
-			},
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Node",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.NodeSpec{
-			NodeName: "demo-node",
-			HostName: "master",
-		},
-	}
+// func NodeCreateRequestSender() {
+// 	node := &apis.Node{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      "demo-nodessss",
+// 			Namespace: "Test",
+// 			Labels: map[string]string{
+// 				"sync": "true",
+// 			},
+// 		},
+// 		TypeMeta: metav1.TypeMeta{
+// 			Kind:       "Node",
+// 			APIVersion: "resources/v1",
+// 		},
+// 		Spec: apis.NodeSpec{
+// 			NodeName: "demo-node",
+// 			HostName: "master",
+// 		},
+// 	}
 
-	Create(context.TODO(), node, metav1.CreateOptions{})
-}
+// 	//Create(context.TODO(), node, metav1.CreateOptions{})
+// }
 
-func NodeGetRequestSender() {
-	Get(context.TODO(), "demo-nodes", metav1.GetOptions{})
-}
+// func NodeGetRequestSender(namespace string, name string, types string) {
+// 	//Get(context.TODO(), namespace, name, types, metav1.GetOptions{})
+// }
 
-func EventTestSender(URLs string) {
-	node := &apis.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-nodesaaa",
-			Namespace: "Test",
-			Labels: map[string]string{
-				"sync": "true",
-			},
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Node",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.NodeSpec{
-			NodeName: "demo-node",
-			HostName: "master",
-		},
-	}
-	data, err := runtime.Encode(codec, node)
-	if err != nil {
-		logs.Errorf("unexpected error: %v", err)
-	}
-	bytesBuffer := bytes.NewBuffer(data)
-	request, err := http.NewRequest("POST", URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/nodes", bytesBuffer)
-	if err != nil {
-		logs.Errorf("unexpected error: %v", err)
-	}
-	client := &http.Client{}
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	var response *http.Response
-	go func() {
-		response, err = client.Do(request)
-		wg.Done()
-	}()
-	wg.Wait()
-	if err != nil {
-		logs.Errorf("unexpected error: %v", err)
-	}
-	var itemOut apis.Node
-	_, err = extractBodyDecoder(response, &itemOut, codec)
-	if err != nil {
-		logs.Errorf("unexpected error: %v %#v", err, response)
-	}
-	if response.StatusCode != http.StatusCreated {
-		logs.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
-	}
-}
+// func EventTestSender(URLs string) {
+// 	node := &apis.Node{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      "demo-nodesaaa",
+// 			Namespace: "Test",
+// 			Labels: map[string]string{
+// 				"sync": "true",
+// 			},
+// 		},
+// 		TypeMeta: metav1.TypeMeta{
+// 			Kind:       "Node",
+// 			APIVersion: "resources/v1",
+// 		},
+// 		Spec: apis.NodeSpec{
+// 			NodeName: "demo-node",
+// 			HostName: "master",
+// 		},
+// 	}
+// 	data, err := runtime.Encode(codec, node)
+// 	if err != nil {
+// 		logs.Errorf("unexpected error: %v", err)
+// 	}
+// 	bytesBuffer := bytes.NewBuffer(data)
+// 	request, err := http.NewRequest("POST", URL+"/"+testPrefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/nodes", bytesBuffer)
+// 	if err != nil {
+// 		logs.Errorf("unexpected error: %v", err)
+// 	}
+// 	client := &http.Client{}
+// 	wg := sync.WaitGroup{}
+// 	wg.Add(1)
+// 	var response *http.Response
+// 	go func() {
+// 		response, err = client.Do(request)
+// 		wg.Done()
+// 	}()
+// 	wg.Wait()
+// 	if err != nil {
+// 		logs.Errorf("unexpected error: %v", err)
+// 	}
+// 	var itemOut apis.Node
+// 	_, err = extractBodyDecoder(response, &itemOut, codec)
+// 	if err != nil {
+// 		logs.Errorf("unexpected error: %v %#v", err, response)
+// 	}
+// 	if response.StatusCode != http.StatusCreated {
+// 		logs.Errorf("Unexpected status: %d, Expected: %d, %#v", response.StatusCode, http.StatusCreated, response)
+// 	}
+// }
 
 func extractBodyDecoder(response *http.Response, object runtime.Object, decoder runtime.Decoder) (string, error) {
 	defer response.Body.Close()
