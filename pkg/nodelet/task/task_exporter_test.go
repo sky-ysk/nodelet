@@ -2055,7 +2055,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Spec: apis.GroupSpec{
 			Replicas: []int32{0, 0},
 			Name:     "groupgrab",
-			Actions:  make([]apis.Action, 10),
+			Actions:  make([]apis.Action, 8),
 		},
 		Status: apis.GroupStatus{
 			Node:    "test-node",
@@ -2657,7 +2657,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 		Spec: apis.GroupSpec{
 			Replicas: []int32{0, 0},
 			Name:     "groupput",
-			Actions:  make([]apis.Action, 10),
+			Actions:  make([]apis.Action, 8),
 		},
 		Status: apis.GroupStatus{
 			Node:    "test-node",
