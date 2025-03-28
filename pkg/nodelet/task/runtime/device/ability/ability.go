@@ -17,7 +17,7 @@ func PublishAbilityInst(Inst string, device *apis.Device, operation string) (api
 	if parts[0] == "manage" { // 以manage开头的是 拉起 暂停 终止能力等操作
 		abilityManager := manager.NewAbilityManager(device.Spec.AccessMethod.URL, parts[1])
 
-		if operation == "terminate" {
+		if operation == "terminate" || len(parts) > 2 {
 			err := abilityManager.TerminateAbility()
 			if err != nil {
 				logs.Errorf("terminate ability %v failed", parts[1])
