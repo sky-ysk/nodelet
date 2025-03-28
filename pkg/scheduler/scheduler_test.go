@@ -275,19 +275,19 @@ func TestClearEtcd(t *testing.T) {
 	}
 
 	//删devices
-	deviceClient := cs.Core().Devices("test")
-	devices, err := deviceClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return
-	}
-	for _, d := range devices.Items {
-		logs.Infof("delete act %s ", d.Name)
-		err := deviceClient.Delete(ctx, d.Spec.Name, metav1.DeleteOptions{})
-		if err != nil {
-			logs.Error(err)
-			return
-		}
-	}
+	//deviceClient := cs.Core().Devices("test")
+	//devices, err := deviceClient.List(ctx, metav1.ListOptions{})
+	//if err != nil {
+	//	return
+	//}
+	//for _, d := range devices.Items {
+	//	logs.Infof("delete act %s ", d.Name)
+	//	err := deviceClient.Delete(ctx, d.Spec.Name, metav1.DeleteOptions{})
+	//	if err != nil {
+	//		logs.Error(err)
+	//		return
+	//	}
+	//}
 
 	//删events
 	eventClient := cs.Core().Events("test")
@@ -298,6 +298,21 @@ func TestClearEtcd(t *testing.T) {
 	for _, e := range events.Items {
 		logs.Infof("delete event %s ", e.Name)
 		err := eventClient.Delete(ctx, e.Name, metav1.DeleteOptions{})
+		if err != nil {
+			logs.Error(err)
+			return
+		}
+	}
+
+	//删task
+	taskClient := cs.Core().Tasks("test")
+	tasks, err := taskClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+	for _, t := range tasks.Items {
+		logs.Infof("delete task %s ", t.Name)
+		err := taskClient.Delete(ctx, t.Name, metav1.DeleteOptions{})
 		if err != nil {
 			logs.Error(err)
 			return
@@ -1818,4 +1833,35 @@ func TestGenerateSimpleTask(t *testing.T) {
 		return
 	}
 	fmt.Println(string(marshal))
+}
+
+// go test -run TestAddDevice -v
+
+func TestAddDevice(t *testing.T) {
+	_, _, _, predictDevice := CreateOrangeGroupActionRuntimePredict()
+	_, _, _, armDevice := CreateOrangeGroupActionRuntimeArm()
+	_, _, _, grabDevice := CreateOrangeGroupActionRuntimeGrab()
+
+	moduleName := "testModule"
+	logs.Init(moduleName)
+	ctx := context.Background()
+	cs, err := createClientSet()
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+
+	deviceClient := cs.Core().Devices("test")
+	_, err = deviceClient.Create(ctx, predictDevice, metav1.CreateOptions{})
+	if err != nil {
+		logs.Error(err)
+	}
+	_, err = deviceClient.Create(ctx, armDevice, metav1.CreateOptions{})
+	if err != nil {
+		logs.Error(err)
+	}
+	_, err = deviceClient.Create(ctx, grabDevice, metav1.CreateOptions{})
+	if err != nil {
+		logs.Error(err)
+	}
 }

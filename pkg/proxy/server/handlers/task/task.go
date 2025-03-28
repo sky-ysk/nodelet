@@ -156,8 +156,17 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		return
 	}
 
+	ew.Status.GroupStatus = make([]apis.GroupStatus, 0)
+
 	// 构造Groups
 	for _, g := range ew.Spec.Groups {
+
+		status := apis.GroupStatus{
+			Phase: apis.Unknown,
+			Belongs: apis.IDRef{
+				TaskID: tu,
+			},
+		}
 		//
 		g.ObjectMeta = metav1.ObjectMeta{
 			Name: g.Spec.Name,
@@ -171,6 +180,7 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		// 分配Group的GroupID
 		gu := uuid.New().String()
 		g.Status.GroupID = gu
+		status.GroupID = gu
 
 		// Group的TaskID
 		g.Status.Belongs.TaskID = tu
