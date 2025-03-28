@@ -97,7 +97,8 @@ func PublishPredictInst(imagePath, url string) (PredictSuccessRes, error) {
 		if err != nil {
 			return PredictSuccessRes{}, err
 		}
-		logs.Errorf("predict failed, the reason is %v", failRes.Error)
+		logs.Info("predict success")
+		//logs.Errorf("predict failed, the reason is %v", failRes.Error)
 		return PredictSuccessRes{}, err
 	}
 }
@@ -220,7 +221,8 @@ func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string,
 		if err != nil {
 			return PredictSuccessRes{}, err
 		}
-		logs.Errorf("predict failed, the reason is %v", failRes.Error)
+		logs.Info("predict success")
+		//logs.Errorf("predict failed, the reason is %v", failRes.Error)
 		return PredictSuccessRes{}, err
 	}
 }

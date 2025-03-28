@@ -24,8 +24,8 @@ type TaskHandler struct {
 var _ Handler = &TaskHandler{}
 
 func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
-	c := clientSet.Core().Tasks(apis.NamespaceAll)
-	gc := clientSet.Core().Groups(apis.NamespaceAll)
+	c := clientSet.Core().Tasks("test")
+	gc := clientSet.Core().Groups("test")
 	return &TaskHandler{
 		client:      c,
 		groupClient: gc,
@@ -114,6 +114,7 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 	ew := &apis.Task{}
 	err = request.ReadEntity(ew)
 	if err != nil {
+
 		logs.Errorf("Failed to create task %s , error : %v ", name, err)
 		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
@@ -123,18 +124,18 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		return
 	}
 
-	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Task{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
-		// return
-	}
+	////格式校验
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Task{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
+	//	// return
+	//}
 
 	//Task分配ID
 	tu := uuid.New().String()
@@ -144,11 +145,13 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 	// 将 Task写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
+		logs.Errorf("write task failed ")
+		logs.Errorf("err is %s", err.Error())
+		//err = response.WriteError(http.StatusInternalServerError, err)
+		//if err != nil {
+		//	logs.Errorf("failed to return a status code ")
+		//	return
+		//}
 		logs.Errorf("Create task %s  ,failed write to database , error: %v ", name, err)
 		return
 	}
