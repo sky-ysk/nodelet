@@ -5,6 +5,9 @@ BIN_DIR="./_output/local/go/bin"
 APISERVER_PATH="$BIN_DIR/apiserver"
 SCHEDULER_PATH="$BIN_DIR/scheduler"
 NODELET_PATH="$BIN_DIR/nodelet"
+PROXY_PATH="$BIN_DIR/proxy"
+
+
 
 # 函数用于检查进程是否存在
 check_process_running() {
@@ -29,6 +32,28 @@ else
     exit 1
 fi
 
+echo "The apiserver output is redirected to apiserver_log.log, and the scheduler output is shown in the foreground."
+
+
+# 休眠 2 秒
+sleep 2
+
+# 判断 proxy 文件是否存在
+if [ -f "$PROXY_PATH" ]; then
+  if check_process_running "$PROXY_PATH"; then
+      echo "The proxy is already running."
+  else
+    # 使用 nohup 将 proxy 放到后台运行，并将输出重定向到 proxy_log.log 文件，带上相应参数
+    nohup "$PROXY_PATH" > proxy_log.log 2>&1 &
+  fi
+else
+    echo "The proxy file at $PROXY_PATH does not exist."
+    exit 1
+fi
+
+echo "The proxy output is redirected to proxy_log.log, and the scheduler output is shown in the foreground."
+
+
 # 休眠 2 秒
 sleep 2
 
@@ -44,7 +69,6 @@ else
     exit 1
 fi
 
-echo "The apiserver output is redirected to apiserver_log.log, and the scheduler output is shown in the foreground."
 
 # 休眠 2 秒
 sleep 2
