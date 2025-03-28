@@ -648,26 +648,6 @@ func CreateGroupActionRuntimeArm1() (*apis.Group, *apis.Action, *apis.Runtime, *
 		},
 	}
 
-	runtime4 := &apis.Runtime{
-		Image: "service_LeftArmDown",
-		Name:  "RuntimeTest",
-		Type:  apis.ByDevice,
-		Devices: []apis.DeviceSpec{
-			device.Spec,
-		},
-		Outputs: make([]apis.Output, 1),
-		Inputs: []apis.Input{
-			{
-				Name:  "left",
-				Value: left,
-			},
-			{
-				Name:  "right",
-				Value: right,
-			},
-		},
-	}
-
 	runtime5 := &apis.Runtime{
 		Image: "manage_ArmControl.Leju.Guochuang_terminate",
 		Name:  "RuntimeTest",
