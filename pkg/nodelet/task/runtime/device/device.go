@@ -37,18 +37,7 @@ func NewDeviceRuntime(deviceClient core.DeviceInterface, actionClient core.Actio
 	}
 }
 
-func (dr *DeviceRuntime) Run(g *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
-
-	// 将group设置为running状态
-	clientset, _ := InitClient()
-	groupClient := clientset.Core().Groups("test")
-	group, err := groupClient.Get(context.TODO(), g.Name, metav1.GetOptions{})
-	//group.Status.Phase = apis.Running
-	//_, err := groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
-	//if err != nil {
-	//	logs.Errorf("Update group status failed.%v", err)
-	//	return err
-	//}
+func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 
 	// 获取action
 	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
@@ -56,6 +45,8 @@ func (dr *DeviceRuntime) Run(g *apis.Group, a *apis.Action, runtime *apis.Runtim
 		logs.Errorf("can not get action from etcd!")
 	}
 
+	// 获取runtime(从action中获取)
+	runtime = &action.Spec.Runtimes[runtimeIndex]
 	// 构建一个device map
 	devices := make(map[string]*apis.Device)
 	for _, d := range runtime.Devices {
@@ -80,27 +71,30 @@ func (dr *DeviceRuntime) Run(g *apis.Group, a *apis.Action, runtime *apis.Runtim
 		var taskId string
 		// ability方式
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
+			// 构造参数传入device的expected property中
 			err = utils.ConstructParamAbility(devices, runtime)
 			if err != nil {
 				logs.Errorf("Action[%s] Runtime[%s] construct param failed\n", action.Spec.Name, runtime.Name)
 				return err
 			}
 
+			// 发布指令
 			logs.Infof("publish ability inst...")
 			output, err := ability.PublishAbilityInst(runtime.Image, device, "")
-			if err != nil {
+			if err != nil { // 指令发布失败
 				logs.Errorf("Action[%s] Runtime[%s] publish Ability failed\n", action.Spec.Name, runtime.Name)
 				// processId 字段保留
 				dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 				return err
 			}
+			// 指令发布成功
 			logs.Infof("publish ability successfully")
+			// 这里暂时直接调用end方法更新phase
+			dr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 			logs.Infof("publish ability inst output:%v", output)
-
+			// 更新runtime的output
 			runtime.Outputs = append(runtime.Outputs, output)
-
 			action.Spec.Runtimes[runtimeIndex] = *runtime
-			action.Status.Phase = apis.Successed
 
 			//go dr.monitorDeviceAbility(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device, abilityManager)
 		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf { // rmf方式
@@ -131,7 +125,6 @@ func (dr *DeviceRuntime) Run(g *apis.Group, a *apis.Action, runtime *apis.Runtim
 			runtime.Outputs = append(runtime.Outputs, output)
 
 			action.Spec.Runtimes[runtimeIndex] = *runtime
-			action.Status.Phase = apis.Successed
 
 			//go dr.monitorDeviceRMF(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device)
 		}
@@ -144,25 +137,15 @@ func (dr *DeviceRuntime) Run(g *apis.Group, a *apis.Action, runtime *apis.Runtim
 		}
 		logs.Infof("Action[%s] Runtime[%s] update device finished\n", action.Spec.Name, runtime.Name)
 
-		//_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
-		//if err != nil {
-		//	logs.Errorf("Action[%s] Runtime[%s] Update failed\n", action.Spec.Name, runtime.Name)
-		//}
-		//logs.Infof("update action success")
 		devices[name] = device
 		action.Status.Devices[name] = device.Status
 	}
-	action.Status.RuntimeStatus[runtimeIndex].Phase = apis.Running
+
 	_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
 	if err != nil {
 		logs.Errorf("Action[%s] Runtime[%s] Update action failed err:%v \n", action.Spec.Name, runtime.Name, err)
 	}
-	group.Spec.Actions[actionIndex] = *action
-	group.Status.ActionStatus[actionIndex] = action.Status
-	_, err = groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
-	if err != nil {
-		logs.Errorf("Action[%s] Runtime[%s] Update group failed, err:%v\n", action.Spec.Name, runtime.Name, err)
-	}
+
 	return nil
 }
 
