@@ -43,7 +43,7 @@ func (dr *DeviceRuntime) Run(g *apis.Group, a *apis.Action, runtime *apis.Runtim
 	clientset, _ := InitClient()
 	groupClient := clientset.Core().Groups("test")
 	group, err := groupClient.Get(context.TODO(), g.Name, metav1.GetOptions{})
-	group.Status.Phase = apis.Running
+	//group.Status.Phase = apis.Running
 	//_, err := groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
 	//if err != nil {
 	//	logs.Errorf("Update group status failed.%v", err)

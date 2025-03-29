@@ -2847,7 +2847,7 @@ func TestWorkFlow(t *testing.T) {
 	if err != nil {
 		logs.Errorf("create group error %v", err)
 	}
-	time.Sleep(80 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	logs.Info("run arms2 ....")
 	garm2, _, _, darm2 := CreateGroupActionRuntimeArm2()

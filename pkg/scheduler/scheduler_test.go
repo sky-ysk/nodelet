@@ -274,7 +274,7 @@ func TestClearEtcd(t *testing.T) {
 		}
 	}
 
-	//删devices
+	////删devices
 	//deviceClient := cs.Core().Devices("test")
 	//devices, err := deviceClient.List(ctx, metav1.ListOptions{})
 	//if err != nil {
@@ -918,7 +918,6 @@ func CreateOrangeGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runti
 			Replicas: []int32{0, 0},
 			Name:     "grouparm",
 			Actions:  make([]apis.Action, 4),
-			Parents:  []string{"groupp"},
 		},
 		Status: apis.GroupStatus{
 			Node:    "test-node",
@@ -1687,7 +1686,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 }
 
 func GenerateOrangeTask() apis.Task {
-	predicrGroup, _, _, _ := CreateOrangeGroupActionRuntimePredict()
+	//predicrGroup, _, _, _ := CreateOrangeGroupActionRuntimePredict()
 	garm, _, _, _ := CreateOrangeGroupActionRuntimeArm()
 	ggrab, _, _, _ := CreateOrangeGroupActionRuntimeGrab()
 	orangeTask := apis.Task{
@@ -1705,7 +1704,7 @@ func GenerateOrangeTask() apis.Task {
 				Docs: "国创中心抓橙子演示任务",
 			},
 			Type:   apis.Norm,
-			Groups: []apis.Group{*predicrGroup, *garm, *ggrab},
+			Groups: []apis.Group{*garm, *ggrab},
 		},
 		Status: apis.TaskStatus{
 			GroupStatus: []apis.GroupStatus{
