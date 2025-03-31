@@ -62,7 +62,6 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	cmd := runtime.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
 	args := runtime.Args
-
 	// 目前只接受Command中第一个元素
 	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, false)
 	if err != nil {

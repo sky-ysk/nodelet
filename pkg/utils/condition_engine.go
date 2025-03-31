@@ -16,19 +16,19 @@ func NewConditionEngine() *ConditionEngine {
 
 func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis.ResultType, error) {
 
-	if len(conditions.Formulas) == 0 {
-		return apis.True, nil
-	}
-
-	for _, formula := range conditions.Formulas {
-		checkRes, err := engine.checkFormula(formula)
-		if err != nil {
-			return apis.False, err
-		}
-		if checkRes != apis.True {
-			return checkRes, nil
-		}
-	}
+	//if len(conditions.Formulas) == 0 {
+	//	return apis.True, nil
+	//}
+	//
+	//for _, formula := range conditions.Formulas {
+	//	checkRes, err := engine.checkFormula(formula)
+	//	if err != nil {
+	//		return apis.False, err
+	//	}
+	//	if checkRes != apis.True {
+	//		return checkRes, nil
+	//	}
+	//}
 	return apis.True, nil
 }
 

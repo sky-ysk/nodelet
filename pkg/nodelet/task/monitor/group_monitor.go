@@ -409,6 +409,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 						if !ok {
 							logs.Errorf("Delete group from running queue and add to running queue failed")
 						}
+						logs.Info("put group:%v into error queue", group.Name)
 						break // 这里直接跳出for循环即可，因为该group已经是Failed了，不用看了
 					}
 					grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID)
@@ -685,6 +686,7 @@ func (gmo *GroupMonitor) ErrorQueueCheck(ctx context.Context) {
 				//TODO 通知调度器
 				gmo.recorder.Event(group, apis.EventTypeWarning, events.GroupRunError, fmt.Sprintf("Group name:%v run error", group.Name))
 				// 删除内存当中group_manager当中的group信息
+				gmo.groupQueues.DeleteFromError(gro.Status.GroupID)
 				gmo.groupManager.DeleteGroup(gro) //groupManager就删除group的信息，此时group的信息就只存在于etcd当中
 			}
 			//default:
@@ -720,6 +722,9 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	isCopyGroup := getGroup.Spec.IsCopy
 	var taskIsFirstSet = false  // 为了适配发送最全的Task信息
 	var groupIsFirstSet = false // 为了适配发送最全的Group信息
+	var taskIsFailed = false    // 该runtime所属的Task是否为Failed
+	var groupIsFailed = false   // 该runtime所属的Group是否为Failed
+	var actionIsFailed = false  // 该runtime所属的action是否为Failed
 
 	var groupIndexInTask int //当前group在Task当中的下标
 	var task *apis.Task      //group所属的Task对象
@@ -777,6 +782,9 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 			if k == runtimeIndex { // 是当前处理的runtime
 				if phase == apis.Failed { //对于Phase等于Failed，标记startTime
 					rs.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
+					actionIsFailed = true
+					groupIsFailed = true
+					taskIsFailed = true
 				} else {
 					if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
 						rs.ProcessId = processId
@@ -789,6 +797,11 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 				gmo.updateCopyIngfoForRuntime(groupSpec, phase, actionIndex, runtimeIndex)
 				logs.Trace("=======================================================3")
 			}
+		}
+		if actionIsFailed {
+			actionStatus.Phase = apis.Failed
+			actionStatus.LastTime = lastTime
+			actionStatus.FinishAt = startTime
 		}
 		// TODO 待解决 有Init--时间的问题
 		if actionStatus.Phase == apis.DeployCheck || actionStatus.Phase == apis.Init { // 说明action的刚从DeployCheck(Init)切换到启动状态，需要更改状态
@@ -816,6 +829,11 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 			gmo.recorder.Event(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Action Name:\t %s is Running", action.Name))
 		}
 	}
+	if groupIsFailed {
+		groupStatus.LastTime = startTime
+		groupStatus.FinishAt = startTime
+		groupStatus.Phase = apis.Failed
+	}
 	// TODO 待解决 有Init--时间的问题
 	//修改group下面的groupStatus下面的ActionStatus，ActionStatus下面的RuntimeStatus
 	if groupStatus.Phase == apis.DeployCheck || groupStatus.Phase == apis.Init { // 说明Group刚从DeployCheck(Init)状态边为执行状态
@@ -830,39 +848,39 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 		groupIsFirstSet = true
 	}
 	// ------------下面可修改为直接赋值 TODO 后期测试
-	//groupStatus.ActionStatus[actionIndex] = groupSpec.Actions[actionIndex].Status
+	groupStatus.ActionStatus[actionIndex] = groupSpec.Actions[actionIndex].Status
 	// ------------
-	for j := range groupStatus.ActionStatus { //GroupStatus--->ActionStatus--->RuntimeStatus
-		as := &groupStatus.ActionStatus[j]
-		if j != actionIndex {
-			continue
-		}
-		for k := range as.RuntimeStatus { //RuntimeStatus
-			rs := &as.RuntimeStatus[k]
-			if k == runtimeIndex {
-				if phase == apis.Failed {
-					rs.FinishAt = startTime
-				}
-				rs.StartAt = startTime
-				rs.Phase = phase
-				rs.LastTime = lastTime
-				if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
-					rs.ProcessId = processId
-				}
-			}
-		}
-		// TODO 待解决 有Init--时间的问题
-		if as.Phase == apis.DeployCheck || as.Phase == apis.Init { //说明action还未设置状态为Phase(Running、Failed)
-			if phase == apis.Failed {
-				as.FinishAt = startTime
-			}
-			if phase == apis.Running {
-				as.StartAt = startTime
-			}
-			as.Phase = phase
-			as.LastTime = lastTime
-		}
-	}
+	//for j := range groupStatus.ActionStatus { //GroupStatus--->ActionStatus--->RuntimeStatus
+	//	as := &groupStatus.ActionStatus[j]
+	//	if j != actionIndex {
+	//		continue
+	//	}
+	//	for k := range as.RuntimeStatus { //RuntimeStatus
+	//		rs := &as.RuntimeStatus[k]
+	//		if k == runtimeIndex {
+	//			if phase == apis.Failed {
+	//				rs.FinishAt = startTime
+	//			}
+	//			rs.StartAt = startTime
+	//			rs.Phase = phase
+	//			rs.LastTime = lastTime
+	//			if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
+	//				rs.ProcessId = processId
+	//			}
+	//		}
+	//	}
+	//	// TODO 待解决 有Init--时间的问题
+	//	if as.Phase == apis.DeployCheck || as.Phase == apis.Init { //说明action还未设置状态为Phase(Running、Failed)
+	//		if phase == apis.Failed {
+	//			as.FinishAt = startTime
+	//		}
+	//		if phase == apis.Running {
+	//			as.StartAt = startTime
+	//		}
+	//		as.Phase = phase
+	//		as.LastTime = lastTime
+	//	}
+	//}
 	// Group信息更新完毕，考虑该Group是否是第一次启动Running，如果是，就发送Running事件
 	if groupIsFirstSet {
 		// 发送group启动的事件
@@ -870,6 +888,11 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	}
 	// 修改Task信息
 	if !isCopyGroup {
+		if taskIsFailed {
+			task.Status.FinishAt = startTime
+			task.Status.LastTime = startTime
+			task.Status.Phase = apis.Failed
+		}
 		// 将修改后的Group状态值赋值给Task
 		task.Status.GroupStatus[groupIndexInTask] = getGroup.Status
 		task.Spec.Groups[groupIndexInTask].Spec = getGroup.Spec
@@ -881,6 +904,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 			time.Sleep(100 * time.Millisecond)
 			_, err4 = gmo.taskClient.Update(context.TODO(), task, metav1.UpdateOptions{})
 		}
+
 		if taskIsFirstSet { // task是头一次Running启动
 			// 发送Task启动的事件,这里有个小bug就是这时候上传的task的状态里面有些参数还没有更新 TODO 后期如果有硬性要求，这里可以放到最后修改完Task的状态后，才发送Task事件，就一个参数TaskIsfirstSet
 			gmo.recorder.Event(task, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Task Name:\t %s is Running", task.Name))
@@ -1004,10 +1028,6 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				}
 				if grStatus.Phase == apis.Migrated { // 还得去查对应副本任务的状态，如果状态为Running（大概率是这个状态）或者是DeployChek（说明迁移过去的group依赖不满足，暂时还不能执行），那么otherGroupCompleted参数也是false
 					// 为了适配迁移，目前还是处理同域的迁移,这里怎么根据源任务找到副本任务，还是一个遗留的问题
-					//copyGroup, err := gmo.groupClient.Get(context.TODO(), "Reason-Copy", metav1.GetOptions{})
-					//if err != nil {
-					//	logs.Errorf("Get copy group err:%v", err)
-					//}
 					if grStatus.CopyStatus == "" { // 副本任务只有Succeed和Failed才会修改源任务的copyStatus，如果说是空，说明副本任务还在运行
 						otherGroupCompleted = false
 					}
@@ -1053,10 +1073,51 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			}
 			if rs.Phase == apis.Failed {
 				finalActionIsFailed = true
+				finalGroupIsFailed = true
+				finalTaskIsFailed = true
+				logs.Infof("+++++++++++++finalActionIsFailed:%v", finalActionIsFailed)
 			}
 			if rs.Phase == apis.Killed {
 				finalActionIsKilled = true
+				finalGroupIsKilled = true
+				finalTaskIsKilled = true
 			}
+		}
+		// 得加一个逻辑：如果Action下有一个Runtime执行Failed或Killed，在这里得检查一下
+		action := &groupSpec.Actions[i]
+		if finalActionIsFailed {
+			actionStatus.FinishAt = finshTime
+			actionStatus.LastTime = lastTime
+			actionStatus.Phase = apis.Failed
+			gmo.recorder.Event(action, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Action Name:\t %s is Failed", action.Name))
+			patchAction, err := json.Marshal(map[string]interface{}{
+				"status": actionStatus,
+			})
+			if err != nil {
+				logs.Errorf("Marshal patch group err:%v", err)
+			}
+			_, err = gmo.actionClient.Patch(context.TODO(), action.Name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
+			if err != nil {
+				logs.Errorf("Patch action err:%v", err)
+			}
+			gmo.updateCopyIngfoForAction(groupSpec, phase, actionIndex)
+		}
+		if finalActionIsKilled {
+			actionStatus.FinishAt = finshTime
+			actionStatus.LastTime = lastTime
+			actionStatus.Phase = apis.Killed
+			gmo.recorder.Event(action, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name))
+			patchAction, err := json.Marshal(map[string]interface{}{
+				"status": actionStatus,
+			})
+			if err != nil {
+				logs.Errorf("Marshal patch group err:%v", err)
+			}
+			_, err = gmo.actionClient.Patch(context.TODO(), action.Name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
+			if err != nil {
+				logs.Errorf("Patch action err:%v", err)
+			}
+			gmo.updateCopyIngfoForAction(groupSpec, phase, actionIndex)
 		}
 		if allRuntiemCompleted { //如果说ActionStatus下面的RuntimeStatus都被执行了，还得修改ActionStatus的phase状态
 			//后续可能还要补充:Results
@@ -1064,14 +1125,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			actionStatus.FinishAt = finshTime
 			actionStatus.LastTime = lastTime
 			// 还得发送Action执行完成的事件，同时将etcd当中的Action资源状态进行修改
-			action := &groupSpec.Actions[i]
-			if finalActionIsFailed {
-				actionStatus.Phase = apis.Failed
-				gmo.recorder.Event(action, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Action Name:\t %s is Failed", action.Name))
-			} else if finalActionIsKilled {
-				actionStatus.Phase = apis.Killed
-				gmo.recorder.Event(action, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name))
-			} else {
+			if !finalActionIsKilled && !finalActionIsFailed {
 				actionStatus.Phase = phase
 				gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is Successed", action.Name))
 			}
@@ -1089,18 +1143,25 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			gmo.updateCopyIngfoForAction(groupSpec, phase, actionIndex)
 		}
 	}
+	// 得加一个逻辑：如果Group下有一个Action执行Failed或Killed，在这里得检查一下
+	if finalGroupIsFailed {
+		groupStatus.FinishAt = finshTime
+		groupStatus.LastTime = lastTime
+		groupStatus.Phase = apis.Failed
+		gmo.recorder.Event(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name))
+	}
+	if finalGroupIsKilled {
+		groupStatus.FinishAt = finshTime
+		groupStatus.LastTime = lastTime
+		groupStatus.Phase = apis.Killed
+		gmo.recorder.Event(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name))
+	}
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
 	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
 		groupStatus.FinishAt = finshTime
 		groupStatus.LastTime = lastTime
-		if finalGroupIsFailed {
-			groupStatus.Phase = apis.Failed
-			gmo.recorder.Event(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name))
-		} else if finalGroupIsKilled {
-			groupStatus.Phase = apis.Killed
-			gmo.recorder.Event(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name))
-		} else {
-			groupStatus.Phase = phase //Group的状态等于当前Action执行完成的状态：Failed  or  Succeed
+		if !finalGroupIsKilled && !finalGroupIsFailed {
+			groupStatus.Phase = phase //Group的状态等于当前Action执行完成的状态  Succeed
 			gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
 		}
 
@@ -1110,45 +1171,51 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	}
 	//修改group下面的groupStatus下面的ActionStatus，ActionStatus下面的RuntimeStatus
 	// ----------------可以改为赋值 TODO 后期测试  一行替换下面的for循环遍历
-	//groupStatus.ActionStatus[actionIndex] = groupSpec.Actions[actionIndex].Status
+	groupStatus.ActionStatus[actionIndex] = groupSpec.Actions[actionIndex].Status
 	// ----------------
-	for i := range groupStatus.ActionStatus { //ActionStatus
-		var allRuntiemCompleted = true  // 当前action是否已经完成（只有action下面的所有的runtime都执行完成了，也就是最后一个runtime被执行完成了，要标记action的状态为succeed，如果说action下面的某一个runtime执行失败，则要标记action装填为Failed）
-		var finalActionIsFailed = false //标记group里面当前遍历到的Action底下的runtime是否有Failed状态，只要有Failed，Action的状态也必为Failed
-		var finalActionIsKilled = false
-		as := &groupStatus.ActionStatus[i]
-		if i != actionIndex {
-			continue
-		}
-		for j := range as.RuntimeStatus { //RuntimeStatus
-			rs := &as.RuntimeStatus[j]
-			if j == runtimeIndex {
-				rs.Phase = phase
-				rs.FinishAt = finshTime
-				rs.LastTime = lastTime
-			}
-			if rs.Phase == apis.DeployCheck {
-				allRuntiemCompleted = false
-			}
-			if rs.Phase == apis.Failed {
-				finalActionIsFailed = true
-			}
-			if rs.Phase == apis.Killed {
-				finalActionIsKilled = true
-			}
-		}
-		if allRuntiemCompleted { //如果说ActionStatus下面的RuntimeStatus都是完成的状态，还得修改ActionStatus的phase状态
-			if finalActionIsFailed {
-				as.Phase = apis.Failed
-			} else if finalActionIsKilled {
-				as.Phase = apis.Killed
-			} else {
-				as.Phase = phase
-			}
-			as.FinishAt = finshTime
-			as.LastTime = lastTime
-		}
-	}
+	//for i := range groupStatus.ActionStatus { //ActionStatus
+	//	var allRuntiemCompleted = true  // 当前action是否已经完成（只有action下面的所有的runtime都执行完成了，也就是最后一个runtime被执行完成了，要标记action的状态为succeed，如果说action下面的某一个runtime执行失败，则要标记action装填为Failed）
+	//	var finalActionIsFailed = false //标记group里面当前遍历到的Action底下的runtime是否有Failed状态，只要有Failed，Action的状态也必为Failed
+	//	var finalActionIsKilled = false
+	//	as := &groupStatus.ActionStatus[i]
+	//	if i != actionIndex {
+	//		continue
+	//	}
+	//	for j := range as.RuntimeStatus { //RuntimeStatus
+	//		rs := &as.RuntimeStatus[j]
+	//		if j == runtimeIndex {
+	//			rs.Phase = phase
+	//			rs.FinishAt = finshTime
+	//			rs.LastTime = lastTime
+	//		}
+	//		if rs.Phase == apis.DeployCheck {
+	//			allRuntiemCompleted = false
+	//		}
+	//		if rs.Phase == apis.Failed {
+	//			finalActionIsFailed = true
+	//		}
+	//		if rs.Phase == apis.Killed {
+	//			finalActionIsKilled = true
+	//		}
+	//	}
+	//	if finalActionIsKilled {
+	//		as.Phase = apis.Killed
+	//		as.FinishAt = finshTime
+	//		as.LastTime = lastTime
+	//	}
+	//	if finalActionIsFailed {
+	//		as.Phase = apis.Failed
+	//		as.FinishAt = finshTime
+	//		as.LastTime = lastTime
+	//	}
+	//	if allRuntiemCompleted { //如果说ActionStatus下面的RuntimeStatus都是完成的状态，还得修改ActionStatus的phase状态
+	//		if !finalActionIsFailed && !finalActionIsKilled {
+	//			as.Phase = phase
+	//		}
+	//		as.FinishAt = finshTime
+	//		as.LastTime = lastTime
+	//	}
+	//}
 	// 更新Group资源信息，同时还需要判断该group是否执行完成，需要发送事件
 	_, err4 := gmo.groupClient.Update(context.TODO(), get, metav1.UpdateOptions{})
 	if err4 != nil {
@@ -1165,17 +1232,22 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		task.Status.GroupStatus[groupIndexInTask] = get.Status
 		task.Spec.Groups[groupIndexInTask].Spec = get.Spec
 		task.Spec.Groups[groupIndexInTask].Status = get.Status
-
+		if finalTaskIsFailed {
+			task.Status.FinishAt = finshTime
+			task.Status.LastTime = lastTime
+			task.Status.Phase = apis.Failed
+			gmo.recorder.Event(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name))
+		}
+		if finalTaskIsKilled {
+			task.Status.FinishAt = finshTime
+			task.Status.LastTime = lastTime
+			task.Status.Phase = apis.Killed
+			gmo.recorder.Event(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name))
+		}
 		if otherGroupCompleted && nowGroupCompleted {
 			task.Status.FinishAt = finshTime
 			task.Status.LastTime = lastTime
-			if finalTaskIsFailed { // 如果说group当中有Failed状态，那么最终Task也是得被标记为Failed
-				task.Status.Phase = apis.Failed
-				gmo.recorder.Event(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name))
-			} else if finalTaskIsKilled {
-				task.Status.Phase = apis.Killed
-				gmo.recorder.Event(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name))
-			} else {
+			if !finalTaskIsFailed && !finalTaskIsKilled {
 				task.Status.Phase = phase //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，如果为Succeed，则Task也为Succeed，反正为Failed
 				gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
 			}
@@ -1338,9 +1410,9 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			}
 		} else if i.LeftValue.Name == string(apis.DataDependency) {
 
-		} else if i.LeftValue.Name == string(apis.ResourceDependency){
+		} else if i.LeftValue.Name == string(apis.ResourceDependency) {
 
-		} else if i.LeftValue.Name == string(apis. ProgramDependency) {
+		} else if i.LeftValue.Name == string(apis.ProgramDependency) {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
