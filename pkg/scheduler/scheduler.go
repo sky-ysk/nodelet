@@ -214,6 +214,95 @@ func (sched *Scheduler) applyDefaultHandlers() {
 	//sched.FailureHandler = sched.s
 }
 
+func (sched *Scheduler) monitorTask(ctx context.Context) {
+	fmk := sched.DefaultFramework
+	dtsPlugin := fmk.GetDTSPlugin()
+	if dtsPlugin == nil {
+		logs.Error("dtsPlugin is nil")
+		return
+	}
+
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	fmt.Println(scheme)
+	//参数配置
+	// TODO: 填写参数
+	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
+	c := &rest.Config{
+		Host:    GetAPIServerHost(),
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		//设置监听通道一小时关闭
+		Timeout: 3600 * time.Second,
+	}
+
+	//创建ClientSet
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+	// 资源定义在 pkg/apis/xxx/type.go 下
+	// 这里以访问资源Node为例，
+	// 获取访问Node的客户端
+	// 默认访问的Namespace是 ""
+
+	taskClient := clientSet.Core().Tasks("test")
+	logs.Info("scheduler start watching groups")
+	//设置监听通道一小时关闭
+	var watchTimeout int64 = 3600
+	watchOptions := metav1.ListOptions{
+		TimeoutSeconds: &watchTimeout,
+	}
+
+	watcher, err := taskClient.Watch(context.TODO(), watchOptions)
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Stop() // 确保 watcher 被停止
+
+	// 获取事件通道
+	watchChan := watcher.ResultChan()
+
+	for {
+		select {
+		case event, ok := <-watchChan:
+			if !ok {
+				logs.Info("watchChan closed")
+				return
+			}
+			// 打印事件类型和对象的相关信息
+			msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
+			fmt.Printf(msg)
+			switch event.Type {
+			case watch.Added:
+				{
+					if t, ok := event.Object.(*apis.Task); ok {
+						dtsPlugin.SendGroups(ctx, t)
+					} else {
+						logs.Error("monitor task : cannot convert to task")
+					}
+				}
+			default:
+				fmt.Println("未识别的事件类型: ", event.Type)
+			}
+		}
+	}
+}
+
 func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
@@ -299,6 +388,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 		}
 	}
 }
+
 func GetAPIServerHost() string {
 	if host := os.Getenv("API_SERVER_HOST"); host != "" {
 		return host

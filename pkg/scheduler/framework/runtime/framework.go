@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/utils"
 	"time"
 
@@ -34,6 +35,15 @@ type frameworkImpl struct {
 	parallelizer utils.Parallelizer
 
 	scorePluginWeight map[string]int
+}
+
+func (f *frameworkImpl) GetDTSPlugin() *plugins.ScorePluginDBY {
+	for _, plugin := range f.scorePlugins {
+		if plugin.Name() == "ScorePluginForDuBoyu" {
+			return plugin.(*plugins.ScorePluginDBY)
+		}
+	}
+	return nil
 }
 
 func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) (status *framework.Status) {
@@ -143,7 +153,9 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 				if !status.IsSuccess() {
 					//err := fmt.Errorf("plugin %q failed with: %w", pl.Name(), status.AsError())
 					//errCh.SendErrorWithCancel(err, cancel)
-					return
+					logs.Errorf("plugin %q failed with: %s , node %s ", pl.Name(), status.AsError().Error(), nodeName)
+					logs.Errorf("plugin %q fail on node %s , use default score", pl.Name(), nodeName)
+					s = 5
 				}
 				pluginToNodeScores[pl.Name()][index] = framework.NodeScore{
 					Name:  nodeName,
@@ -253,7 +265,9 @@ func NewDefaultFramework(ctx context.Context, r Registry, name string) (framewor
 	for name, factory := range r {
 		p, err := factory(ctx, f)
 		if err != nil {
-			return nil, fmt.Errorf("initializing plugin %q: %w", name, err)
+			logs.Errorf("initializing plugin %q: %s", name, err.Error())
+			continue
+			//return nil, fmt.Errorf("initializing plugin %q: %w", name, err)
 		}
 		f.pluginsMap[name] = p
 		//在这里加入不同插件队列

@@ -97,9 +97,9 @@ func (sp *ScorePluginDBY) Name() string {
 	return "ScorePluginForDuBoyu"
 }
 
-// 测试下现在啥情况ggggg
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
+	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
 	request := transport.ScoreRequest{
 		GroupID: group.Status.GroupID,
 		TaskID:  group.Status.Belongs.TaskID,
@@ -120,8 +120,8 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	var resp transport.ScoreRespData
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
-		logs.Fatal(err)
-		return 0, nil
+		logs.Error(err)
+		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
 	return resp.Score, framework.NewStatus(framework.Success)
 }

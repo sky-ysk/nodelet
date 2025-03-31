@@ -50,6 +50,7 @@ func (sp *DefaultScorePlugin) Name() string {
 // 默认打分 随机生成一个0-10的整数
 func (sp *DefaultScorePlugin) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	status := framework.NewStatus(framework.Success, "default success")
+	logs.Infof("use default stategy to generate the score on node %s ", nodeName)
 	return int64(sp.r.Intn(11)), status
 }
 
