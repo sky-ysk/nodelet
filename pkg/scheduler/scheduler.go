@@ -217,6 +217,10 @@ func (sched *Scheduler) applyDefaultHandlers() {
 func (sched *Scheduler) monitorTask(ctx context.Context) {
 	fmk := sched.DefaultFramework
 	dtsPlugin := fmk.GetDTSPlugin()
+	plugin, ok := dtsPlugin.(*plugins.ScorePluginDBY)
+	if !ok {
+		logs.Error("no dts plugins found")
+	}
 	if dtsPlugin == nil {
 		logs.Error("dtsPlugin is nil")
 		return
@@ -291,7 +295,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 			case watch.Added:
 				{
 					if t, ok := event.Object.(*apis.Task); ok {
-						dtsPlugin.SendGroups(ctx, t)
+						plugin.SendGroups(ctx, t)
 					} else {
 						logs.Error("monitor task : cannot convert to task")
 					}

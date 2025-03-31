@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/utils"
 	"time"
 
@@ -37,10 +36,10 @@ type frameworkImpl struct {
 	scorePluginWeight map[string]int
 }
 
-func (f *frameworkImpl) GetDTSPlugin() *plugins.ScorePluginDBY {
+func (f *frameworkImpl) GetDTSPlugin() framework.ScorePlugin {
 	for _, plugin := range f.scorePlugins {
 		if plugin.Name() == "ScorePluginForDuBoyu" {
-			return plugin.(*plugins.ScorePluginDBY)
+			return plugin
 		}
 	}
 	return nil

@@ -6,7 +6,6 @@ import (
 	"errors"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/scheduler/apis/config"
-	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"strings"
 )
 
@@ -187,7 +186,7 @@ type Framework interface {
 	Handle
 
 	//配合杜博宇的插件写的特殊方法
-	GetDTSPlugin() *plugins.ScorePluginDBY
+	GetDTSPlugin() ScorePlugin
 
 	PercentageOfNodesToScore() *int32
 
