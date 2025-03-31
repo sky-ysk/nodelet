@@ -30,6 +30,7 @@ type Quantity struct {
 	// 单位
 	format string
 }
+
 //now ????
 
 // TODO: 独立配置
@@ -1116,14 +1117,6 @@ type SceneStatus struct {
 	// 锁
 	Lock Lock
 }
-type DataSpec struct {
-	// 对于文件类型的Data
-	// 文件格式
-	// 文件大小
-	// SHA文件校验
-}
-
-type DataStatus struct{}
 
 // Action所需执行环境
 type Runtime struct {
