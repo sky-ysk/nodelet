@@ -14,9 +14,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
-// "k8s.io/apimachinery/pkg/watch"
-// "k8s.io/utils/clock"
-
 type recorder struct {
 	scheme *runtime.Scheme
 	source apis.EventSource
@@ -58,7 +55,7 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 	// event.ReportingInstance = recorder.source.Host
 	// event.ReportingController = recorder.source.Component
 
-	logs.Info("generateEvent--recorder.ActionOrDrop")
+	logs.Trace("generateEvent--recorder.ActionOrDrop")
 	sent, err := recorder.ActionOrDrop(watch.Added, event)
 	// 这个 broadcaster 已经结束了
 	if err != nil {
@@ -92,14 +89,15 @@ func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason
 		Message:        message,
 		// FirstTimestamp: t,
 		// LastTimestamp:  t,
-		Count: 1,
-		Type:  eventtype,
+		Count:     1,
+		Type:      eventtype,
+		EventTime: apis.Time{time.Now()},
 	}
 }
 
 func ValidateEventType(eventtype string) bool {
 	switch eventtype {
-	case apis.EventTypeNormal, apis.EventTypeWarning:
+	case apis.EventTypeNormal, apis.EventTypeWarning, apis.EventTypeMigration:
 		return true
 	}
 	return false

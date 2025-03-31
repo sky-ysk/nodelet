@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#test deployment work status 312
 # 定义相对路径下 apiserver、scheduler 和 nodelet 文件所在的目录
 BIN_DIR="./_output/local/go/bin"
 APISERVER_PATH="$BIN_DIR/apiserver"
@@ -79,6 +80,7 @@ if [ -f "$NODELET_PATH" ]; then
       echo "The nodelet is already running. Restarting nodelet ..."
       killall nodelet
   fi
+  echo "run the nodelet"
     "$NODELET_PATH"
 else
     echo "The nodelet file at $NODELET_PATH does not exist."

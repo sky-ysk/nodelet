@@ -16,10 +16,34 @@ const (
 // 节点资源信息
 // TODO: 接口版本
 
+type Item struct {
+	Name   string            `json:"name,omitempty" yaml:"name"`
+	Desc   string            `json:"desc,omitempty" yaml:"desc"`
+	Labels []string          `json:"labels,omitempty" yaml:"labels"`
+	Values map[string]string `json:"values,omitempty" yaml:"values"`
+}
+
+type Quantity struct {
+	// 定量数据
+	i int64
+
+	// 单位
+	format string
+}
+//now ????
+
 // TODO: 独立配置
 // +k8s:deepcopy-gen=false
 type Time struct {
 	time.Time `json:"time" yaml:"time"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type NodeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	// TODO: List Options
+	Items []Node `json:"items" yaml:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -78,6 +102,7 @@ type Resource_NodeList struct {
 	Items []Resource_Node `json:"items" yaml:"items"`
 }
 
+// TODO: 独立配置
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Event struct {
 	//TODO: 定义Event
@@ -106,10 +131,12 @@ type EventSource struct {
 
 // event type 常量
 const (
-	EventTypeNormal  string = "Normal"
-	EventTypeWarning string = "Warning"
+	EventTypeNormal    string = "Normal"
+	EventTypeWarning   string = "Warning"
+	EventTypeMigration string = "Migration"
 )
 
+// todo:改objereference
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ObjectReference struct {
 	// GVK
@@ -133,6 +160,7 @@ type EventList struct {
 	Items []Event `json:"items" yaml:"items"`
 }
 
+// Node
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Node struct {
 	//
@@ -160,29 +188,14 @@ type NodeSpec struct {
 	// 设备固有资源
 	Resource map[string][]Item `json:"resource,omitempty" yaml:"resource"`
 	// TODO: 节点Label
+
+	//  +个字段（Cloud、Edge、End）
 	ClusterCategory string `json:"clusterCategory,omitempty" yaml:"clusterCategory"` //该节点所在的集群类别：1、云集群 2、边集群 3、端集群
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type NodeList struct {
-	meta.TypeMeta
-
-	meta.ListMeta
-	// TODO: List Options
-
-	Items []Node `json:"items" yaml:"items"`
 }
 
 // 计算、网络、存储等定量资源
 // 资源名称 => 定量资源描述
 type ResourceList map[string]Quantity
-type Quantity struct {
-	// 定量数据
-	i int64
-
-	// 单位
-	format string
-}
 
 type NodeStatus struct {
 	// 节点上的所有物理资源
@@ -211,12 +224,6 @@ type NodeStatus struct {
 
 	// 节点系统信息
 	NodeInfo NodeSystemInfo `json:"info,omitempty" yaml:"info"`
-}
-type Item struct {
-	Name   string            `json:"name,omitempty" yaml:"name"`
-	Desc   string            `json:"desc,omitempty" yaml:"desc"`
-	Labels []string          `json:"labels,omitempty" yaml:"labels"`
-	Values map[string]string `json:"values,omitempty" yaml:"values"`
 }
 
 // From K8s
@@ -311,10 +318,13 @@ const (
 	DeployCheck   Phase = "DeployCheck"
 	ReadyToKill   Phase = "ReadyToKill"
 	Killed        Phase = "Killed"
+	Terminated    Phase = "Terminated"
 	// 迁移相关状态
-	Migrating Phase = "Migrating"
-	Migrated  Phase = "Migrated"
-	Init      Phase = "Init"
+	CopyPending Phase = "CopyPending" //副本就绪状态-B
+	Restoring   Phase = "Restoring"   //副本恢复任务状态-B
+	Migrating   Phase = "Migrating"   //迁移状态-A
+	Migrated    Phase = "Migrated"    //迁移完成状态-A
+	Init        Phase = "Init"
 )
 
 // 定义流程类型，用于表示有条件的DAG
@@ -345,7 +355,15 @@ const (
 	Dynamic   ConditionValueType = "Dynamic"
 )
 
-// TODO: 参考Inputs,重新定义
+type ValueType string
+
+const (
+	//true
+	ConstantType ValueType = "Constant"
+
+	ArgumentRefType ValueType = "ArgumentRef"
+)
+
 // TODO: 参考Inputs,重新定义
 type ConditionValue struct {
 	// Condition的变量有以下类型
@@ -359,11 +377,12 @@ type ConditionValue struct {
 	//
 	Name string `json:"name,omitempty" yaml:"name"`
 	// 实际的值
+
 	Value string `json:"value,omitempty" yaml:"value"`
 	// TODO: From
 	// TODO: 动态类型的Value,数据来源,需要对应的Controller Watch相关变量
 	// +Optional
-	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	ValueType ValueType `json:"value_type,omitempty" yaml:"value_type"`
 	//从对应的地方获取需要的数据
 	From string `json:"from,omitempty" yaml:"from"`
 }
@@ -386,6 +405,15 @@ const (
 	NotEqual SignalType = "!="
 )
 
+// 符号判断
+type ResultType string
+
+const (
+	True     ResultType = "True"
+	False    ResultType = "False"
+	NotReady ResultType = "NotReady"
+)
+
 // 流程执行条件
 // LeftValue ==或!= RightValue
 // 输出结果为Bool类型的值
@@ -399,7 +427,7 @@ type ConditionFormula struct {
 	// 类型包含 and 或者 or
 	Join JoinType `json:"join,omitempty" yaml:"join"`
 	// TODO: 符号判断结果
-	Result bool `json:"result,omitempty" yaml:"result"`
+	Result ResultType `json:"result_type,omitempty" yaml:"result_type"`
 }
 
 // 不建议使用过于复杂的逻辑
@@ -469,6 +497,7 @@ type WorkflowStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
+// --------- Task
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Task struct {
 	//
@@ -533,6 +562,7 @@ type TaskStatus struct {
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 }
 
+// ---------- Group
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Group struct {
 	//
@@ -585,6 +615,8 @@ type GroupSpec struct {
 	// Group中的Action需要有较严格的依赖顺序，可以支持分支,条件,循环
 	// 只能有一个Action作为入口Action,图形结构
 
+	ResourceRequirements []ResourceRequirement `json:"resource_requirements,omitempty" yaml:"resource_requirements"`
+
 	SkipScorePlugins []string `json:"skip_score_plugins,omitempty" yaml:"skip_score_plugins"`
 
 	SkipFilterPlugins []string `json:"skip_filter_plugins,omitempty" yaml:"skip_filter_plugins"`
@@ -596,6 +628,15 @@ type GroupSpec struct {
 
 	//-临时添加-k8s运行时相关，还未重构，后期会重构
 	Labels map[string]string // 添加 Labels 字段，用于选择器
+
+	//亲和节点，如果该字段不为空的话，那么group就必须放在这些节点上执行
+	AffinityNodes []string `json:"affinity_nodes,omitempty" yaml:"affinity_nodes"`
+}
+
+type ResourceRequirement struct {
+	Name       string `json:"name,omitempty" yaml:"name"`
+	Lowbound   string `json:"lowbound,omitempty" yaml:"lowbound"`
+	Upperbound string `json:"upperbound,omitempty" yaml:"upperbound"`
 }
 
 type GroupStatus struct {
@@ -690,6 +731,7 @@ const (
 	ByPod        RuntimeType = "pod"
 	//添加-hzy ---这个要讨论是否有该选项，被删除了？
 	ByWasm RuntimeType = "wasm"
+	ByK8s  RuntimeType = "k8s"
 )
 
 // 环境变量
@@ -753,7 +795,9 @@ type ResourceDetail struct {
 	Type string
 }
 type ResourceStatus struct {
+	Name string
 	// 资源的使用量和他的单位
+	// TODO
 	Usage     float64
 	UsageUnit ResourceUnit
 
@@ -785,6 +829,7 @@ const (
 	NetworkMbps     ResourceUnit = "Mbps"
 	NetworkKbps     ResourceUnit = "Kbps"
 	Networkbps      ResourceUnit = "bps"
+	CPUPercentage   ResourceUnit = "percent"
 )
 
 // 增加设备定义
@@ -810,6 +855,7 @@ const (
 	DeviceRunning      DevicePhase = "Running"
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
+	DeviceComplete     DevicePhase = "Complete"
 	DeviceDisconnected DevicePhase = "Disconnected"
 )
 
@@ -1070,9 +1116,15 @@ type SceneStatus struct {
 	// 锁
 	Lock Lock
 }
+type DataSpec struct {
+	// 对于文件类型的Data
+	// 文件格式
+	// 文件大小
+	// SHA文件校验
+}
 
-// Action所需执行环境
-// Action所需执行环境
+type DataStatus struct{}
+
 // Action所需执行环境
 type Runtime struct {
 	// 定义Action所需资源
@@ -1208,6 +1260,7 @@ type Input struct {
 	//      Local类型的数据对其他节点不可见
 	Value     string `json:"value,omitempty" yaml:"value"`
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	From      string `json:"from,omitempty" yaml:"from"`
 }
 
 // TODO: 数据格式后续还需要调整
@@ -1280,6 +1333,8 @@ type RuntimeStatus struct {
 	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
 	IsParsed           bool   `json:"isparsed" yaml:"isparsed"`             //是否已经被解析过
 	DepenPreparing     bool   `json:"DepenPreparing" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
+	// 当前资源使用情况
+	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"`
 }
 
 // 任务的输出结果
@@ -1690,3 +1745,12 @@ type Requirement struct {
 	Name    string
 	Version string
 }
+
+type conditionType string
+
+const (
+	NodeDependency     conditionType = "NodeDependency"
+	DataDependency     conditionType = "DataDependency"
+	ResourceDependency conditionType = "ResourceDependency"
+	ProgramDependency  conditionType = "ProgramDependency"
+)

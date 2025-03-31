@@ -3,6 +3,7 @@ package entity
 import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,37 +11,42 @@ import (
 )
 
 // Deployment 定义
-type Deployment struct {
-	Namespace          string                      // Deployment 所在命名空间
-	DeploymentName     string                      // Deployment 名称
-	Labels             map[string]string           // Deployment 的标签
-	Replicas           int32                       // 副本数
-	ContainerName      string                      // 容器名称
-	Image              string                      // 容器镜像
-	Ports              []corev1.ContainerPort      // 容器端口
-	EnvVars            []corev1.EnvVar             // 环境变量
-	Resources          corev1.ResourceRequirements // 资源限制和请求
-	VolumeMounts       []corev1.VolumeMount        // 挂载卷
-	Selector           map[string]string           // 选择器，用于匹配Pod
-	TaskNeedMonitoring bool                        // 是否需要监控
-}
+//type Deployment struct {
+//	Namespace          string                      // Deployment 所在命名空间
+//	DeploymentName     string                      // Deployment 名称
+//	Labels             map[string]string           // Deployment 的标签
+//	Replicas           int32                       // 副本数
+//	ContainerName      string                      // 容器名称
+//	Image              string                      // 容器镜像
+//	Ports              []corev1.ContainerPort      // 容器端口
+//	EnvVars            []corev1.EnvVar             // 环境变量
+//	Resources          corev1.ResourceRequirements // 资源限制和请求
+//	VolumeMounts       []corev1.VolumeMount        // 挂载卷
+//	Selector           map[string]string           // 选择器，用于匹配Pod
+//	TaskNeedMonitoring bool                        // 是否需要监控
+//}
 
 // 创建 Deployment 对象的构造函数
-func NewDeployment(name, namespace string, labels map[string]string, replicas int32, containerName string, image string, selector map[string]string, taskNeedMonitoring bool) *Deployment {
-	return &Deployment{
-		Namespace:          namespace,
-		DeploymentName:     name,
-		Labels:             labels,
-		Image:              image,
-		ContainerName:      containerName,
-		Replicas:           replicas,
-		Selector:           selector,
-		TaskNeedMonitoring: taskNeedMonitoring,
-	}
-}
+//func NewDeployment(name, namespace string, labels map[string]string, replicas int32, containerName string, image string, selector map[string]string, taskNeedMonitoring bool) *Deployment {
+//	return &Deployment{
+//		Namespace:          namespace,
+//		DeploymentName:     name,
+//		Labels:             labels,
+//		Image:              image,
+//		ContainerName:      containerName,
+//		Replicas:           replicas,
+//		Selector:           selector,
+//		TaskNeedMonitoring: taskNeedMonitoring,
+//	}
+//}
 
 func GetDeploymentFromParam1(customDeployment *apis.Deployment) *appsv1.Deployment {
 	spec := convertDeploymentSpec(&customDeployment.Spec)
+	labels := customDeployment.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[monitor.CreateorLabel] = monitor.SystemName
 	deployment := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: customDeployment.APIVersion,
@@ -49,7 +55,7 @@ func GetDeploymentFromParam1(customDeployment *apis.Deployment) *appsv1.Deployme
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      customDeployment.Name,
 			Namespace: customDeployment.Namespace,
-			Labels:    customDeployment.Labels,
+			Labels:    labels,
 		},
 		Spec: spec,
 	}
@@ -147,46 +153,46 @@ func convertIntOrString(input apis.IntOrString) intstr.IntOrString {
 	}
 }
 
-// CreateDeploymentTemplate 使用 Deployment 对象信息生成 Kubernetes Deployment 资源
-func (d *Deployment) CreateDeploymentTemplate() appsv1.Deployment {
-	deploymentSpec := appsv1.DeploymentSpec{
-		Replicas: &d.Replicas,
-		Selector: &metav1.LabelSelector{
-			MatchLabels: d.Selector,
-		},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: d.Selector,
-			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:         d.ContainerName,
-						Image:        d.Image,
-						Ports:        d.Ports,
-						Env:          d.EnvVars,
-						Resources:    d.Resources,
-						VolumeMounts: d.VolumeMounts,
-					},
-				},
-			},
-		},
-	}
-
-	if d.TaskNeedMonitoring {
-		sidecarContainer := createTaskExporterSidecar()
-		deploymentSpec.Template.Spec.Containers = append(deploymentSpec.Template.Spec.Containers, sidecarContainer)
-	}
-
-	return appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      d.DeploymentName,
-			Namespace: d.Namespace,
-			Labels:    d.Labels,
-		},
-		Spec: deploymentSpec,
-	}
-}
+//// CreateDeploymentTemplate 使用 Deployment 对象信息生成 Kubernetes Deployment 资源
+//func (d *Deployment) CreateDeploymentTemplate() appsv1.Deployment {
+//	deploymentSpec := appsv1.DeploymentSpec{
+//		Replicas: &d.Replicas,
+//		Selector: &metav1.LabelSelector{
+//			MatchLabels: d.Selector,
+//		},
+//		Template: corev1.PodTemplateSpec{
+//			ObjectMeta: metav1.ObjectMeta{
+//				Labels: d.Selector,
+//			},
+//			Spec: corev1.PodSpec{
+//				Containers: []corev1.Container{
+//					{
+//						Name:         d.ContainerName,
+//						Image:        d.Image,
+//						Ports:        d.Ports,
+//						Env:          d.EnvVars,
+//						Resources:    d.Resources,
+//						VolumeMounts: d.VolumeMounts,
+//					},
+//				},
+//			},
+//		},
+//	}
+//
+//	if d.TaskNeedMonitoring {
+//		sidecarContainer := createTaskExporterSidecar()
+//		deploymentSpec.Template.Spec.Containers = append(deploymentSpec.Template.Spec.Containers, sidecarContainer)
+//	}
+//
+//	return appsv1.Deployment{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name:      d.DeploymentName,
+//			Namespace: d.Namespace,
+//			Labels:    d.Labels,
+//		},
+//		Spec: deploymentSpec,
+//	}
+//}
 
 //// CreateDeployment 负责将 Deployment 资源提交到 Kubernetes
 //func CreateDeployment(clientset *kubernetes.Clientset, deployment *Deployment) error {

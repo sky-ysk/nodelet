@@ -47,7 +47,7 @@ package monitor
 //			select {
 //			case <-ticker.C: //ticker.C是一个通道，当ticker定时器每隔指定的时间，就会忘通道中写入数据，那么通道中就会有数据，就可以被取出
 //				pm.CheckStatus()
-//				pm.CheckPodResource()
+//				//pm.CheckPodResource()
 //			case <-pm.stopCh:
 //				ticker.Stop()
 //				return
@@ -86,6 +86,7 @@ package monitor
 //		}
 //	}
 //}
+
 //func (pm *PodMonitor) CheckPodResource() {
 //	// 加锁只保护与 pods 相关的操作
 //	pm.mu.Lock()
@@ -115,7 +116,7 @@ package monitor
 //		}
 //	}
 //}
-//
+
 //func (pm *PodMonitor) Stop() {
 //	close(pm.stopCh)
 //	logs.Info("Kubernetes Monitor stopped")

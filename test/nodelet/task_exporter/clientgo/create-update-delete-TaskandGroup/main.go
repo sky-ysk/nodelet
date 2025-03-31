@@ -3,12 +3,10 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
-	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
@@ -64,7 +62,7 @@ func main() {
 	// 获取访问Task的客户端
 	// 默认访问的Namespace是 ""
 
-	groupsClient := clientSet.Core().Groups("")
+	groupsClient := clientSet.Core().Groups("test")
 
 	group := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{Name: "TestGroup2", Namespace: ""},
@@ -87,6 +85,15 @@ func main() {
 			CheckDependencyCount: 0,
 		},
 	}
+	err = groupsClient.Delete(context.TODO(), group.Name, metav1.DeleteOptions{})
+	if err != nil {
+		panic(err)
+	}
+	create, err := groupsClient.Create(context.TODO(), group, metav1.CreateOptions{})
+	if err != nil {
+		panic(err)
+	}
+	logs.Infof("create.Status.copyStatus:%v,create.Status.copyStatus == 空吗:%v", create.Status.CopyStatus, create.Status.CopyStatus == "")
 
 	//group.Spec.Actions[0].Spec.Runtimes[0].Waiting = true
 
@@ -94,19 +101,19 @@ func main() {
 	//if err != nil {
 	//	logs.Errorf("json marshal: RuntimeJson err:%v", err)
 	//}
-	patchGroupActionsRuntimes, err4 := json.Marshal(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"actions": group.Spec.Actions,
-		},
-	})
-	if err4 != nil {
-		logs.Errorf("json marshal:patchGroupActions err:%v", err)
-	}
-	result, err := groupsClient.Patch(context.TODO(), "TestGroup2", types.StrategicMergePatchType, patchGroupActionsRuntimes, metav1.PatchOptions{})
-	if err != nil {
-		logs.Errorf("patch patchGroupActionsRuntimes:group err:%v", err)
-	}
-	logs.Info(result)
+	//patchGroupActionsRuntimes, err4 := json.Marshal(map[string]interface{}{
+	//	"spec": map[string]interface{}{
+	//		"actions": group.Spec.Actions,
+	//	},
+	//})
+	//if err4 != nil {
+	//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
+	//}
+	//result, err := groupsClient.Patch(context.TODO(), "TestGroup2", types.StrategicMergePatchType, patchGroupActionsRuntimes, metav1.PatchOptions{})
+	//if err != nil {
+	//	logs.Errorf("patch patchGroupActionsRuntimes:group err:%v", err)
+	//}
+	//logs.Info(result)
 
 }
 

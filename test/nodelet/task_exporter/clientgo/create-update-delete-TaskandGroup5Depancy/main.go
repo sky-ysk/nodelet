@@ -4,6 +4,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"hit.edu/framework/pkg/apis/meta"
+	"net/http"
+	"os"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -13,14 +18,9 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"os"
-	"time"
 )
 
-// 创建一个Rest Client
-// 验证xxx动词
-// 与API Server通信，并执行基础操作
+// 测试部署
 // 3个group，3个Action，每个Action两个Runtime， 一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
 func main() {
 	moduleName := "testModule"
@@ -64,6 +64,8 @@ func main() {
 
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
+	actionsClient := clientSet.Core().Actions("test")
+	eventsClient := clientSet.Core().Events("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "TrainInferTask-1" // 第一个Task的Name
@@ -76,6 +78,10 @@ func main() {
 	group1_1ID := "GroupID-1"                 // 第一个Task下的第一个GroupID
 	group1_2ID := "GroupID-2"                 // 第一个Task下的第二个GroupID
 	group1_3ID := "GroupID-3"                 // 第一个Task下的第三个GroupID
+
+	group1_1Replicas := []int32{0, 0}
+	group1_2Replicas := []int32{0, 0}
+	group1_3Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -359,8 +365,9 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{Name: group1_1Name, Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
-			Name:    group1_1Name,
-			Parents: make([]string, 0),
+			Replicas: group1_1Replicas,
+			Name:     group1_1Name,
+			Parents:  make([]string, 0),
 			Actions: []apis.Action{
 				apis.Action{
 					ObjectMeta: metav1.ObjectMeta{Name: action1_1_1Name},
@@ -436,6 +443,7 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{Name: group1_2Name, Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
+			Replicas:   group1_2Replicas,
 			Name:       group1_2Name,
 			Parents:    []string{group1_1Name}, // 加入Parents
 			Conditions: group1_2Condition,
@@ -514,6 +522,7 @@ func main() {
 		ObjectMeta: metav1.ObjectMeta{Name: group1_3Name, Namespace: ""},
 		TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
 		Spec: apis.GroupSpec{
+			Replicas:   group1_3Replicas,
 			Name:       group1_3Name,
 			Parents:    []string{group1_1Name, group1_2Name}, // 加入Parents ID
 			Conditions: group1_3Condition,
@@ -527,10 +536,10 @@ func main() {
 								Name:                     runtime1_3_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_3_1_1Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
 							},
@@ -538,10 +547,10 @@ func main() {
 								Name:                     runtime1_3_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
 								Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
 								Conditions:               runtime1_3_1_2Condition,
-								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
+								Image:                    "/home/public/workspace/heongtong_yolo_linux/train.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_2FineGrainedControl,
 							},
@@ -700,27 +709,41 @@ func main() {
 				logs.Infof("接收到事件类型: %v\n", event.Type)
 				switch event.Type {
 				case watch.Added:
-					logs.Infof("资源被添加: ", event.Object)
+					logs.Trace("资源被添加: ", event.Object)
 				case watch.Modified:
-					logs.Infof("资源被修改: ", event.Object)
+					logs.Trace("资源被修改: ", event.Object)
 				case watch.Deleted:
-					logs.Infof("资源被删除: ", event.Object)
+					logs.Trace("资源被删除: ", event.Object)
 				case watch.Error:
-					logs.Infof("发生错误: ", event.Object)
+					logs.Trace("发生错误: ", event.Object)
 				default:
-					logs.Infof("未识别的事件类型: ", event.Type)
+					logs.Trace("未识别的事件类型: ", event.Type)
 				}
 			}
 		}
 	}()
 
 	//如果已经存在，先删掉
-	////err = tasksClient.Delete(context.TODO(), "TrainInferTask", metav1.DeleteOptions{})
+	//	"hit.edu/framework/pkg/apis/meta"
+	list, err := eventsClient.List(context.TODO(), meta.ListOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+	}
+	for _, item := range list.Items {
+		err := eventsClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
+		if err != nil {
+			logs.Error(err.Error())
+		}
+	}
 
-	err = tasksClient.Delete(context.TODO(), "TrainInferTask-1", metav1.DeleteOptions{})
-	err1 := groupsClient.Delete(context.TODO(), "TrainGroup-1", metav1.DeleteOptions{})
-	err2 := groupsClient.Delete(context.TODO(), "ReasonGroup-2", metav1.DeleteOptions{})
-	err3 := groupsClient.Delete(context.TODO(), "RobotDestinationGroup-3", metav1.DeleteOptions{})
+	err = tasksClient.Delete(context.TODO(), task1Name, metav1.DeleteOptions{})
+	err1 := groupsClient.Delete(context.TODO(), group1_1Name, metav1.DeleteOptions{})
+	err2 := groupsClient.Delete(context.TODO(), group1_2Name, metav1.DeleteOptions{})
+	err3 := groupsClient.Delete(context.TODO(), group1_3Name, metav1.DeleteOptions{})
+	_ = actionsClient.Delete(context.TODO(), action1_1_1Name, metav1.DeleteOptions{})
+	_ = actionsClient.Delete(context.TODO(), action1_2_1Name, metav1.DeleteOptions{})
+	_ = actionsClient.Delete(context.TODO(), action1_3_1Name, metav1.DeleteOptions{})
+
 	if err != nil {
 		logs.Errorf("task delete error: %v", err1)
 	}
@@ -735,10 +758,10 @@ func main() {
 	}
 	// Create一个Task
 	logs.Infof("creating")
-	results, err := tasksClient.Create(context.TODO(), task, metav1.CreateOptions{})
-	results1, err1 := groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
-	results2, err2 := groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
-	results3, err3 := groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
+	_, err = tasksClient.Create(context.TODO(), task, metav1.CreateOptions{})
+	_, err1 = groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
+	_, err2 = groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
+	_, err3 = groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
 
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)
@@ -758,10 +781,10 @@ func main() {
 	}
 	//_, _ = tasksClient.Create(context.TODO(), task2, metav1.CreateOptions{})
 	//_, _ = tasksClient.Create(context.TODO(), task3, metav1.CreateOptions{})
-	logs.Infof("Created task ", results)
-	logs.Infof("Created group1 ", results1)
-	logs.Infof("Created group2 ", results2)
-	logs.Infof("Created group3 ", results3)
+	//logs.Infof("Created task ", results)
+	//logs.Infof("Created group1 ", results1)
+	//logs.Infof("Created group2 ", results2)
+	//logs.Infof("Created group3 ", results3)
 	//prompt()
 
 	//Update一个Task

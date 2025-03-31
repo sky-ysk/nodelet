@@ -65,32 +65,25 @@ func main() {
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
 
-	// Task  总共1个Task、2个Group、2个Action、2个runtime
+	// Task  总共1个Task、1个Group、1个Action、1个runtime
 	task1Name := "InferTask-2" // 第一个Task的Name
 	task1ID := "InferTaskID-2" // 第一个Task的ID
 
 	// group
 	group1_1Name := "TrainGroup-3" // 第一个Task下的第一个GroupName
-	//group1_2Name := "ReasonGroup-2" // 第一个Task下的第二个GroupName
 	group1_1ID := "TrainGroupID-3" // 第一个Task下的第一个GroupID
-	//group1_2ID := "GroupID-2"       // 第一个Task下的第二个GroupID
 
 	// action
 	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
-	//action1_2_1Name := "Action2-1" // 第一个Task下的第二个Group下的第一个ActionName
 	action1_1_1ID := "ActionID1-1" // 第一个Task下的第一个Group下的第一个ActionID
-	//action1_2_1ID := "ActionID2-1" // 第一个Task下的第二个Group下的第一个ActionID
 
 	// runtime
 	runtime1_1_1_1Name := "Runtime1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_2_1_1Name := "Runtime2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
 
 	runtime1_1_1_1ID := "RuntimeID1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
-	//runtime1_2_1_1ID := "RuntimeID2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
-	//runtime1_2_1_1FineGrainedControl := false
 
 	// 统一地规定： Belongs：填的是ID
 	//            Parents: 填的也是ID吧--改为Name
@@ -117,30 +110,6 @@ func main() {
 			},
 		},
 	}
-
-	//runtime1_2_1_1Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		apis.ConditionFormula{
-	//			LeftValue: apis.ConditionValue{
-	//				Type:      apis.ResultsData,
-	//				Name:      "ProgramDependency",
-	//				Value:     "0",
-	//				ValueType: "string",
-	//				From:      "/home/l1hy/workspace/task_input/requirements.txt",
-	//			},
-	//			RightValue: apis.ConditionValue{
-	//				Type:      apis.ConstData,
-	//				Name:      "ProgramDependency",
-	//				Value:     "1",
-	//				ValueType: "string",
-	//				From:      "",
-	//			},
-	//			Signal: apis.Equal,
-	//			Join:   "",
-	//			Result: false,
-	//		},
-	//	},
-	//}
 
 	g1 := apis.Group{
 		ObjectMeta: metav1.ObjectMeta{Name: group1_1Name, Namespace: ""},
@@ -199,64 +168,6 @@ func main() {
 		},
 	}
 	group1 := &g1
-
-	//g2 := apis.Group{
-	//	ObjectMeta: metav1.ObjectMeta{Name: group1_2Name, Namespace: ""},
-	//	TypeMeta:   metav1.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
-	//	Spec: apis.GroupSpec{
-	//		Name:    group1_2Name,
-	//		Parents: []string{},
-	//		Actions: []apis.Action{
-	//			apis.Action{
-	//				ObjectMeta: metav1.ObjectMeta{Name: action1_2_1Name},
-	//				Spec: apis.ActionSpec{
-	//					Name: action1_2_1Name,
-	//					Runtimes: []apis.Runtime{
-	//						apis.Runtime{
-	//							Name:                     runtime1_2_1_1Name,
-	//							Type:                     apis.ByCommand,
-	//							Command:                  []string{"python"},
-	//							Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"},
-	//							Parents:                  make([]string, 0), // 加入Parents
-	//							Conditions:               runtime1_2_1_1Condition,
-	//							Image:                    "/home/l1hy/workspace/heongtong_yolo_linux/predict.py",
-	//							EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//							EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
-	//						},
-	//					},
-	//				},
-	//				Status: apis.ActionStatus{
-	//					ActionID: action1_2_1ID,
-	//					Phase:    apis.Unknown,
-	//					RuntimeStatus: []apis.RuntimeStatus{
-	//						apis.RuntimeStatus{
-	//							RuntimeID: runtime1_2_1_1ID,
-	//							Phase:     apis.Unknown,
-	//						},
-	//					},
-	//				},
-	//			},
-	//		},
-	//	},
-	//	Status: apis.GroupStatus{
-	//		GroupID: group1_2ID,
-	//		ActionStatus: []apis.ActionStatus{
-	//			apis.ActionStatus{
-	//				ActionID: action1_2_1ID,
-	//				RuntimeStatus: []apis.RuntimeStatus{
-	//					apis.RuntimeStatus{
-	//						RuntimeID: runtime1_2_1_1ID,
-	//						Phase:     apis.Unknown,
-	//					},
-	//				},
-	//				Phase: apis.Unknown,
-	//			},
-	//		},
-	//		Belongs: apis.IDRef{TaskID: task1ID},
-	//		Phase:   apis.Unknown,
-	//	},
-	//}
-	//group2 := &g2
 
 	task := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
