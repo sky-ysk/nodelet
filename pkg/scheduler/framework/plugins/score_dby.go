@@ -106,6 +106,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		NodeID:  nodeName,
 	}
 	jsonData, err := json.Marshal(request)
+	logs.Infof("the request send to dts is %s", string(jsonData))
 	if err != nil {
 		logs.Fatal(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
