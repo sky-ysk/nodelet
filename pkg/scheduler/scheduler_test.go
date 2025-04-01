@@ -12,6 +12,7 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
 	"hit.edu/framework/pkg/scheduler/utils"
 	"io"
 	"net/http"
@@ -1862,5 +1863,26 @@ func TestAddDevice(t *testing.T) {
 	_, err = deviceClient.Create(ctx, grabDevice, metav1.CreateOptions{})
 	if err != nil {
 		logs.Error(err)
+	}
+}
+
+// go test -run TestEnd -v
+func TestEnd(t *testing.T) {
+	url1 := "http://192.168.8.165:8080"
+	url2 := "http://192.168.8.197:8080"
+	abilityName1 := "ArmControl.Leju.Guochuang"
+	abilityName2 := "Detect"
+	abilityName3 := "ActInferenceAbility"
+	err := manager.NewAbilityManager(url1, abilityName1).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
+	err = manager.NewAbilityManager(url1, abilityName2).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
+	err = manager.NewAbilityManager(url2, abilityName3).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
 	}
 }
