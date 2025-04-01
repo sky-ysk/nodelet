@@ -1274,7 +1274,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(actionIndex int, group *apis.Group) 
 			}
 		}
 		if i.Result != apis.True {
-			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
+			logs.Tracef("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
 			// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
@@ -1338,9 +1338,9 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			}
 		} else if i.LeftValue.Name == string(apis.DataDependency) {
 
-		} else if i.LeftValue.Name == string(apis.ResourceDependency){
+		} else if i.LeftValue.Name == string(apis.ResourceDependency) {
 
-		} else if i.LeftValue.Name == string(apis. ProgramDependency) {
+		} else if i.LeftValue.Name == string(apis.ProgramDependency) {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可

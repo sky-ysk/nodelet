@@ -504,7 +504,7 @@ func CreateOrangeGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.R
 		Status: apis.ActionStatus{
 			ActionID:      "Action1p",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 	action2 := &apis.Action{
@@ -551,7 +551,7 @@ func CreateOrangeGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.R
 		Status: apis.ActionStatus{
 			ActionID:      "Action1p",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -750,7 +750,7 @@ func CreateOrangeGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runti
 			ActionID:      "Action1arm",
 			Phase:         apis.Unknown,
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -797,7 +797,7 @@ func CreateOrangeGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runti
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action2arm",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -846,7 +846,7 @@ func CreateOrangeGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runti
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action3arm",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -895,7 +895,7 @@ func CreateOrangeGroupActionRuntimeArm() (*apis.Group, *apis.Action, *apis.Runti
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action4arm",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1186,7 +1186,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 			Phase:         apis.Unknown,
 			ActionID:      "Action1grab",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -1233,7 +1233,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action2grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1282,7 +1282,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action3grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1330,7 +1330,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action4grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1378,7 +1378,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action5grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1427,7 +1427,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action6grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1476,7 +1476,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action7grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1525,7 +1525,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action8grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1574,7 +1574,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action9grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1623,7 +1623,7 @@ func CreateOrangeGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runt
 		},
 		Status: apis.ActionStatus{
 			Phase:         apis.Unknown,
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action10grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
