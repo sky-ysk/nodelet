@@ -295,6 +295,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 			case watch.Added:
 				{
 					if t, ok := event.Object.(*apis.Task); ok {
+						logs.Infof("send groups to dts plugin, task : %s", t.Name)
 						plugin.SendGroups(ctx, t)
 					} else {
 						logs.Error("monitor task : cannot convert to task")

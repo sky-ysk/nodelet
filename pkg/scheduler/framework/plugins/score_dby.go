@@ -123,6 +123,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Error(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
+	logs.Infof("score given by dts plugin : %d, group : %s", resp.Score, resp.GroupID)
 	return resp.Score, framework.NewStatus(framework.Success)
 }
 
