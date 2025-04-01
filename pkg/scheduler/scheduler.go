@@ -290,8 +290,8 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
-			fmt.Printf(msg)
+			//msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
+			//fmt.Printf(msg)
 			switch event.Type {
 			case watch.Added:
 				{
@@ -373,8 +373,8 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
-			fmt.Printf(msg)
+			//msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
+			//fmt.Printf(msg)
 			switch event.Type {
 			case watch.Added:
 				{
