@@ -5,7 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
@@ -16,6 +23,8 @@ import (
 
 type ScorePluginDBY struct {
 	pluginClient ScorePluginClient
+	clientSet    *clients.ClientSet
+	taskClient   core.TaskInterface
 }
 
 type ScorePluginClient struct {
@@ -97,12 +106,29 @@ func (sp *ScorePluginDBY) Name() string {
 	return "ScorePluginForDuBoyu"
 }
 
+func (sp *ScorePluginDBY) getTaskNameByID(ctx context.Context, taskID string) string {
+	list, err := sp.taskClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+		return ""
+	}
+	for _, item := range list.Items {
+		if item.Status.TaskID == taskID {
+			logs.Info("get taskname %s by id %s", item.Name, taskID)
+			return item.Name
+		}
+	}
+	return ""
+}
+
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
 	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
+	taskName := sp.getTaskNameByID(ctx, group.Status.Belongs.TaskID)
+
 	request := transport.ScoreRequest{
-		GroupID: group.Status.GroupID,
-		TaskID:  group.Status.Belongs.TaskID,
+		GroupID: group.Spec.Name,
+		TaskID:  taskName,
 		NodeID:  nodeName,
 	}
 	jsonData, err := json.Marshal(request)
@@ -138,7 +164,38 @@ func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (bool
 }
 
 func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugin, error) {
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 3600 * time.Second,
+	}
+
+	cs, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+
+	tc := cs.Core().Tasks("test")
 	return &ScorePluginDBY{
+		clientSet:    cs,
+		taskClient:   tc,
 		pluginClient: NewScorePluginClient(),
 	}, nil
 }
@@ -168,21 +225,21 @@ func buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsReq
 	topInfo := make([]GroupTopInfo, 0)
 	groupsID := make([]string, 0)
 	resourcesMap := make(map[string][]apis.ResourceRequirement)
-	taskID := task.Status.TaskID
+	taskID := task.Spec.Name
 	//TODO 可能需要做深复制 @lbh
 	for _, group := range task.Spec.Groups {
-		groupsID = append(groupsID, group.Status.GroupID)
+		groupsID = append(groupsID, group.Spec.Name)
 		resources := make([]apis.ResourceRequirement, 0)
 		for _, requirement := range group.Spec.ResourceRequirements {
 			resources = append(resources, requirement)
 		}
 		if len(resources) > 0 {
-			resourcesMap[group.Status.GroupID] = resources
+			resourcesMap[group.Spec.Name] = resources
 		}
 		for _, parent := range group.Spec.Parents {
 			//fmt.Println("parent : ", parent, " child ", group.Status.GroupID)
 			topInfo = append(topInfo, GroupTopInfo{
-				Child:  group.Status.GroupID,
+				Child:  group.Spec.Name,
 				Parent: parent,
 			})
 		}
