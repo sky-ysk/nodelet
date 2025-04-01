@@ -140,6 +140,8 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	fmt.Println("request is")
 	fmt.Println(string(jsonData))
 	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	time.Sleep(1 * time.Second)
+	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
