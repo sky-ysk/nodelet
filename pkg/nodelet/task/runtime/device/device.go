@@ -88,6 +88,8 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 				return err
 			}
 			// 指令发布成功
+			dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+			time.Sleep(1 * time.Second)
 			logs.Infof("publish ability successfully")
 			// 这里暂时直接调用end方法更新phase
 			dr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
