@@ -117,7 +117,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	fmt.Println(data)
+	logs.Infof("raw result given by dts is %s ", string(data))
 	var resp transport.ScoreRespData
 	err = json.Unmarshal(data, &resp)
 	if err != nil {

@@ -6,7 +6,7 @@ type ScoreRequest struct {
 	SecID      string `json:"sec_id"`
 	GroupID    string `json:"group_id"`
 	//Group      *apis.Group `json:"group"`
-	NodeID string `json:"node_id"`
+	NodeID string `json:"nodeId"`
 	Host   string `json:"host"`
 }
 
@@ -55,6 +55,7 @@ func NewSuccessBaseResponseWithCode() BaseResponse {
 type ScoreRespData struct {
 	PipelineId string `json:"pipelineId"`
 	SecID      string `json:"secId"`
-	GroupID    string `json:"group"`
+	GroupID    string `json:"groupID"`
+	NodeID     string `json:"nodeId"`
 	Score      int64  `json:"score"` //nodeID - score
 }
