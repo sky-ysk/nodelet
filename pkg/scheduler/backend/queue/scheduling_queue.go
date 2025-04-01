@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
+	sutils "hit.edu/framework/pkg/scheduler/utils"
 	//scheutils "hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -127,9 +129,9 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	//logs.Debug("now run the flush method")
 	//fmt.Println("now run the flush method")
 	for k, v := range p.pendingQueue.groupInfoMap {
-		readyRes, err := p.checkGroupReady(v)
+		readyRes, err := p.checkGroupReady(ctx, v)
 		if err != nil {
-			logs.Fatal(err)
+			logs.Error(err.Error())
 			continue
 		}
 		if readyRes == apis.True {
@@ -149,9 +151,27 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	}
 }
 
-// TODO 这个方法等待后续完善
-func (p *PriorityQueue) checkGroupReady(gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
-	return p.conditionEngine.CheckConditions(gInfo.Group.Spec.Conditions)
+// TODO 这个方法目前不完善，只检查了父母节点的依赖
+func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
+	cs, err := sutils.CreateClientSetWithTimeOut(3600)
+	if err != nil {
+		logs.Error(err.Error())
+		return apis.NotReady, nil
+	}
+	groupClient := cs.Core().Groups("test")
+	for _, par := range gInfo.Group.Spec.Parents {
+		parent, err := groupClient.Get(ctx, par, metav1.GetOptions{})
+		if err != nil {
+			logs.Error(err.Error())
+			return apis.False, err
+		}
+		if parent.Status.Phase != apis.Successed {
+			logs.Infof("parent group is not ready %s", parent.Name)
+			return apis.NotReady, nil
+		}
+	}
+	return apis.True, nil
+	//return p.conditionEngine.CheckConditions(gInfo.Group.Spec.Conditions)
 }
 
 func (p *PriorityQueue) moveToActiveQ(ctx context.Context, gInfo *config.QueuedGroupInfo) bool {

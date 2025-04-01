@@ -284,11 +284,11 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 					sched.handleGroupAdd(ctx, event)
 				}
 			case watch.Modified:
-				fmt.Println("资源被修改: ", event.Object)
+				//fmt.Println("资源被修改: ", event.Object)
 			case watch.Deleted:
-				fmt.Println("资源被删除: ", event.Object)
+				//fmt.Println("资源被删除: ", event.Object)
 			case watch.Error:
-				fmt.Println("发生错误: ", event.Object)
+				//fmt.Println("发生错误: ", event.Object)
 			default:
 				fmt.Println("未识别的事件类型: ", event.Type)
 			}
