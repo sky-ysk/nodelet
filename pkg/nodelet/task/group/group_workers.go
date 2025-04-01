@@ -2,9 +2,12 @@ package group
 
 import (
 	"context"
+	"encoding/json"
+	"hit.edu/framework/pkg/apimachinery/types"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/nodelet/task/task"
+	"strconv"
 	"sync"
 	"time"
 
@@ -386,31 +389,88 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 				}
 				logs.Infof("==========================Task的Status.Phase:%v", task1.Status.Phase)
 				if task1.Status.Phase == apis.ReadyToDeploy || task1.Status.Phase == apis.Unknown { // TODO 这里为啥要判断是否DeployCheck--因为group被分配到不同的节点上，遍历到group的时候，都需要修改上层Task的信息的话，是重叠的，没必要  这里逻辑错误，如果第一个group遍历到完并且运行了，这里的Task的状态就行Running
-					task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
+					//task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
 					logs.Trace("=================Task的状态被修改为DeployCheck")
 					//task1.Status.LastTime = times //隐藏
+					patchTask, err := json.Marshal(map[string]interface{}{
+						"status": map[string]interface{}{
+							"phase": apis.DeployCheck, //value值不同
+						},
+					})
+					if err != nil {
+						logs.Errorf("Json Marshal failed, err:%v", err)
+					}
+					_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
+					if err != nil {
+						logs.Errorf("Patch group error:%v", err)
+					}
 				}
 				for i := range task1.Spec.Groups { //同时得更新TaskSpec下的Group以及TaskStatus下的GroupStatus为当前的group信息
 					if gr.Name == task1.Spec.Groups[i].Name {
-						task1.Spec.Groups[i].Spec = gr.Spec
-						task1.Spec.Groups[i].Status = gr.Status
-						task1.Status.GroupStatus[i] = gr.Status
+						//task1.Spec.Groups[i].Spec = gr.Spec
+						patchTask1, err := json.Marshal([]map[string]interface{}{
+							{
+								"op":    "replace",
+								"path":  "/spec/groups/" + strconv.Itoa(i) + "/spec",
+								"value": gr.Spec, // 这里替换为你需要的 Phase 值
+							},
+						})
+						if err != nil {
+							logs.Errorf("Json Marshal failed, err:%v", err)
+						}
+						_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.JSONPatchType, patchTask1, metav1.PatchOptions{})
+						if err != nil {
+							logs.Errorf("Patch group error-5:%v", err)
+						}
+
+						//task1.Spec.Groups[i].Status = gr.Status
+						patchTask2, err := json.Marshal([]map[string]interface{}{
+							{
+								"op":    "replace",
+								"path":  "/spec/groups/" + strconv.Itoa(i) + "/status",
+								"value": gr.Status, // 这里替换为你需要的 Phase 值
+							},
+						})
+						if err != nil {
+							logs.Errorf("Json Marshal failed, err:%v", err)
+						}
+						_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.JSONPatchType, patchTask2, metav1.PatchOptions{})
+						if err != nil {
+							logs.Errorf("Patch group error-5:%v", err)
+						}
+
+						//task1.Status.GroupStatus[i] = gr.Status
+						patchTask3, err := json.Marshal([]map[string]interface{}{
+							{
+								"op":    "replace",
+								"path":  "/status/group_status/" + strconv.Itoa(i),
+								"value": gr.Status, // 这里替换为你需要的 Phase 值
+							},
+						})
+						if err != nil {
+							logs.Errorf("Json Marshal failed, err:%v", err)
+						}
+						_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.JSONPatchType, patchTask3, metav1.PatchOptions{})
+						if err != nil {
+							logs.Errorf("Patch group error-5:%v", err)
+						}
 						break
 					}
 				}
-				// 将task信息提交到etcd上去
-				_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
-				if err1 != nil {
-					logs.Errorf("Etcd update task:%v err:%v, now is handing group:%v", taskName, err1, gr.Spec.Name) //这里出错
-					// 再次上传
-					time.Sleep(200 * time.Millisecond)
-					_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
-				}
+				//// 将task信息提交到etcd上去，这里的话使用Patch，不要使用Update，因为可能一个Task里面有多个Group，如果每个Group都使用Update更新，会有问题
+				//_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+				//if err1 != nil {
+				//	logs.Errorf("Etcd update task:%v err:%v, now is handing group:%v", taskName, err1, gr.Spec.Name) //这里出错
+				//	// 再次上传
+				//time.Sleep(200 * time.Millisecond)
+				//	_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+				//}
 				break //后续就不用再遍历Task列表了，直接结束
 			}
 		}
 	}
 	//将group信息提交到etcd上去，使用update更新--出现一次报错  TODO 为了适配迁移，如果后面替换为Patch操作，那么要使用gr.ObjectMeta.Name 来进行patch，因为目前规定gr.ObjectMeta.Name为不同group的标识（针对副本、源group）
+	// 有一个问题，就是怎么直接更新GroupStatus呢
 	_, err := gw.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
 	logs.Infof("Group's deployCheck phase submit to etcd, group:%v", gr.Name)
 	if err != nil {

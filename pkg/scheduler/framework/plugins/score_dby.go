@@ -24,7 +24,7 @@ type ScorePluginClient struct {
 
 func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, error) {
 	// 自动处理 Content-Length 和 Body 封装
-	httpReq, err := http.NewRequest("POST", "http://127.0.0.1:5000"+path, bytes.NewBuffer(data))
+	httpReq, err := http.NewRequest("POST", "http://172.150.0.11:5000"+path, bytes.NewBuffer(data))
 	if err != nil {
 		panic(err)
 	}

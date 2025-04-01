@@ -289,8 +289,8 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
-			fmt.Printf(msg)
+			//msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
+			//fmt.Printf(msg)
 			switch event.Type {
 			case watch.Added:
 				{
@@ -371,23 +371,23 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
-			fmt.Printf(msg)
+			//msg := fmt.Sprintf("scheduler接收到group事件类型: %v\n", event.Type)
+			//fmt.Printf(msg)
 			switch event.Type {
 			case watch.Added:
 				{
 					addMsg := fmt.Sprintf("资源被添加: %s", event.Object)
-					fmt.Println(addMsg)
+					logs.Trace(addMsg)
 					sched.handleGroupAdd(ctx, event)
 				}
 			case watch.Modified:
-				fmt.Println("资源被修改: ", event.Object)
+				logs.Trace("资源被修改:%v ", event.Object)
 			case watch.Deleted:
-				fmt.Println("资源被删除: ", event.Object)
+				logs.Trace("资源被删除:%v ", event.Object)
 			case watch.Error:
-				fmt.Println("发生错误: ", event.Object)
+				logs.Trace("发生错误:%v", event.Object)
 			default:
-				fmt.Println("未识别的事件类型: ", event.Type)
+				logs.Trace("未识别的事件类型:%v", event.Type)
 			}
 		}
 	}
