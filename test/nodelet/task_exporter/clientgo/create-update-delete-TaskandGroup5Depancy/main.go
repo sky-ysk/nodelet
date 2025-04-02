@@ -282,13 +282,13 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "2",
+					Upperbound: "4",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "2",
+					Upperbound: "4",
 				},
 			},
 			Replicas:   group1_1Replicas,
@@ -394,8 +394,8 @@ func main() {
 								Name:                     runtime1_2_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"},
-								Parents:                  make([]string, 0), // 加入Parents
+								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"}, //7s
+								Parents:                  make([]string, 0),                                                            // 加入Parents
 								Conditions:               runtime1_2_1_1Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
@@ -460,12 +460,12 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "2",
+					Lowbound:   "9",
 					Upperbound: "4",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "2",
+					Lowbound:   "9",
 					Upperbound: "4",
 				},
 			},
@@ -548,13 +548,13 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "3",
+					Upperbound: "4",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "3",
+					Upperbound: "4",
 				},
 			},
 			Replicas:   group1_4Replicas,
@@ -637,13 +637,13 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "3",
+					Upperbound: "4",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "3",
+					Upperbound: "4",
 				},
 			},
 			Replicas:   group1_5Replicas,
@@ -726,13 +726,13 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "3",
+					Upperbound: "4",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "1",
-					Upperbound: "2",
+					Lowbound:   "3",
+					Upperbound: "4",
 				},
 			},
 			Replicas:   group1_6Replicas,
