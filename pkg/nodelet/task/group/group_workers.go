@@ -471,12 +471,18 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	}
 	//将group信息提交到etcd上去，使用update更新--出现一次报错  TODO 为了适配迁移，如果后面替换为Patch操作，那么要使用gr.ObjectMeta.Name 来进行patch，因为目前规定gr.ObjectMeta.Name为不同group的标识（针对副本、源group）
 	// 有一个问题，就是怎么直接更新GroupStatus呢
-	_, err := gw.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
-	logs.Infof("Group's deployCheck phase submit to etcd, group:%v", gr.Name)
+	patchGroup1, err := json.Marshal(map[string]interface{}{
+		"status": groupStatus,
+	})
+	patchGroup2, err2 := json.Marshal(map[string]interface{}{
+		"spec": groupSpec,
+	})
+	_, err = gw.groupClient.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroup1, metav1.PatchOptions{})
 	if err != nil {
-		logs.Errorf("Etcd update group:%v err:%v", gr.Name, err)
-		// 再次上传
-		time.Sleep(200 * time.Millisecond)
-		_, err = gw.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
+		logs.Errorf("Patch group error222:%v", err)
+	}
+	_, err2 = gw.groupClient.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroup2, metav1.PatchOptions{})
+	if err2 != nil {
+		logs.Errorf("Patch group error222:%v", err)
 	}
 }
