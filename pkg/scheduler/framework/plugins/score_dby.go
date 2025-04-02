@@ -65,6 +65,7 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		logs.Fatal(err)
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
+	logs.Infof("the score request send to dts is ")
 	data, err := client.SendData(jsonData, "/schedule/postGroup")
 	if err != nil {
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
@@ -137,10 +138,9 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Fatal(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	fmt.Println("request is")
-	fmt.Println(string(jsonData))
 	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	time.Sleep(5 * time.Second)
+	logs.Info("sleep 5s to get dts score")
 	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
