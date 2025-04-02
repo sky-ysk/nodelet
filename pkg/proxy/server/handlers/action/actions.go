@@ -1,4 +1,4 @@
-package group
+package action
 
 import (
 	"context"
@@ -12,23 +12,23 @@ import (
 	"net/http"
 )
 
-type GroupsHandler struct {
-	client core.GroupInterface
+type ActionsHandler struct {
+	client core.ActionInterface
 }
 
-var _ Handler = &GroupsHandler{}
+var _ Handler = &ActionsHandler{}
 
-func NewGroupsHandler(clientSet *clients.ClientSet) *GroupsHandler {
-	c := clientSet.Core().Groups(apis.NamespaceAll)
-	return &GroupsHandler{
+func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
+	c := clientSet.Core().Actions(apis.NamespaceAll)
+	return &ActionsHandler{
 		client: c,
 	}
 }
 
-func (h *GroupsHandler) GetGroups(request *restful.Request, response *restful.Response) {
+func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.Response) {
 	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Get groups failed: %v", err)
+		logs.Errorf("Get actions failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -44,22 +44,25 @@ func (h *GroupsHandler) GetGroups(request *restful.Request, response *restful.Re
 			return
 		}
 	}
-	logs.Debugf("Get groups")
+	logs.Debugf("Get actions")
 }
 
-func (h *GroupsHandler) NewGetWebService() *restful.WebService {
+// TODO: DeleteAll
+
+func (h *ActionsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path(GROUPS_PATH).
+	ws.Path(ACTIONS_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("").
-		Doc("Get all groups").
+		Doc("Get all actions").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		To(h.GetGroups).
-		Operation("Get groups").
-		Returns(200, "OK", []apis.Group{}).
+		To(h.GetActions).
+		Operation("Get actions").
+		Returns(200, "OK", []apis.Action{}).
 		Returns(400, "Not Found", nil),
 	)
+
 	return ws
 }
