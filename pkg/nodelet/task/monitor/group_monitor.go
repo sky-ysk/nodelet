@@ -399,6 +399,9 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 					action := &group.Spec.Actions[actionIndex]
 					actionStatus := &group.Status.ActionStatus[actionIndex]
 					// 为了适配迁移，状态为Migrated也说明Action成功结束了，然后接下来就通过Action成功标记Group成功了
+					if action.Status.Phase == apis.Unknown {
+						isSuccess = false
+					}
 					if action.Status.Phase == apis.Successed || action.Status.Phase == apis.Migrated { // 当前action的状态为Successed或者Migrated
 						continue //说明当前Action执行完成了，接着查看下一个Action的执行情况
 					}
