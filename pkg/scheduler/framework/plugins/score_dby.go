@@ -65,7 +65,7 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		logs.Fatal(err)
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
-	logs.Infof("the score request send to dts is ")
+	logs.Infof("the groups request send to dts is %s", string(jsonData))
 	data, err := client.SendData(jsonData, "/schedule/postGroup")
 	if err != nil {
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
