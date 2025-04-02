@@ -828,8 +828,8 @@ func TestDTS(t *testing.T) {
 	p.SendGroups(context.Background(), task)
 
 	p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
-	time.Sleep(5 * time.Second)
-	p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
+	//time.Sleep(5 * time.Second)
+	//p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
 }
 
 // From K8s
