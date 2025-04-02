@@ -827,7 +827,35 @@ func TestDTS(t *testing.T) {
 	}
 	p.SendGroups(context.Background(), task)
 
-	p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode2")
+	go p.Score(context.Background(), &task.Spec.Groups[0], "EdgeNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[0], "EdgeNode2")
+
+	go p.Score(context.Background(), &task.Spec.Groups[1], "CloudNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[1], "CloudNode2")
+	go p.Score(context.Background(), &task.Spec.Groups[1], "EdgeNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[1], "EdgeNode2")
+
+	go p.Score(context.Background(), &task.Spec.Groups[2], "CloudNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[2], "CloudNode2")
+	go p.Score(context.Background(), &task.Spec.Groups[2], "EdgeNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[2], "EdgeNode2")
+
+	go p.Score(context.Background(), &task.Spec.Groups[3], "CloudNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[3], "CloudNode2")
+	go p.Score(context.Background(), &task.Spec.Groups[3], "EdgeNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[3], "EdgeNode2")
+
+	go p.Score(context.Background(), &task.Spec.Groups[4], "CloudNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[4], "CloudNode2")
+	go p.Score(context.Background(), &task.Spec.Groups[4], "EdgeNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[4], "EdgeNode2")
+
+	go p.Score(context.Background(), &task.Spec.Groups[5], "CloudNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[5], "CloudNode2")
+	go p.Score(context.Background(), &task.Spec.Groups[5], "EdgeNode1")
+	go p.Score(context.Background(), &task.Spec.Groups[5], "EdgeNode2")
 	//time.Sleep(5 * time.Second)
 	//p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
 }
