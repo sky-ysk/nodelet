@@ -1,4 +1,4 @@
-package node
+package event
 
 import (
 	"context"
@@ -15,28 +15,28 @@ import (
 	"net/http"
 )
 
-type NodeHandler struct {
-	client core.NodeInterface
+type EventHandler struct {
+	client core.EventInterface
 }
 
-var _ Handler = &NodeHandler{}
+var _ Handler = &EventHandler{}
 
-func NewNodeHandler(clientSet *clients.ClientSet) *NodeHandler {
-	c := clientSet.Core().Nodes(apis.NamespaceAll)
-	return &NodeHandler{
+func NewEventHandler(clientSet *clients.ClientSet) *EventHandler {
+	c := clientSet.Core().Events(apis.NamespaceAll)
+	return &EventHandler{
 		client: c,
 	}
 }
 
-func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Response) {
+func (h *EventHandler) GetEvent(request *restful.Request, response *restful.Response) {
 	// 尝试从url中获取参数
-	name := request.QueryParameter(NODE_NAME)
+	name := request.QueryParameter(EVENT_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Node{}
+		req := &apis.Event{}
 		err := request.ReadEntity(&req)
 		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide event name , the key is Name "))
 			if err != nil {
 				logs.Errorf("failed to return a status code ")
 				return
@@ -49,7 +49,7 @@ func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Respon
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get node %s error: %v , node not exist! ", name, err)
+		logs.Errorf("Get event %s error: %v , event not exist! ", name, err)
 		err := response.WriteError(http.StatusNotFound, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -68,20 +68,20 @@ func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Respon
 			}
 			return
 		}
-		logs.Debugf("Get node")
+		logs.Debugf("Get event")
 	}
 }
 
-func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Response) {
-	// 先查询Node是否存在
+func (h *EventHandler) CreateEvent(request *restful.Request, response *restful.Response) {
+	// 先查询event是否存在
 	// 尝试从url中获取参数
-	name := request.QueryParameter(NODE_NAME)
+	name := request.QueryParameter(EVENT_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Node{}
+		req := &apis.Event{}
 		err := request.ReadEntity(&req)
 		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide event name , the key is Name "))
 			if err != nil {
 				logs.Errorf("failed to return a status code ")
 				return
@@ -94,10 +94,10 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Infof("Get node %s error: %v , node not exist ! creat it ", name, err)
+		logs.Infof("Get event %s error: %v , event not exist! create it", name, err)
 	} else if result.Name == name {
-		logs.Errorf("Create node %s error, node existed: %v", name, result)
-		err = fmt.Errorf("create node %s error, node existed: %v", name, result)
+		logs.Errorf("Create event %s error, event existed: %v", name, result)
+		err = fmt.Errorf("create event %s error, event existed: %v", name, result)
 		err := response.WriteError(http.StatusConflict, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -107,10 +107,10 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 	}
 
 	// 不存在，解析用户的输入
-	ew := &apis.Node{}
+	ew := &apis.Event{}
 	err = request.ReadEntity(ew)
 	if err != nil {
-		logs.Errorf("Failed to create node %s, error: %v", name, err)
+		logs.Errorf("Failed to create event %s, error: %v", name, err)
 		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -119,21 +119,21 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 		return
 	}
 
-	// 格式校验
+	//格式校验
 	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Node{})
+	_, err = analyzer.Deserialize(res, apis.Event{})
 	if err != nil {
 		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}
-		//return
+		// return
 	}
 
-	// TODO：为NODE分配MachineID?
+	// TODO：为Event分配ID
 
-	// 将Node写入数据库中
+	// 将event写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -141,9 +141,10 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 			logs.Errorf("failed to return a status code")
 			return
 		}
-		logs.Errorf("Create node %s ，failed write to database ,error: %v", name, err)
+		logs.Errorf("Create event %s ,failed write to database , error: %v", name, err)
 		return
 	}
+
 	// 返回结果
 	err = response.WriteEntity(result)
 	if err != nil {
@@ -160,20 +161,22 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 		logs.Errorf("failed to return a status code ")
 		return
 	}
-	logs.Debugf("Create node %v", result)
+
+	logs.Debugf("Create event %v", result)
 }
 
-func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Response) {
-	// 先检查Node是否存在
+func (h *EventHandler) UpdateEvent(request *restful.Request, response *restful.Response) {
+	// 先检查event是否存在
 	// 存在：更新
 	// 不存在：返回错误
-	name := request.QueryParameter(NODE_NAME)
+	// 尝试从url中获取参数
+	name := request.QueryParameter(EVENT_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Node{}
+		req := &apis.Event{}
 		err := request.ReadEntity(&req)
 		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide event name , the key is Name "))
 			if err != nil {
 				logs.Errorf("failed to return a status code ")
 				return
@@ -184,10 +187,10 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 		}
 	}
 
-	// 检查Node是否存在
-	node, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
+	// 检查event是否存在
+	event, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get node %s error: %v , node not exist! ", name, err)
+		logs.Errorf("Get event %s error: %v , event not exist !", name, err)
 		err := response.WriteError(http.StatusNotFound, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -196,9 +199,9 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 		return
 	}
 
-	// Node 存在，更新
-	if node.Name == name {
-		err := request.ReadEntity(&node)
+	// event 存在，更新
+	if event.Name == name {
+		err := request.ReadEntity(&event)
 		if err != nil {
 			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
@@ -208,9 +211,11 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 			return
 		}
 
+		logs.Debugf("Update event to : %v", event)
+
 		// 格式验证
-		res, err := analyzer.SerializeToJson(node)
-		_, err = analyzer.Deserialize(res, apis.Node{})
+		res, err := analyzer.SerializeToJson(event)
+		_, err = analyzer.Deserialize(res, apis.Event{})
 		if err != nil {
 			err := response.WriteError(http.StatusBadRequest, err)
 			if err != nil {
@@ -220,9 +225,9 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 			// return
 		}
 
-		updatedNode, updateErr := h.client.Update(context.TODO(), node, metav1.UpdateOptions{})
+		updatedEvent, updateErr := h.client.Update(context.TODO(), event, metav1.UpdateOptions{})
 		if updateErr != nil {
-			logs.Errorf("Update node %s error: %v", name, updateErr)
+			logs.Errorf("Update event %s error: %v", name, updateErr)
 			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
@@ -230,30 +235,31 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 			}
 		}
 
-		//返回成功修改的通知
-		err = response.WriteHeaderAndEntity(http.StatusOK, updatedNode)
+		// 返回成功修改的通知
+		err = response.WriteHeaderAndEntity(http.StatusOK, updatedEvent)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}
 
 		// 记录日志
-		logs.Debugf("update node : %v", name)
+		logs.Debugf("update event : %v", name)
 
 	}
 }
 
-func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Response) {
-	// 查看Node是否存在
-	// 如果存在，删除节点
-	// 如果不存在，返回 404 not found
-	name := request.QueryParameter(NODE_NAME)
+func (h *EventHandler) DeleteEvent(request *restful.Request, response *restful.Response) {
+	// 查看event是否存在
+	// 存在，删除节点
+	// 不存在，返回 404 not found
+	// 尝试从url中获取参数
+	name := request.QueryParameter(EVENT_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Node{}
+		req := &apis.Event{}
 		err := request.ReadEntity(&req)
 		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide event name , the key is Name "))
 			if err != nil {
 				logs.Errorf("failed to return a status code ")
 				return
@@ -264,10 +270,10 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 		}
 	}
 
-	// 查看node是否存在
-	node, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
+	// 查看event是否存在
+	event, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get node %s error: %v , node not exist!", name, err)
+		logs.Errorf("Get event %s error: %v , event not exist !", name, err)
 		err := response.WriteError(http.StatusNotFound, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -275,11 +281,11 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 		}
 	}
 
-	// node 存在
-	if node.Name == name {
+	// event 存在
+	if event.Name == name {
 		err := h.client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 		if err != nil {
-			logs.Errorf("Delete node %s error: %v", name, err)
+			logs.Errorf("Delete event %s error: %v", name, err)
 			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
@@ -291,21 +297,23 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 		response.WriteHeader(http.StatusOK)
 
 		// 记录日志
-		logs.Debugf("delete node : %v", name)
+		logs.Debugf("delete event : %v", name)
+
 	}
 }
 
-func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Response) {
-	// 先检查Node是否存在
+func (h *EventHandler) PatchEvent(request *restful.Request, response *restful.Response) {
+	// 先检查event是否存在
 	// 存在：部分更新
 	// 不存在：返回错误
-	name := request.QueryParameter(NODE_NAME)
+	// 尝试从url中获取参数
+	name := request.QueryParameter(EVENT_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Node{}
+		req := &apis.Event{}
 		err := request.ReadEntity(&req)
 		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide event name , the key is Name "))
 			if err != nil {
 				logs.Errorf("failed to return a status code ")
 				return
@@ -316,10 +324,10 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 		}
 	}
 
-	// 检查Node是否存在
-	node, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
+	// 检查event是否存在
+	event, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get node %s error: %v , node not exist! ", name, err)
+		logs.Errorf("Get event %s error: %v , event not exist !", name, err)
 		err := response.WriteError(http.StatusNotFound, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -328,9 +336,9 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	// Node 存在，部分更新
-	if node.Name == name {
-		err := request.ReadEntity(node)
+	// event 存在，部分更新
+	if event.Name == name {
+		err := request.ReadEntity(event)
 		if err != nil {
 			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
@@ -340,19 +348,18 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 			return
 		}
 
-		patchNode, err := analyzer.SerializeToJson(node)
+		patchEvent, err := analyzer.SerializeToJson(event)
 		if err != nil {
-			logs.Errorf("Serialize patch node error: %v", err)
+			logs.Errorf("Serialize patch event error: %v", err)
 			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
 			}
 		}
-		logs.Debugf("patch node : %v", patchNode)
-		patchedNode, err := h.client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchNode), metav1.PatchOptions{})
+		patchedEvent, err := h.client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchEvent), metav1.PatchOptions{})
 		if err != nil {
-			logs.Errorf("Patch node %s error: %v", name, err)
+			logs.Errorf("Patch event %s error: %v", name, err)
 			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
@@ -360,75 +367,73 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 			}
 		}
 
-		//返回成功修改的通知
-		err = response.WriteHeaderAndEntity(http.StatusOK, patchedNode)
+		// 返回成功修改的通知
+		err = response.WriteHeaderAndEntity(http.StatusOK, patchedEvent)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}
 
 		// 记录日志
-		logs.Debugf("update node : %v", name)
+		logs.Debugf("patch event : %v", name)
 
 	}
 }
 
-func (h *NodeHandler) NewGetWebService() *restful.WebService {
+func (h *EventHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path(NODE_PATH).
+	ws.Path(EVENT_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("/").
-		To(h.GetNode).
-		Doc("Get a node with name").
+		To(h.GetEvent).
+		Doc("Get a event with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Operation("Get node").
-		Returns(200, "OK", apis.Node{}).
+		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
+		Operation("Get event").
+		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST("/").
-		To(h.CreateNode).
-		Doc("Create a node with name").
+		To(h.CreateEvent).
+		Doc("Create a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Operation("Create node").
-		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
-		Returns(200, "OK", apis.Node{}).
+		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
+		Param(ws.BodyParameter("Event", "The json string of the Event object").DataType("string")).
+		Operation("Create event").
+		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT("/").
-		To(h.UpdateNode).
-		Doc("Update a node with name").
+		To(h.UpdateEvent).
+		Doc("Update a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
-		Operation("Update node").
-		Returns(200, "OK", apis.Node{}).
-		Returns(400, "Not Found", nil),
-	)
+		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
+		Param(ws.BodyParameter("Event", "The json string of the Event object").DataType("string")).
+		Operation("Update event").
+		Returns(200, "OK", apis.Event{}).
+		Returns(400, "Not Found", nil))
 
 	ws.Route(ws.PATCH("/").
-		To(h.PatchNode).
-		Doc("Patch a node with name").
+		To(h.PatchEvent).
+		Doc("Patch a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
-		Operation("Patch node").
-		Returns(200, "OK", apis.Node{}).
-		Returns(400, "Not Found", nil),
-	)
+		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
+		Param(ws.BodyParameter("Event", "The json string of the Event field").DataType("string")).
+		Operation("Patch event").
+		Returns(200, "OK", apis.Event{}).
+		Returns(400, "Not Found", nil))
 
 	ws.Route(ws.DELETE("/").
-		To(h.DeleteNode).
-		Doc("Delete a node with name").
+		To(h.DeleteEvent).
+		Doc("Delete a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Operation("Delete node").
-		Returns(200, "OK", apis.Node{}).
+		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
+		Operation("Delete event").
+		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil))
 
 	return ws

@@ -94,7 +94,7 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get action %s error: %v , action not exist! ", name, err)
+		logs.Infof("Get action %s error: %v , action not exist! create it ", name, err)
 	} else if result.Name == name {
 		logs.Errorf("Create action %s error, action existed: %v", name, result)
 		err = fmt.Errorf("create action %s error, action existed: %v", name, result)
@@ -136,8 +136,8 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 	// 将action写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}

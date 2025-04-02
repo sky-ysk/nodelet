@@ -95,7 +95,7 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get workflow %s error: %v , workflow not exist! ", name, err)
+		logs.Infof("Get workflow %s error: %v , workflow not exist! create it ", name, err)
 	} else if result.Name == name {
 		logs.Errorf("Create workflow %s error, workflow existed: %v", name, result)
 		err = fmt.Errorf("create workflow %s error, workflow existed: %v", name, result)

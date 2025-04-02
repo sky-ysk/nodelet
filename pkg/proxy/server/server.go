@@ -52,6 +52,12 @@ func (s *Server) InstallDefaultHandlers() {
 	// Group
 	s.handlers.InstallGroupHandlers(s.container)
 
+	//Event
+	s.handlers.InstallEventHandlers(s.container)
+
+	// Device
+	s.handlers.InstallDeviceHandlers(s.container)
+
 	// Logs相关
 
 	// Openapi相关

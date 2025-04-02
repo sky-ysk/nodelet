@@ -98,7 +98,7 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get task %s error: %v   , task not exist! creating task ", name, err)
+		logs.Infof("Get task %s error: %v   , task not exist! creat it ", name, err)
 	} else if result.Name == name {
 		logs.Errorf("Create task %s error, task existed: %v ", name, result)
 		err = fmt.Errorf("create task %s error, task existed: %v ", name, result)

@@ -1,4 +1,4 @@
-package device
+package event
 
 import (
 	"context"
@@ -12,27 +12,23 @@ import (
 	"net/http"
 )
 
-type DevicesHandler struct {
-	client core.DeviceInterface
+type EventsHandler struct {
+	client core.EventInterface
 }
 
-var _ Handler = &DevicesHandler{}
+var _ Handler = &EventsHandler{}
 
-//func NewDevicesHandler() *DevicesHandler {
-//	return &DevicesHandler{}
-//}
-
-func NewDevicesHandler(clientSet *clients.ClientSet) *DevicesHandler {
-	c := clientSet.Core().Devices(apis.NamespaceAll)
-	return &DevicesHandler{
+func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
+	c := clientSet.Core().Events(apis.NamespaceAll)
+	return &EventsHandler{
 		client: c,
 	}
 }
 
-func (h *DevicesHandler) GetDevices(request *restful.Request, response *restful.Response) {
+func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Response) {
 	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Get devices failed: %v", err)
+		logs.Errorf("Get events failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -48,23 +44,23 @@ func (h *DevicesHandler) GetDevices(request *restful.Request, response *restful.
 			return
 		}
 	}
-	logs.Debugf("Get devices")
+	logs.Debugf("Get events")
 }
 
 // TODO: DeleteAll
 
-func (h *DevicesHandler) NewGetWebService() *restful.WebService {
+func (h *EventsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path(DEVICES_PATH).
+	ws.Path(EVENTS_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("").
-		Doc("Get all devices").
+		Doc("Get all events").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		To(h.GetDevices).
-		Operation("Get devices").
-		Returns(200, "OK", []apis.Device{}).
+		To(h.GetEvents).
+		Operation("Get events").
+		Returns(200, "OK", []apis.Event{}).
 		Returns(400, "Not Found", nil),
 	)
 

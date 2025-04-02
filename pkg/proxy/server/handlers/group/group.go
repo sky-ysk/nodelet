@@ -94,7 +94,7 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 
 	result, err := h.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Get group %s error: %v , group not exist! creating group", name, err)
+		logs.Infof("Get group %s error: %v , group not exist! creat it", name, err)
 	} else if result.Name == name {
 		logs.Errorf("Create group %s error, group existed: %v", name, result)
 		err = fmt.Errorf("create group %s error, group existed: %v", name, result)
