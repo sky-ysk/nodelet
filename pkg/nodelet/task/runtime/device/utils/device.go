@@ -128,6 +128,35 @@ func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId s
 	return nil
 }
 
+// UpdateDeviceRunning 用于在发布任务指令成功后(但是还不知道业务执行情况)时 更新device的状态
+func UpdateDeviceRunning(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
+	// 绑定ActionID
+	device.Status.ActionID = action.Status.ActionID
+	// 将phase更改为running
+	device.Status.Phase = apis.DeviceRunning
+	// 设置更新时间
+	device.Status.LastTime = apis.Time{Time: time.Now()}
+	_, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Errorf("update device [%s]  failed, %s", device.Name, err)
+		return err
+	}
+	logs.Infof("update device [%s] successfully\n", device.Name)
+	return nil
+}
+
+func UpdateDeviceSuccess(runtime *apis.Runtime, action *apis.Action, device *apis.Device) error {
+	// Lock
+
+	// ActionID更改为空
+	device.Status.ActionID = ""
+	// 设置更新时间
+	device.Status.LastTime = apis.Time{Time: time.Now()}
+	// 更新phase
+	device.Status.Phase = apis.DeviceIdle
+
+}
+
 func UpdateDevice(runtime *apis.Runtime, device *apis.Device, taskId string, deviceClient core.DeviceInterface) error {
 	parts := strings.Split(runtime.Name, "_")
 	if parts[0] == "manage" {
@@ -181,33 +210,5 @@ func UpdateDeviceStatusCompleted(runtime *apis.Runtime, action *apis.Action, dev
 
 		}
 	}
-	return nil
-}
-
-// RecoverDeviceStatus 恢复DeviceStatus的数据
-func RecoverDeviceStatus(action *apis.Action) error {
-	devices := action.Status.Devices
-	for name, device := range devices {
-		logs.Infof("device name is %s\n", name)
-		ds := apis.DeviceStatus{
-			// 更新device的相应字段
-			Phase:      apis.DeviceIdle,
-			InstanceID: "",
-			Status:     "idle",
-			ActionID:   "",
-			Lock:       apis.Lock{Type: device.Lock.Type, Lock: false, Ref: device.Lock.Ref - 1},
-			LastTime:   apis.Time{Time: time.Now()},
-
-			// 不需要更新的字段直接复制
-			DeviceID: device.DeviceID,
-
-			// todo
-			Events:     device.Events,
-			Properties: device.Properties,
-		}
-		action.Status.Devices[name] = ds
-		logs.Infof("update device %s's status\n", name)
-	}
-	action.Status.Devices = devices
 	return nil
 }

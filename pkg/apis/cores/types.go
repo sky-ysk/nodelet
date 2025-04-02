@@ -1034,6 +1034,8 @@ type DeviceStatus struct {
 	//  对于RMF来说，InstanceID对应RMF的TaskID
 	InstanceID string
 
+	// 占有当前Device的Group
+	GroupID string
 	// 设备的运行阶段
 	Phase DevicePhase
 
@@ -1373,8 +1375,8 @@ type PodSpec struct {
 	Affinity           Affinity          `json:"affinity,omitempty" yaml:"affinity"`
 }
 type Volume struct {
-	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
-	VolumeSource `json:",inline" yaml:",inline"` // 存储卷来源（如ConfigMap、Secret）
+	Name         string `json:"name" yaml:"name"` // 存储卷名称
+	VolumeSource `json:",inline" yaml:",inline"`  // 存储卷来源（如ConfigMap、Secret）
 }
 
 // VolumeSource 定义存储卷的数据来源（必须且常用的类型）

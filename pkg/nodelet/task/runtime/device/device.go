@@ -3,21 +3,16 @@ package device
 import (
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
-	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
-	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/rmf"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/utils"
-	"net/http"
 	"time"
 )
 
@@ -25,7 +20,6 @@ type DeviceRuntime struct {
 	deviceClient core.DeviceInterface
 	actionClient core.ActionInterface
 	eventBus     *eventbus.EventBus
-	lockManager  *utils.LockManager
 }
 
 func NewDeviceRuntime(deviceClient core.DeviceInterface, actionClient core.ActionInterface, eventBus *eventbus.EventBus) *DeviceRuntime {
@@ -33,7 +27,6 @@ func NewDeviceRuntime(deviceClient core.DeviceInterface, actionClient core.Actio
 		deviceClient: deviceClient,
 		actionClient: actionClient,
 		eventBus:     eventBus,
-		lockManager:  utils.NewLockManager(),
 	}
 }
 
@@ -42,11 +35,13 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 	// 获取action
 	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("can not get action from etcd!")
+		logs.Errorf("Action[%s] Runtime[%s] can not get action from etcd!", a.Name, runtime.Name)
+		return err
 	}
 
 	// 获取runtime(从action中获取)
 	runtime = &action.Spec.Runtimes[runtimeIndex]
+
 	// 构建一个device map
 	devices := make(map[string]*apis.Device)
 	for _, d := range runtime.Devices {
@@ -87,10 +82,17 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 				dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 				return err
 			}
-			// 指令发布成功
+
+			// 指令发布成功 更新action的状态 和 device的状态
 			dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+			//TODO 暂时先不调用
+			//err = utils.UpdateDeviceRunning(runtime, action, device, dr.deviceClient)
+			//if err != nil {
+			//	logs.Errorf("Action[%s] Runtime[%s] UpdateDevice[runnning] failed\n", action.Spec.Name, runtime.Name)
+			//}
 			time.Sleep(1 * time.Second)
 			logs.Infof("publish ability successfully")
+
 			// 这里暂时直接调用end方法更新phase
 			dr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 			logs.Infof("publish ability inst output:%v", output)
@@ -98,7 +100,6 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 			runtime.Outputs = append(runtime.Outputs, output)
 			action.Spec.Runtimes[runtimeIndex] = *runtime
 
-			//go dr.monitorDeviceAbility(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device, abilityManager)
 		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf { // rmf方式
 
 			// 构造任务的请求参数
@@ -344,33 +345,38 @@ func (dr *DeviceRuntime) StopRuntime(group *apis.Group, action *apis.Action, run
 	panic("implement me")
 }
 
-func InitClient() (*clients.ClientSet, error) {
-	//初始化ClientSet客户端
-	scheme := runtime.NewScheme()
-	apis.AddToScheme(scheme)
-	c := &rest.Config{
-		Host:    "http://localhost:10000",
-		APIPath: "/apis/resources/v1",
-		ContentConfig: rest.ContentConfig{
-			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
-			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
-			GroupVersion: &schema.GroupVersion{
-				Group:   "resources",
-				Version: "v1",
-			},
-			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
-		},
-		UserAgent: "defaultUserAgent",
-		Transport: &http.Transport{
-			MaxIdleConns:        100,              // 最大空闲连接数
-			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
-			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
-		},
-		Timeout: 10 * time.Second,
+func (dr *DeviceRuntime) monitorDeviceAbility(actionIndex int, action apis.Action, groupName string, runtimeIndex int, runtime apis.Runtime, abilityManager manager.Manager, device *apis.Device) error {
+	//TODO 发布 查询业务执行情况的指令
+
+	//TODO 解析指令 查看情况
+
+	var status string = ""
+	switch status {
+	case "success":
+		//TODO 1.执行成功的状态
+		err := utils.ReleaseDeviceLock(device, dr.deviceClient)
+		if err != nil {
+			logs.Errorf("Release device [%s] lock failed\n", device.Name)
+			return err
+		}
+		device, err = dr.deviceClient.Get(context.TODO(), device.Name, metav1.GetOptions{})
+		// 更新device的phase
+		device.Status.Phase = apis.DeviceIdle
+		// 更新device的ActionID
+		device.Status.ActionID = ""
+		// 更新时间
+		device.Status.LastTime = apis.Time{Time: time.Now()}
+		// 更新action为success
+		dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+
+	case "failed":
+		//TODO 2.执行失败的状态
+	case "running":
+		//TODO 3.还在执行的状态
+		time.Sleep(time.Millisecond * 1000)
+		// 重新发送
+	default:
+
 	}
-	clientSet, err := clients.NewForConfig(c)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
-	}
-	return clientSet, nil
+
 }

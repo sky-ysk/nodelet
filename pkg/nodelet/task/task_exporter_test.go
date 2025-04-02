@@ -424,7 +424,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 		Status: apis.ActionStatus{
 			ActionID:      "Action1p",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 	action2 := &apis.Action{
@@ -471,7 +471,7 @@ func CreateGroupActionRuntimePredict() (*apis.Group, *apis.Action, *apis.Runtime
 		Status: apis.ActionStatus{
 			ActionID:      "Action1p",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -689,7 +689,7 @@ func CreateGroupActionRuntimeArm1() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Status: apis.ActionStatus{
 			ActionID:      "Action1arm1",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -735,7 +735,7 @@ func CreateGroupActionRuntimeArm1() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action2arm1",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -783,7 +783,7 @@ func CreateGroupActionRuntimeArm1() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action3arm1",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -831,7 +831,7 @@ func CreateGroupActionRuntimeArm1() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action4arm1",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -879,7 +879,7 @@ func CreateGroupActionRuntimeArm1() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action5arm1",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1110,7 +1110,7 @@ func CreateGroupActionRuntimeArm2() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Status: apis.ActionStatus{
 			ActionID:      "Action1arm2",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -1156,7 +1156,7 @@ func CreateGroupActionRuntimeArm2() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action2arm2",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1204,7 +1204,7 @@ func CreateGroupActionRuntimeArm2() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action3arm2",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1252,7 +1252,7 @@ func CreateGroupActionRuntimeArm2() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action4arm2",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1300,7 +1300,7 @@ func CreateGroupActionRuntimeArm2() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action5arm2",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1695,7 +1695,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 		Status: apis.ActionStatus{
 			ActionID:      "Action1grab",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -1741,7 +1741,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action2grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1789,7 +1789,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action3grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1836,7 +1836,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action4grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1884,7 +1884,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action5grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1932,7 +1932,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action6grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -1980,7 +1980,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action7grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2028,7 +2028,7 @@ func CreateGroupActionRuntimeGrab() (*apis.Group, *apis.Action, *apis.Runtime, *
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "action8grab",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2297,7 +2297,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 		Status: apis.ActionStatus{
 			ActionID:      "Action1put",
 			Devices:       make(map[string]apis.DeviceStatus),
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 		},
 	}
 
@@ -2343,7 +2343,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action2put",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2391,7 +2391,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action3put",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2438,7 +2438,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action4put",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2486,7 +2486,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action5put",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2534,7 +2534,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action6put",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2582,7 +2582,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "Action7put",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
@@ -2630,7 +2630,7 @@ func CreateGroupActionRuntimePut() (*apis.Group, *apis.Action, *apis.Runtime, *a
 			},
 		},
 		Status: apis.ActionStatus{
-			RuntimeStatus: make([]apis.RuntimeStatus, 2),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
 			ActionID:      "action8put",
 			Devices:       make(map[string]apis.DeviceStatus),
 		},
