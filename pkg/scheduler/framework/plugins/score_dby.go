@@ -97,6 +97,9 @@ func NewScorePluginClient() ScorePluginClient {
 			Timeout: time.Second * 1200,
 			//走http1
 			Transport: &http.Transport{
+				MaxIdleConns:        100,              // 最大空闲连接数
+				MaxIdleConnsPerHost: 10,               // 每个主机的最大空闲连接数
+				IdleConnTimeout:     30 * time.Second, // 空闲连接的超时时间
 				//AllowHTTP: true, // 允许非加密的HTTP/2连接（测试环境可用，生产环境建议使用TLS加密）
 			},
 		},
