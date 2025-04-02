@@ -136,9 +136,9 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 	// 将Workflow写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error %v", err1)
 			return
 		}
 		logs.Errorf("Create group %s ,failed write to database , error: %v", name, err)
@@ -386,7 +386,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		To(h.GetGroup).
 		Doc("Get a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the group").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
 		Operation("Get group").
 		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil),
@@ -396,7 +396,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		To(h.CreateGroup).
 		Doc("Create a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the group").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
 		Param(ws.BodyParameter("Group", "The json string of the group object").DataType("string")).
 		Operation("Create group").
 		Returns(200, "OK", apis.Group{}).
@@ -407,7 +407,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		To(h.UpdateGroup).
 		Doc("Update a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the group").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
 		Param(ws.BodyParameter("Group", "The json string of the Group object").DataType("string")).
 		Operation("Update group").
 		Returns(200, "OK", apis.Group{}).
@@ -417,7 +417,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		To(h.PatchGroup).
 		Doc("Patch a group").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the group").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
 		Param(ws.BodyParameter("Group", "The json string of the Group field").DataType("string")).
 		Operation("Patch group").
 		Returns(200, "OK", apis.Group{}).
@@ -427,7 +427,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		To(h.DeleteGroup).
 		Doc("Delete a group").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.PathParameter("Name", "The name of the group").DataType("string")).
+		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
 		Operation("Delete group").
 		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil),

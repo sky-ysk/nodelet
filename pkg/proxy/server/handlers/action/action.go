@@ -138,7 +138,7 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 	if err != nil {
 		err1 := response.WriteError(http.StatusInternalServerError, err)
 		if err1 != nil {
-			logs.Errorf("failed to return a status code")
+			logs.Errorf("failed to return a status code ,error: %v", err1)
 			return
 		}
 		logs.Errorf("Create action %s ,failed write to database , error: %v", name, err)

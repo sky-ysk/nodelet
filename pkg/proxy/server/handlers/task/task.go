@@ -144,9 +144,9 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 	// 将 Task写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error : %v ", err1)
 			return
 		}
 		logs.Errorf("Create task %s  ,failed write to database , error: %v ", name, err)

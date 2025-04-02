@@ -140,9 +140,9 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	// 将Workflow写入数据库中
 	result, err = h.client.Create(context.TODO(), ew, metav1.CreateOptions{})
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error %v", err1)
 			return
 		}
 		logs.Errorf("Create workflow %s ,failed write to database ,error: %v", name, err)
