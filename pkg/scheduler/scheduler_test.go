@@ -16,6 +16,7 @@ import (
 	"hit.edu/framework/pkg/scheduler/utils"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -1884,5 +1885,19 @@ func TestEnd(t *testing.T) {
 	err = manager.NewAbilityManager(url2, abilityName3).TerminateAbility()
 	if err != nil {
 		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
+}
+
+func TestFile(t *testing.T) {
+	task := GenerateOrangeTask()
+	mashral, err := json.Marshal(task)
+	if err != nil {
+		fmt.Println(err)
+	}
+	// 将JSON数据写入文件
+	err = os.WriteFile("task.txt", mashral, 0644)
+	if err != nil {
+		fmt.Println("文件写入错误:", err)
+		return
 	}
 }
