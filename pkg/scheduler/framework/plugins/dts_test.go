@@ -827,37 +827,25 @@ func TestDTS(t *testing.T) {
 	}
 	p.SendGroups(context.Background(), task)
 
-	go p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode2")
-	go p.Score(context.Background(), &task.Spec.Groups[0], "EdgeNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[0], "EdgeNode2")
+	scoreChan := make(chan int64)
+	ctx := context.Background()
 
-	go p.Score(context.Background(), &task.Spec.Groups[1], "CloudNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[1], "CloudNode2")
-	go p.Score(context.Background(), &task.Spec.Groups[1], "EdgeNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[1], "EdgeNode2")
+	go testScore(ctx, "CloudNode1", p, scoreChan, &task.Spec.Groups[0])
+	go testScore(ctx, "CloudNode1", p, scoreChan, &task.Spec.Groups[1])
+	go testScore(ctx, "CloudNode2", p, scoreChan, &task.Spec.Groups[0])
+	go testScore(ctx, "CloudNode2", p, scoreChan, &task.Spec.Groups[1])
 
-	go p.Score(context.Background(), &task.Spec.Groups[2], "CloudNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[2], "CloudNode2")
-	go p.Score(context.Background(), &task.Spec.Groups[2], "EdgeNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[2], "EdgeNode2")
+	for {
+		select {
+		case score := <-scoreChan:
+			fmt.Println(score)
+		}
+	}
+}
 
-	go p.Score(context.Background(), &task.Spec.Groups[3], "CloudNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[3], "CloudNode2")
-	go p.Score(context.Background(), &task.Spec.Groups[3], "EdgeNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[3], "EdgeNode2")
-
-	go p.Score(context.Background(), &task.Spec.Groups[4], "CloudNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[4], "CloudNode2")
-	go p.Score(context.Background(), &task.Spec.Groups[4], "EdgeNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[4], "EdgeNode2")
-
-	go p.Score(context.Background(), &task.Spec.Groups[5], "CloudNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[5], "CloudNode2")
-	go p.Score(context.Background(), &task.Spec.Groups[5], "EdgeNode1")
-	go p.Score(context.Background(), &task.Spec.Groups[5], "EdgeNode2")
-	//time.Sleep(5 * time.Second)
-	//p.Score(context.Background(), &task.Spec.Groups[0], "CloudNode1")
+func testScore(ctx context.Context, node string, p *ScorePluginDBY, ch chan int64, group *apis.Group) {
+	s, _ := p.Score(ctx, group, node)
+	ch <- s
 }
 
 // From K8s

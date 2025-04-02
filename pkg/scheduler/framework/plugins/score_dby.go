@@ -41,13 +41,13 @@ func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, err
 	httpRes, err := client.client.Do(httpReq)
 	if err != nil {
 		fmt.Println(err)
-		logs.Fatal(err)
+		logs.Error(err.Error())
 		return nil, err
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logs.Fatal(err)
+			logs.Error(err.Error())
 		}
 	}(httpRes.Body)
 	//TODO 后续再确定下返回的细节
