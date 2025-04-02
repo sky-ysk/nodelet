@@ -30,12 +30,7 @@ func randomSuffix(length int) string {
 	return string(b)
 }
 
-// 测试部署-123-12
-// 3个group，3个Action，每个Action两个Runtime， 一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
-func TestDTS(t *testing.T) {
-	moduleName := "testModule"
-	logs.Init(moduleName)
-
+func genTask() *apis.Task {
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := fmt.Sprintf("Task1-%s", randomSuffix(5))  // 第一个Task的Name
 	task1ID := fmt.Sprintf("TaskID-1-%s", randomSuffix(5)) // 第一个Task的ID
@@ -786,7 +781,65 @@ func TestDTS(t *testing.T) {
 			},
 		},
 	}
+	return task
+}
 
+// 测试部署-123-12
+// 3个group，3个Action，每个Action两个Runtime， 一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
+func TestDTS(t *testing.T) {
+	moduleName := "testModule"
+	logs.Init(moduleName)
+	task := genTask()
+	req := BuildSendGroupsRequest(context.Background(), task)
+	mas, _ := json.Marshal(req)
+	fmt.Println(string(mas))
+
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 3600 * time.Second,
+	}
+
+	cs, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+
+	tc := cs.Core().Tasks("test")
+	p := &ScorePluginDBY{
+		clientSet:    cs,
+		taskClient:   tc,
+		pluginClient: NewScorePluginClient(),
+	}
+	p.SendGroups(context.Background(), task)
+	scoreChan := make(chan int64)
+	ctx := context.Background()
+	testScore(ctx, "CloudNode1", p, scoreChan, &task.Spec.Groups[0])
+}
+
+// 测试部署-123-12
+// 3个group，3个Action，每个Action两个Runtime， 一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
+func TestDTS1(t *testing.T) {
+	moduleName := "testModule"
+	logs.Init(moduleName)
+	task := genTask()
 	req := BuildSendGroupsRequest(context.Background(), task)
 	mas, _ := json.Marshal(req)
 	fmt.Println(string(mas))
