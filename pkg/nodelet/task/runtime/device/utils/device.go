@@ -19,7 +19,7 @@ type DeviceWorker interface {
 }
 
 // CheckDevice 检查设备情况
-func CheckDevice(devices map[string]*apis.Device) error {
+func CheckDevice1(devices map[string]*apis.Device) error {
 
 	for name, device := range devices {
 		logs.Infof("check device %s status", name)
@@ -40,6 +40,38 @@ func CheckDevice(devices map[string]*apis.Device) error {
 			logs.Errorf("device %s's task_id is not null", device.Name)
 			return fmt.Errorf("device %s's task_id is not null", device.Name)
 		}
+	}
+
+	return nil
+}
+
+func CheckDevice2(devices map[string]*apis.Device, groupID string) error {
+
+	for name, device := range devices {
+		logs.Infof("check device %s status", name)
+		status := device.Status
+		if status.Lock.Lock == false {
+			logs.Errorf("Device %s is not locked", device.Name)
+			return fmt.Errorf("device %s is not locked", device.Name)
+		}
+
+		// device状态为idle(系统内状态和运行时状态)
+		if status.Phase != apis.DeviceIdle {
+			logs.Errorf("device %s is busy", device.Name)
+			return fmt.Errorf("device %s is busy", device.Name)
+		}
+
+		// device的Task ID应该为空
+		if status.ActionID != "" {
+			logs.Errorf("device %s's task_id is not null", device.Name)
+			return fmt.Errorf("device %s's task_id is not null", device.Name)
+		}
+
+		if status.GroupID != groupID {
+			logs.Errorf("device %s's GroupID is wrong", device.Name)
+			return fmt.Errorf("device %s's GroupID is wrong", device.Name)
+		}
+
 	}
 
 	return nil

@@ -57,6 +57,9 @@ func PublishAbilityInst(Inst string, device *apis.Device, operation string) (api
 			return apis.Output{}, err
 		}
 		return output, nil
+	} else if parts[0] == "test" {
+		logs.Infof("this is a test ability")
+		return apis.Output{}, nil
 	}
 	logs.Errorf("inst is invalid")
 	return apis.Output{}, fmt.Errorf("inst is invalid")

@@ -2895,3 +2895,196 @@ func TestTerminate(t *testing.T) {
 		logs.Errorf("fail to create AbilityManager: %v", err)
 	}
 }
+
+// predict 的测试
+func CreateLockTestDevice() (*apis.Group, *apis.Action, *apis.Runtime, *apis.Device) {
+
+	// 创建device
+	device := &apis.Device{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deviceLockTest",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Device",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DeviceSpec{
+			Name: "deviceLockTest",
+		},
+		Status: apis.DeviceStatus{
+			DeviceID: "deviceLockTest",
+			Phase:    apis.DeviceIdle,
+			Status:   "idle",
+			ActionID: "",
+			Lock: apis.Lock{
+				Lock: true,
+				Ref:  2,
+			},
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+
+	runtime1 := &apis.Runtime{
+		Type:  apis.ByDevice,
+		Image: "test",
+		Name:  "RuntimeTest1",
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs:  []apis.Input{},
+	}
+
+	runtime2 := &apis.Runtime{
+		Type:  apis.ByDevice,
+		Image: "test",
+		Name:  "RuntimeTest2",
+		Devices: []apis.DeviceSpec{
+			device.Spec,
+		},
+		Outputs: make([]apis.Output, 1),
+		Inputs:  []apis.Input{},
+	}
+
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action1test",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action1test",
+			Runtimes: []apis.Runtime{
+				*runtime1,
+			},
+		},
+		Status: apis.ActionStatus{
+			ActionID:      "action1test",
+			Devices:       make(map[string]apis.DeviceStatus),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
+		},
+	}
+	action2 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "action2test",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Name: "action2test",
+			Runtimes: []apis.Runtime{
+				*runtime2,
+			},
+			Conditions: apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					apis.ConditionFormula{
+						LeftValue: apis.ConditionValue{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      action1.Name,
+						},
+						RightValue: apis.ConditionValue{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "",
+						},
+						Signal: apis.Equal,
+						Join:   "",
+						Result: apis.False,
+					},
+				},
+			},
+		},
+		Status: apis.ActionStatus{
+			ActionID:      "action2test",
+			Devices:       make(map[string]apis.DeviceStatus),
+			RuntimeStatus: make([]apis.RuntimeStatus, 1),
+		},
+	}
+
+	action1.Status.Devices["deviceLockTest"] = device.Status
+	action2.Status.Devices["deviceLockTest"] = device.Status
+	group := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "groupLockTest",
+			Namespace: "test",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.GroupSpec{
+			Name:     "groupLockTest",
+			Actions:  make([]apis.Action, 2),
+			Replicas: []int32{0, 0},
+		},
+		Status: apis.GroupStatus{
+			Node:    "test-node",
+			GroupID: "groupLockTest",
+			Phase:   apis.ReadyToDeploy,
+			ActionStatus: []apis.ActionStatus{
+				action1.Status,
+				action2.Status,
+			},
+		},
+	}
+	group.Spec.Actions[0] = *action1
+	group.Spec.Actions[1] = *action2
+	return group, action1, runtime1, device
+}
+
+func TestWorkFlowLock(t *testing.T) {
+	// 初始化logs
+	moduleName := "testModule"
+	logs.Init(moduleName)
+
+	ctx, _ := context.WithCancel(context.Background())
+
+	// 构造Task Exporter
+	tc := NewConfig("test-node")
+	clientSet, err := InitClient()
+	te, err := NewTaskExporter(tc, clientSet)
+	if err != nil {
+		panic(err)
+	}
+
+	deviceClient := clientSet.Core().Devices("test")
+	lockGroup, _, _, lockDevice := CreateLockTestDevice()
+	_, err = te.gropsClient.Create(ctx, lockGroup, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("create lockGroup failed")
+	}
+	_, err = deviceClient.Create(ctx, lockDevice, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("create lockDevice failed")
+	}
+	// 先把task exporter拉起来
+	go func() {
+		err2 := te.Run(ctx)
+		if err2 != nil {
+			logs.Error("fail to run task exporter")
+		}
+	}()
+
+	select {}
+}
