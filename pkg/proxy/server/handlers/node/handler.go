@@ -5,13 +5,14 @@ import (
 )
 
 const (
-	NAMESPACE  = "framework"
-	GROUP      = "v1"
-	TAG        = "Node"
-	API_PREFIX = "/" + NAMESPACE + "/" + GROUP
-	NODES_PATH = API_PREFIX + "/nodes"
-	NODE_PATH  = API_PREFIX + "/node"
+	//NAMESPACE  = "framework"
+	GROUP = "v1"
+	TAG   = "Node"
+	//API_PREFIX = "/" + NAMESPACE + "/" + GROUP
+	NODES_PATH = "/apis/resources/v1/namespaces/nodes"
+	NODE_PATH  = "/apis/resources/v1/namespaces/"
 	NODE_NAME  = "Name"
+	NAMESPACE  = "Namespace"
 )
 
 type Handler interface {

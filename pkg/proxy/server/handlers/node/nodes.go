@@ -19,7 +19,7 @@ type NodesHandler struct {
 var _ Handler = &NodesHandler{}
 
 func NewNodesHandler(clientSet *clients.ClientSet) *NodesHandler {
-	c := clientSet.Core().Nodes(apis.NamespaceAll)
+	c := clientSet.Core().Nodes(apis.NamespaceAll) // apis.NamespaceAll
 	return &NodesHandler{
 		client: c,
 	}
@@ -55,9 +55,10 @@ func (h *NodesHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("").
+	ws.Route(ws.GET("/{Namespace}/nodes").
 		Doc("Get all nodes").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.PathParameter("Namespace", "The namespace of the nodes").DataType("string")).
 		To(h.GetNodes).
 		Operation("Get nodes").
 		Returns(200, "OK", []apis.Node{}).
