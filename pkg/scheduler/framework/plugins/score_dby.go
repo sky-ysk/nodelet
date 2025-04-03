@@ -94,7 +94,7 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 func NewScorePluginClient() ScorePluginClient {
 	return ScorePluginClient{
 		&http.Client{
-			Timeout: time.Second * 1200,
+			Timeout: time.Second * 3600 * 24,
 			//走http1
 			Transport: &http.Transport{
 				MaxIdleConns:        100,              // 最大空闲连接数
