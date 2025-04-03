@@ -497,17 +497,24 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								//grou.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex].Waiting = false
 								grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false
 								if runtime.EnableFineGrainedControl {
-									logs.Info("****************************************ABCDSDSADSAD**************************")
-									if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
+									if grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Initing {
+										logs.Info("****************************************KKKKKKKKSS**************************")
+										go gmo.runtimeManager.RestoreData(group, action, runtime, actionIndex, runtimeIndex)
+									} else {
+										logs.Info("****************************************ABCDSDSADSAD**************************")
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
-										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
 									}
+									//logs.Info("****************************************ABCDSDSADSAD**************************")
+									//if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
+									//	go gmo.runtimeManager.StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
+									//	grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
+									//}
 								} else {
 									logs.Info("****************************************1234554564**********************")
-									if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
-										go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
-										grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
-									}
+									//if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
+									go gmo.runtimeManager.Run(group, action, runtime, actionIndex, runtimeIndex)
+									//grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
+									//}
 								}
 							}
 						}
