@@ -251,8 +251,8 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		//设置监听通道一小时关闭
-		Timeout: 3600 * time.Second,
+		//设置监听通道一天关闭
+		Timeout: 24 * 3600 * time.Second,
 	}
 
 	//创建ClientSet
@@ -268,7 +268,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 	taskClient := clientSet.Core().Tasks("test")
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
-	var watchTimeout int64 = 3600
+	var watchTimeout int64 = 3600 * 24
 	watchOptions := metav1.ListOptions{
 		TimeoutSeconds: &watchTimeout,
 	}
@@ -335,7 +335,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
 		//设置监听通道一小时关闭
-		Timeout: 3600 * time.Second,
+		Timeout: 24 * 3600 * time.Second,
 	}
 
 	//创建ClientSet
@@ -351,7 +351,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	groupClient := clientSet.Core().Groups("test")
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
-	var watchTimeout int64 = 3600
+	var watchTimeout int64 = 24 * 3600
 	watchOptions := metav1.ListOptions{
 		TimeoutSeconds: &watchTimeout,
 	}
