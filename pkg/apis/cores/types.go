@@ -9,7 +9,7 @@ import (
 
 const (
 	NamespaceDefault string = "defaultNamespace"
-	NamespaceAll     string = ""
+	NamespaceAll     string = "test"
 )
 
 // 定义框架基础资源
@@ -30,6 +30,7 @@ type Quantity struct {
 	// 单位
 	format string
 }
+
 //now ????
 
 // TODO: 独立配置
