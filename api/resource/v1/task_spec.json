@@ -19,5 +19,5 @@
       "items" : {"$ref" :  "./group.json"}
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

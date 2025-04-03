@@ -5,5 +5,5 @@
     "type" : {"type" :  "string"} ,
     "address" : {"type" :  "string"}
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

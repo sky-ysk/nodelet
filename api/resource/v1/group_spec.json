@@ -19,5 +19,5 @@
       "items" : {"$ref" :  "./action.json"}
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

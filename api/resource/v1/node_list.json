@@ -16,5 +16,5 @@
     "remainingItemCount" : {"type" :  "string"}
   },
   "required" : ["items"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

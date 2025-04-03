@@ -11,6 +11,6 @@
       "items" : {"$ref" :  "./task.json"}
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 
 }

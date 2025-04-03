@@ -11,5 +11,5 @@
     "signal" : {"type" :  "string"},
     "join" : {"type" :  "string"}
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

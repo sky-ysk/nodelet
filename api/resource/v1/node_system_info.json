@@ -12,5 +12,5 @@
     "os" : {"type" :  "string"} ,
     "architecture" : {"type" :  "string"}
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

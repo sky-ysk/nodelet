@@ -20,6 +20,6 @@
     },
     "enable_control" : {"type" :  "boolean"}
   },
-  "additionalProperties": false
+  "additionalProperties": true
 
 }

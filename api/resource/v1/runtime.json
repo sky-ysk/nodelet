@@ -40,5 +40,5 @@
       "$ref" :  "./output.json"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

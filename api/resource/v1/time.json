@@ -7,5 +7,5 @@
     }
   },
   "required": ["time"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

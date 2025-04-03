@@ -18,5 +18,5 @@
         "$ref" :  "./time.json"
       }
     },
-    "additionalProperties": false
+    "additionalProperties": true
 }

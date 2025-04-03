@@ -6,5 +6,5 @@
       "$ref" :  "./group_spec.json"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

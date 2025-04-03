@@ -7,5 +7,5 @@
     "value" : {"type" :  "string"} ,
     "value_type" : {"type" :  "string"}
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

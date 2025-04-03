@@ -17,5 +17,5 @@
       "$ref" :  "./node_system_info.json"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
