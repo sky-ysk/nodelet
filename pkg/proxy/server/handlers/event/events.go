@@ -19,7 +19,7 @@ type EventsHandler struct {
 var _ Handler = &EventsHandler{}
 
 func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
-	c := clientSet.Core().Events(apis.NamespaceAll)
+	c := clientSet.Core().Events("test") //apis.NamespaceAll
 	return &EventsHandler{
 		client: c,
 	}
@@ -55,9 +55,10 @@ func (h *EventsHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("").
+	ws.Route(ws.GET("/{Namespace}/event").
 		Doc("Get all events").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the events").DataType("string")).
 		To(h.GetEvents).
 		Operation("Get events").
 		Returns(200, "OK", []apis.Event{}).

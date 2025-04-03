@@ -10,7 +10,7 @@ const (
 	TAG   = "Node"
 	//API_PREFIX = "/" + NAMESPACE + "/" + GROUP
 	NODES_PATH = "/apis/resources/v1/namespaces/nodes"
-	NODE_PATH  = "/apis/resources/v1/namespaces/"
+	NODE_PATH  = "/apis/resources/v1/namespaces/node"
 	NODE_NAME  = "Name"
 	NAMESPACE  = "Namespace"
 )

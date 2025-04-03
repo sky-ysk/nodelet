@@ -35,7 +35,7 @@ var _ Handler = &NodeHandler{}
 //	}
 //}
 
-// NewNodeHandler 创建一个 ActionHandler
+// NewNodeHandler 创建一个 NodeHandler
 func NewNodeHandler(clientSet *clients.ClientSet) *NodeHandler {
 	return &NodeHandler{
 		clients:   make(map[string]core.NodeInterface),
@@ -230,6 +230,7 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 		logs.Errorf("Create node %s ，failed write to database ,error: %v", name, err)
 		return
 	}
+
 	// 返回结果
 	err = response.WriteEntity(result)
 	if err != nil {

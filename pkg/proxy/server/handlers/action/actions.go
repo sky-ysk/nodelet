@@ -19,7 +19,7 @@ type ActionsHandler struct {
 var _ Handler = &ActionsHandler{}
 
 func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
-	c := clientSet.Core().Actions(apis.NamespaceAll)
+	c := clientSet.Core().Actions("test") // apis.NamespaceAll
 	return &ActionsHandler{
 		client: c,
 	}
@@ -55,9 +55,10 @@ func (h *ActionsHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("").
+	ws.Route(ws.GET("/{Namespace}/actions").
 		Doc("Get all actions").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		To(h.GetActions).
 		Operation("Get actions").
 		Returns(200, "OK", []apis.Action{}).

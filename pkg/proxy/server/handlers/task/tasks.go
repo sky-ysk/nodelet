@@ -19,7 +19,7 @@ type TasksHandler struct {
 var _ Handler = &TasksHandler{}
 
 func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
-	c := clientSet.Core().Tasks(apis.NamespaceAll)
+	c := clientSet.Core().Tasks("test") //apis.NamespaceAll
 	return &TasksHandler{
 		client: c,
 	}
@@ -57,6 +57,7 @@ func (h *TasksHandler) NewGetWebService() *restful.WebService {
 		//Docs
 		Doc("Get all tasks").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the tasks").DataType("string")).
 		To(h.GetTasks).
 		Operation("Get tasks").
 		Returns(200, "OK", []apis.Task{}).

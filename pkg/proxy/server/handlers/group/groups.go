@@ -19,7 +19,7 @@ type GroupsHandler struct {
 var _ Handler = &GroupsHandler{}
 
 func NewGroupsHandler(clientSet *clients.ClientSet) *GroupsHandler {
-	c := clientSet.Core().Groups(apis.NamespaceAll)
+	c := clientSet.Core().Groups("test") // apis.NamespaceAll
 	return &GroupsHandler{
 		client: c,
 	}
@@ -53,9 +53,10 @@ func (h *GroupsHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("").
+	ws.Route(ws.GET("/{Namespace}/groups").
 		Doc("Get all groups").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the groups").DataType("string")).
 		To(h.GetGroups).
 		Operation("Get groups").
 		Returns(200, "OK", []apis.Group{}).

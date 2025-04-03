@@ -18,12 +18,8 @@ type DevicesHandler struct {
 
 var _ Handler = &DevicesHandler{}
 
-//func NewDevicesHandler() *DevicesHandler {
-//	return &DevicesHandler{}
-//}
-
 func NewDevicesHandler(clientSet *clients.ClientSet) *DevicesHandler {
-	c := clientSet.Core().Devices(apis.NamespaceAll)
+	c := clientSet.Core().Devices("test") //apis.NamespaceAll
 	return &DevicesHandler{
 		client: c,
 	}
@@ -59,9 +55,10 @@ func (h *DevicesHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("").
+	ws.Route(ws.GET("/{Namespace}/devices").
 		Doc("Get all devices").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the devices").DataType("string")).
 		To(h.GetDevices).
 		Operation("Get devices").
 		Returns(200, "OK", []apis.Device{}).

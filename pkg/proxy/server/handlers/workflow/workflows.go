@@ -19,7 +19,7 @@ type WorkflowsHandler struct {
 var _ Handler = &WorkflowsHandler{}
 
 func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
-	c := clientSet.Core().Workflows(apis.NamespaceAll)
+	c := clientSet.Core().Workflows("test") //apis.NamespaceAll
 	return &WorkflowsHandler{
 		client: c,
 	}
@@ -73,22 +73,24 @@ func (h *WorkflowsHandler) DeleteAllWorkflow(request *restful.Request, response 
 
 func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path(WorkflowsPath).
+	ws.Path(WORKFLOWS_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("").
+	ws.Route(ws.GET("/{Namespace}/workflows").
 		Doc("Get all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the workflows").DataType("string")).
 		To(h.GetWorkflows).
 		Operation("Get workflows").
 		Returns(200, "OK", []apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.DELETE("").
+	ws.Route(ws.DELETE("/{Namespace}/workflows").
 		Doc("Delete all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the workflows").DataType("string")).
 		To(h.DeleteAllWorkflow).
 		Operation("Delete workflows").
 		Returns(200, "OK", []apis.Workflow{}).
