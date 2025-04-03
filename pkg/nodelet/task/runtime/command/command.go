@@ -81,7 +81,12 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 
 	// TODO: 不同系统平台下的CMD，根据运行平台选择对应路径下的解释器等
 	//判断程序所在Linux还是Windows环境，决定python等解释器路径
-	// 创建命令
+	// 创建命令,填入input的值
+	input := runtime.Inputs
+	for i := range input {
+		args = append(args, input[i].Value)
+	}
+
 	envVars := runtime.EnvVar
 	if cmd == "python" {
 		for _, value := range envVars {

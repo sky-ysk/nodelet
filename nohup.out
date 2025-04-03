@@ -1,32 +1,224 @@
-[90m2024-12-31 18:28:19[0m [31mERR[0m [36mmodule=[0mcmd/scheduler/app/server.go:89 [36mmsg=[0m"Failed to start scheduler"
-[90m2024-12-31 18:28:19[0m [31mERR[0m [36mmodule=[0mcmd/scheduler/app/server.go:89 [36mmsg=[0m"Failed to start scheduler"
-Error: 
-Error: 
-[90m2024-12-31 18:28:19[0m [31mERR[0m [36mmodule=[0mcmd/scheduler/app/server.go:89 [36mmsg=[0m"Failed to start scheduler"
-Error: 
-&{map[{ v1 APIResourceList}:0x9f42a0 { v1 Status}:0xa20020 {resources __internal WatchEvent}:0x9e4140 {resources v1 Action}:0xa094a0 {resources v1 ActionList}:0x9f33a0 {resources v1 CreateOptions}:0xa09f20 {resources v1 DeleteOptions}:0xa1b060 {resources v1 GetOptions}:0x9e4000 {resources v1 Group}:0xa09560 {resources v1 GroupList}:0x9f3460 {resources v1 ListOptions}:0xa2e260 {resources v1 Node}:0xa11640 {resources v1 NodeList}:0xa05120 {resources v1 PatchOptions}:0x9f4060 {resources v1 Status}:0xa20020 {resources v1 Task}:0xa09620 {resources v1 TaskList}:0x9f3520 {resources v1 UpdateOptions}:0xa09fe0 {resources v1 WatchEvent}:0x9e41e0 {resources v1 Workflow}:0xa096e0 {resources v1 WorkflowList}:0x9f36a0] map[0x9e4000:[{resources v1 GetOptions}] 0x9e4140:[{resources __internal WatchEvent}] 0x9e41e0:[{resources v1 WatchEvent}] 0x9f33a0:[{resources v1 ActionList}] 0x9f3460:[{resources v1 GroupList}] 0x9f3520:[{resources v1 TaskList}] 0x9f36a0:[{resources v1 WorkflowList}] 0x9f4060:[{resources v1 PatchOptions}] 0x9f42a0:[{ v1 APIResourceList}] 0xa05120:[{resources v1 NodeList}] 0xa094a0:[{resources v1 Action}] 0xa09560:[{resources v1 Group}] 0xa09620:[{resources v1 Task}] 0xa096e0:[{resources v1 Workflow}] 0xa09f20:[{resources v1 CreateOptions}] 0xa09fe0:[{resources v1 UpdateOptions}] 0xa11640:[{resources v1 Node}] 0xa1b060:[{resources v1 DeleteOptions}] 0xa20020:[{resources v1 Status} { v1 Status}] 0xa2e260:[{resources v1 ListOptions}]] map[0x9f42a0:{ v1 APIResourceList} 0xa20020:{ v1 Status}] map[APIResourceList:0x9f42a0 Status:0xa20020] map[] map[] 0xc000138000 map[] [{resources v1} { v1}] pkg/apimachinery/runtime/scheme.go:67}
-watching
-&{map[{ v1 APIResourceList}:0x9f42a0 { v1 Status}:0xa20020 {resources __internal WatchEvent}:0x9e4140 {resources v1 Action}:0xa094a0 {resources v1 ActionList}:0x9f33a0 {resources v1 CreateOptions}:0xa09f20 {resources v1 DeleteOptions}:0xa1b060 {resources v1 GetOptions}:0x9e4000 {resources v1 Group}:0xa09560 {resources v1 GroupList}:0x9f3460 {resources v1 ListOptions}:0xa2e260 {resources v1 Node}:0xa11640 {resources v1 NodeList}:0xa05120 {resources v1 PatchOptions}:0x9f4060 {resources v1 Status}:0xa20020 {resources v1 Task}:0xa09620 {resources v1 TaskList}:0x9f3520 {resources v1 UpdateOptions}:0xa09fe0 {resources v1 WatchEvent}:0x9e41e0 {resources v1 Workflow}:0xa096e0 {resources v1 WorkflowList}:0x9f36a0] map[0x9e4000:[{resources v1 GetOptions}] 0x9e4140:[{resources __internal WatchEvent}] 0x9e41e0:[{resources v1 WatchEvent}] 0x9f33a0:[{resources v1 ActionList}] 0x9f3460:[{resources v1 GroupList}] 0x9f3520:[{resources v1 TaskList}] 0x9f36a0:[{resources v1 WorkflowList}] 0x9f4060:[{resources v1 PatchOptions}] 0x9f42a0:[{ v1 APIResourceList}] 0xa05120:[{resources v1 NodeList}] 0xa094a0:[{resources v1 Action}] 0xa09560:[{resources v1 Group}] 0xa09620:[{resources v1 Task}] 0xa096e0:[{resources v1 Workflow}] 0xa09f20:[{resources v1 CreateOptions}] 0xa09fe0:[{resources v1 UpdateOptions}] 0xa11640:[{resources v1 Node}] 0xa1b060:[{resources v1 DeleteOptions}] 0xa20020:[{resources v1 Status} { v1 Status}] 0xa2e260:[{resources v1 ListOptions}]] map[0x9f42a0:{ v1 APIResourceList} 0xa20020:{ v1 Status}] map[APIResourceList:0x9f42a0 Status:0xa20020] map[] map[] 0xc000290000 map[] [{resources v1} { v1}] pkg/apimachinery/runtime/scheme.go:67}
-watching
-Usage:
-  scheduler [flags]
-
-Flags:
-  -h, --help   help for scheduler
-
-Usage:
-  scheduler [flags]
-
-Flags:
-  -h, --help   help for scheduler
-
-Usage:
-  scheduler [flags]
-
-Flags:
-  -h, --help   help for scheduler
-
-[90m2024-12-31 18:28:19[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"
-[90m2024-12-31 18:29:30[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"
-[90m2024-12-31 18:29:39[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"
-[90m2024-12-31 18:29:45[0m [32mINF[0m [36mField.Integer=[0m0 [36mField.Interface=[0mnull [36mField.Key=[0mpath [36mField.String=[0m/apis/resources/v1/Test/workflows [36mField.Type=[0m15 [36mmodule=[0mpkg/apiserver/server/handler.go:73 [36mmsg=[0m"Get Http Request with Path"
+2025/04/03 19:07:13 proto: duplicate proto type registered: k8s.io.apimachinery.pkg.runtime.RawExtension
+2025/04/03 19:07:13 proto: duplicate proto type registered: k8s.io.apimachinery.pkg.runtime.TypeMeta
+2025/04/03 19:07:13 proto: duplicate proto type registered: k8s.io.apimachinery.pkg.runtime.Unknown
+[90m2025-04-03 19:07:13.970[0m [32mINF[0m [36mmodule=[0mcmd/nodelet/app/server.go:54 [36mmsg=[0m"Starting Resourcelet\t | version\t | v0.0.0"
+[90m2025-04-03 19:07:13.970[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/node/node_exporter.go:46 [36mmsg=[0m"Init nodeExporter module"
+[90m2025-04-03 19:07:13.970[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/node/collector/collector.go:48 [36mmsg=[0m"New nodeCollector"
+[90m2025-04-03 19:07:13.972[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/task_exporter.go:122 [36mmsg=[0m"Init task exporter"
+[90m2025-04-03 19:07:13.973[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_handler.go:62 [36mmsg=[0m"GroupHandler component start"
+[90m2025-04-03 19:07:13.973[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:77 [36mmsg=[0m"GroupMonitor component start"
+[90m2025-04-03 19:07:13.973[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:573 [36mmsg=[0m"Migrated queue start checking"
+[90m2025-04-03 19:07:13.973[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:170 [36mmsg=[0m"Pending queue start checking"
+[90m2025-04-03 19:07:13.973[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:383 [36mmsg=[0m"Running queue start checking"
+[90m2025-04-03 19:07:13.974[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:238 [36mmsg=[0m"Copy Pending queue start checking"
+[90m2025-04-03 19:07:13.974[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:624 [36mmsg=[0m"Completed queue start checking"
+[90m2025-04-03 19:07:13.974[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:669 [36mmsg=[0m"Error queue start checking"
+[90m2025-04-03 19:07:29.937[0m [31mERR[0m [36mmodule=[0mpkg/nodelet/node/node_exporter.go:69 [36mmsg=[0m"Get node list error"
+[90m2025-04-03 19:07:29.938[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": read tcp [::1]:58306->[::1]:10000: read: connection reset by peer[0m
+[90m2025-04-03 19:07:29.939[0m [31mERR[0m [1mCreate node error:Post "http://localhost:10000/apis/resources/v1/namespaces/test/nodes?timeout=1h0m0s": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.039[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.140[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.242[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.343[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.444[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.545[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.646[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.748[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.849[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:30.950[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.052[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.153[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.254[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.355[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.457[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.558[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.659[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.760[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.861[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:31.964[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.065[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.166[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.267[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.368[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.469[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.570[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.672[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.773[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.875[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:32.976[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.077[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.179[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.280[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.381[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.482[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.584[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.685[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.786[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.887[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:33.989[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.091[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.192[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.293[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.394[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.496[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.597[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.698[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.799[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:34.901[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.002[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.103[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.205[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.306[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.407[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.509[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.611[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.712[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.813[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:35.914[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.016[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.117[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.218[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.319[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.421[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.522[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.623[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.724[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.825[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:36.927[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.028[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.130[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.231[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.332[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.433[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.535[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.636[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.737[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.838[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:37.940[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.041[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.142[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.243[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.344[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.445[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.547[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.647[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.748[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.849[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:38.951[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.054[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.155[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.257[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.358[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.459[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.561[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.662[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.763[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.864[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:39.965[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.067[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.168[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.270[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.372[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.473[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.574[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.676[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.777[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.879[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:40.980[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.082[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.183[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.284[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.385[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.486[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.588[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.689[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.790[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.892[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:41.994[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.095[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.196[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.298[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.399[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.500[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.601[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.703[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.804[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:42.905[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.006[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.108[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.209[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.310[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.411[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.513[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.614[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.715[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.817[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:43.918[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.020[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.121[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.223[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.324[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.425[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.526[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.628[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.729[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.830[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:44.931[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.033[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.134[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.236[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.337[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.438[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.540[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.641[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.742[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.843[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:45.945[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.046[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.147[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.248[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.350[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.451[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.552[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.654[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.755[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.856[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:46.958[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.060[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.162[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.263[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.364[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.465[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.566[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.668[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.769[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.870[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:47.971[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.072[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.174[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.275[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.376[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.477[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.578[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.680[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.781[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.882[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:48.983[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.085[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.187[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.288[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.389[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.490[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.591[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.693[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.795[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.896[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:49.997[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:50.098[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:50.200[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:50.301[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:50.402[0m [31mERR[0m [1mList task err:Get "http://localhost:10000/apis/resources/v1/namespaces/test/groups": dial tcp [::1]:10000: connect: connection refused[0m
+[90m2025-04-03 19:07:50.487[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:112 [36mmsg=[0m"GroupMonitor exiting due to context cancel"
+[90m2025-04-03 19:07:50.487[0m [31mERR[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_handler.go:84 [36mmsg=[0m"Context canceled, exiting loop iteration"
+[90m2025-04-03 19:07:50.487[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_handler.go:68 [36mmsg=[0m"Context canceled, exiting GroupHandler loop"
+[90m2025-04-03 19:07:50.487[0m [32mINF[0m [36mmodule=[0mpkg/nodelet/task/monitor/group_monitor.go:132 [36mmsg=[0m"GroupMonitor exiting due to context cancel"

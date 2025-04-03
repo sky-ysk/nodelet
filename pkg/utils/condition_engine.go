@@ -2,16 +2,29 @@ package utils
 
 import (
 	"errors"
+
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
 // 为后续做成有状态的类留出扩展
 type ConditionEngine struct {
+	nodeClient  core.NodeInterface //需要查node信息
+	groupClient  core.GroupInterface
+	taskClient   core.TaskInterface
+	actionClient core.ActionInterface
+	stopCh       chan struct{}
 }
 
-func NewConditionEngine() *ConditionEngine {
-	return &ConditionEngine{}
+func NewConditionEngine(nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface) *ConditionEngine {
+	return &ConditionEngine{
+		nodeClient: nodeClient,
+		taskClient: taskClient,
+		groupClient: groupClient,
+		actionClient: actionClient,
+		stopCh: make(chan struct{}),
+	}
 }
 
 func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis.ResultType, error) {
@@ -34,6 +47,17 @@ func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis
 
 func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis.ResultType, error) {
 
+	switch formula.Type {
+	case apis.NodeDependency:
+		
+	case apis.DataDependency:
+
+	case apis.ResourceDependency:
+
+	case apis.ProgramDependency:
+
+	}
+
 	leftReady, leftVal := engine.extractValue(formula.RightValue)
 	rightReady, rightVal := engine.extractValue(formula.LeftValue)
 	if !leftReady || !rightReady {
@@ -44,7 +68,7 @@ func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis
 			return apis.False, nil
 		}
 		return apis.True, nil
-	} else if formula.Signal == apis.Equal {
+	} else if formula.Signal != apis.Equal {
 		if leftVal == rightVal {
 			return apis.False, nil
 		}

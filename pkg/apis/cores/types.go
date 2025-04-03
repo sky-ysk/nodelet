@@ -371,7 +371,7 @@ type ConditionValue struct {
 	//  	比如前序任务的执行状态
 	//		或者循环计数器的数量
 	// 		或者任务的执行结果
-	// TODO: 使用DataType代替，更新相关文档
+	// TODO: 使用DataType代替，更新相关文档：常量、Result、Local
 	Type DataType `json:"type,omitempty" yaml:"type"` //ConditionValueType
 	//
 	Name string `json:"name,omitempty" yaml:"name"`
@@ -383,7 +383,10 @@ type ConditionValue struct {
 	// +Optional
 	ValueType ValueType `json:"value_type,omitempty" yaml:"value_type"`
 	//从对应的地方获取需要的数据
+	//来源于哪个group/action/runtime
 	From string `json:"from,omitempty" yaml:"from"`
+	//来源于上面对象的哪个字段
+	Field string `json:"field,omitempty" yaml:"field"`
 }
 
 // 条件连接符，支持大小写
@@ -418,6 +421,7 @@ const (
 // 输出结果为Bool类型的值
 // TODO: Value格式检查和调整，比如存在空格的情况
 type ConditionFormula struct {
+	Type conditionType `json:"type,omitempty" yaml:"type"`
 	LeftValue  ConditionValue `json:"left_value,omitempty" yaml:"left_value"`
 	RightValue ConditionValue `json:"right_value,omitempty" yaml:"right_value"`
 	// == 或 !=
@@ -1695,3 +1699,7 @@ const (
 	ProgramDependency conditionType = "ProgramDependency"
 )
 
+//数据文件存储位置，后续可更改
+const (
+	BasePath = "../tmp/data/"
+)

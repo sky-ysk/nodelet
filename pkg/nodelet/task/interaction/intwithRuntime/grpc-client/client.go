@@ -108,7 +108,7 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 	result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	for err != nil {
 		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
-		logs.Info("retry to runAppStart")
+		logs.Trace("retry to runAppStart")
 		result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
 	}
 	logs.Infof("runAppStart: result:%v", result)
