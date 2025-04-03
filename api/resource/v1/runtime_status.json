@@ -15,6 +15,5 @@
       "$ref" :  "./time.json"
     }
   },
-  "required" : ["name" , "process_id" , "phase" , "start" , "finish" , "last_time"],
   "additionalProperties": false
 }

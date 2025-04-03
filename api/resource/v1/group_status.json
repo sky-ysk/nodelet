@@ -21,6 +21,5 @@
       "$ref" :  "./time.json"
     }
   },
-  "required" : ["group_id" , "belongs" , "phase" , "action_status" , "start" , "finish" , "last_time"],
   "additionalProperties": false
 }

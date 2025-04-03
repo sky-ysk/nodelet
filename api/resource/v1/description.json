@@ -8,6 +8,5 @@
     },
     "docs" : {"type" :  "string"}
   },
-  "required" : ["label" , "docs"],
   "additionalProperties": false
 }

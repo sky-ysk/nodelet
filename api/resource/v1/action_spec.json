@@ -20,7 +20,6 @@
     },
     "enable_control" : {"type" :  "boolean"}
   },
-  "required" : ["name" , "parents" , "desc" , "type" , "conditions" , "runtimes" , "enable_control"],
   "additionalProperties": false
 
 }

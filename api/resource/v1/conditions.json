@@ -7,6 +7,5 @@
       "items" : {"$ref" :  "./condition_formula.json"}
     }
   },
-  "required" : ["formulas"],
   "additionalProperties": false
 }

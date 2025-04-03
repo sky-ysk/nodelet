@@ -40,6 +40,5 @@
       "$ref" :  "./output.json"
     }
   },
-  "required" : ["resources" , "devices" , "data" , "scenes" , "type" , "name" , "image" ,"command" , "args" , "env_var" , "inputs" , "outputs"],
   "additionalProperties": false
 }

@@ -14,9 +14,5 @@
         "maximum": 9223372036854775807
       }
     },
-    "required": [
-      "names",
-      "size"
-    ],
     "additionalProperties": false
 }

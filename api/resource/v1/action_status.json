@@ -41,6 +41,5 @@
       "$ref" :  "./time.json"
     }
   },
-  "required" : ["action_id" , "belongs" , "phase" , "resources" , "devices" , "data" , "scenes" ,"status" , "results" , "start" , "finish" , "last_time"],
   "additionalProperties": false
 }
