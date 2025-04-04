@@ -83,7 +83,7 @@ func (h *GroupHandler) GetGroup(request *restful.Request, response *restful.Resp
 	}
 
 	// 从url中获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -295,7 +295,7 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 		}
 	}
 
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -390,7 +390,7 @@ func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.R
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -458,7 +458,7 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -531,57 +531,57 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("/{Namespace}/group").
+	ws.Route(ws.GET("/").
 		To(h.GetGroup).
 		Doc("Get a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the group").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the group").DataType("string")).
 		Operation("Get group").
 		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.POST("/{Namespace}/group").
+	ws.Route(ws.POST("/").
 		To(h.CreateGroup).
 		Doc("Create a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the group").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the group").DataType("string")).
 		Param(ws.BodyParameter("Group", "The json string of the group object").DataType("string")).
 		Operation("Create group").
 		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PUT("/{Namespace}/group").
+	ws.Route(ws.PUT("/").
 		To(h.UpdateGroup).
 		Doc("Update a group with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the group").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the group").DataType("string")).
 		Param(ws.BodyParameter("Group", "The json string of the Group object").DataType("string")).
 		Operation("Update group").
 		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.PATCH("/{Namespace}/group").
+	ws.Route(ws.PATCH("/").
 		To(h.PatchGroup).
 		Doc("Patch a group").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the group").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the group").DataType("string")).
 		Param(ws.BodyParameter("Group", "The json string of the Group field").DataType("string")).
 		Operation("Patch group").
 		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.DELETE("/{Namespace}/group").
+	ws.Route(ws.DELETE("/").
 		To(h.DeleteGroup).
 		Doc("Delete a group").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the group").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the group").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the group").DataType("string")).
 		Operation("Delete group").
 		Returns(200, "OK", apis.Group{}).
 		Returns(400, "Not Found", nil),

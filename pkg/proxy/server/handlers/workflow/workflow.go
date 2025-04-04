@@ -85,7 +85,7 @@ func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restfu
 	}
 
 	// 从url中获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -299,7 +299,7 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 		}
 	}
 
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -394,7 +394,7 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -461,7 +461,7 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -534,59 +534,59 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("/{Namespace}/workflow").
+	ws.Route(ws.GET("/").
 		To(h.GetWorkflow).
 		Doc("Get a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Operation("Get workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.POST("/{Namespace}/workflow").
+	ws.Route(ws.POST("/").
 		To(h.CreateWorkflow).
 		Doc("Create a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Create workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PUT("/{Namespace}/workflow").
+	ws.Route(ws.PUT("/").
 		To(h.UpdateWorkflow).
 		Doc("Update a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Update workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PATCH("/{Namespace}/workflow").
+	ws.Route(ws.PATCH("/").
 		To(h.PatchWorkflow).
 		Doc("Patch a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow field").DataType("string")).
 		Operation("Patch workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.DELETE("/{Namespace}/workflow").
+	ws.Route(ws.DELETE("/").
 		To(h.DeleteWorkflow).
 		Doc("Delete a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Operation("Delete workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil))

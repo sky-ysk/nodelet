@@ -84,7 +84,7 @@ func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Respon
 	}
 
 	// 从url中获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -294,7 +294,7 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 		}
 	}
 
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -388,7 +388,7 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -454,7 +454,7 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -529,59 +529,59 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET(fmt.Sprint("{Namespace}/node")).
+	ws.Route(ws.GET(fmt.Sprint("/")).
 		To(h.GetNode).
 		Doc("Get a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the node").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Operation("Get node").
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.POST(fmt.Sprint("/{Namespace}/node")).
+	ws.Route(ws.POST(fmt.Sprint("/")).
 		To(h.CreateNode).
 		Doc("Create a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Operation("Create node").
 		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the node").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PUT(fmt.Sprintf("/{Namespace}/node")).
+	ws.Route(ws.PUT(fmt.Sprintf("/")).
 		To(h.UpdateNode).
 		Doc("Update a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the node").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Operation("Update node").
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PATCH(fmt.Sprintf("/{Namespace}/node")).
+	ws.Route(ws.PATCH(fmt.Sprintf("/")).
 		To(h.PatchNode).
 		Doc("Patch a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the node").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Operation("Patch node").
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.DELETE(fmt.Sprintf("/{Namespace}/node")).
+	ws.Route(ws.DELETE(fmt.Sprintf("/")).
 		To(h.DeleteNode).
 		Doc("Delete a node with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the node").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the node").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Operation("Delete node").
 		Returns(200, "OK", apis.Node{}).
 		Returns(400, "Not Found", nil))

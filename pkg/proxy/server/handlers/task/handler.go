@@ -5,19 +5,14 @@ import (
 )
 
 const (
-	//NAMESPACE  = "framework"
-	//GROUP      = "v1"
-	//TAG        = "Task"
-	//API_PREFIX = "/" + NAMESPACE + "/" + GROUP
-	//TASKS_PATH = API_PREFIX + "/tasks"
-	//TASK_PATH  = API_PREFIX + "/task"
-	//TASK_NAME  = "Name"
-
+	NAMESPACE  = "framework"
+	GROUP      = "v1"
 	TAG        = "Task"
-	TASKS_PATH = "/apis/resources/v1/namespaces/tasks"
-	TASK_PATH  = "/apis/resources/v1/namespaces/task"
+	API_PREFIX = "/" + NAMESPACE + "/" + GROUP
+	TASKS_PATH = API_PREFIX + "/tasks"
+	TASK_PATH  = API_PREFIX + "/task"
 	TASK_NAME  = "Name"
-	NAMESPACE  = "Namespace"
+	NAME_SPACE = "Namespace"
 )
 
 type Handler interface {

@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -10,23 +11,73 @@ import (
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
+	"sync"
 )
 
 type EventsHandler struct {
+	clients   map[string]core.EventInterface
+	clientSet *clients.ClientSet
+	mu        sync.Mutex
+}
+
+type CurrentEventsHandler struct {
 	client core.EventInterface
 }
 
 var _ Handler = &EventsHandler{}
 
+//func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
+//	c := clientSet.Core().Events("test") //apis.NamespaceAll
+//	return &EventsHandler{
+//		client: c,
+//	}
+//}
+
+// NewEventHandler 创建一个 EventHandler
 func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
-	c := clientSet.Core().Events("test") //apis.NamespaceAll
 	return &EventsHandler{
-		client: c,
+		clients:   make(map[string]core.EventInterface),
+		clientSet: clientSet,
+	}
+}
+
+// GetClient 根据 namespace 获取 client，如果不存在则创建
+func (h *EventsHandler) GetClient(namespace string) *CurrentEventsHandler {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// 如果已经存在，直接返回
+	if c, exists := h.clients[namespace]; exists {
+		return &CurrentEventsHandler{
+			client: c,
+		}
+	}
+
+	// 否则创建新的 client
+	newClient := h.clientSet.Core().Events(namespace)
+	h.clients[namespace] = newClient
+	return &CurrentEventsHandler{
+		client: newClient,
 	}
 }
 
 func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Response) {
-	results, err := h.client.List(context.TODO(), metav1.ListOptions{})
+	c := &CurrentEventsHandler{}
+
+	// 从url中获取namespace
+	namespace := request.QueryParameter(NAME_SPACE)
+	if namespace == "" {
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	} else {
+		c = h.GetClient(namespace)
+	}
+
+	results, err := c.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Get events failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -55,7 +106,7 @@ func (h *EventsHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("/{Namespace}/event").
+	ws.Route(ws.GET("/").
 		Doc("Get all events").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Namespace", "The namespace of the events").DataType("string")).

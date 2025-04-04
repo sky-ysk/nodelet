@@ -84,7 +84,7 @@ func (h *DeviceHandler) GetDevice(request *restful.Request, response *restful.Re
 	}
 
 	// 从url中获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAMESPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -297,7 +297,7 @@ func (h *DeviceHandler) UpdateDevice(request *restful.Request, response *restful
 		}
 	}
 
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -394,7 +394,7 @@ func (h *DeviceHandler) DeleteDevice(request *restful.Request, response *restful
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -462,7 +462,7 @@ func (h *DeviceHandler) PatchDevice(request *restful.Request, response *restful.
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -536,57 +536,57 @@ func (h *DeviceHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("/{Namespace}/device").
+	ws.Route(ws.GET("/").
 		To(h.GetDevice).
 		Doc("Get a device with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the device").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Operation("Get device").
 		Returns(200, "OK", apis.Device{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.POST("/{Namespace}/device").
+	ws.Route(ws.POST("/").
 		To(h.CreateDevice).
 		Doc("Create a device").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the device").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Param(ws.BodyParameter("Device", "The json string of the Device object").DataType("string")).
 		Operation("Create device").
 		Returns(200, "OK", apis.Device{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PUT("/{Namespace}/device").
+	ws.Route(ws.PUT("/").
 		To(h.UpdateDevice).
 		Doc("Update a device").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the device").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Param(ws.BodyParameter("Device", "The json string of the Device object").DataType("string")).
 		Operation("Update device").
 		Returns(200, "OK", apis.Device{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.PATCH("/{Namespace}/device").
+	ws.Route(ws.PATCH("/").
 		To(h.PatchDevice).
 		Doc("Patch a device").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the device").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Param(ws.BodyParameter("Device", "The json string of the Device field").DataType("string")).
 		Operation("Patch device").
 		Returns(200, "OK", apis.Device{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.DELETE("/{Namespace}/device").
+	ws.Route(ws.DELETE("/").
 		To(h.DeleteDevice).
 		Doc("Delete a device").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the device").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Operation("Delete device").
 		Returns(200, "OK", apis.Device{}).
 		Returns(400, "Not Found", nil))

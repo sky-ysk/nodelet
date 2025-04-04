@@ -96,7 +96,7 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 	}
 
 	// 从url中获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -324,7 +324,7 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -414,7 +414,7 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 		}
 	}
 
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -511,7 +511,7 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -587,24 +587,24 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		Produces(restful.MIME_JSON)
 
 	// 查询任务
-	ws.Route(ws.GET("/{Namespace}/task").
+	ws.Route(ws.GET("/").
 		To(h.GetTask).
 		Doc("Get a task with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Operation("get Task").
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
 	)
 
 	//创建任务
-	ws.Route(ws.POST("/{Namespace}/task").
+	ws.Route(ws.POST("/").
 		To(h.CreateTask).
 		Doc("Create a task with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Param(ws.BodyParameter("Task", "The json string of the Task object").DataType("string")).
 		Operation("createTask").
 		Returns(200, "OK", apis.Task{}).
@@ -612,12 +612,12 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 	)
 
 	//修改任务
-	ws.Route(ws.PUT("/{Namespace}/task").
+	ws.Route(ws.PUT("/").
 		To(h.UpdateTask).
 		Doc("Update a task with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Param(ws.BodyParameter("Task", "The json string of the Task object").DataType("string")).
 		Operation("update Task").
 		Returns(200, "OK", apis.Task{}).
@@ -625,12 +625,12 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 	)
 
 	//部分修改任务
-	ws.Route(ws.PATCH("/{Namespace}/task").
+	ws.Route(ws.PATCH("/").
 		To(h.PatchTask).
 		Doc("Patch a task").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Param(ws.BodyParameter("Task", "The json string of the Task field").DataType("string")).
 		Operation("patch Task").
 		Returns(200, "OK", apis.Task{}).
@@ -638,12 +638,12 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 	)
 
 	// 删除任务
-	ws.Route(ws.DELETE("/{Namespace}/task").
+	ws.Route(ws.DELETE("/").
 		To(h.DeleteTask).
 		Doc("Delete a task").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Operation("Delete Task").
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),

@@ -84,7 +84,7 @@ func (h *ActionHandler) GetAction(request *restful.Request, response *restful.Re
 	}
 
 	// 从url中获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -295,7 +295,7 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 		}
 	}
 
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -392,7 +392,7 @@ func (h *ActionHandler) DeleteAction(request *restful.Request, response *restful
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -460,7 +460,7 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -534,57 +534,57 @@ func (h *ActionHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("/{Namespace}/action").
+	ws.Route(ws.GET("/").
 		To(h.GetAction).
 		Doc("Get a action with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the action").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Operation("Get action").
 		Returns(200, "OK", apis.Action{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.POST("/{Namespace}/action").
+	ws.Route(ws.POST("/").
 		To(h.CreateAction).
 		Doc("Create a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the action").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action object").DataType("string")).
 		Operation("Create action").
 		Returns(200, "OK", apis.Action{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PUT("/{Namespace}/action").
+	ws.Route(ws.PUT("/").
 		To(h.UpdateAction).
 		Doc("Update a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the action").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action object").DataType("string")).
 		Operation("Update action").
 		Returns(200, "OK", apis.Action{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.PATCH("/{Namespace}/action").
+	ws.Route(ws.PATCH("/").
 		To(h.PatchAction).
 		Doc("Patch a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the action").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action field").DataType("string")).
 		Operation("Patch action").
 		Returns(200, "OK", apis.Action{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.DELETE("/{Namespace}/action").
+	ws.Route(ws.DELETE("/").
 		To(h.DeleteAction).
 		Doc("Delete a action").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the action").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Operation("Delete action").
 		Returns(200, "OK", apis.Action{}).
 		Returns(400, "Not Found", nil))

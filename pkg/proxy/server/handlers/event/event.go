@@ -84,7 +84,7 @@ func (h *EventHandler) GetEvent(request *restful.Request, response *restful.Resp
 	}
 
 	// 从url中获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -297,7 +297,7 @@ func (h *EventHandler) UpdateEvent(request *restful.Request, response *restful.R
 		}
 	}
 
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -394,7 +394,7 @@ func (h *EventHandler) DeleteEvent(request *restful.Request, response *restful.R
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -462,7 +462,7 @@ func (h *EventHandler) PatchEvent(request *restful.Request, response *restful.Re
 	}
 
 	// 获取namespace
-	namespace := request.PathParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
 		if err != nil {
@@ -536,57 +536,57 @@ func (h *EventHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("/{Namespace}/event").
+	ws.Route(ws.GET("/").
 		To(h.GetEvent).
 		Doc("Get a event with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the event").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the event").DataType("string")).
 		Operation("Get event").
 		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.POST("/{Namespace}/event").
+	ws.Route(ws.POST("/").
 		To(h.CreateEvent).
 		Doc("Create a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the event").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the event").DataType("string")).
 		Param(ws.BodyParameter("Event", "The json string of the Event object").DataType("string")).
 		Operation("Create event").
 		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.PUT("/{Namespace}/event").
+	ws.Route(ws.PUT("/").
 		To(h.UpdateEvent).
 		Doc("Update a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the event").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the event").DataType("string")).
 		Param(ws.BodyParameter("Event", "The json string of the Event object").DataType("string")).
 		Operation("Update event").
 		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.PATCH("/{Namespace}/event").
+	ws.Route(ws.PATCH("/").
 		To(h.PatchEvent).
 		Doc("Patch a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the event").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the event").DataType("string")).
 		Param(ws.BodyParameter("Event", "The json string of the Event field").DataType("string")).
 		Operation("Patch event").
 		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil))
 
-	ws.Route(ws.DELETE("/{Namespace}/event").
+	ws.Route(ws.DELETE("/").
 		To(h.DeleteEvent).
 		Doc("Delete a event").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the event").DataType("string")).
-		Param(ws.PathParameter("Namespace", "The namespace of the event").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the event").DataType("string")).
 		Operation("Delete event").
 		Returns(200, "OK", apis.Event{}).
 		Returns(400, "Not Found", nil))
