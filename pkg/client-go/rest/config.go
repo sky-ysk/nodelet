@@ -50,6 +50,10 @@ type ContentConfig struct {
 
 	//NegotiatedSerializer用于为多种支持的媒体类型获取编码器和解码器。
 	NegotiatedSerializer runtime.NegotiatedSerializer
+
+	// 以下用于跨域header配置
+	FlowType  string
+	ClusterID string
 }
 
 // //先用着，待修改
@@ -79,6 +83,8 @@ func RESTClientForConfigAndClient(config *Config, httpClient *http.Client) (*RES
 		ContentType:  config.ContentConfig.ContentType, // 默认使用 JSON 格式
 		GroupVersion: *config.GroupVersion,
 		Negotiator:   runtime.NewClientNegotiator(config.NegotiatedSerializer, *config.GroupVersion),
+		FlowType:     config.FlowType,
+		ClusterID:    config.ClusterID,
 	}
 
 	// 创建 RESTClient，处理和 API 服务器的通信

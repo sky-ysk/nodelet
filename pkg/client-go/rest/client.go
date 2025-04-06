@@ -1,11 +1,12 @@
 package rest
 
 import (
-	"hit.edu/framework/pkg/apimachinery/types"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync/atomic"
+
+	"hit.edu/framework/pkg/apimachinery/types"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -43,6 +44,10 @@ type ClientContentConfig struct {
 	// supported media types.
 	//在request中的body()方法中用到
 	Negotiator runtime.ClientNegotiator
+
+	// 以下用于跨域header配置
+	FlowType  string
+	ClusterID string
 }
 
 // 管理基础资源的客户端
