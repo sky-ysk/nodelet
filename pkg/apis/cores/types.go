@@ -421,7 +421,7 @@ const (
 // 输出结果为Bool类型的值
 // TODO: Value格式检查和调整，比如存在空格的情况
 type ConditionFormula struct {
-	Type conditionType `json:"type,omitempty" yaml:"type"`
+	Type       conditionType  `json:"type,omitempty" yaml:"type"`
 	LeftValue  ConditionValue `json:"left_value,omitempty" yaml:"left_value"`
 	RightValue ConditionValue `json:"right_value,omitempty" yaml:"right_value"`
 	// == 或 !=
@@ -1206,7 +1206,8 @@ type Input struct {
 	//      Local类型的数据对其他节点不可见
 	Value     string `json:"value,omitempty" yaml:"value"`
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
-	From	string  `json:"from,omitempty" yaml:"from"`
+	From      string `json:"from,omitempty" yaml:"from"`
+	Field     string `json:"field,omitempty" yaml:"field"`
 }
 
 // TODO: 数据格式后续还需要调整
@@ -1693,13 +1694,13 @@ type Requirement struct {
 type conditionType string
 
 const (
-	NodeDependency conditionType = "NodeDependency"
-	DataDependency conditionType = "DataDependency"
+	NodeDependency     conditionType = "NodeDependency"
+	DataDependency     conditionType = "DataDependency"
 	ResourceDependency conditionType = "ResourceDependency"
-	ProgramDependency conditionType = "ProgramDependency"
+	ProgramDependency  conditionType = "ProgramDependency"
 )
 
-//数据文件存储位置，后续可更改
+// 数据文件存储位置，后续可更改
 const (
 	BasePath = "../tmp/data/"
 )
