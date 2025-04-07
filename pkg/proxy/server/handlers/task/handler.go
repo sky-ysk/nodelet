@@ -12,6 +12,7 @@ const (
 	TASKS_PATH = API_PREFIX + "/tasks"
 	TASK_PATH  = API_PREFIX + "/task"
 	TASK_NAME  = "Name"
+	NAME_SPACE = "Namespace"
 )
 
 type Handler interface {

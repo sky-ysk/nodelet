@@ -1,4 +1,4 @@
-package task
+package event
 
 import (
 	"context"
@@ -14,56 +14,56 @@ import (
 	"sync"
 )
 
-type TasksHandler struct {
-	clients   map[string]core.TaskInterface
+type EventsHandler struct {
+	clients   map[string]core.EventInterface
 	clientSet *clients.ClientSet
 	mu        sync.Mutex
 }
 
-type CurrentTasksHandler struct {
-	client core.TaskInterface
+type CurrentEventsHandler struct {
+	client core.EventInterface
 }
 
-var _ Handler = &TasksHandler{}
+var _ Handler = &EventsHandler{}
 
-//func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
-//	c := clientSet.Core().Tasks("test") //apis.NamespaceAll
-//	return &TasksHandler{
+//func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
+//	c := clientSet.Core().Events("test") //apis.NamespaceAll
+//	return &EventsHandler{
 //		client: c,
 //	}
 //}
 
-// NewTaskHandler 创建一个 TaskHandler
-func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
-	return &TasksHandler{
-		clients:   make(map[string]core.TaskInterface),
+// NewEventHandler 创建一个 EventHandler
+func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
+	return &EventsHandler{
+		clients:   make(map[string]core.EventInterface),
 		clientSet: clientSet,
 	}
 }
 
 // GetClient 根据 namespace 获取 client，如果不存在则创建
-func (h *TasksHandler) GetClient(namespace string) *CurrentTasksHandler {
+func (h *EventsHandler) GetClient(namespace string) *CurrentEventsHandler {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	// 如果已经存在，直接返回   c 和 gc 会一起创建
-	c, exists := h.clients[namespace]
-	if exists {
-		return &CurrentTasksHandler{
+	// 如果已经存在，直接返回
+	if c, exists := h.clients[namespace]; exists {
+		return &CurrentEventsHandler{
 			client: c,
 		}
 	}
 
 	// 否则创建新的 client
-	newClient := h.clientSet.Core().Tasks(namespace)
+	newClient := h.clientSet.Core().Events(namespace)
 	h.clients[namespace] = newClient
-	return &CurrentTasksHandler{
+	return &CurrentEventsHandler{
 		client: newClient,
 	}
 }
 
-func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Response) {
-	c := &CurrentTasksHandler{}
+func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Response) {
+	c := &CurrentEventsHandler{}
+
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
@@ -79,8 +79,8 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 
 	results, err := c.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Get tasks failed : %v", err)
-		err := response.WriteHeaderAndEntity(http.StatusInternalServerError, err)
+		logs.Errorf("Get events failed: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -95,23 +95,24 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 			return
 		}
 	}
-	logs.Debugf("Get tasks")
+	logs.Debugf("Get events")
 }
 
-func (h *TasksHandler) NewGetWebService() *restful.WebService {
+// TODO: DeleteAll
+
+func (h *EventsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path(TASKS_PATH).
+	ws.Path(EVENTS_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET("").
-		//Docs
-		Doc("Get all tasks").
+	ws.Route(ws.GET("/").
+		Doc("Get all events").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Namespace", "The namespace of the tasks").DataType("string")).
-		To(h.GetTasks).
-		Operation("Get tasks").
-		Returns(200, "OK", []apis.Task{}).
+		Param(ws.QueryParameter("Namespace", "The namespace of the events").DataType("string")).
+		To(h.GetEvents).
+		Operation("Get events").
+		Returns(200, "OK", []apis.Event{}).
 		Returns(400, "Not Found", nil),
 	)
 

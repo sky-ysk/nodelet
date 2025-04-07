@@ -6,6 +6,5 @@
       "host_name" : {"type" :  "string"} ,
       "unschedulable" : {"type" :  "boolean"}
     },
-    "required" : ["node_name" , "host_name" , "unschedulable"],
-    "additionalProperties": false
+    "additionalProperties": true
 }

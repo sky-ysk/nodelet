@@ -3,6 +3,9 @@ package handlers
 import (
 	"github.com/emicklei/go-restful/v3"
 	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/proxy/server/handlers/action"
+	"hit.edu/framework/pkg/proxy/server/handlers/device"
+	"hit.edu/framework/pkg/proxy/server/handlers/event"
 	"hit.edu/framework/pkg/proxy/server/handlers/group"
 	"hit.edu/framework/pkg/proxy/server/handlers/node"
 	"hit.edu/framework/pkg/proxy/server/handlers/task"
@@ -65,5 +68,41 @@ func (h *Handlers) InstallGroupHandlers(container *restful.Container) {
 	// Group相关
 	// 查询单个Group
 	gh := group.NewGroupHandler(h.ClientSet)
+	container.Add(gh.NewGetWebService())
+}
+
+func (h *Handlers) InstallActionHandlers(container *restful.Container) {
+	// Actions相关
+	gsh := action.NewActionsHandler(h.ClientSet)
+	// 查询Actions
+	container.Add(gsh.NewGetWebService())
+
+	// Action相关
+	gh := action.NewActionHandler(h.ClientSet)
+	// 查询单个Action
+	container.Add(gh.NewGetWebService())
+}
+
+func (h *Handlers) InstallEventHandlers(container *restful.Container) {
+	// Events相关
+	gsh := event.NewEventsHandler(h.ClientSet)
+	// 查询Events
+	container.Add(gsh.NewGetWebService())
+
+	// Event相关
+	gh := event.NewEventHandler(h.ClientSet)
+	// 查询单个Event
+	container.Add(gh.NewGetWebService())
+}
+
+func (h *Handlers) InstallDeviceHandlers(container *restful.Container) {
+	// Devices相关
+	gsh := device.NewDevicesHandler(h.ClientSet)
+	// 查询Devices
+	container.Add(gsh.NewGetWebService())
+
+	// Device相关
+	gh := device.NewDeviceHandler(h.ClientSet)
+	// 查询单个Device
 	container.Add(gh.NewGetWebService())
 }

@@ -1,17 +1,15 @@
-package group
+package event
 
-import (
-	"github.com/emicklei/go-restful/v3"
-)
+import "github.com/emicklei/go-restful/v3"
 
 const (
 	NAMESPACE   = "framework"
 	GROUP       = "v1"
-	TAG         = "Group"
+	TAG         = "Event"
 	API_PREFIX  = "/" + NAMESPACE + "/" + GROUP
-	GROUPS_PATH = API_PREFIX + "/groups"
-	GROUP_PATH  = API_PREFIX + "/group"
-	GROUP_NAME  = "Name"
+	EVENTS_PATH = API_PREFIX + "/events"
+	EVENT_PATH  = API_PREFIX + "/event"
+	EVENT_NAME  = "Name"
 	NAME_SPACE  = "Namespace"
 )
 

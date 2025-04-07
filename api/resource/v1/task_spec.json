@@ -19,6 +19,5 @@
       "items" : {"$ref" :  "./group.json"}
     }
   },
-  "required" : ["name" , "parents" , "desc" , "type" , "conditions" , "groups"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

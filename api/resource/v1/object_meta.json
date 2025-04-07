@@ -1,17 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
-  "type" : "object",
+  "type": "object",
   "properties" : {
-    "spec" : {
-      "$ref" :  "./group_spec.json"
-    },
-    "status" : {
-      "$ref" :  "./group_status.json"
-    },
-
-    "kind" :{"type" :  "string"},
-    "apiVersion" : {"type" :  "string"},
-
     "name" : {"type" :  "string"} ,
     "generateName" : {"type" :  "string"},
     "namespace" : {"type" :  "string"},

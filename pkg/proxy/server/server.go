@@ -33,19 +33,6 @@ func NewServer(clientSet *clients.ClientSet) Server {
 
 	// 安装各类Handlers
 	server.InstallDefaultHandlers()
-
-	cors := restful.CrossOriginResourceSharing{
-		ExposeHeaders:  []string{"*"},
-		AllowedDomains: []string{"localhost", "wangwanu.com"},
-		AllowedHeaders: []string{"Content-Type", "Accept"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
-		CookiesAllowed: false,
-		Container:      server.container}
-	server.container.Filter(cors.Filter)
-
-	// Add container filter to respond to OPTIONS
-	server.container.Filter(server.container.OPTIONSFilter)
-
 	return server
 }
 
@@ -54,12 +41,22 @@ func (s *Server) InstallDefaultHandlers() {
 	s.handlers.InstallWorkflowHandlers(s.container)
 	// Task相关
 	s.handlers.InstallTaskHandlers(s.container)
-	// Group相关
-	s.handlers.InstallGroupHandlers(s.container)
 
 	// Resource相关
 	// Node
 	s.handlers.InstallNodeHandlers(s.container)
+
+	// Action
+	s.handlers.InstallActionHandlers(s.container)
+
+	// Group
+	s.handlers.InstallGroupHandlers(s.container)
+
+	//Event
+	s.handlers.InstallEventHandlers(s.container)
+
+	// Device
+	s.handlers.InstallDeviceHandlers(s.container)
 
 	// Logs相关
 

@@ -6,6 +6,5 @@
       "$ref" :  "./task_spec.json"
     }
   },
-  "required" : ["spec"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

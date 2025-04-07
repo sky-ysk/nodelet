@@ -17,6 +17,5 @@
       "$ref" :  "./node_system_info.json"
     }
   },
-  "required" : ["images" , "wasms" , "addresses" , "info"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

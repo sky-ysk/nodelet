@@ -1,20 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
-  "type": "object",
+  "type" : "object",
   "properties" : {
-    "items" : {
-      "type" : "array" ,
-      "items" : {"$ref" : "./node.json"}
-    },
-
-    "kind" :{"type" :  "string"},
-    "apiVersion" : {"type" :  "string"},
-
     "selfLink" : {"type" :  "string"},
     "resourceVersion" : {"type" :  "string"},
     "continue" : {"type" :  "string"},
     "remainingItemCount" : {"type" :  "string"}
   },
-  "required" : ["items"],
   "additionalProperties": true
 }

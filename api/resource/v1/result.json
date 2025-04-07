@@ -8,6 +8,5 @@
     },
     "Type" : {"type" :  "string"}
   },
-  "required" : ["result_id" , "belongs" , "type"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

@@ -7,6 +7,5 @@
     "group_id" : {"type" :  "string"} ,
     "action_id" : {"type" :  "string"}
   },
-  "required" : ["workflow_id" , "task_id" , "group_id" , "action_id"],
-  "additionalProperties": false
+  "additionalProperties": true
 }
