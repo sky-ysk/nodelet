@@ -35,6 +35,18 @@ func (fl *DefaultFilter) Name() string {
 // 过滤插件 返回Group是否能在对应的设备节点上运行的信息
 // 可以运行返回success
 func (fl *DefaultFilter) Filter(ctx context.Context, group *apis.Group, node *config.NodeInfo) *framework.Status {
+	if node == nil || group == nil || node.Node() == nil {
+		logs.Error("filter plugins", "node or group is nil")
+		return framework.NewStatus(framework.Error, "node or group is nil")
+	}
+	if len(group.Spec.AffinityNodes) != 0 {
+		for _, n := range group.Spec.AffinityNodes {
+			if node.Node().Name == n {
+				return framework.NewStatus(framework.Success, "")
+			}
+		}
+		return framework.NewStatus(framework.Unschedulable, "node is not in affinity list")
+	}
 	status := framework.NewStatus(framework.Success, "default success")
 	return status
 }

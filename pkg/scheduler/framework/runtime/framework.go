@@ -137,6 +137,18 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 		if state.SkipScorePlugins.Has(pl.Name()) {
 			continue
 		}
+		if len(group.Spec.SkipScorePlugins) != 0 {
+			skip := false
+			for _, skipPlugin := range group.Spec.SkipScorePlugins {
+				if skipPlugin == pl.Name() {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+		}
 		plugins = append(plugins, pl)
 		pluginToNodeScores[pl.Name()] = make(framework.NodeScoreList, len(infos))
 	}
@@ -147,6 +159,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 		f.Parallelizer().Until(ctx, len(infos), func(index int) {
 			nodeName := infos[index].Node().Name
 			for _, pl := range plugins {
+
 				ctx := ctx
 				s, status := f.runScorePlugin(ctx, pl, state, group, nodeName)
 				if !status.IsSuccess() {
