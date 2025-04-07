@@ -145,8 +145,8 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 		te.ReceiveGroupInfo(ctx) // 持续从etcd当中读取group
 	}()
 
-	go te.migrationController.Run(5, ctx.Done())
-	go te.nodeMonitor.Run(2, ctx.Done())
+	//go te.migrationController.Run(5, ctx.Done())
+	//go te.nodeMonitor.Run(2, ctx.Done())
 	<-ctx.Done()
 	wg.Wait()
 	return ctx.Err()

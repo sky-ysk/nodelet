@@ -70,8 +70,8 @@ func main() {
 	groupsClient := clientSet.Core().Groups("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
-	task1Name := fmt.Sprintf("Task1-%s", randomSuffix(10))  // 第一个Task的Name
-	task1ID := fmt.Sprintf("TaskID-1-%s", randomSuffix(10)) // 第一个Task的ID
+	task1Name := fmt.Sprintf("Task2-%s", randomSuffix(10))  // 第一个Task的Name
+	task1ID := fmt.Sprintf("TaskID-2-%s", randomSuffix(10)) // 第一个Task的ID
 
 	// group
 	group1_1Name := fmt.Sprintf("Group1-%s", randomSuffix(10)) // 第一个Task下的第一个GroupName
