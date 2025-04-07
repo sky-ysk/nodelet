@@ -8,7 +8,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/apis/meta"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
@@ -66,33 +65,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// 资源定义在 pkg/apis/xxx/type.go 下
-	// 这里以访问资源Task为例，
-	// 获取访问Task的客户端
-	// 默认访问的Namespace是 ""
 
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
-	actionsClient := clientSet.Core().Actions("test")
-	eventsClient := clientSet.Core().Events("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
-	task1Name := fmt.Sprintf("Task1-%s", randomSuffix(5))  // 第一个Task的Name
-	task1ID := fmt.Sprintf("TaskID-1-%s", randomSuffix(5)) // 第一个Task的ID
+	task1Name := fmt.Sprintf("Task1-%s", randomSuffix(10))  // 第一个Task的Name
+	task1ID := fmt.Sprintf("TaskID-1-%s", randomSuffix(10)) // 第一个Task的ID
 
 	// group
-	group1_1Name := fmt.Sprintf("Group1-%s", randomSuffix(5)) // 第一个Task下的第一个GroupName
-	group1_2Name := fmt.Sprintf("Group2-%s", randomSuffix(5)) // 第一个Task下的第二个GroupName
-	group1_3Name := fmt.Sprintf("Group3-%s", randomSuffix(5))
-	group1_4Name := fmt.Sprintf("Group4-%s", randomSuffix(5))
-	group1_5Name := fmt.Sprintf("Group5-%s", randomSuffix(5))
-	group1_6Name := fmt.Sprintf("Group6-%s", randomSuffix(5))
-	group1_1ID := fmt.Sprintf("GroupID-1-%s", randomSuffix(5)) // 第一个Task下的第一个GroupID
-	group1_2ID := fmt.Sprintf("GroupID-2-%s", randomSuffix(5)) // 第一个Task下的第二个GroupID
-	group1_3ID := fmt.Sprintf("GroupID-3-%s", randomSuffix(5)) // 第一个Task下的第三个GroupID
-	group1_4ID := fmt.Sprintf("GroupID-4-%s", randomSuffix(5)) // 第一个Task下的第四个GroupID
-	group1_5ID := fmt.Sprintf("GroupID-5-%s", randomSuffix(5)) // 第一个Task下的第五个GroupID
-	group1_6ID := fmt.Sprintf("GroupID-6-%s", randomSuffix(5)) // 第一个Task下的第五个GroupID
+	group1_1Name := fmt.Sprintf("Group1-%s", randomSuffix(10)) // 第一个Task下的第一个GroupName
+	group1_2Name := fmt.Sprintf("Group2-%s", randomSuffix(10)) // 第一个Task下的第二个GroupName
+	group1_3Name := fmt.Sprintf("Group3-%s", randomSuffix(10))
+	group1_4Name := fmt.Sprintf("Group4-%s", randomSuffix(10))
+	group1_5Name := fmt.Sprintf("Group5-%s", randomSuffix(10))
+	group1_6Name := fmt.Sprintf("Group6-%s", randomSuffix(10))
+	group1_1ID := fmt.Sprintf("GroupID-1-%s", randomSuffix(10)) // 第一个Task下的第一个GroupID
+	group1_2ID := fmt.Sprintf("GroupID-2-%s", randomSuffix(10)) // 第一个Task下的第二个GroupID
+	group1_3ID := fmt.Sprintf("GroupID-3-%s", randomSuffix(10)) // 第一个Task下的第三个GroupID
+	group1_4ID := fmt.Sprintf("GroupID-4-%s", randomSuffix(10)) // 第一个Task下的第四个GroupID
+	group1_5ID := fmt.Sprintf("GroupID-5-%s", randomSuffix(10)) // 第一个Task下的第五个GroupID
+	group1_6ID := fmt.Sprintf("GroupID-6-%s", randomSuffix(10)) // 第一个Task下的第五个GroupID
 	group1_1Replicas := []int32{0, 0}
 	group1_2Replicas := []int32{0, 0}
 	group1_3Replicas := []int32{0, 0}
@@ -101,45 +94,44 @@ func main() {
 	group1_6Replicas := []int32{0, 0}
 
 	// action
-	action1_1_1Name := "Action1-1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
-	action1_2_1Name := "Action2-1" // 第一个Task下的第二个Group下的第一个ActionName
-	action1_3_1Name := "Action3-1" // 第一个Task下的第三个Group下的第一个ActionName
-	action1_4_1Name := "Action4-1"
-	action1_5_1Name := "Action5-1"
-	action1_6_1Name := "Action6-1"
-	action1_1_1ID := "ActionID1-1" // 第一个Task下的第一个Group下的第一个ActionID
-	action1_2_1ID := "ActionID2-1" // 第一个Task下的第二个Group下的第一个ActionID
-	action1_3_1ID := "ActionID3-1" // 第一个Task下的第三个Group下的第一个ActionID
-	action1_4_1ID := "ActionID4-1"
-	action1_5_1ID := "ActionID5-1"
-	action1_6_1ID := "ActionID6-1"
+	action1_1_1Name := fmt.Sprintf("Action1-1-%s", randomSuffix(10)) // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+	action1_2_1Name := fmt.Sprintf("Action2-1-%s", randomSuffix(10)) // 第一个Task下的第二个Group下的第一个ActionName
+	action1_3_1Name := fmt.Sprintf("Action3-1-%s", randomSuffix(10)) // 第一个Task下的第三个Group下的第一个ActionName
+	action1_4_1Name := fmt.Sprintf("Action4-1-%s", randomSuffix(10))
+	action1_5_1Name := fmt.Sprintf("Action5-1-%s", randomSuffix(10))
+	action1_6_1Name := fmt.Sprintf("Action6-1-%s", randomSuffix(10))
+	action1_1_1ID := fmt.Sprintf("ActionID1-1-%s", randomSuffix(10)) // 第一个Task下的第一个Group下的第一个ActionID
+	action1_2_1ID := fmt.Sprintf("ActionID2-1-%s", randomSuffix(10)) // 第一个Task下的第二个Group下的第一个ActionID
+	action1_3_1ID := fmt.Sprintf("ActionID3-1-%s", randomSuffix(10)) // 第一个Task下的第三个Group下的第一个ActionID
+	action1_4_1ID := fmt.Sprintf("ActionID4-1-%s", randomSuffix(10))
+	action1_5_1ID := fmt.Sprintf("ActionID5-1-%s", randomSuffix(10))
+	action1_6_1ID := fmt.Sprintf("ActionID6-1-%s", randomSuffix(10))
 
-	// runtime
-	runtime1_1_1_1Name := "Runtime1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_1_1_2Name := "Runtime1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_2_1_1Name := "Runtime2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_2_1_2Name := "Runtime2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_3_1_1Name := "Runtime3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_3_1_2Name := "Runtime3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_4_1_1Name := "Runtime4-1-1" // 第一个Task下的第4个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_4_1_2Name := "Runtime4-1-2" // 第一个Task下的第4个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_5_1_1Name := "Runtime5-1-1" // 第一个Task下的第5个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_5_1_2Name := "Runtime5-1-2" // 第一个Task下的第5个Group下的第一个ActionName下的第二个RuntimeName
-	runtime1_6_1_1Name := "Runtime6-1-1" // 第一个Task下的第6个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_6_1_2Name := "Runtime6-1-2" // 第一个Task下的第6个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_1_1_1Name := fmt.Sprintf("Runtime1-1-1-%s", randomSuffix(10)) // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_1_1_2Name := fmt.Sprintf("Runtime1-1-2-%s", randomSuffix(10)) // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_2_1_1Name := fmt.Sprintf("Runtime2-1-1-%s", randomSuffix(10)) // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_2_1_2Name := fmt.Sprintf("Runtime2-1-2-%s", randomSuffix(10)) // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_3_1_1Name := fmt.Sprintf("Runtime3-1-1-%s", randomSuffix(10)) // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_3_1_2Name := fmt.Sprintf("Runtime3-1-2-%s", randomSuffix(10)) // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_4_1_1Name := fmt.Sprintf("Runtime4-1-1-%s", randomSuffix(10)) // 第一个Task下的第4个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_4_1_2Name := fmt.Sprintf("Runtime4-1-2-%s", randomSuffix(10)) // 第一个Task下的第4个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_5_1_1Name := fmt.Sprintf("Runtime5-1-1-%s", randomSuffix(10)) // 第一个Task下的第5个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_5_1_2Name := fmt.Sprintf("Runtime5-1-2-%s", randomSuffix(10)) // 第一个Task下的第5个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_6_1_1Name := fmt.Sprintf("Runtime6-1-1-%s", randomSuffix(10)) // 第一个Task下的第6个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_6_1_2Name := fmt.Sprintf("Runtime6-1-2-%s", randomSuffix(10)) // 第一个Task下的第6个Group下的第一个ActionName下的第二个RuntimeName
 
-	runtime1_1_1_1ID := "RuntimeID1-1-1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_1_1_2ID := "RuntimeID1-1-2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_2_1_1ID := "RuntimeID2-1-1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_2_1_2ID := "RuntimeID2-1-2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_3_1_1ID := "RuntimeID3-1-1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_3_1_2ID := "RuntimeID3-1-2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_4_1_1ID := "RuntimeID4-1-1" // 第一个Task下的第4个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_4_1_2ID := "RuntimeID4-1-2" // 第一个Task下的第4个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_5_1_1ID := "RuntimeID5-1-1" // 第一个Task下的第5个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_5_1_2ID := "RuntimeID5-1-2" // 第一个Task下的第5个Group下的第一个ActionName下的第二个RuntimeID
-	runtime1_6_1_1ID := "RuntimeID6-1-1" // 第一个Task下的第6个Group下的第一个ActionName下的第一个RuntimeID
-	runtime1_6_1_2ID := "RuntimeID6-1-2" // 第一个Task下的第6个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_1_1_1ID := fmt.Sprintf("RuntimeID1-1-1-%s", randomSuffix(10)) // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeID
+	runtime1_1_1_2ID := fmt.Sprintf("RuntimeID1-1-2-%s", randomSuffix(10)) // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_2_1_1ID := fmt.Sprintf("RuntimeID2-1-1-%s", randomSuffix(10)) // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeID
+	runtime1_2_1_2ID := fmt.Sprintf("RuntimeID2-1-2-%s", randomSuffix(10)) // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_3_1_1ID := fmt.Sprintf("RuntimeID3-1-1-%s", randomSuffix(10)) // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeID
+	runtime1_3_1_2ID := fmt.Sprintf("RuntimeID3-1-2-%s", randomSuffix(10)) // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_4_1_1ID := fmt.Sprintf("RuntimeID4-1-1-%s", randomSuffix(10)) // 第一个Task下的第4个Group下的第一个ActionName下的第一个RuntimeID
+	runtime1_4_1_2ID := fmt.Sprintf("RuntimeID4-1-2-%s", randomSuffix(10)) // 第一个Task下的第4个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_5_1_1ID := fmt.Sprintf("RuntimeID5-1-1-%s", randomSuffix(10)) // 第一个Task下的第5个Group下的第一个ActionName下的第一个RuntimeID
+	runtime1_5_1_2ID := fmt.Sprintf("RuntimeID5-1-2-%s", randomSuffix(10)) // 第一个Task下的第5个Group下的第一个ActionName下的第二个RuntimeID
+	runtime1_6_1_1ID := fmt.Sprintf("RuntimeID6-1-1-%s", randomSuffix(10)) // 第一个Task下的第6个Group下的第一个ActionName下的第一个RuntimeID
+	runtime1_6_1_2ID := fmt.Sprintf("RuntimeID6-1-2-%s", randomSuffix(10)) // 第一个Task下的第6个Group下的第一个ActionName下的第二个RuntimeID
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
@@ -248,30 +240,35 @@ func main() {
 	}
 
 	group1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{},
-	}
-
-	group1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_1Name),
+			GetNodeDepencyConditionFormula(group1_2Name),
 		},
 	}
 
-	group1_3Condition := apis.Conditions{
+	group1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{},
+	}
+
+	group1_3Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			GetNodeDepencyConditionFormula(group1_2Name),
+		},
 	}
 	group1_4Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_3Name),
+			GetNodeDepencyConditionFormula(group1_2Name),
 		},
 	}
 
 	group1_5Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{},
+		Formulas: []apis.ConditionFormula{
+			GetNodeDepencyConditionFormula(group1_2Name),
+		},
 	}
+
 	group1_6Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_5Name),
+			GetNodeDepencyConditionFormula(group1_2Name),
 		},
 	}
 
@@ -293,7 +290,7 @@ func main() {
 			},
 			Replicas:   group1_1Replicas,
 			Name:       group1_1Name,
-			Parents:    make([]string, 0),
+			Parents:    []string{group1_2Name},
 			Conditions: group1_1Condition,
 			Actions: []apis.Action{
 				apis.Action{
@@ -305,8 +302,8 @@ func main() {
 								Name:                     runtime1_1_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
-								Parents:                  make([]string, 0), // 加入Parents
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"}, //20s
+								Parents:                  make([]string, 0),                                                // 加入Parents
 								Conditions:               runtime1_1_1_1Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
@@ -315,8 +312,8 @@ func main() {
 								Name:                     runtime1_1_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
-								Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
+								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"}, //8s
+								Parents:                  []string{runtime1_1_1_1Name},                                                 // 加入Parents
 								Conditions:               runtime1_1_1_2Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
@@ -371,18 +368,18 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "1",
+					Lowbound:   "0",
 					Upperbound: "2",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "1",
+					Lowbound:   "0",
 					Upperbound: "2",
 				},
 			},
 			Replicas:   group1_2Replicas,
 			Name:       group1_2Name,
-			Parents:    []string{group1_1Name}, // 加入Parents
+			Parents:    []string{}, // 加入Parents
 			Conditions: group1_2Condition,
 			Actions: []apis.Action{
 				apis.Action{
@@ -394,7 +391,7 @@ func main() {
 								Name:                     runtime1_2_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"}, //7s
+								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"}, //8s
 								Parents:                  make([]string, 0),                                                            // 加入Parents
 								Conditions:               runtime1_2_1_1Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -460,18 +457,18 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "9",
-					Upperbound: "4",
+					Lowbound:   "3",
+					Upperbound: "6",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "9",
-					Upperbound: "4",
+					Lowbound:   "3",
+					Upperbound: "6",
 				},
 			},
 			Replicas:   group1_3Replicas,
 			Name:       group1_3Name,
-			Parents:    []string{},
+			Parents:    []string{group1_2Name},
 			Conditions: group1_3Condition,
 			Actions: []apis.Action{
 				apis.Action{
@@ -483,8 +480,8 @@ func main() {
 								Name:                     runtime1_3_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/mnist.py"},
-								Parents:                  make([]string, 0), // 加入Parents
+								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/mnist.py"}, //24s
+								Parents:                  make([]string, 0),                                                             // 加入Parents
 								Conditions:               runtime1_3_1_1Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
@@ -548,18 +545,18 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "3",
-					Upperbound: "4",
+					Lowbound:   "1",
+					Upperbound: "2",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "3",
-					Upperbound: "4",
+					Lowbound:   "1",
+					Upperbound: "2",
 				},
 			},
 			Replicas:   group1_4Replicas,
 			Name:       group1_4Name,
-			Parents:    []string{group1_3Name}, // 加入Parents
+			Parents:    []string{group1_2Name}, // 加入Parents
 			Conditions: group1_4Condition,
 			Actions: []apis.Action{
 				apis.Action{
@@ -571,8 +568,8 @@ func main() {
 								Name:                     runtime1_4_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Iris.py"},
-								Parents:                  make([]string, 0), // 加入Parents
+								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Iris.py"}, //11s
+								Parents:                  make([]string, 0),                                                            // 加入Parents
 								Conditions:               runtime1_4_1_1Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_4_1_1FineGrainedControl,
@@ -637,18 +634,18 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "3",
-					Upperbound: "4",
+					Lowbound:   "1",
+					Upperbound: "3",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "3",
-					Upperbound: "4",
+					Lowbound:   "1",
+					Upperbound: "3",
 				},
 			},
 			Replicas:   group1_5Replicas,
 			Name:       group1_5Name,
-			Parents:    make([]string, 0),
+			Parents:    []string{group1_2Name},
 			Conditions: group1_5Condition,
 			Actions: []apis.Action{
 				apis.Action{
@@ -660,8 +657,8 @@ func main() {
 								Name:                     runtime1_5_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Diabetes.py"},
-								Parents:                  make([]string, 0), // 加入Parents
+								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Diabetes.py"}, //14s
+								Parents:                  make([]string, 0),                                                                // 加入Parents
 								Conditions:               runtime1_5_1_1Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 								EnableFineGrainedControl: runtime1_5_1_1FineGrainedControl,
@@ -726,18 +723,18 @@ func main() {
 			ResourceRequirements: []apis.ResourceRequirement{
 				apis.ResourceRequirement{
 					Name:       "CPU",
-					Lowbound:   "3",
-					Upperbound: "4",
+					Lowbound:   "1",
+					Upperbound: "2",
 				},
 				apis.ResourceRequirement{
 					Name:       "RAM",
-					Lowbound:   "3",
-					Upperbound: "4",
+					Lowbound:   "1",
+					Upperbound: "2",
 				},
 			},
 			Replicas:   group1_6Replicas,
 			Name:       group1_6Name,
-			Parents:    []string{group1_5Name}, // 加入Parents
+			Parents:    []string{group1_2Name}, // 加入Parents
 			Conditions: group1_6Condition,
 			Actions: []apis.Action{
 				apis.Action{
@@ -749,8 +746,8 @@ func main() {
 								Name:                     runtime1_6_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/breast_cancer.py"},
-								Parents:                  make([]string, 0), // 加入Parents
+								Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/breast_cancer.py"}, //10s
+								Parents:                  make([]string, 0),                                                                     // 加入Parents
 								Conditions:               runtime1_6_1_1Condition,
 								Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -832,90 +829,15 @@ func main() {
 			},
 		},
 	}
-
-	//如果已经存在，先删掉
-	//	"hit.edu/framework/pkg/apis/meta"
-	logs.Infof("deleting events")
-	eventList, err := eventsClient.List(context.TODO(), meta.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-	}
-	for _, item := range eventList.Items {
-		err := eventsClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}
-	// 删除Task
-	logs.Infof("deleting tasks")
-	taskList, err := tasksClient.List(context.TODO(), meta.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-	}
-	for _, item := range taskList.Items {
-		err := tasksClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}
-	// 删除Group
-	logs.Infof("deleting groups")
-	groupList, err := groupsClient.List(context.TODO(), meta.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-	}
-	for _, item := range groupList.Items {
-		err := groupsClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}
-
-	//err = tasksClient.Delete(context.TODO(), task1Name, metav1.DeleteOptions{})
-	//err1 := groupsClient.Delete(context.TODO(), group1_1Name, metav1.DeleteOptions{})
-	//err2 := groupsClient.Delete(context.TODO(), group1_2Name, metav1.DeleteOptions{})
-	//err3 := groupsClient.Delete(context.TODO(), group1_3Name, metav1.DeleteOptions{})
-	//err4 := groupsClient.Delete(context.TODO(), group1_4Name, metav1.DeleteOptions{})
-	//err5 := groupsClient.Delete(context.TODO(), group1_5Name, metav1.DeleteOptions{})
-	//err6 := groupsClient.Delete(context.TODO(), group1_6Name, metav1.DeleteOptions{})
-	logs.Infof("deleting actions")
-	err1 := actionsClient.Delete(context.TODO(), action1_1_1Name, metav1.DeleteOptions{})
-	err2 := actionsClient.Delete(context.TODO(), action1_2_1Name, metav1.DeleteOptions{})
-	err3 := actionsClient.Delete(context.TODO(), action1_3_1Name, metav1.DeleteOptions{})
-	err4 := actionsClient.Delete(context.TODO(), action1_4_1Name, metav1.DeleteOptions{})
-	err5 := actionsClient.Delete(context.TODO(), action1_5_1Name, metav1.DeleteOptions{})
-	err6 := actionsClient.Delete(context.TODO(), action1_6_1Name, metav1.DeleteOptions{})
-
-	if err != nil {
-		logs.Errorf("task delete error: %v", err)
-	}
-	if err1 != nil {
-		logs.Errorf("action1 delete error: %v", err1)
-	}
-	if err2 != nil {
-		logs.Errorf("action2 delete error: %v", err2)
-	}
-	if err3 != nil {
-		logs.Errorf("action3 delete error: %v", err3)
-	}
-	if err4 != nil {
-		logs.Errorf("action4 delete error: %v", err4)
-	}
-	if err5 != nil {
-		logs.Errorf("action5 delete error: %v", err5)
-	}
-	if err6 != nil {
-		logs.Errorf("action6 delete error: %v", err6)
-	}
-	// Create一个Task
+	// Create一个Task、6个Group
 	logs.Infof("creating task and groups")
 	_, err = tasksClient.Create(context.TODO(), task, metav1.CreateOptions{})
-	_, err1 = groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
-	_, err2 = groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
-	_, err3 = groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
-	_, err4 = groupsClient.Create(context.TODO(), group4, metav1.CreateOptions{})
-	_, err5 = groupsClient.Create(context.TODO(), group5, metav1.CreateOptions{})
-	_, err6 = groupsClient.Create(context.TODO(), group6, metav1.CreateOptions{})
+	_, err1 := groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
+	_, err2 := groupsClient.Create(context.TODO(), group2, metav1.CreateOptions{})
+	_, err3 := groupsClient.Create(context.TODO(), group3, metav1.CreateOptions{})
+	_, err4 := groupsClient.Create(context.TODO(), group4, metav1.CreateOptions{})
+	_, err5 := groupsClient.Create(context.TODO(), group5, metav1.CreateOptions{})
+	_, err6 := groupsClient.Create(context.TODO(), group6, metav1.CreateOptions{})
 
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)
@@ -938,93 +860,6 @@ func main() {
 	if err6 != nil {
 		logs.Errorf("Failed to create group6: %v", err)
 
-	}
-	prompt()
-	//如果已经存在，先删掉
-	//	"hit.edu/framework/pkg/apis/meta"
-	logs.Infof("deleting events")
-	eventList, err = eventsClient.List(context.TODO(), meta.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-	}
-	for _, item := range eventList.Items {
-		err := eventsClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}
-	// 删除Task
-	logs.Infof("deleting tasks")
-	taskList, err = tasksClient.List(context.TODO(), meta.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-	}
-	for _, item := range taskList.Items {
-		err := tasksClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}
-	// 删除Group
-	logs.Infof("deleting groups")
-	groupList, err = groupsClient.List(context.TODO(), meta.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-	}
-	for _, item := range groupList.Items {
-		err := groupsClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}
-	// 删除Action
-	logs.Infof("deleting actions")
-	actionList, err := actionsClient.List(context.TODO(), meta.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-	}
-	for _, item := range actionList.Items {
-		err := actionsClient.Delete(context.TODO(), item.Name, meta.DeleteOptions{})
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}
-
-	//err = tasksClient.Delete(context.TODO(), task1Name, metav1.DeleteOptions{})
-	//err1 := groupsClient.Delete(context.TODO(), group1_1Name, metav1.DeleteOptions{})
-	//err2 := groupsClient.Delete(context.TODO(), group1_2Name, metav1.DeleteOptions{})
-	//err3 := groupsClient.Delete(context.TODO(), group1_3Name, metav1.DeleteOptions{})
-	//err4 := groupsClient.Delete(context.TODO(), group1_4Name, metav1.DeleteOptions{})
-	//err5 := groupsClient.Delete(context.TODO(), group1_5Name, metav1.DeleteOptions{})
-	//err6 := groupsClient.Delete(context.TODO(), group1_6Name, metav1.DeleteOptions{})
-	//logs.Infof("deleting actions")
-	//err1 = actionsClient.Delete(context.TODO(), action1_1_1Name, metav1.DeleteOptions{})
-	//err2 = actionsClient.Delete(context.TODO(), action1_2_1Name, metav1.DeleteOptions{})
-	//err3 = actionsClient.Delete(context.TODO(), action1_3_1Name, metav1.DeleteOptions{})
-	//err4 = actionsClient.Delete(context.TODO(), action1_4_1Name, metav1.DeleteOptions{})
-	//err5 = actionsClient.Delete(context.TODO(), action1_5_1Name, metav1.DeleteOptions{})
-	//err6 = actionsClient.Delete(context.TODO(), action1_6_1Name, metav1.DeleteOptions{})
-
-	if err != nil {
-		logs.Errorf("task delete error: %v", err)
-	}
-	if err1 != nil {
-		logs.Errorf("action1 delete error: %v", err1)
-	}
-	if err2 != nil {
-		logs.Errorf("action2 delete error: %v", err2)
-	}
-	if err3 != nil {
-		logs.Errorf("action3 delete error: %v", err3)
-	}
-	if err4 != nil {
-		logs.Errorf("action4 delete error: %v", err4)
-	}
-	if err5 != nil {
-		logs.Errorf("action5 delete error: %v", err5)
-	}
-	if err6 != nil {
-		logs.Errorf("action6 delete error: %v", err6)
 	}
 }
 
