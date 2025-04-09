@@ -11,10 +11,11 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	"hit.edu/framework/pkg/apimachinery/types"
-	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/test/etcd_sync/active/clients"
+
+	//"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 )
@@ -29,7 +30,9 @@ func main() {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		//Host: "http://broker.registry-svc.test.svc.clusterset.local:3001/forward?target=",
+		//Host:    "http://localhost:10000",
+		Host:    "http://broker.registry-svc.test.svc.clusterset.local:3001",
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -39,6 +42,7 @@ func main() {
 				Version: "v1",
 			},
 			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+			TargetURL:            "http://172.110.0.120:10000",
 			FlowType:             "etcd",
 			ClusterID:            "pve2",
 		},
@@ -62,7 +66,6 @@ func main() {
 	// 默认访问的Namespace是 ""
 
 	nodesClient := clientSet.Core().Nodes("test")
-
 	node := &apis.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-nodes",
@@ -122,52 +125,6 @@ func main() {
 		},
 	})
 
-	//监听事件并打印  监听resources/v1/nodes
-	go func() {
-		logs.Trace("watching")
-		var timeoutSeconds int64 = 20
-		watchOptions := metav1.ListOptions{
-			TimeoutSeconds: &timeoutSeconds,
-		}
-
-		watcher, err := nodesClient.Watch(context.TODO(), watchOptions)
-		if err != nil {
-			logs.Error(err)
-		}
-		defer watcher.Stop() // 确保 watcher 被停止
-
-		// 获取事件通道
-		watchChan := watcher.ResultChan()
-
-		for {
-			select {
-			case event, ok := <-watchChan:
-				if !ok {
-					fmt.Println("watchChan closed")
-					return
-				}
-
-				// 打印事件类型和对象的相关信息
-				fmt.Println("接收到事件类型:", event.Type)
-				switch event.Type {
-				case watch.Added:
-					fmt.Println("资源被添加: ", event.Object)
-				case watch.Modified:
-					fmt.Println("资源被修改: ", event.Object)
-				case watch.Deleted:
-					fmt.Println("资源被删除: ", event.Object)
-				case watch.Error:
-					fmt.Println("发生错误: ", event.Object)
-				case watch.Bookmark:
-					fmt.Println("收到Bookmark", event.Object)
-
-				default:
-					fmt.Println("未识别的事件类型: ", event.Type)
-				}
-			}
-		}
-	}()
-
 	// Create三个Node
 	logs.Trace("creating")
 	result, err := nodesClient.Create(context.TODO(), node, metav1.CreateOptions{})
@@ -194,7 +151,7 @@ func main() {
 	fmt.Println("修改前的result.Spec.NodeName：", result.Spec.NodeName)
 
 	result.Spec.NodeName = "updatedNodeName"
-	_, updateErr := nodesClient.Update(context.TODO(), result, metav1.UpdateOptions{})
+	result, updateErr := nodesClient.Update(context.TODO(), result, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Error(fmt.Errorf("Update failed: %v", updateErr))
 	}

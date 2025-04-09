@@ -1,4 +1,4 @@
-package sync
+package main
 
 import (
 	"fmt"
@@ -64,10 +64,6 @@ func CreateConfig(target *Target, scheme *runtime.Scheme) *rest.Config {
 			TLSHandshakeTimeout: 10 * time.Second,
 		},
 		Timeout: 1000 * time.Second,
-		CustomHeaders: map[string]string{
-			"ClusterID": target.ClusterID,
-			"FlowType":  "etcd",
-		},
 	}
 	return c
 

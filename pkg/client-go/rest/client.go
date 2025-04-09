@@ -45,7 +45,8 @@ type ClientContentConfig struct {
 	//在request中的body()方法中用到
 	Negotiator runtime.ClientNegotiator
 
-	// 以下用于跨域header配置
+	// 以下用于跨域header配置，非跨域请求不要设置
+	TargetURL string
 	FlowType  string
 	ClusterID string
 }
@@ -73,8 +74,8 @@ func NewRESTClient(baseURL *url.URL, versionedAPIPath string, config ClientConte
 	if !strings.HasSuffix(base.Path, "/") {
 		base.Path += "/"
 	}
-	base.RawQuery = ""
-	base.Fragment = ""
+	// base.RawQuery = ""
+	// base.Fragment = ""
 
 	return &RESTClient{
 		base:             &base,
