@@ -70,7 +70,7 @@ func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis
 		if !leftReady || !rightReady {
 			return apis.NotReady, nil
 		}
-	
+
 		if rightVal != "" {
 			return apis.True, nil
 		} else {
@@ -126,6 +126,7 @@ func (eg *ConditionEngine) GetValue(From, Field string) (interface{}, string, er
 	if err != nil {
 		logs.Error("when getting value, Parse Field err")
 	}
+	logs.Info("Value:%v ValueType:%v", Value, ValueType)
 	return Value, ValueType, nil
 }
 
@@ -212,6 +213,9 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 			logs.Error("can not get runtime before no parent action!")
 		}
 	}
+	//debug
+	logs.Info("get currentItem:%v", currentItem)
+
 	return currentItem, nil
 }
 
