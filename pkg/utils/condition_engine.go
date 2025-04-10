@@ -209,7 +209,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 		if action, ok := currentItem.(apis.Action); ok {
 			for _, runtime := range action.Spec.Runtimes {
 				if runtime.Name == FromItemInfo.RuntimeName {
-					currentItem = action
+					currentItem = runtime
 				}
 			}
 		} else {
