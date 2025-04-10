@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 )
 
 // 为后续做成有状态的类留出扩展
@@ -30,6 +32,9 @@ func NewConditionEngine(nodeClient core.NodeInterface, taskClient core.TaskInter
 	}
 }
 
+// TODO：condition engine不断检查本地的所有Task Group Action Runtime的 condition
+//
+
 func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis.ResultType, error) {
 
 	if len(conditions.Formulas) == 0 {
@@ -48,6 +53,11 @@ func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis
 	return apis.True, nil
 }
 
+// TODO：规则检查，根据不同类型的condition进行不同的操作
+// NodeDependency：检查parent节点状态是否是完成
+// DataDependency：检查data是否已经下载完成（数据的下载时机？部署的时候开始下载？这里只负责检查）
+// ResourceDependency：检查资源是否能够满足（内存 CPU占用率等）
+// ProgramDependency：检查程序依赖是否满足（python包等）
 func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis.ResultType, error) {
 
 	switch formula.Type {
@@ -111,34 +121,129 @@ func (engine *ConditionEngine) extractValue(value apis.ConditionValue) (bool, st
 	return false, ""
 }
 
-//From用于确定来源的对象，例如某个action的statu或者spec
-//From格式：Task{Name}.Group{Name}.Action{Name}.Runtime{Name}.Status/Spec
-func ParseFrom(input string) (TaskID, GroupID, ActionID, RuntimeID, Field string, ParseTypeID int, err error) {
+func (eg *ConditionEngine) GetValue(From, Field string) (interface{}, string, error) {
+	Item, err := eg.GetItem(From)
+	if err != nil {
+		logs.Error("when getting value, Get Item err")
+	}
+	Value, ValueType, err := ParseField(Item, Field)
+	if err != nil {
+		logs.Error("when getting value, Parse Field err")
+	}
+	return Value, ValueType, nil
+}
+
+// TODO：client Get单独一个方法
+func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
+	
+	FromItemInfo, err := ParseFrom(FromInput)
+	if err != nil {
+		logs.Error("Get item err, Parse From Failed")
+		return nil, errors.New("")
+	}
+
+	//TODO 本地的情况
+	//Local还需要设计，目前全部按照etcd获取
+	if FromItemInfo.IsLocal == true {
+		logs.Info("Local Type is not supported now.")
+		return nil, errors.New("local Type is not supported now")
+	}
+
+	var currentItem interface{}
+	//有TaskName，直接Get
+	if FromItemInfo.TaskName != "" {
+		task, err := eg.taskClient.Get(context.TODO(), FromItemInfo.TaskName, metav1.GetOptions{})
+		if err != nil {
+			logs.Error("Get task by taskName error from etcd:%v", err)
+			return nil, errors.New("condition Get Task Item error")
+		}
+		currentItem = task
+	}
+	//有GroupName，看看是否有父亲Task
+	if FromItemInfo.GroupName != "" {
+		if currentItem == nil {
+			group, err := eg.groupClient.Get(context.TODO(), FromItemInfo.GroupName, metav1.GetOptions{})
+			if err != nil {
+				logs.Error("Get group by GroupName error from etcd:%v", err)
+				return nil, errors.New("condition Get Group Item error")
+			}
+			currentItem = group
+		} else {
+			// 类型断言
+			if task, ok := currentItem.(apis.Task); ok {
+				for _, group := range task.Spec.Groups {
+					if group.Spec.Name == FromItemInfo.GroupName {
+						currentItem = group
+					}
+				}
+			} else {
+				logs.Error("can not get group before no parent task!")
+			}
+		}
+	}
+	//有ActionName，查看是否有父亲Group
+	if FromItemInfo.ActionName != "" {
+		if currentItem == nil {
+			action, err := eg.actionClient.Get(context.TODO(), FromItemInfo.ActionName, metav1.GetOptions{})
+			if err != nil {
+				logs.Error("Get action by ActionName error from etcd:%v", err)
+				return nil, errors.New("condition Get Action Item error")
+			}
+			currentItem = action
+		} else {
+			// 类型断言
+			if group, ok := currentItem.(apis.Group); ok {
+				for _, action := range group.Spec.Actions {
+					if action.Spec.Name == FromItemInfo.ActionName {
+						currentItem = action
+					}
+				}
+			} else {
+				logs.Error("can not get action before no parent group!")
+			}
+		}
+	}
+	//有Runtime，从Action去查找：
+	if FromItemInfo.ActionName != "" {
+		// 类型断言
+		if action, ok := currentItem.(apis.Action); ok {
+			for _, runtime := range action.Spec.Runtimes {
+				if runtime.Name == FromItemInfo.RuntimeName {
+					currentItem = action
+				}
+			}
+		} else {
+			logs.Error("can not get runtime before no parent action!")
+		}
+	}
+	return currentItem, nil
+}
+
+// From用于确定来源的对象，例如某个action的statu或者spec
+// From格式：Task{Name}.Group{Name}.Action{Name}.Runtime{Name}
+// TODO 返回结构体形式
+func ParseFrom(input string) (apis.FromItemInfo, error) {
 	// 定义部分名称的顺序
 	partNames := []string{"Task", "Group", "Action", "Runtime"}
-
-	// 初始化结果
 	result := make(map[string]string)
 	for _, name := range partNames {
 		result[name] = ""
 	}
-	result["Field"] = ""
+	// result["Field"] = ""
 
 	// 将输入字符串按 '.' 分割
 	parts := strings.Split(input, ".")
-
-	
-
-	// 依次处理每个部分
 	for _, part := range parts {
 		if part == "" {
 			continue
 		}
-		// 检查是否是 Field
-		if part == "Field" {
-			result["Field"] = part
-			continue
-		}
+		//Status/Spec的检查移到Field里了
+		// // 检查是否是 Field
+		// if part == "Field" {
+		// 	result["Field"] = part
+		// 	continue
+		// }
+
 		// 分割 Part{ID}
 		partSplit := strings.SplitN(part, "{", 2)
 		if len(partSplit) != 2 {
@@ -150,50 +255,42 @@ func ParseFrom(input string) (TaskID, GroupID, ActionID, RuntimeID, Field string
 			result[partName] = partID
 		}
 	}
+	// var FieldType apis.FieldType
+	// if result["Field"] == "Status" {
+	// 	FieldType = apis.StatusType
+	// } else if result["Field"] == "Spec" {
+	// 	FieldType = apis.Spectype
+	// }
+	FromItemInfo := apis.FromItemInfo{
+		TaskName:    result["Task"],
+		GroupName:   result["Group"],
+		ActionName:  result["Action"],
+		RuntimeName: result["Runtime"],
+	}
+	if FromItemInfo.TaskName != "" || FromItemInfo.GroupName != "" {
+		FromItemInfo.IsLocal = false
+	} else {
+		FromItemInfo.IsLocal = true
+	}
+	if FromItemInfo.TaskName == "" && FromItemInfo.GroupName == "" && FromItemInfo.ActionName == "" && FromItemInfo.RuntimeName == "" {
+		return FromItemInfo, errors.New("parse From err! Format err")
+	}
+	// DEBUG打印解析结果
+	// logs.Trace("From Item:%v", FromItem)
 
-	// 提取结果
-	TaskID = result["Task"]
-	GroupID = result["Group"]
-	ActionID = result["Action"]
-	RuntimeID = result["Runtime"]
-	Field = result["Field"]
-
-	ParseTypeID = 0
-	// 如果某部分没有匹配到，则将ParseTypeID加上对应值，判断是那一种情况
-	//Task{ID}.Group{ID}.Action{ID}.Runtime{ID}
-	//     0000 ~ 1111，某些情况去除
-	if TaskID == "" {
-		ParseTypeID += 1 << 3
-	}
-	if GroupID == "" {
-		ParseTypeID += 1 << 2
-	}
-	if ActionID == "" {
-		ParseTypeID += 1 << 1
-	}
-	if RuntimeID == "" {
-		ParseTypeID += 1
-	}
-	//ID就是Name
-	return TaskID, GroupID, ActionID, RuntimeID, Field, ParseTypeID, err
+	return FromItemInfo, nil
 }
 
-//Field用于解析From获取的item的字段路径
-//Field格式：
-// 例如获取某个Action的完成情况:  Phase{}
-// 例如获取某个action的device的abilities下面的AbilityServiceStatus下面的port字段:  Device{deviceCamera}.Abilities{0}.AbilityServiceStatus{0}.port{}。
+// Field用于解析From获取的item的字段路径
+// Field格式：(Status和Spec在这里最前面列出来)
+// 例如获取某个Action的完成情况:  Status{}.Phase{}
+// 例如获取某个action的device的abilities下面的AbilityServiceStatus下面的port字段:  Spec{}.Device{deviceCamera}.Abilities{0}.AbilityServiceStatus{0}.port{}。
 // {}里面填对应寻址方式的index，如果是列表就填下标，如果是map就填key。如果直接是某个变量，置为空。
-func ParseField(Field interface{}, path string) (interface{}, string, error) {
-	//两类数据类型对应两类正则解析式
-	// 定义正则表达式
-	//遇到一个问题，这里的每一项的类型都可能不一样，比如使用列表、结构体、map，这三种类型的话，{}里面应该怎么填比较合适？通过reflect应该已经解决了，等待测试
-	//对于列表，里面填下标可能是不合适的，例如目前的RuntimeStatus
-	//格式为 Status/Spec.RuntimeStatus{}
+func ParseField(Item interface{}, Field string) (interface{}, string, error) {
 	// 按照 '.' 分割路径
-	parts := strings.Split(path, ".")
-
+	parts := strings.Split(Field, ".")
 	// 逐步解析路径
-	current := reflect.ValueOf(Field)
+	current := reflect.ValueOf(Item)
 	for _, part := range parts {
 		// 解析字段名和索引
 		field := strings.Split(part, "{")
@@ -204,13 +301,11 @@ func ParseField(Field interface{}, path string) (interface{}, string, error) {
 		} else {
 			index = ""
 		}
-
 		// 获取字段值
 		fieldValue := current.FieldByName(fieldName)
 		if !fieldValue.IsValid() {
 			return nil, "", errors.New("")
 		}
-
 		// 如果有索引，处理索引
 		if index != "" {
 			if fieldValue.Kind() == reflect.Map {
@@ -224,11 +319,10 @@ func ParseField(Field interface{}, path string) (interface{}, string, error) {
 				fieldValue = fieldValue.Index(indexInt)
 			}
 		}
-
 		// 更新 current 为当前字段值
 		current = fieldValue
 	}
-
 	// 返回最终的值
 	return current.Interface(), current.Type().String(), nil
 }
+
