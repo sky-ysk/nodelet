@@ -60,22 +60,18 @@ func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis
 // ResourceDependency：检查资源是否能够满足（内存 CPU占用率等）
 // ProgramDependency：检查程序依赖是否满足（python包等）
 func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis.ResultType, error) {
-
-
-
-
 	switch formula.Type {
 	case apis.NodeDependency:
 
 	case apis.DataDependency:
 
-		leftReady, leftVal, _ := engine.extractValue(formula.RightValue)
-		rightReady, _, _ := engine.extractValue(formula.LeftValue)
+		leftReady, _, _ := engine.extractValue(formula.LeftValue)
+		rightReady, rightVal, _ := engine.extractValue(formula.RightValue)
 		if !leftReady || !rightReady {
 			return apis.NotReady, nil
 		}
 	
-		if leftVal != "" {
+		if rightVal != "" {
 			return apis.True, nil
 		} else {
 			return apis.False, errors.New("do not get leftVal")
@@ -91,8 +87,6 @@ func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis
 	case apis.ProgramDependency:
 
 	}
-
-
 
 	logs.Error("unsupported signal type ", formula.Signal)
 	return apis.False, errors.New(string("unsupported signal type " + formula.Signal))
@@ -146,7 +140,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 
 	//TODO 本地的情况
 	//Local还需要设计，目前全部按照etcd获取
-	if FromItemInfo.IsLocal == true {
+	if FromItemInfo.IsLocal {
 		logs.Info("Local Type is not supported now.")
 		return nil, errors.New("local Type is not supported now")
 	}
@@ -159,7 +153,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 			logs.Error("Get task by taskName error from etcd:%v", err)
 			return nil, errors.New("condition Get Task Item error")
 		}
-		currentItem = task
+		currentItem = *task
 	}
 	//有GroupName，看看是否有父亲Task
 	if FromItemInfo.GroupName != "" {
@@ -169,7 +163,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 				logs.Error("Get group by GroupName error from etcd:%v", err)
 				return nil, errors.New("condition Get Group Item error")
 			}
-			currentItem = group
+			currentItem = *group
 		} else {
 			// 类型断言
 			if task, ok := currentItem.(apis.Task); ok {
@@ -191,7 +185,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 				logs.Error("Get action by ActionName error from etcd:%v", err)
 				return nil, errors.New("condition Get Action Item error")
 			}
-			currentItem = action
+			currentItem = *action
 		} else {
 			// 类型断言
 			if group, ok := currentItem.(apis.Group); ok {
@@ -278,7 +272,7 @@ func ParseFrom(input string) (apis.FromItemInfo, error) {
 		return FromItemInfo, errors.New("parse From err! Format err")
 	}
 	// DEBUG打印解析结果
-	// logs.Trace("From Item:%v", FromItem)
+	// logs.Trace("From Item:%v", FromItemInfo)
 
 	return FromItemInfo, nil
 }
