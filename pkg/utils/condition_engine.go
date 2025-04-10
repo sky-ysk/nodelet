@@ -3,14 +3,15 @@ package utils
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 )
 
 // 为后续做成有状态的类留出扩展
@@ -60,10 +61,30 @@ func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis
 // ProgramDependency：检查程序依赖是否满足（python包等）
 func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis.ResultType, error) {
 
+
+
+
 	switch formula.Type {
 	case apis.NodeDependency:
 
 	case apis.DataDependency:
+
+		leftReady, leftVal, _ := engine.extractValue(formula.RightValue)
+		rightReady, _, _ := engine.extractValue(formula.LeftValue)
+		if !leftReady || !rightReady {
+			return apis.NotReady, nil
+		}
+	
+		if leftVal != "" {
+			return apis.True, nil
+		} else {
+			return apis.False, errors.New("do not get leftVal")
+		}
+
+		// if leftType != rightType {
+		// 	logs.Error("checkFormula err, left and right type are not the same")
+		// 	return apis.False, errors.New("checkFormula err, left and right type are not the same")
+		// }
 
 	case apis.ResourceDependency:
 
@@ -71,54 +92,35 @@ func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis
 
 	}
 
-	leftReady, leftVal := engine.extractValue(formula.RightValue)
-	rightReady, rightVal := engine.extractValue(formula.LeftValue)
-	if !leftReady || !rightReady {
-		return apis.NotReady, nil
-	}
-	if formula.Signal == apis.Equal {
-		if leftVal != rightVal {
-			return apis.False, nil
-		}
-		return apis.True, nil
-	} else if formula.Signal != apis.Equal {
-		if leftVal == rightVal {
-			return apis.False, nil
-		}
-		return apis.True, nil
-	}
+
+
 	logs.Error("unsupported signal type ", formula.Signal)
 	return apis.False, errors.New(string("unsupported signal type " + formula.Signal))
 }
 
 // TODO 解析具体的值，返回bool表示值是否就绪，string表示值
-func (engine *ConditionEngine) extractValue(value apis.ConditionValue) (bool, string) {
+func (engine *ConditionEngine) extractValue(value apis.ConditionValue) (bool, string, string) {
 
 	switch value.ValueType {
 	case apis.ConstantType:
-		return true, value.Value
+		return true, value.Value, ""
 
 	//Task{task1}.Group{group1}.Action{action1}.Output{completed}
 	//
 	//Succeed Group状态
 	//目前做一些特殊逻辑，只去捞Action里面的东西
 	case apis.ArgumentRefType:
-		//re := regexp.MustCompile(`Action\{([^}]+)}`)
-
-		// 查找子匹配
-		//match := re.FindStringSubmatch(value.Value)
-		//if len(match) < 2 {
-		//	logs.Error("no action found ", value.Value)
-		//	return false, "" // 没有找到匹配项
-		//}
-		////
-		//actionName := match[1]
-		////TODO 从client里面拿结果 校验
+		val, typ, err := engine.GetValue(value.From, value.Field)
+		if err != nil {
+			logs.Error("extractValue err, bacause GetValue err")
+			return false, "", ""
+		}
+		str := fmt.Sprintf("%v", val)
+		return true, str, typ
 	default:
 		logs.Fatal("unsupported value type ", value.ValueType)
-		return false, ""
+		return false, "", ""
 	}
-	return false, ""
 }
 
 func (eg *ConditionEngine) GetValue(From, Field string) (interface{}, string, error) {
@@ -133,9 +135,9 @@ func (eg *ConditionEngine) GetValue(From, Field string) (interface{}, string, er
 	return Value, ValueType, nil
 }
 
-//GetItem返回Task/Group/Action/Runtime这四个里面的其中一个结构体本身
+// GetItem返回Task/Group/Action/Runtime这四个里面的其中一个结构体本身
 func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
-	
+
 	FromItemInfo, err := ParseFrom(FromInput)
 	if err != nil {
 		logs.Error("Get item err, Parse From Failed")
@@ -199,7 +201,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 					}
 				}
 			} else {
-				logs.Error("can not get action before no parent group!")
+				logs.Error("can not get runtime before no parent action!")
 			}
 		}
 	}
@@ -325,4 +327,3 @@ func ParseField(Item interface{}, Field string) (interface{}, string, error) {
 	// 返回最终的值
 	return current.Interface(), current.Type().String(), nil
 }
-
