@@ -133,7 +133,7 @@ func (eg *ConditionEngine) GetValue(From, Field string) (interface{}, string, er
 	return Value, ValueType, nil
 }
 
-// TODO：client Get单独一个方法
+//GetItem返回Task/Group/Action/Runtime这四个里面的其中一个结构体本身
 func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 	
 	FromItemInfo, err := ParseFrom(FromInput)
@@ -204,7 +204,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 		}
 	}
 	//有Runtime，从Action去查找：
-	if FromItemInfo.ActionName != "" {
+	if FromItemInfo.RuntimeName != "" {
 		// 类型断言
 		if action, ok := currentItem.(apis.Action); ok {
 			for _, runtime := range action.Spec.Runtimes {
