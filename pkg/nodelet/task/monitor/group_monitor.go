@@ -1330,6 +1330,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		//}
 		// 修改task的信息 ---这个不要也行
 		gmo.taskManager.UpdateTask(task)
+		runtime := get.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex]
+		if runtime.Type == apis.ByPod { //是pod类型的任务
+			err := gmo.runtimeManager.Kill(get, &get.Spec.Actions[actionIndex], &get.Spec.Actions[actionIndex].Spec.Runtimes[runtimeIndex], actionIndex, runtimeIndex)
+			if err != nil {
+				logs.Errorf("Stop runtime error:%v", err)
+			}
+		}
 	}
 
 	//将queue_manager和group_manager的group信息进行更新
