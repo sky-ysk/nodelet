@@ -45,36 +45,56 @@ func CheckDevice1(devices map[string]*apis.Device) error {
 	return nil
 }
 
-func CheckDevice2(devices map[string]*apis.Device, groupID string) error {
+func CheckDevice2(devices map[string]*apis.Device, groupID string, deviceClient core.DeviceInterface) error {
 
+	var err error = nil
 	for name, device := range devices {
 		logs.Infof("check device %s status", name)
-		status := device.Status
-		if status.Lock.Lock == false {
-			logs.Errorf("Device %s is not locked", device.Name)
-			return fmt.Errorf("device %s is not locked", device.Name)
-		}
 
-		// device状态为idle(系统内状态和运行时状态)
-		if status.Phase != apis.DeviceIdle {
-			logs.Errorf("device %s is busy", device.Name)
-			return fmt.Errorf("device %s is busy", device.Name)
-		}
+		for {
 
-		// device的Task ID应该为空
-		if status.ActionID != "" {
-			logs.Errorf("device %s's task_id is not null", device.Name)
-			return fmt.Errorf("device %s's task_id is not null", device.Name)
-		}
+			status := device.Status
+			// 首先判断GroupID
+			logs.Infof("check device groupID...")
+			if status.GroupID != groupID {
+				// GroupID 不通过 说明device没有被分配到这个Group中
+				logs.Warnf("device %s's GroupID is wrong", device.Name)
+				time.Sleep(3 * time.Second)
 
-		if status.GroupID != groupID {
-			logs.Errorf("device %s's GroupID is wrong", device.Name)
-			return fmt.Errorf("device %s's GroupID is wrong", device.Name)
-		}
+				// 重新获取device
+				device, err = deviceClient.Get(context.TODO(), device.Name, metav1.GetOptions{})
+				if err != nil {
+					logs.Errorf("get device:%s failed", name)
+					return err
+				}
 
+			} else {
+				// GroupID合格 证明device绑定的Group是对的
+				// 判断是否上锁
+				if status.Lock.Lock == false {
+					logs.Errorf("Device %s is not locked", device.Name)
+					return fmt.Errorf("device %s is not locked", device.Name)
+				}
+
+				// device状态为idle(系统内状态和运行时状态)
+				if status.Phase != apis.DeviceIdle {
+					logs.Errorf("device %s is busy", device.Name)
+					return fmt.Errorf("device %s is busy", device.Name)
+				}
+
+				// device的Task ID应该为空
+				if status.ActionID != "" {
+					logs.Errorf("device %s's ActionID is not null", device.Name)
+					return fmt.Errorf("device %s's ActionID is not null", device.Name)
+				}
+				break
+			}
+
+		}
+		devices[name] = device
 	}
 
-	return nil
+	return err
 }
 
 // GetDevices 获取所有设备
@@ -170,24 +190,24 @@ func UpdateDeviceRunning(runtime *apis.Runtime, action *apis.Action, device *api
 	device.Status.LastTime = apis.Time{Time: time.Now()}
 	_, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})
 	if err != nil {
-		logs.Errorf("update device [%s]  failed, %s", device.Name, err)
+		logs.Errorf("update device [%s]  failed[stage running], %s", device.Name, err)
 		return err
 	}
-	logs.Infof("update device [%s] successfully\n", device.Name)
+	logs.Infof("update device [%s] successfully[stage running]\n", device.Name)
 	return nil
 }
 
-func UpdateDeviceSuccess(runtime *apis.Runtime, action *apis.Action, device *apis.Device) error {
-	// Lock
-
-	// ActionID更改为空
-	device.Status.ActionID = ""
-	// 设置更新时间
-	device.Status.LastTime = apis.Time{Time: time.Now()}
-	// 更新phase
-	device.Status.Phase = apis.DeviceIdle
-
-}
+//func UpdateDeviceSuccess(runtime *apis.Runtime, action *apis.Action, device *apis.Device) error {
+//	// Lock
+//
+//	// ActionID更改为空
+//	device.Status.ActionID = ""
+//	// 设置更新时间
+//	device.Status.LastTime = apis.Time{Time: time.Now()}
+//	// 更新phase
+//	device.Status.Phase = apis.DeviceIdle
+//
+//}
 
 func UpdateDevice(runtime *apis.Runtime, device *apis.Device, taskId string, deviceClient core.DeviceInterface) error {
 	parts := strings.Split(runtime.Name, "_")

@@ -53,7 +53,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 
 	// 检查Device
 	logs.Infof("Action[%s] Runtime[%s] CheckDevice start\n", action.Spec.Name, runtime.Name)
-	err = utils.CheckDevice2(devices, group.Status.GroupID)
+	err = utils.CheckDevice2(devices, group.Status.GroupID, dr.deviceClient)
 	if err != nil {
 		logs.Errorf("Action[%s] Runtime[%s] CheckDevice failed\n", action.Spec.Name, runtime.Name)
 		return err
@@ -78,28 +78,39 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 			if err != nil { // 指令发布失败
 				logs.Errorf("Action[%s] Runtime[%s] publish Ability failed\n", action.Spec.Name, runtime.Name)
 				// processId 字段保留
-				dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+				go dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 				return err
 			}
-
-			// 指令发布成功 更新action的状态 和 device的状态
-			dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
-			//TODO 暂时先不调用
-			//err = utils.UpdateDeviceRunning(runtime, action, device, dr.deviceClient)
-			//if err != nil {
-			//	logs.Errorf("Action[%s] Runtime[%s] UpdateDevice[runnning] failed\n", action.Spec.Name, runtime.Name)
-			//}
-			time.Sleep(1 * time.Second)
 			logs.Infof("publish ability successfully")
+			// 指令发布成功 更新action的状态 和 device的状态
+			logs.Infof("update action phase[stage running]")
+			go dr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+			//TODO 暂时先不调用
+			logs.Infof("update action phase[stage running]")
+			err = utils.UpdateDeviceRunning(runtime, action, device, dr.deviceClient)
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] UpdateDevice[runnning] failed\n", action.Spec.Name, runtime.Name)
+			}
+			time.Sleep(2 * time.Second)
 
 			// 这里暂时直接调用end方法更新phase
-			dr.monitorDeviceAbility(actionIndex, action, group.Name, runtimeIndex, runtime, device)
+
+			go dr.monitorDeviceAbility(actionIndex, action, group.Name, runtimeIndex, runtime, device)
 			//dr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 			logs.Infof("publish ability inst output:%v", output)
 			// 更新runtime的output
 			runtime.Outputs = append(runtime.Outputs, output)
-			action.Spec.Runtimes[runtimeIndex] = *runtime
 
+			action, err = dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] can not get action from etcd!", a.Name, runtime.Name)
+				return err
+			}
+			action.Spec.Runtimes[runtimeIndex] = *runtime
+			_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
+			if err != nil {
+				logs.Errorf("Action[%s] Runtime[%s] Update action failed err:%v \n", action.Spec.Name, runtime.Name, err)
+			}
 		} else if device.Spec.AccessMethod.Type == apis.AccessByRmf { // rmf方式
 
 			// 构造任务的请求参数
@@ -132,21 +143,6 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 			//go dr.monitorDeviceRMF(action, group.Name, actionIndex, runtimeIndex, runtime, taskId, device)
 		}
 
-		//修改Device状态
-		logs.Infof("Action[%s] Runtime[%s] update device  start\n", action.Spec.Name, runtime.Name)
-		err = utils.UpdateDevice(runtime, device, taskId, dr.deviceClient)
-		if err != nil {
-			logs.Errorf("Action[%s] Runtime[%s] update device failed\n", action.Spec.Name, runtime.Name)
-		}
-		logs.Infof("Action[%s] Runtime[%s] update device finished\n", action.Spec.Name, runtime.Name)
-
-		devices[name] = device
-		action.Status.Devices[name] = device.Status
-	}
-
-	_, err = dr.actionClient.Update(context.TODO(), action, metav1.UpdateOptions{})
-	if err != nil {
-		logs.Errorf("Action[%s] Runtime[%s] Update action failed err:%v \n", action.Spec.Name, runtime.Name, err)
 	}
 
 	return nil
@@ -336,11 +332,18 @@ func (dr *DeviceRuntime) monitorDeviceAbility(actionIndex int, action *apis.Acti
 	//TODO 发布 查询业务执行情况的指令
 
 	//TODO 解析指令 查看情况
-
+	device, err := dr.deviceClient.Get(context.TODO(), device.Name, metav1.GetOptions{})
+	if err != nil {
+		logs.Errorf("get device failed!")
+	}
 	var status string = "success"
 	switch status {
 	case "success":
+		// 更新action为success
+		logs.Infof("update action phase [stage success]")
+		go dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		//TODO 1.执行成功的状态
+		logs.Infof("update device status [stage success]")
 		err := utils.ReleaseDeviceLock(device, dr.deviceClient)
 		if err != nil {
 			logs.Errorf("Release device [%s] lock failed\n", device.Name)
@@ -356,11 +359,10 @@ func (dr *DeviceRuntime) monitorDeviceAbility(actionIndex int, action *apis.Acti
 
 		_, err = dr.deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})
 		if err != nil {
-			logs.Errorf("Update device [%s] lock failed\n", device.Name)
+			logs.Errorf("Update device [%s] lock failed [stage success]\n", device.Name)
 			return
 		}
-		// 更新action为success
-		dr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		return
 
 	case "failed":
 		//TODO 2.执行失败的状态

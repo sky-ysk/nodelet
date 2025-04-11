@@ -32,7 +32,17 @@ func ReleaseDeviceLock(device *apis.Device, deviceClient core.DeviceInterface) e
 			logs.Errorf("can not update Device %s to etcd!", device.Name)
 			return err
 		}
+		_, err = deviceClient.Update(context.TODO(), pDevice, metav1.UpdateOptions{})
+		if err != nil {
+			logs.Errorf("can not update Device %s to etcd!", pDevice.Name)
+			return err
+		}
 
+		pDevice, err = deviceClient.Get(context.TODO(), device.Spec.AttachedDevice, metav1.GetOptions{})
+		if err != nil {
+			logs.Errorf("can not get device:%s.parentDevice from etcd!", device.Name)
+			return err
+		}
 		// 如果达到了可以释放的条件 GroupID也可以更新掉
 		if device.Status.Lock.Ref == 0 && pDevice.Status.Lock.Ref == 0 {
 			// 遍历这个父设备底下的全部子设备
@@ -66,6 +76,7 @@ func ReleaseDeviceLock(device *apis.Device, deviceClient core.DeviceInterface) e
 		if device.Status.Lock.Ref == 0 {
 			// 进行释放
 			device.Status.Lock.Lock = false
+			device.Status.GroupID = ""
 		}
 
 		_, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})

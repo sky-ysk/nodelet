@@ -58,20 +58,20 @@ func GetDeviceInfo(request Request) (*DeviceInfo, error) {
 	response, err := client.Get(accessURL)
 	if err != nil {
 		// TODO: 输出错误信息
-		logs.V2().Errorf("Error client get :%v\n", err)
+		logs.Errorf("Error client get :%v\n", err)
 		return nil, err
 	}
 	// 读取Response
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		logs.V2().Errorf("Error reading response body: %v\n", err)
+		logs.Errorf("Error reading response body: %v\n", err)
 		return nil, err
 	}
 	// 反序列化JSON数据到结构体
 	var resp Response
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
-		logs.V2().Errorf("Error unmarshalling JSON: %v\n", err)
+		logs.Errorf("Error unmarshalling JSON: %v\n", err)
 		return nil, err
 	}
 
