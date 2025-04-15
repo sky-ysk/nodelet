@@ -227,21 +227,8 @@ func (t *etcd3ProberMonitor) Probe(ctx context.Context) error {
 }
 
 //TODO: metrics 指标监测
-// func (t *etcd3ProberMonitor) Monitor(ctx context.Context) (metrics.StorageMetrics, error) {
-// 	t.mux.RLock()
-// 	defer t.mux.RUnlock()
-// 	if t.closed {
-// 		return metrics.StorageMetrics{}, fmt.Errorf("closed")
-// 	}
-// 	status, err := t.client.Status(ctx, t.endpoints[rand.Int()%len(t.endpoints)])
-// 	if err != nil {
-// 		return metrics.StorageMetrics{}, err
-// 	}
-// 	return metrics.StorageMetrics{
-// 		Size: status.DbSize,
-// 	}, nil
-// }
 
+// TODO: etcd compact DBMonitor
 func NewETCD3Client(c TransportConfig) (*Client, error) {
 	tlsInfo := transport.TLSInfo{
 		CertFile:      c.CertFile,
@@ -265,11 +252,10 @@ func NewETCD3Client(c TransportConfig) (*Client, error) {
 		DialTimeout:          dialTimeout,
 		DialKeepAliveTime:    keepaliveTime,
 		DialKeepAliveTimeout: keepaliveTimeout,
-		//TODO:关注拨号的参数设置
-		DialOptions: dialOptions,
-		Endpoints:   c.ServerList,
-		TLS:         tlsConfig,
-		Logger:      etcd3ClientLogger,
+		DialOptions:          dialOptions,
+		Endpoints:            c.ServerList,
+		TLS:                  tlsConfig,
+		Logger:               etcd3ClientLogger,
 	}
 	logs.Info("etcd3 client create successfully")
 	return New(cfg)

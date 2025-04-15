@@ -8,6 +8,7 @@ import (
 
 	//genericapiserver "k8s.io/apiserver/pkg/server"
 	actionstore "hit.edu/framework/pkg/apiserver/registry/core/action"
+	datastore "hit.edu/framework/pkg/apiserver/registry/core/data"
 	devicestore "hit.edu/framework/pkg/apiserver/registry/core/device"
 	eventstore "hit.edu/framework/pkg/apiserver/registry/core/event"
 	groupstore "hit.edu/framework/pkg/apiserver/registry/core/group"
@@ -75,6 +76,11 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		logs.Error("error occur while create EventStorage", err)
 		return server.APIGroupInfo{}, err
 	}
+	dataStorage, err := datastore.NewDataStorage(restOptionsGetter)
+	if err != nil {
+		logs.Error("error occur while create DataStorage", err)
+		return server.APIGroupInfo{}, err
+	}
 
 	storage := map[string]rest.Storage{}
 	if resource := "nodes"; true {
@@ -112,10 +118,15 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		storage[resource+"/status"] = sceneStorage.Status
 		storage[resource+"/spec"] = sceneStorage.Spec
 	}
-	if resource := "resources"; true {
+	if resource := "resource_nodes"; true {
 		storage[resource] = resourceStorage.Resource
 		storage[resource+"/status"] = resourceStorage.Status
 		storage[resource+"/spec"] = resourceStorage.Spec
+	}
+	if resource := "datas"; true {
+		storage[resource] = dataStorage.Data
+		storage[resource+"/status"] = dataStorage.Status
+		storage[resource+"/spec"] = dataStorage.Spec
 	}
 	if resource := "events"; true {
 		storage[resource] = eventStorage.Event

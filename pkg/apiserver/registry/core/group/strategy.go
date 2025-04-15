@@ -3,6 +3,7 @@ package group
 import (
 	"context"
 
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/legacyscheme"
 	"hit.edu/framework/pkg/apiserver/registry/storage/field"
 
@@ -15,7 +16,16 @@ type Strategy struct {
 
 var thisStrategy = &Strategy{legacyscheme.Scheme}
 
-func (t Strategy) PrepareForCreate(ctx context.Context, obj runtime.Object)      {}
+func (t Strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
+	group, ok := obj.(*apis.Group)
+	if !ok {
+		return
+	}
+	//生成 groupid
+	if group.Status.GroupID == "" {
+		group.Status.GroupID = string(group.ObjectMeta.UID)
+	}
+}
 func (t Strategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {}
 func (t Strategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
 	return nil
@@ -24,6 +34,9 @@ func (t Strategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) f
 	return nil
 }
 func (t Strategy) Canonicalize(obj runtime.Object) {}
+
+// 资源的命名空间级别
 func (t Strategy) NamespaceScoped() bool {
+	// true表示资源必须配备命名空间信息
 	return true
 }

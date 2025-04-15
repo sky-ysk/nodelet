@@ -55,7 +55,6 @@ func (s *APIServer) AddPostStartHook(name string, hook PostStartHookFunc) error 
 	}
 
 	done := make(chan struct{})
-	//TODO:健康检查
 	s.postStartHooks[name] = postStartHookEntry{hook: hook, done: done}
 
 	return nil

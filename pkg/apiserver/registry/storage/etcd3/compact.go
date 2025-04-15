@@ -1,4 +1,3 @@
-// compact.go实现了用于压缩etcd存储的后台任务，用于清理掉不需要的旧版本键值
 package etcd3
 
 import (
@@ -29,8 +28,6 @@ func StartCompactor(ctx context.Context, client *clientv3.Client, compactInterva
 	endpointsMapMu.Lock()
 	defer endpointsMapMu.Unlock()
 
-	// In one process, we can have only one compactor for one cluster.
-	// Currently we rely on endpoints to differentiate clusters.
 	for _, ep := range client.Endpoints() {
 		if _, ok := endpointsMap[ep]; ok {
 			logs.Info("compactore already exist")
@@ -71,7 +68,7 @@ func compact(ctx context.Context, client *clientv3.Client, t, rev int64) (int64,
 	resp, err := client.KV.Txn(ctx).If(
 		clientv3.Compare(clientv3.Version(compactRevKey), "=", t),
 	).Then(
-		clientv3.OpPut(compactRevKey, strconv.FormatInt(rev, 10)), // Expect side effect: increment Version
+		clientv3.OpPut(compactRevKey, strconv.FormatInt(rev, 10)),
 	).Else(
 		clientv3.OpGet(compactRevKey),
 	).Commit()
@@ -88,7 +85,6 @@ func compact(ctx context.Context, client *clientv3.Client, t, rev int64) (int64,
 	curTime := t + 1
 
 	if rev == 0 {
-		// We don't compact on bootstrap.
 		return curTime, curRev, nil
 	}
 	if _, err = client.Compact(ctx, rev); err != nil {
