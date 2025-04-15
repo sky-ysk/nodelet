@@ -11,7 +11,7 @@ declare -a scripts=(
 
 while true; do
     # 生成随机延迟 (40-70秒)
-    delay=$(( RANDOM % 31 + 30 ))
+    delay=$(( RANDOM % 25 + 30 ))
 
     # 随机选择程序
     script_index=$(( RANDOM % 5 ))
