@@ -1224,14 +1224,6 @@ type Output struct {
 type ActionStatus struct {
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
-	// 当前资源使用情况
-	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
-	// 当前设备使用情况
-	Devices []ObjectReference `json:"devices,omitempty" yaml:"devices"` // TODO: 修改为Map
-	// 当前数据使用情况
-	Data []ObjectReference `json:"data,omitempty" yaml:"data"` // TODO: 修改为Map
-	// 当前场景更新情况
-	Scenes []ObjectReference `json:"scenes,omitempty" yaml:"scenes"` // TODO: 修改为Map
 	// 当前Runtime执行状态
 	// Key是Action中Runtime.Spec.Name，可能与真实的名字不同
 	Runtimes map[string]ObjectReference `json:"runtimes,omitempty" yaml:"runtimes"` // TODO: 修改为Map
@@ -1251,6 +1243,14 @@ type ActionStatus struct {
 }
 
 type RuntimeStatus struct {
+	// 当前资源使用情况
+	Resources map[string]ObjectReference `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
+	// 当前设备使用情况
+	Devices map[string]ObjectReference `json:"devices,omitempty" yaml:"devices"`
+	// 当前数据使用情况
+	Data map[string]ObjectReference `json:"data,omitempty" yaml:"data"`
+	// 当前场景更新情况
+	Scenes map[string]ObjectReference `json:"scenes,omitempty" yaml:"scenes"`
 	// 当前任务的执行情况
 	// 任务在哪里执行,进程ID
 	NodeName  string `json:"node_name,omitempty" yaml:"node_name"`
@@ -1276,8 +1276,6 @@ type RuntimeStatus struct {
 	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
 	IsParsed           bool   `json:"isparsed" yaml:"isparsed"`             //是否已经被解析过
 	DepenPreparing     bool   `json:"DepenPreparing" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
-	// 当前资源使用情况
-	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"`
 }
 
 // 任务的输出结果
@@ -1321,8 +1319,8 @@ type PodSpec struct {
 	Affinity           Affinity          `json:"affinity,omitempty" yaml:"affinity"`
 }
 type Volume struct {
-	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
-	VolumeSource `json:",inline" yaml:",inline"` // 存储卷来源（如ConfigMap、Secret）
+	Name         string `json:"name" yaml:"name"` // 存储卷名称
+	VolumeSource `json:",inline" yaml:",inline"`  // 存储卷来源（如ConfigMap、Secret）
 }
 
 // VolumeSource 定义存储卷的数据来源（必须且常用的类型）
