@@ -1057,6 +1057,7 @@ type DataSpec struct {
 
 type DataStatus struct{}
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Runtime struct {
 	//
 	meta.TypeMeta
@@ -1069,6 +1070,13 @@ type Runtime struct {
 
 	//
 	Status RuntimeStatus
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type RuntimeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Runtime `json:"items" yaml:"items"`
 }
 
 // Action所需执行环境
@@ -1319,8 +1327,8 @@ type PodSpec struct {
 	Affinity           Affinity          `json:"affinity,omitempty" yaml:"affinity"`
 }
 type Volume struct {
-	Name         string `json:"name" yaml:"name"` // 存储卷名称
-	VolumeSource `json:",inline" yaml:",inline"`  // 存储卷来源（如ConfigMap、Secret）
+	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
+	VolumeSource `json:",inline" yaml:",inline"` // 存储卷来源（如ConfigMap、Secret）
 }
 
 // VolumeSource 定义存储卷的数据来源（必须且常用的类型）
