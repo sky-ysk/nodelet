@@ -20,7 +20,6 @@ import (
 	group "hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
-	"hit.edu/framework/pkg/nodelet/task/task"
 )
 
 // /* TODO
@@ -35,8 +34,6 @@ import (
 type GroupMonitor struct {
 	// group managers 存储任务信息
 	groupManager group.Manager
-	// task manager
-	taskManager task.Manager
 	// 存储任务队列
 	groupQueues *group.GroupQueues
 	eventBus    *eventbus.EventBus
@@ -55,10 +52,9 @@ type GroupMonitor struct {
 	stopCh       chan struct{}
 }
 
-func NewGroupMonitor(groupManager group.Manager, taskManager task.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface, dependencyManager *dependency.DependencyManager) *GroupMonitor {
+func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface, dependencyManager *dependency.DependencyManager) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:      groupManager,
-		taskManager:       taskManager,
 		groupQueues:       groupQueues,
 		eventBus:          eventbus,
 		recorder:          recorder,
@@ -184,29 +180,33 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 				if !gmo.groupDepenSatisfy(getGroup) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
 					//logs.Debugf("The group ：%s execution dependency is not satisfied again, now still in Checking Queue", gr.Name)
 					//继续放在checking队列当中，checking队列会持续检查依赖，直到依赖满足后，才开始执行，重新将任务group交给group_workers去执行
-					getGroup.Status.CheckDependencyCount++
-					if getGroup.Status.CheckDependencyCount > 10000 { // 当检查依赖的次数大于1000次的话，说明依赖还是满足不了，迁移至Error队列---这里其实有问题（group如果有前序依赖，你不知道什么时候其前序依赖能完成），暂停1000s其实也是有问题的
+					grou, err := gmo.groupManager.GetGroupByName(getGroup.Name) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
+					if err != nil {
+						logs.Errorf("Get group by id failed, err:%v", err)
+					}
+					grou.Status.CheckDependencyCount++
+					if grou.Status.CheckDependencyCount > 10000 { // 当检查依赖的次数大于1000次的话，说明依赖还是满足不了，迁移至Error队列---这里其实有问题（group如果有前序依赖，你不知道什么时候其前序依赖能完成），暂停1000s其实也是有问题的
 						//将任务迁移到Error队列当中
-						ok := gmo.groupQueues.DeleteFromCheckingAndAddToError(getGroup.Name)
+						ok := gmo.groupQueues.DeleteFromCheckingAndAddToError(grou.Name)
 						if !ok {
 							logs.Error("Delete group from checking queue and add to error queue failed")
 						}
 						gmo.handleStatusUpdate(getGroup, apis.Failed) //设置group状态为
 						continue
 					}
-					// TODO 这里后期得优化
-					patchGroup, err := json.Marshal(map[string]interface{}{
-						"status": map[string]interface{}{
-							"check_dependency_count": getGroup.Status.CheckDependencyCount,
-						},
-					})
-					if err != nil {
-						logs.Errorf("Json Marshal failed, err:%v", err)
-					}
-					_, err = gmo.groupClient.Patch(context.TODO(), getGroup.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
-					if err != nil {
-						logs.Errorf("Patch group error-1:%v", err)
-					}
+					//// TODO 这里后期得优化
+					//patchGroup, err := json.Marshal(map[string]interface{}{
+					//	"status": map[string]interface{}{
+					//		"check_dependency_count": getGroup.Status.CheckDependencyCount,
+					//	},
+					//})
+					//if err != nil {
+					//	logs.Errorf("Json Marshal failed, err:%v", err)
+					//}
+					//_, err = gmo.groupClient.Patch(context.TODO(), getGroup.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+					//if err != nil {
+					//	logs.Errorf("Patch group error-1:%v", err)
+					//}
 					continue
 				} else { //说明group执行的依赖已经满足，接下来开始执行
 					// 任务依赖满足后就将任务从checking队列转移至Running队列，为了适配迁移，同时适配副本任务,若为副本任务，则转移到CopyPending队列当中
@@ -251,19 +251,23 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 				}
 				if group.Status.CopyStatus == "Waiting" { // 说明副本任务是提前部署好的
 					// 这里打算Init初始化group,就是提前进行Running步骤  源任务一个Runtime执行完成后，就修改副本runtime的状态即可，Action执行完成后，也会修改副本Runtime的状态
-					var isSuccess bool                                   // 标记group下面的action是否都执行成功，如果都执行完了，还没有触发迁移，那么关闭副本即可
-					for actionIndex := range group.Status.Actions.Status { // 遍历group当中的Action
-						actionStatus := &group.Status.ActionStatus[actionIndex]
-						action := &group.Spec.Actions[actionIndex]
+					var isSuccess bool                                     // 标记group下面的action是否都执行成功，如果都执行完了，还没有触发迁移，那么关闭副本即可
+					for _, actionReference := range group.Status.Actions { // 遍历group当中的Action
+						action, err := gmo.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+						if err != nil {
+							logs.Errorf("Etcd get action error-2:%v", err)
+						}
+						actionStatus := &action.Status
 						isSuccess = true
 						if actionStatus.CopyStatus == "Running" {
 							isSuccess = false
 							//logs.Info("***************************************************************Running")
-							grou, err := gmo.groupManager.GetGroupByID(group.Name) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
+							grou, err := gmo.groupManager.GetGroupByName(group.Name) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
 							if err != nil {
 								logs.Errorf("Get group by id failed, err:%v", err)
 							}
-							for runtimeIndex := range actionStatus.RuntimeStatus {
+							for _, runtimeReference := range actionStatus.Runtimes {
+
 								runtimeStatus := &actionStatus.RuntimeStatus[runtimeIndex]
 								runtime := &action.Spec.Runtimes[runtimeIndex]
 								if runtimeStatus.CopyStatus == "Running" { //说明源任务当中的该runtime已经Running了
@@ -1536,7 +1540,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			_, _, _, RuntimeName, _, TypeID, err := dependency.ParseFrom(i.LeftValue.From)
 
 			logs.Info("NodeCondition: get RuntimeName:", RuntimeName)
-			
+
 			//item接收task group action rutime的spec或者status，应该也可以为空，只表示接受group等它们本身
 			// var item interface{}
 			if err != nil {
@@ -1544,10 +1548,10 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 				return false
 			}
 			switch TypeID {
-				//0表示缺省，1表示填写了，针对task group action runtime这四项
-			case 0b0000://全部缺省出错
+			//0表示缺省，1表示填写了，针对task group action runtime这四项
+			case 0b0000: //全部缺省出错
 				logs.Trace("runtime %v:parse From err, all items are empty", runtime.Name)
-			case 0b0001://只有一个runtime，说明是本action下面的runtime的完成情况
+			case 0b0001: //只有一个runtime，说明是本action下面的runtime的完成情况
 				// action, err := gmo.actionClient.Get(context.TODO(), ActionName, metav1.GetOptions{})
 				// if err != nil {
 				// 	logs.Errorf("Failed get action:%v from etcd, err:%v", ActionName, err)
@@ -1565,16 +1569,16 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 					i.LeftValue.Value = "0"
 				}
 
-			case 0b0010://只有一个action
+			case 0b0010: //只有一个action
 
-			case 0b0011://包含一个action和runtime
+			case 0b0011: //包含一个action和runtime
 
-			case 0b0100://只包含一个group	
+			case 0b0100: //只包含一个group
 				// group, err := gmo.groupClient.Get(context.TODO(), GroupName, metav1.GetOptions{})
 				// if err != nil {
 				// 	logs.Errorf("Failed get group:%v from etcd, err:%v", GroupName, err)
 				// }
-			case 0b1111://全部填写，从task开始获取
+			case 0b1111: //全部填写，从task开始获取
 
 			default:
 

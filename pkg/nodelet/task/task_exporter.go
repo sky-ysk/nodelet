@@ -78,6 +78,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	eventClient := clientset.Core().Events("test")
 	actionClient := clientset.Core().Actions("test")
 	deviceClient := clientset.Core().Devices("test")
+	runtimeClient := clientset.Core().Run
 	//事件总线--只使用与Runtime运行时传输状态的
 	eb := eventbus.NewEventBus()
 	// 全局事件组件的配置
@@ -89,8 +90,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
-	// Manager 配置Task
-	taskManager := task.NewTaskManager()
+
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
@@ -102,7 +102,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
-	workers := group.NewGroupWorkers(groupManager, taskManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient)
+	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient)
 	// 当前Taskexporter所在节点的NodeName
 	nodeName := cfg.NodeName
 
@@ -114,10 +114,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		eventBroadcaster:    eventBroadcaster,
 		conditionEngine: 	 conditionEngine,
 		groupManager:        groupManager,
-		taskManager:         taskManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, depenManager),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, , groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, depenManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient),
 		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),

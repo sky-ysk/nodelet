@@ -6,7 +6,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/types"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
-	"hit.edu/framework/pkg/nodelet/task/task"
 	"strconv"
 	"sync"
 	"time"
@@ -55,7 +54,7 @@ type groupWorkers struct {
 	groupManager Manager
 
 	//管理所有的Task
-	taskManager task.Manager
+	//taskManager task.Manager
 
 	//以队列的形式管理监控group，实时反馈给aip-server各个group的状态
 	queueManager *GroupQueues
@@ -72,12 +71,11 @@ type groupWorkers struct {
 	runtimeManager *runtime.RuntimeManager
 }
 
-func NewGroupWorkers(groupManager Manager, taskManager task.Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface, actionClient core.ActionInterface) GroupWorkers {
+func NewGroupWorkers(groupManager Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface, actionClient core.ActionInterface) GroupWorkers {
 	//TODO:
 	return &groupWorkers{
 		runtimeManager: runtimeManager,
 		groupManager:   groupManager,
-		taskManager:    taskManager,
 		queueManager:   groupQueues,
 		groupClient:    groupclient,
 		taskClient:     taskclient,
@@ -123,8 +121,8 @@ func (g *groupWorkers) groupWorkerLoop(groupUpdates <-chan *UpdateGroupOptions) 
 			g.startGroup(update.Group)
 		case GroupUpdate:
 			g.UpdateGroup(update)
-		case GroupDelete:
-			g.deleteGroup(update.Group)
+		//case GroupDelete:
+		//	g.deleteGroup(update.Group)
 		case GroupKill:
 			g.killGroup(update.Group)
 		default:
@@ -157,10 +155,10 @@ func (g *groupWorkers) startGroup(gr *apis.Group) {
 	g.handleCheckingUpdate(group) //12.31新增：除了修改group的状态，还需要修改上层Task的状态为CheckDeploy
 }
 
-// 对于正常完成的group在更新完group_status之后进行delete操作--目前该方法暂未考虑 1.4
-func (g *groupWorkers) deleteGroup(group *apis.Group) {
-	g.queueManager.DeleteGroup(group) //删除group_manager和queue_manager当中的任务
-}
+//// 对于正常完成的group在更新完group_status之后进行delete操作--目前该方法暂未考虑 1.4
+//func (g *groupWorkers) deleteGroup(group *apis.Group) {
+//	g.queueManager.DeleteGroup(group) //删除group_manager和queue_manager当中的任务
+//}
 
 func (g *groupWorkers) killGroup(group *apis.Group) {
 	if g.runtimeManager == nil {
