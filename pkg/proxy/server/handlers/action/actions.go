@@ -26,13 +26,6 @@ type CurrentActionsHandler struct {
 
 var _ Handler = &ActionsHandler{}
 
-//func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
-//	c := clientSet.Core().Actions("test") // apis.NamespaceAll
-//	return &ActionsHandler{
-//		client: c,
-//	}
-//}
-
 // NewActionHandler 创建一个 ActionHandler
 func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
 	return &ActionsHandler{
