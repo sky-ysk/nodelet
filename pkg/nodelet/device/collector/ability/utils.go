@@ -245,6 +245,11 @@ func GetAbilityState(url string, uuid string) (HeartBeat, error) {
 		logs.Error("get heart beats error\n")
 		return HeartBeat{}, err
 	}
+
+	if len(hearBeats) == 0 {
+		logs.Errorf("[DEVICE EXPORTER] empty heartbeats!")
+		return HeartBeat{}, errors.New("empty heartbeats")
+	}
 	logs.Info("get heart beats successfully\n")
 	logs.Info("try to find state by UUID\n")
 	heartBeat, err := FindHeartBeatByUUID(hearBeats, uuid)

@@ -55,6 +55,16 @@ func (am *ManagerOfAbility) GetUUID() (string, error) {
 	return am.UUid, nil
 }
 
+// GetHeartBeat 获取对应的心跳包
+func (am *ManagerOfAbility) GetHeartBeat() (HeartBeat, error) {
+	heartBeat, err := GetAbilityState(am.Url, am.UUid)
+	if err != nil {
+		logs.Errorf("[DEVICE EXPORTER] get heartbeat fail")
+		return HeartBeat{}, err
+	}
+	return heartBeat, nil
+}
+
 // StartupAbility 启动一个能力
 func (am *ManagerOfAbility) StartupAbility() (HeartBeat, error) {
 	// 获取能力的uuid

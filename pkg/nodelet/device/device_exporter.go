@@ -10,7 +10,7 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/device/collector"
-	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
+	"hit.edu/framework/pkg/nodelet/device/collector/ability"
 	"net/http"
 	"time"
 )
@@ -51,7 +51,7 @@ func (n *DeviceExporter) Run() error {
 		return err
 	}
 	deviceClient := clientSet.Core().Devices("test")
-	var Managers []*manager.ManagerOfAbility
+	managers := manager.NewManagers()
 	//// 定期Gather一次数据
 	//err := n.deviceCollector.GatherStaticData()
 	//if err != nil {
@@ -69,8 +69,8 @@ func (n *DeviceExporter) Run() error {
 	//defer dynamicTicker.Stop()
 
 	// 加入关于Ability的信息收集
-	heartbeatTicker := time.NewTicker(time.Second * 15)
-	defer heartbeatTicker.Stop()
+	monitorTicker := time.NewTicker(time.Second * 5)
+	defer monitorTicker.Stop()
 	for {
 		select {
 		//case <-staticTicker.C:
@@ -83,8 +83,14 @@ func (n *DeviceExporter) Run() error {
 		//	if err != nil {
 		//		return err
 		//	}
-		case <-heartbeatTicker.C:
-
+		case <-monitorTicker.C:
+			logs.Infof("[DEVICE EXPORTER] monitor all device....")
+			go func() {
+				err := manager.MonitorAllDevicesState(deviceClient, managers)
+				if err != nil {
+					logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
+				}
+			}()
 		}
 
 	}
