@@ -73,7 +73,7 @@ func main() {
 
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
-	actionsClient := clientSet.Core().Actions("test")
+	// actionsClient := clientSet.Core().Actions("test")
 	eventsClient := clientSet.Core().Events("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
@@ -305,7 +305,7 @@ func main() {
 								Name:                     runtime1_1_1_1Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
-								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  make([]string, 0), // 加入Parents
 								Conditions:               runtime1_1_1_1Condition,
 								EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -315,6 +315,7 @@ func main() {
 								Name:                     runtime1_1_1_2Name,
 								Type:                     apis.ByCommand,
 								Command:                  []string{"python"},
+								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"},
 								Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
 								Conditions:               runtime1_1_1_2Condition,
@@ -887,6 +888,7 @@ func main() {
 	err6 := actionsClient.Delete(context.TODO(), action1_6_1Name, metav1.DeleteOptions{})
 
 	if err != nil {
+		logs.Errorf("task delete error: %v", err)
 		logs.Errorf("task delete error: %v", err)
 	}
 	if err1 != nil {

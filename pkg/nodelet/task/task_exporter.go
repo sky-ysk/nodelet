@@ -8,6 +8,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
+	"hit.edu/framework/pkg/utils"
 
 	scheme "hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -52,6 +53,9 @@ type TaskExporter struct {
 	// 处理从上游（API-Server）中的Group的更新事件
 	groupHandler *monitor.GroupHandler
 
+	//处理condition
+	conditionEngine *utils.ConditionEngine
+
 	// 切换模块
 	//groupSwitcher *_switch.GroupSwitch
 	migrationController *controller.MigrationController
@@ -93,6 +97,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	runtimeManager := runtime.NewRuntimeManager(eb, recorder, deviceClient, actionClient, groupClient)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
+	//condition engine配置
+	conditionEngine := utils.NewConditionEngine(nodeClient, taskClient, groupClient, actionClient)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -106,6 +112,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		tasksClient:         taskClient,
 		gropsClient:         groupClient,
 		eventBroadcaster:    eventBroadcaster,
+		conditionEngine: 	 conditionEngine,
 		groupManager:        groupManager,
 		taskManager:         taskManager,
 		groupLister:         lister,

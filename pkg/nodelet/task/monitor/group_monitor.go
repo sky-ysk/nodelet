@@ -1530,38 +1530,67 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 	for index, i := range runtime.Conditions.Formulas {
 		if i.LeftValue.Name == string(apis.NodeDependency) {
 			//正则匹配选择parents的pahse
-			runtimeParentName := i.LeftValue.From
+			// runtimeParentName := i.LeftValue.From
 			//Task、group、action的Name都是独一的，全部使用Name
-			// TaskID, GroupID, ActionID, RuntimeID, TypeName, TypeID, err := dependency.Parse(i.LeftValue.From)
-			// if err != nil {
-			// 	logs.Error("正则表达式解析失败! Group:%v, action:%v, runtime:%v", group, actionIndex, runtimeIndex)
-			// 	return false
-			// }
-			// switch TypeID {
-			// case 0:
-			// 	//TODO：使用Name去找，如何找到这个Task下面的group和action、runtime信息？ 单独在这里遍历查找吗？===遍历
-			// 	Task, err := gmo.actionClient.Get(context.TODO(), ActionID, metav1.GetOptions{})
-			// 	if err != nil {
-			// 		logs.Errorf("Failed get group:%v from etcd, err:%v", Task, err)
-			// 	}
-			// 	Group := Task.Spec.
-			// case 1:
+			// TaskName, GroupName, ActionName, RuntimeName, FieldName, TypeID, err := dependency.ParseFrom(i.LeftValue.From)
+			_, _, _, RuntimeName, _, TypeID, err := dependency.ParseFrom(i.LeftValue.From)
 
-			// case 2:
-
-			// case 3:
-			// }
-			for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
-				rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
-				r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
-				if r.Name == runtimeParentName { //目前定义，Action的父亲Action必须是成功状态.更新action的conditions
-					if rs.Phase != apis.Successed {
-						i.LeftValue.Value = "0"
-					} else {
-						i.LeftValue.Value = "1"
+			logs.Info("NodeCondition: get RuntimeName:", RuntimeName)
+			
+			//item接收task group action rutime的spec或者status，应该也可以为空，只表示接受group等它们本身
+			// var item interface{}
+			if err != nil {
+				logs.Error("正则表达式解析From失败! Group:%v, action:%v, runtime:%v", group, actionIndex, runtimeIndex)
+				return false
+			}
+			switch TypeID {
+				//0表示缺省，1表示填写了，针对task group action runtime这四项
+			case 0b0000://全部缺省出错
+				logs.Trace("runtime %v:parse From err, all items are empty", runtime.Name)
+			case 0b0001://只有一个runtime，说明是本action下面的runtime的完成情况
+				// action, err := gmo.actionClient.Get(context.TODO(), ActionName, metav1.GetOptions{})
+				// if err != nil {
+				// 	logs.Errorf("Failed get action:%v from etcd, err:%v", ActionName, err)
+				// }
+				action := group.Spec.Actions[actionIndex]
+				index := 0
+				for rtIndex, rt := range action.Spec.Runtimes {
+					if rt.Name == RuntimeName {
+						index = rtIndex
 					}
 				}
+				if action.Status.RuntimeStatus[index].Phase == apis.Successed {
+					i.LeftValue.Value = "1"
+				} else {
+					i.LeftValue.Value = "0"
+				}
+
+			case 0b0010://只有一个action
+
+			case 0b0011://包含一个action和runtime
+
+			case 0b0100://只包含一个group	
+				// group, err := gmo.groupClient.Get(context.TODO(), GroupName, metav1.GetOptions{})
+				// if err != nil {
+				// 	logs.Errorf("Failed get group:%v from etcd, err:%v", GroupName, err)
+				// }
+			case 0b1111://全部填写，从task开始获取
+
+			default:
+
 			}
+
+			// for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
+			// 	rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
+			// 	r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
+			// 	if r.Name == runtimeParentName { //目前定义，Action的父亲Action必须是成功状态.更新action的conditions
+			// 		if rs.Phase != apis.Successed {
+			// 			i.LeftValue.Value = "0"
+			// 		} else {
+			// 			i.LeftValue.Value = "1"
+			// 		}
+			// 	}
+			// }
 			if i.LeftValue.Value == i.RightValue.Value {
 				i.Result = apis.True
 			}
@@ -1580,7 +1609,6 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(actionIndex, runtimeIndex int, grou
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
 			var dependencyFile = i.LeftValue.From
-
 			if !rtStatus.IsParsed {
 				// runtimeReqPackages := make([]apis.Requirement, 0)
 				runtimeReqPackages, err := gmo.dependencyManager.ParseRequirements(dependencyFile)

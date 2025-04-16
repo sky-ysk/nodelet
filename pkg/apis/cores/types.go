@@ -373,7 +373,7 @@ type ConditionValue struct {
 	//  	比如前序任务的执行状态
 	//		或者循环计数器的数量
 	// 		或者任务的执行结果
-	// TODO: 使用DataType代替，更新相关文档
+	// TODO: 使用DataType代替，更新相关文档：常量、Result、Local
 	Type DataType `json:"type,omitempty" yaml:"type"` //ConditionValueType
 	//
 	Name string `json:"name,omitempty" yaml:"name"`
@@ -385,7 +385,36 @@ type ConditionValue struct {
 	// +Optional
 	ValueType ValueType `json:"value_type,omitempty" yaml:"value_type"`
 	//从对应的地方获取需要的数据
+	//来源于哪个group/action/runtime
 	From string `json:"from,omitempty" yaml:"from"`
+	//来源于上面对象的哪个字段
+	Field string `json:"field,omitempty" yaml:"field"`
+}
+
+//解析字段的类型，Status还是Spec
+type FieldType string
+const (
+	StatusType	FieldType = "Status"
+	Spectype	FieldType = "Spec"
+)
+
+//解析对象的类型
+type ItemType string
+const (
+	TaskItemType	ItemType = "Task"
+	GroupItemType	ItemType = "Group"
+	ActionItemType	ItemType = "Action"
+	RuntimeItemType	ItemType = "Runtime"
+)
+
+//解析结果的结构体，包含字符串解析的信息、返回值的两类类型（便于Get)
+type FromItemInfo struct {
+	TaskName	string	`json:"task_name,omitempty" yaml:"task_name"`
+	GroupName	string	`json:"group_name,omitempty" yaml:"group_name"`
+	ActionName	string	`json:"action_name,omitempty" yaml:"action_name"`
+	RuntimeName	string	`json:"runtime_name,omitempty" yaml:"runtime_name"`
+	// ItemType	ItemType	`json:"item_type,omitempty" yaml:"item_type"`
+	IsLocal		bool	`json:"is_local,omitempty" yaml:"is_local"`	//是否是本地的Item
 }
 
 // 条件连接符，支持大小写
@@ -420,6 +449,7 @@ const (
 // 输出结果为Bool类型的值
 // TODO: Value格式检查和调整，比如存在空格的情况
 type ConditionFormula struct {
+	Type       conditionType  `json:"type,omitempty" yaml:"type"`
 	LeftValue  ConditionValue `json:"left_value,omitempty" yaml:"left_value"`
 	RightValue ConditionValue `json:"right_value,omitempty" yaml:"right_value"`
 	// == 或 !=
@@ -1186,7 +1216,10 @@ type Input struct {
 
 	// 名称
 	Name string `json:"name,omitempty" yaml:"name"`
-
+	Value     string `json:"value,omitempty" yaml:"value"`
+	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	From      string `json:"from,omitempty" yaml:"from"`
+	Field     string `json:"field,omitempty" yaml:"field"`
 	// 值
 	//   对应常量类型，ValueType对应常量的类型，Value对应常量的值，类型与值应该对应，支持的类型
 	// 		包括：整数、浮点数、布尔值
@@ -1204,19 +1237,12 @@ type Input struct {
 	//			Scenes.{Name}： 从本地场景中获取
 	//			Data.{Name}： 从本地数据中获取
 	//      Local类型的数据对其他节点不可见
-	Value     string `json:"value,omitempty" yaml:"value"`
-	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
-	From      string `json:"from,omitempty" yaml:"from"`
 }
 
 // TODO: 数据格式后续还需要调整
 type Output struct {
-	//
 	Type DataType `json:"type,omitempty" yaml:"type"`
-
 	Name string `json:"name,omitempty" yaml:"name"`
-
-	// TODO:
 	Value     string `json:"value,omitempty" yaml:"value"`
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
 }
@@ -1692,4 +1718,9 @@ const (
 	DataDependency     conditionType = "DataDependency"
 	ResourceDependency conditionType = "ResourceDependency"
 	ProgramDependency  conditionType = "ProgramDependency"
+)
+
+// 数据文件存储位置，后续可更改
+const (
+	BasePath = "../tmp/data/"
 )

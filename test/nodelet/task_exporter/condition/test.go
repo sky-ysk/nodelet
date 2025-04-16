@@ -1,85 +1,32 @@
-package utils
+package main
 
 import (
-	"context"
+
 	"fmt"
-	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
-	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
+
+
+	// "bufio"
+	// "context"
+	// "fmt"
+	// "hit.edu/framework/pkg/apis/meta"
+	// "net/http"
+	// "os"
+	// "time"
+
+	// "hit.edu/framework/pkg/apimachinery/runtime"
+	// "hit.edu/framework/pkg/apimachinery/runtime/schema"
+	// "hit.edu/framework/pkg/apimachinery/runtime/serializer"
+	// "hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/rest"
-	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"testing"
-	"time"
+	condition "hit.edu/framework/pkg/utils"
+	// "hit.edu/framework/pkg/apiserver/registry/core/action"
+	// "hit.edu/framework/pkg/client-go/clients"
+	// "hit.edu/framework/pkg/client-go/rest"
+	// "hit.edu/framework/pkg/component-base/logs"
 )
 
-func TestAddAction(t *testing.T) {
-	logs.Init("main")
-	scheme := runtime.NewScheme()
-	apis.AddToScheme(scheme)
-	fmt.Println(scheme)
-	//参数配置
-	// TODO: 填写参数
-	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
-	c := &rest.Config{
-		Host:    "http://localhost:10000",
-		APIPath: "/apis/resources/v1",
-		ContentConfig: rest.ContentConfig{
-			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
-			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
-			GroupVersion: &schema.GroupVersion{
-				Group:   "resources",
-				Version: "v1",
-			},
-			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
-		},
-		UserAgent: "defaultUserAgent",
-		Transport: &http.Transport{
-			MaxIdleConns:        100,              // 最大空闲连接数
-			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
-			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
-		},
-		Timeout: 10 * time.Second,
-	}
-	clientSet, err := clients.NewForConfig(c)
-	if err != nil {
-		panic(err)
-	}
-	actionsClient := clientSet.Core().Actions("test")
-	action := &apis.Action{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testmeta",
-			Namespace: "test",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Action",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.ActionSpec{
-			Name: "testspec",
-		},
-	}
-	fmt.Println("creating")
-	_, err = actionsClient.Create(context.TODO(), action, metav1.CreateOptions{})
-	if err != nil {
-		logs.Errorf("Failed to create action: %v", err)
-		panic(err)
-	}
-	//git config  credential.helper store
-	result, getErr := actionsClient.Get(context.TODO(), "testspec", metav1.GetOptions{})
-	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
-	}
-	fmt.Println("get result ", result)
-
-}
-
-//单独测试解析功能
-func TestParseFunction(t *testing.T) {
-	//创建一个group并用client提交，附带一个需要查找的condition，打印解析的结果
+func main() {
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	// task1Name := "TrainInferTask-1" // 第一个Task的Name
 	task1ID := "TrainInferTaskID-1" // 第一个Task的ID
@@ -224,76 +171,15 @@ func TestParseFunction(t *testing.T) {
 
 
 	// 解析字段路径并访问对应的字段
-	FromItem, err := ParseFrom(group1.Spec.Actions[0].Spec.Runtimes[1].Conditions.Formulas[0].LeftValue.From)
+	FromItem, err := condition.ParseFrom(group1.Spec.Actions[0].Spec.Runtimes[1].Conditions.Formulas[0].LeftValue.From)
 	if err != nil {
 		fmt.Printf("Parse FromItemInfo err")
 	}
 	fmt.Printf("FromItem:%v", FromItem)
 	getItem := group1
-	Value, Type, err := ParseField(*getItem, group1.Spec.Actions[0].Spec.Runtimes[1].Conditions.Formulas[0].LeftValue.Field)
+	Value, Type, err := condition.ParseField(*getItem, group1.Spec.Actions[0].Spec.Runtimes[1].Conditions.Formulas[0].LeftValue.Field)
 	if err != nil {
 		fmt.Printf("Parse Field err")
 	}
 	fmt.Println("Value:", Value, "Type:", Type)
-}
-
-func TestGetValue(t *testing.T) {
-	logs.Init("main")
-	scheme := runtime.NewScheme()
-	apis.AddToScheme(scheme)
-	fmt.Println(scheme)
-	//参数配置
-	// TODO: 填写参数
-	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
-	c := &rest.Config{
-		Host:    "http://localhost:10000",
-		APIPath: "/apis/resources/v1",
-		ContentConfig: rest.ContentConfig{
-			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
-			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
-			GroupVersion: &schema.GroupVersion{
-				Group:   "resources",
-				Version: "v1",
-			},
-			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
-		},
-		UserAgent: "defaultUserAgent",
-		Transport: &http.Transport{
-			MaxIdleConns:        100,              // 最大空闲连接数
-			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
-			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
-		},
-		Timeout: 10 * time.Second,
-	}
-	clientSet, err := clients.NewForConfig(c)
-	if err != nil {
-		panic(err)
-	}
-	actionsClient := clientSet.Core().Actions("test")
-	action := &apis.Action{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testmeta",
-			Namespace: "test",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Action",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.ActionSpec{
-			Name: "testspec",
-		},
-	}
-	fmt.Println("creating")
-	_, err = actionsClient.Create(context.TODO(), action, metav1.CreateOptions{})
-	if err != nil {
-		logs.Errorf("Failed to create action: %v", err)
-		panic(err)
-	}
-	//git config  credential.helper store
-	result, getErr := actionsClient.Get(context.TODO(), "testspec", metav1.GetOptions{})
-	if getErr != nil {
-		panic(fmt.Errorf("Failed to get : %v", getErr))
-	}
-	fmt.Println("get result ", result)
-
 }
