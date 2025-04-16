@@ -536,7 +536,7 @@ type TaskStatus struct {
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
 	//
-	Groups map[string]GroupStatus `json:"groups,omitempty" yaml:"groups"`
+	Groups map[string]ObjectReference `json:"groups,omitempty" yaml:"groups"`
 
 	// TODO: Events定义
 	// 创建时间
