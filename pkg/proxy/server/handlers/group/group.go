@@ -28,13 +28,6 @@ type CurrentGroupHandler struct {
 
 var _ Handler = &GroupHandler{}
 
-//func NewGroupHandler(clientSet *clients.ClientSet) *GroupHandler {
-//	c := clientSet.Core().Groups("test") //apis.NamespaceAll
-//	return &GroupHandler{
-//		client: c,
-//	}
-//}
-
 // NewGroupHandler 创建一个 GroupHandler
 func NewGroupHandler(clientSet *clients.ClientSet) *GroupHandler {
 	return &GroupHandler{

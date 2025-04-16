@@ -5,7 +5,6 @@ import (
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
-	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -13,60 +12,44 @@ import (
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/proxy/server/handlers/util"
 	"net/http"
 	"sync"
 )
 
 type WorkflowHandler struct {
-	clients   map[string]core.WorkflowInterface
-	clientSet *clients.ClientSet
-	mu        sync.Mutex
-}
-
-type CurrentWorkflowHandler struct {
-	client core.WorkflowInterface
+	Client    core.WorkflowInterface
+	ClientSet *clients.ClientSet
 }
 
 var _ Handler = &WorkflowHandler{}
 
-//func NewWorkflowHandler(clientSet *clients.ClientSet) *WorkflowHandler {
-//	c := clientSet.Core().Workflows("test") //apis.NamespaceAll
+//
+//// GetClient 根据 namespace 获取 client，如果不存在则创建
+//func (h *Manager) GetWorkflowClient(namespace string) *WorkflowHandler {
+//	h.mu.Lock()
+//	defer h.mu.Unlock()
+//
+//	// 如果已经存在，直接返回
+//	if c, exists := h.WorkflowClients[namespace]; exists {
+//		return &WorkflowHandler{
+//			client:    c,
+//			clientSet: h.clientSet,
+//		}
+//	}
+//
+//	// 否则创建新的 client
+//	newClient := h.clientSet.Core().Workflows(namespace)
+//	h.WorkflowClients[namespace] = newClient
 //	return &WorkflowHandler{
-//		client: c,
+//		client:    newClient,
+//		clientSet: h.clientSet,
 //	}
 //}
 
-// NewWorkflowHandler 创建一个 ActionHandler
-func NewWorkflowHandler(clientSet *clients.ClientSet) *WorkflowHandler {
-	return &WorkflowHandler{
-		clients:   make(map[string]core.WorkflowInterface),
-		clientSet: clientSet,
-	}
-}
-
-// GetClient 根据 namespace 获取 client，如果不存在则创建
-func (h *WorkflowHandler) GetClient(namespace string) *CurrentWorkflowHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// 如果已经存在，直接返回
-	if c, exists := h.clients[namespace]; exists {
-		return &CurrentWorkflowHandler{
-			client: c,
-		}
-	}
-
-	// 否则创建新的 client
-	newClient := h.clientSet.Core().Workflows(namespace)
-	h.clients[namespace] = newClient
-	return &CurrentWorkflowHandler{
-		client: newClient,
-	}
-}
-
 func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restful.Response) {
 	// 尝试从url中获取参数
-	c := &CurrentWorkflowHandler{}
+	c := &WorkflowHandler{}
 	name := request.QueryParameter(WORKFLOW_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
@@ -94,7 +77,7 @@ func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restfu
 		}
 		return
 	} else {
-		c = h.GetClient(namespace)
+		c = util.GetWorkflowClient(namespace)
 	}
 
 	result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -220,21 +203,21 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	}
 
 	// workflow分配ID
-	tu := uuid.New().String()
-	ew.Status.WorkflowID = tu
-	logs.Debugf("Create workflow %s success, workflow id : %s ", name, tu)
+	uuid := util.GenerateUUID()
+	logs.Debugf("Create workflow  success, workflow id : %s ", uuid)
 
 	// 将Workflow写入数据库中
-	result, err = c.client.Create(context.TODO(), ew, metav1.CreateOptions{})
-	if err != nil {
-		err1 := response.WriteError(http.StatusInternalServerError, err)
+	result, err = util.CreateWorkflow(ew.Spec, namespace, uuid)
+	if err != nil || result == nil {
+		err1 := response.WriteError(http.StatusBadRequest, err)
 		if err1 != nil {
-			logs.Errorf("failed to return a status code ,error %v", err1)
+			logs.Errorf("failed to return a status code")
 			return
 		}
-		logs.Errorf("Create workflow %s ,failed write to database ,error: %v", name, err)
+		logs.Infof("Failed Create workflow %s , error : %s ", err)
 		return
 	}
+
 	// 返回结果
 	err = response.WriteEntity(result)
 	if err != nil {
