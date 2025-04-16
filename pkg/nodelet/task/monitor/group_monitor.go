@@ -187,7 +187,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 					getGroup.Status.CheckDependencyCount++
 					if getGroup.Status.CheckDependencyCount > 10000 { // 当检查依赖的次数大于1000次的话，说明依赖还是满足不了，迁移至Error队列---这里其实有问题（group如果有前序依赖，你不知道什么时候其前序依赖能完成），暂停1000s其实也是有问题的
 						//将任务迁移到Error队列当中
-						ok := gmo.groupQueues.DeleteFromCheckingAndAddToError(getGroup.Status.GroupID)
+						ok := gmo.groupQueues.DeleteFromCheckingAndAddToError(getGroup.Name)
 						if !ok {
 							logs.Error("Delete group from checking queue and add to error queue failed")
 						}
@@ -211,12 +211,12 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 				} else { //说明group执行的依赖已经满足，接下来开始执行
 					// 任务依赖满足后就将任务从checking队列转移至Running队列，为了适配迁移，同时适配副本任务,若为副本任务，则转移到CopyPending队列当中
 					if getGroup.Spec.IsCopy {
-						ok := gmo.groupQueues.DeleteFromCheckingAndAddToCopyPending(getGroup.Status.GroupID)
+						ok := gmo.groupQueues.DeleteFromCheckingAndAddToCopyPending(getGroup.Name)
 						if !ok {
 							logs.Error("Delete group from checking queue and add to copy pending queue failed")
 						}
 					} else { //非副本任务，则直接移入到Running队列当中去运行任务
-						ok := gmo.groupQueues.DeleteFromCheckingAndAddToRunning(getGroup.Status.GroupID)
+						ok := gmo.groupQueues.DeleteFromCheckingAndAddToRunning(getGroup.Name)
 						if !ok {
 							logs.Error("Delete group from checking queue and add to running queue failed")
 						}
@@ -252,14 +252,14 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 				if group.Status.CopyStatus == "Waiting" { // 说明副本任务是提前部署好的
 					// 这里打算Init初始化group,就是提前进行Running步骤  源任务一个Runtime执行完成后，就修改副本runtime的状态即可，Action执行完成后，也会修改副本Runtime的状态
 					var isSuccess bool                                   // 标记group下面的action是否都执行成功，如果都执行完了，还没有触发迁移，那么关闭副本即可
-					for actionIndex := range group.Status.ActionStatus { // 遍历group当中的Action
+					for actionIndex := range group.Status.Actions.Status { // 遍历group当中的Action
 						actionStatus := &group.Status.ActionStatus[actionIndex]
 						action := &group.Spec.Actions[actionIndex]
 						isSuccess = true
 						if actionStatus.CopyStatus == "Running" {
 							isSuccess = false
 							//logs.Info("***************************************************************Running")
-							grou, err := gmo.groupManager.GetGroupByID(group.Status.GroupID) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
+							grou, err := gmo.groupManager.GetGroupByID(group.Name) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
 							if err != nil {
 								logs.Errorf("Get group by id failed, err:%v", err)
 							}

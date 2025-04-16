@@ -169,7 +169,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 			// 类型断言
 			if task, ok := currentItem.(apis.Task); ok {
 				for _, group := range task.Spec.Groups {
-					if group.Spec.Name == FromItemInfo.GroupName {
+					if group.Name == FromItemInfo.GroupName {
 						currentItem = group
 					}
 				}
@@ -191,7 +191,7 @@ func (eg *ConditionEngine) GetItem(FromInput string) (interface{}, error) {
 			// 类型断言
 			if group, ok := currentItem.(apis.Group); ok {
 				for _, action := range group.Spec.Actions {
-					if action.Spec.Name == FromItemInfo.ActionName {
+					if action.Name == FromItemInfo.ActionName {
 						currentItem = action
 					}
 				}

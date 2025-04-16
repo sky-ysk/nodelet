@@ -87,11 +87,11 @@ func (gm *groupManager) AddGroup(group *apis.Group) {
 	gm.modifyLock.Lock()
 	defer gm.modifyLock.Unlock()
 	//检查GroupID是否已经存在
-	if _, exists := gm.groupsByID[group.Status.GroupID]; exists {
-		logs.Errorf("Group:%s is existed", group.Spec.Name)
+	if _, exists := gm.groupsByID[group.Name]; exists {
+		logs.Errorf("Group:%s is existed", group.Name)
 		return
 	}
-	gm.groupsByID[group.Status.GroupID] = group
+	gm.groupsByID[group.Name] = group
 	gm.groupsByName[group.Name] = group
 }
 
@@ -99,7 +99,7 @@ func (gm *groupManager) UpdateGroup(group *apis.Group) {
 	//TODO implement me
 	gm.modifyLock.Lock()
 	defer gm.modifyLock.Unlock()
-	gm.groupsByID[group.Status.GroupID] = group
+	gm.groupsByID[group.Name] = group
 	gm.groupsByName[group.Name] = group
 }
 
@@ -107,7 +107,7 @@ func (gm *groupManager) DeleteGroup(group *apis.Group) {
 	//TODO implement me
 	gm.modifyLock.Lock()
 	defer gm.modifyLock.Unlock()
-	delete(gm.groupsByID, group.Status.GroupID)
+	delete(gm.groupsByID, group.Name)
 	delete(gm.groupsByName, group.Name)
 	logs.Infof("group_manager删除group：%s", group.Name)
 }

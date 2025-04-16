@@ -94,7 +94,7 @@ func (g *groupWorkers) UpdateGroup(options *UpdateGroupOptions) {
 	g.groupLock.Lock()
 	defer g.groupLock.Unlock()
 
-	groupID := options.Group.Status.GroupID
+	groupID := options.Group.Name
 	groupName := options.Group.Name
 	groupUpdates, exists := g.groupUpdates[groupID] //后期最好将group_workers当中的groupUpdates这个map进行清理（对于已经执行完的group，删除信息）
 	if !exists {
@@ -147,7 +147,7 @@ func (g *groupWorkers) startGroup(gr *apis.Group) {
 	if err != nil {
 		logs.Errorf("Get group err:%v", err)
 	}
-	success := g.queueManager.AddToChecking(group.Status.GroupID, group)
+	success := g.queueManager.AddToChecking(group.Name, group)
 	if !success {
 		// 按理来说不会出现这样的情况，为啥呢，因为如果group_handler.go当中的HandleGroupAdd方法只会执行一次
 		logs.Error("Move group into checking queue failed, because groupID has been in checking queue")
