@@ -31,7 +31,7 @@ type Quantity struct {
 	format string
 }
 
-// +k8s:deepcopy-gen=false
+//+k8s:deepcopy-gen=false
 type Time struct {
 	time.Time `json:"time" yaml:"time"`
 }
@@ -971,7 +971,7 @@ type AbilityService struct {
 	Model     *string `json:"model,omitempty" yaml:"model"`
 }
 
-// TODO: 增加具体的值限制
+//TODO: 增加具体的值限制
 type AbilityState int
 
 type DeviceStatus struct {
