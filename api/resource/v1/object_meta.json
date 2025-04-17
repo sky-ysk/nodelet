@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties" : {
+    "name" : {"type" :  "string"} ,
+    "generateName" : {"type" :  "string"},
+    "namespace" : {"type" :  "string"},
+    "uid" : {"type" :  "string"},
+    "resourceVersion" : {"type" :  "string"},
+    "generation" : {"type" :  "integer"},
+    "creationTimestamp" : {
+      "$ref" :  "./time.json"
+    },
+    "deletionTimestamp": {
+      "oneOf": [
+        {
+          "$ref": "./time.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "deletionGracePeriodSeconds" : {
+      "oneOf": [
+        {"type" : "integer"},
+        {"type" :  "null"}
+      ]
+    },
+    "labels" : {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "annotations" : {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

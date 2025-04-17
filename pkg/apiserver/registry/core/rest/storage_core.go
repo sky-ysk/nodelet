@@ -14,6 +14,7 @@ import (
 	groupstore "hit.edu/framework/pkg/apiserver/registry/core/group"
 	nodestore "hit.edu/framework/pkg/apiserver/registry/core/node"
 	resourcestore "hit.edu/framework/pkg/apiserver/registry/core/resource"
+	runtimestore "hit.edu/framework/pkg/apiserver/registry/core/runtime"
 	scenestore "hit.edu/framework/pkg/apiserver/registry/core/scene"
 	taskstore "hit.edu/framework/pkg/apiserver/registry/core/task"
 	workflowstore "hit.edu/framework/pkg/apiserver/registry/core/workflow"
@@ -81,6 +82,11 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		logs.Error("error occur while create DataStorage", err)
 		return server.APIGroupInfo{}, err
 	}
+	runtimeStorage, err := runtimestore.NewRuntimeStorage(restOptionsGetter)
+	if err != nil {
+		logs.Error("error occur while create RuntimeStorage", err)
+		return server.APIGroupInfo{}, err
+	}
 
 	storage := map[string]rest.Storage{}
 	if resource := "nodes"; true {
@@ -127,6 +133,11 @@ func NewRESTStorage(restOptionsGetter generic.RESTOptionsGetter) (server.APIGrou
 		storage[resource] = dataStorage.Data
 		storage[resource+"/status"] = dataStorage.Status
 		storage[resource+"/spec"] = dataStorage.Spec
+	}
+	if resource := "runtimes"; true {
+		storage[resource] = runtimeStorage.Runtime
+		storage[resource+"/status"] = runtimeStorage.Status
+		storage[resource+"/spec"] = runtimeStorage.Spec
 	}
 	if resource := "events"; true {
 		storage[resource] = eventStorage.Event

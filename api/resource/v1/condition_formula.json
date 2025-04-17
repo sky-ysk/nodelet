@@ -11,6 +11,5 @@
     "signal" : {"type" :  "string"},
     "join" : {"type" :  "string"}
   },
-  "required" : ["left_value" , "right_value" , "signal" , "join"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

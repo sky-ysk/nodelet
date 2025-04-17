@@ -6,6 +6,5 @@
       "$ref" :  "./action_spec.json"
     }
   },
-  "required" : ["spec"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

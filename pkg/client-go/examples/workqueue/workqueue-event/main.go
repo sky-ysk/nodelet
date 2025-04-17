@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"net/http"
-	"time"
-
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -17,6 +14,8 @@ import (
 	"hit.edu/framework/pkg/client-go/tools/cache"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
+	"net/http"
+	"time"
 )
 
 // 验证Watch功能
@@ -187,14 +186,12 @@ func main() {
 
 	sourceEventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			logs.Infof("AddFunc")
 			key, err := cache.MetaNamespaceKeyFunc(obj)
 			if err == nil {
 				queue.Add(key)
 			}
 		},
 		UpdateFunc: func(old interface{}, new interface{}) {
-			logs.Infof("UpdateFunc")
 			key, err := cache.MetaNamespaceKeyFunc(new)
 			if err == nil {
 				queue.Add(key)
@@ -203,7 +200,6 @@ func main() {
 		DeleteFunc: func(obj interface{}) {
 			// IndexerInformer uses a delta queue, therefore for deletes we have to use this
 			// key function.
-			logs.Infof("DeleteFunc")
 			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 			if err == nil {
 				queue.Add(key)

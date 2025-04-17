@@ -2,9 +2,11 @@ package group
 
 import (
 	"context"
+	"encoding/json"
+	"hit.edu/framework/pkg/apimachinery/types"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
-	"hit.edu/framework/pkg/nodelet/task/task"
+	"strconv"
 	"sync"
 	"time"
 
@@ -52,7 +54,7 @@ type groupWorkers struct {
 	groupManager Manager
 
 	//管理所有的Task
-	taskManager task.Manager
+	//taskManager task.Manager
 
 	//以队列的形式管理监控group，实时反馈给aip-server各个group的状态
 	queueManager *GroupQueues
@@ -69,12 +71,11 @@ type groupWorkers struct {
 	runtimeManager *runtime.RuntimeManager
 }
 
-func NewGroupWorkers(groupManager Manager, taskManager task.Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface, actionClient core.ActionInterface) GroupWorkers {
+func NewGroupWorkers(groupManager Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface, actionClient core.ActionInterface) GroupWorkers {
 	//TODO:
 	return &groupWorkers{
 		runtimeManager: runtimeManager,
 		groupManager:   groupManager,
-		taskManager:    taskManager,
 		queueManager:   groupQueues,
 		groupClient:    groupclient,
 		taskClient:     taskclient,
@@ -91,7 +92,7 @@ func (g *groupWorkers) UpdateGroup(options *UpdateGroupOptions) {
 	g.groupLock.Lock()
 	defer g.groupLock.Unlock()
 
-	groupID := options.Group.Status.GroupID
+	groupID := options.Group.Name
 	groupName := options.Group.Name
 	groupUpdates, exists := g.groupUpdates[groupID] //后期最好将group_workers当中的groupUpdates这个map进行清理（对于已经执行完的group，删除信息）
 	if !exists {
@@ -120,8 +121,8 @@ func (g *groupWorkers) groupWorkerLoop(groupUpdates <-chan *UpdateGroupOptions) 
 			g.startGroup(update.Group)
 		case GroupUpdate:
 			g.UpdateGroup(update)
-		case GroupDelete:
-			g.deleteGroup(update.Group)
+		//case GroupDelete:
+		//	g.deleteGroup(update.Group)
 		case GroupKill:
 			g.killGroup(update.Group)
 		default:
@@ -144,7 +145,7 @@ func (g *groupWorkers) startGroup(gr *apis.Group) {
 	if err != nil {
 		logs.Errorf("Get group err:%v", err)
 	}
-	success := g.queueManager.AddToChecking(group.Status.GroupID, group)
+	success := g.queueManager.AddToChecking(group.Name, group)
 	if !success {
 		// 按理来说不会出现这样的情况，为啥呢，因为如果group_handler.go当中的HandleGroupAdd方法只会执行一次
 		logs.Error("Move group into checking queue failed, because groupID has been in checking queue")
@@ -152,133 +153,12 @@ func (g *groupWorkers) startGroup(gr *apis.Group) {
 	}
 	//修改Checking队列当中改group的信息（同时也同步到group_manager当中），状态都改为checking
 	g.handleCheckingUpdate(group) //12.31新增：除了修改group的状态，还需要修改上层Task的状态为CheckDeploy
-	// 最新：把下面的group的依赖检查放入到group_monitor当中的Checking队列检查，把action、runtime的依赖检查放入group_monitor当中的Running队列检查
-	//检查依赖，如果满足，则放入running队列，开始执行actions
-
-	// ************************************把下面这段注释
-	//if !g.groupDepenSatisfy(group) { //12.31：增加检查是否有父亲group
-	//	logs.Infof("The group:%s execution dependency is not satisfied", group.Name)
-	//	//继续放在Checking队列当中，Checking队列会持续检查依赖，直到依赖满足后，才开始执行，重新将任务group交给runtimeManager去执行
-	//	return
-	//}
-	//// 任务依赖满足后就将任务从Checking队列转移纸Running队列
-	//ok := g.queueManager.DeleteFromCheckingAndAddToRunning(group.Status.GroupID)
-	//if !ok {
-	//	logs.Error("Delete group from checking queue and add to running queue failed")
-	//}
-	// ************************************
-
-	//此处不用再修改group信息为Running，真正启动任务的时候，会修改phase为running
-	// TODO: 检查需要运行的Action,开始部署
-	//logs.Infof("Ready to start group:%s", group.Name)
-	//根据group当中的Action开启相应的runtime  group(Spec:Actions)--action（Spec：Runtimes）
-	// 得有一个变量来标记group里的信息是否改变，如果没有改变就不用上传到etcd当中了，因为相同的group应该不能调用update
-
-	// TODO 将下面这段代码合并到了group_monitor当中，还需要测试一下
-	//for i := range group.Spec.Actions {
-	//	action := &group.Spec.Actions[i]
-	//	if !g.actionDepenSatisfy(i, group) {
-	//		logs.Infof("Action:%s in group:%s waiting for dependencies", action.Name, group.Name)
-	//		//action.Status.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查
-	//		gro, err := g.groupManager.GetGroupByID(group.Status.GroupID)
-	//		if err != nil {
-	//			logs.Errorf("Get group from group_manager component err:%v", err)
-	//		}
-	//		gro.Spec.Actions[i].Status.Waiting = true
-	//		logs.Debugf("StartGroup method:ActionWaiting:%v, i:%v", gro.Spec.Actions[i].Status.Waiting, i)
-	//		//// patch
-	//		//patchGroupActions, err4 := json.Marshal(map[string]interface{}{
-	//		//	"spec": map[string]interface{}{
-	//		//		"actions": group.Spec.Actions,
-	//		//	},
-	//		//})
-	//		//if err4 != nil {
-	//		//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
-	//		//}
-	//		//_, err = g.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroupActions, metav1.PatchOptions{})
-	//		//if err != nil {
-	//		//	logs.Errorf("patch patchGroupActions:group err:%v", err)
-	//		//}
-	//		continue
-	//	}
-	//	for j := range action.Spec.Runtimes {
-	//		ru := &action.Spec.Runtimes[j]
-	//		if !g.runtimeDepenSatisfy(i, j, group) {
-	//			logs.Infof("Runtime:%s in group:%s waiting for dependencies", ru.Name, group.Name)
-	//			//ru.Waiting = true //第一次执行时发现执行不了，那就交给running队列去检查，检查成功才执行
-	//			gro, err := g.groupManager.GetGroupByID(group.Status.GroupID)
-	//			if err != nil {
-	//				logs.Errorf("Get group from group_manager err:%v", err)
-	//			}
-	//			gro.Spec.Actions[i].Spec.Runtimes[j].Waiting = true
-	//			logs.Debugf("StartGroup method:runtim:%v, Runtimewaiting:%v, i:%v, j:%v", ru.Name, gro.Spec.Actions[i].Spec.Runtimes[j].Waiting, i, j)
-	//			// TODO patch
-	//			//logs.Infof("runtime %s in group, waiting:%v,i:%v,j:%v", ru.Name, group.Spec.Actions[i].Spec.Runtimes[j].Waiting, i, j)
-	//			//// patch
-	//			//patchGroupActionsRuntimes, err4 := json.Marshal(map[string]interface{}{
-	//			//	"spec": map[string]interface{}{
-	//			//		"actions": group.Spec.Actions,
-	//			//	},
-	//			//})
-	//			//if err4 != nil {
-	//			//	logs.Errorf("json marshal:patchGroupActions err:%v", err)
-	//			//}
-	//			//result, err := g.groupClient.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroupActionsRuntimes, metav1.PatchOptions{})
-	//			//if err != nil {
-	//			//	logs.Errorf("patch patchGroupActionsRuntimes:group err:%v", err)
-	//			//}
-	//			//logs.Info(result)
-	//			continue
-	//		}
-	//		logs.Infof("Run runtime, runtime:%v", ru.Name)
-	//		go g.runtimeManager.Run(group, action, ru, i, j) //TODO 考虑这个方法是否使用协程
-	//		if err != nil {
-	//			logs.Errorf("Run task err:%v", err)
-	//		}
-	//	}
-	//}
-
-	//for i := range group.Status.ActionStatus {
-	//	actionStatus := group.Status.ActionStatus[i]
-	//	if !g.actionDepenSatisfy(i, group) {
-	//		logs.Infof("ActionID %s in group %s waiting for dependencies", actionStatus.ActionID, group.Name)
-	//		actionStatus.Waiting = true
-	//		groupIsModified = true
-	//		continue
-	//	}
-	//	for j := range actionStatus.RuntimeStatus {
-	//		runtimeStatus := actionStatus.RuntimeStatus[j]
-	//		if !g.runtimeDepenSatisfy(i, j, group) {
-	//			logs.Infof("RuntimeID %s in group %s waiting for dependencies", runtimeStatus.RuntimeID, group.Name)
-	//			runtimeStatus.Waiting = true
-	//			logs.Infof("runtimeID %s in group, waiting is true", runtimeStatus.RuntimeID)
-	//			continue
-	//		}
-	//		logs.Infof("Run runtimeID:%v", runtimeStatus.RuntimeID)
-	//		go g.runtimeManager.Run(group, &group.Spec.Actions[i], &group.Spec.Actions[i].Spec.Runtimes[j], i, j)
-	//	}
-	//}
-
-	// 将group上传到etcd当中
-	//if groupIsModified {
-	//	logs.Infof("runtime info updating")
-	//	logs.Infof("runtime.Waiting:%v", group.Spec.Actions[0].Spec.Runtimes[1].Waiting)
-	//	_, err = g.groupClient.Update(context.TODO(), group, metav1.UpdateOptions{})
-	//	if err != nil {
-	//		logs.Errorf("update group to etcd err:%v=====123", err)
-	//	}
-	//	// 也上传一份到group_manager当中
-	//	err = g.queueManager.UpdateGroup(group.Status.GroupID, group)
-	//	if err != nil {
-	//		logs.Errorf("update group to group_manager err:%v", err)
-	//	}
-	//}
 }
 
-// 对于正常完成的group在更新完group_status之后进行delete操作--目前该方法暂未考虑 1.4
-func (g *groupWorkers) deleteGroup(group *apis.Group) {
-	g.queueManager.DeleteGroup(group) //删除group_manager和queue_manager当中的任务
-}
+//// 对于正常完成的group在更新完group_status之后进行delete操作--目前该方法暂未考虑 1.4
+//func (g *groupWorkers) deleteGroup(group *apis.Group) {
+//	g.queueManager.DeleteGroup(group) //删除group_manager和queue_manager当中的任务
+//}
 
 func (g *groupWorkers) killGroup(group *apis.Group) {
 	if g.runtimeManager == nil {
@@ -308,12 +188,6 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 
 // 修改group下面的所有状态为Checking  +增加：修改group上层的Task状态为Checking
 func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
-	//gr, err := g.groupClient.Get(context.TODO(), group.Name, metav1.GetOptions{})
-	//if err != nil {
-	//	logs.Error("get group:%v frm etcd err:", group.Name, err)
-	//}
-	// 修改Group层以及Group下面的Action、Runtime的Phase为deploychecking
-	//times := apis.Time{time.Now()}
 	gr.Status.Phase = apis.DeployCheck //首先标记GroupStatus的Phase为DeployCheck
 	//gr.Status.LastTime = times  //隐藏
 	groupSpec := &gr.Spec
@@ -386,37 +260,100 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 				}
 				logs.Infof("==========================Task的Status.Phase:%v", task1.Status.Phase)
 				if task1.Status.Phase == apis.ReadyToDeploy || task1.Status.Phase == apis.Unknown { // TODO 这里为啥要判断是否DeployCheck--因为group被分配到不同的节点上，遍历到group的时候，都需要修改上层Task的信息的话，是重叠的，没必要  这里逻辑错误，如果第一个group遍历到完并且运行了，这里的Task的状态就行Running
-					task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
+					//task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
 					logs.Trace("=================Task的状态被修改为DeployCheck")
 					//task1.Status.LastTime = times //隐藏
+					patchTask, err := json.Marshal(map[string]interface{}{
+						"status": map[string]interface{}{
+							"phase": apis.DeployCheck, //value值不同
+						},
+					})
+					if err != nil {
+						logs.Errorf("Json Marshal failed, err:%v", err)
+					}
+					_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
+					if err != nil {
+						logs.Errorf("Patch group error:%v", err)
+					}
 				}
 				for i := range task1.Spec.Groups { //同时得更新TaskSpec下的Group以及TaskStatus下的GroupStatus为当前的group信息
 					if gr.Name == task1.Spec.Groups[i].Name {
-						task1.Spec.Groups[i].Spec = gr.Spec
-						task1.Spec.Groups[i].Status = gr.Status
-						task1.Status.GroupStatus[i] = gr.Status
+						//task1.Spec.Groups[i].Spec = gr.Spec
+						patchTask1, err := json.Marshal([]map[string]interface{}{
+							{
+								"op":    "replace",
+								"path":  "/spec/groups/" + strconv.Itoa(i) + "/spec",
+								"value": gr.Spec, // 这里替换为你需要的 Phase 值
+							},
+						})
+						if err != nil {
+							logs.Errorf("Json Marshal failed, err:%v", err)
+						}
+						_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.JSONPatchType, patchTask1, metav1.PatchOptions{})
+						if err != nil {
+							logs.Errorf("Patch group error-5:%v", err)
+						}
+
+						//task1.Spec.Groups[i].Status = gr.Status
+						patchTask2, err := json.Marshal([]map[string]interface{}{
+							{
+								"op":    "replace",
+								"path":  "/spec/groups/" + strconv.Itoa(i) + "/status",
+								"value": gr.Status, // 这里替换为你需要的 Phase 值
+							},
+						})
+						if err != nil {
+							logs.Errorf("Json Marshal failed, err:%v", err)
+						}
+						_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.JSONPatchType, patchTask2, metav1.PatchOptions{})
+						if err != nil {
+							logs.Errorf("Patch group error-5:%v", err)
+						}
+
+						//task1.Status.GroupStatus[i] = gr.Status
+						patchTask3, err := json.Marshal([]map[string]interface{}{
+							{
+								"op":    "replace",
+								"path":  "/status/group_status/" + strconv.Itoa(i),
+								"value": gr.Status, // 这里替换为你需要的 Phase 值
+							},
+						})
+						if err != nil {
+							logs.Errorf("Json Marshal failed, err:%v", err)
+						}
+						_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.JSONPatchType, patchTask3, metav1.PatchOptions{})
+						if err != nil {
+							logs.Errorf("Patch group error-5:%v", err)
+						}
 						break
 					}
 				}
-				// 将task信息提交到etcd上去
-				_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
-				if err1 != nil {
-					logs.Errorf("Etcd update task:%v err:%v, now is handing group:%v", taskName, err1, gr.Spec.Name) //这里出错
-					// 再次上传
-					time.Sleep(200 * time.Millisecond)
-					_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
-				}
+				//// 将task信息提交到etcd上去，这里的话使用Patch，不要使用Update，因为可能一个Task里面有多个Group，如果每个Group都使用Update更新，会有问题
+				//_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+				//if err1 != nil {
+				//	logs.Errorf("Etcd update task:%v err:%v, now is handing group:%v", taskName, err1, gr.Spec.Name) //这里出错
+				//	// 再次上传
+				//time.Sleep(200 * time.Millisecond)
+				//	_, err1 = gw.taskClient.Update(context.TODO(), task1, metav1.UpdateOptions{})
+				//}
 				break //后续就不用再遍历Task列表了，直接结束
 			}
 		}
 	}
 	//将group信息提交到etcd上去，使用update更新--出现一次报错  TODO 为了适配迁移，如果后面替换为Patch操作，那么要使用gr.ObjectMeta.Name 来进行patch，因为目前规定gr.ObjectMeta.Name为不同group的标识（针对副本、源group）
-	_, err := gw.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
-	logs.Infof("Group's deployCheck phase submit to etcd, group:%v", gr.Name)
+	// 有一个问题，就是怎么直接更新GroupStatus呢
+	patchGroup1, err := json.Marshal(map[string]interface{}{
+		"status": groupStatus,
+	})
+	patchGroup2, err2 := json.Marshal(map[string]interface{}{
+		"spec": groupSpec,
+	})
+	_, err = gw.groupClient.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroup1, metav1.PatchOptions{})
 	if err != nil {
-		logs.Errorf("Etcd update group:%v err:%v", gr.Name, err)
-		// 再次上传
-		time.Sleep(200 * time.Millisecond)
-		_, err = gw.groupClient.Update(context.TODO(), gr, metav1.UpdateOptions{})
+		logs.Errorf("Patch group error222:%v", err)
+	}
+	_, err2 = gw.groupClient.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroup2, metav1.PatchOptions{})
+	if err2 != nil {
+		logs.Errorf("Patch group error222:%v", err)
 	}
 }

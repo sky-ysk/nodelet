@@ -18,6 +18,5 @@
         "$ref" :  "./time.json"
       }
     },
-    "required" : ["workflow_id" , "phase" , "status" , "start" , "finish" , "last_time"],
-    "additionalProperties": false
+    "additionalProperties": true
 }

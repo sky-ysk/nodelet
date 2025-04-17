@@ -10,6 +10,7 @@ const (
 	ACTIONS_PATH = API_PREFIX + "/actions"
 	ACTION_PATH  = API_PREFIX + "/action"
 	ACTION_NAME  = "Name"
+	NAME_SPACE   = "Namespace"
 )
 
 type Handler interface {

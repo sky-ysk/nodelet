@@ -36,6 +36,15 @@ type frameworkImpl struct {
 	scorePluginWeight map[string]int
 }
 
+func (f *frameworkImpl) GetDTSPlugin() framework.ScorePlugin {
+	for _, plugin := range f.scorePlugins {
+		if plugin.Name() == "ScorePluginForDuBoyu" {
+			return plugin
+		}
+	}
+	return nil
+}
+
 func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) (status *framework.Status) {
 	if len(f.bindPlugins) == 0 {
 		logs.Error("no bind plugins")
@@ -128,6 +137,18 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 		if state.SkipScorePlugins.Has(pl.Name()) {
 			continue
 		}
+		if len(group.Spec.SkipScorePlugins) != 0 {
+			skip := false
+			for _, skipPlugin := range group.Spec.SkipScorePlugins {
+				if skipPlugin == pl.Name() {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+		}
 		plugins = append(plugins, pl)
 		pluginToNodeScores[pl.Name()] = make(framework.NodeScoreList, len(infos))
 	}
@@ -138,12 +159,15 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 		f.Parallelizer().Until(ctx, len(infos), func(index int) {
 			nodeName := infos[index].Node().Name
 			for _, pl := range plugins {
+
 				ctx := ctx
 				s, status := f.runScorePlugin(ctx, pl, state, group, nodeName)
 				if !status.IsSuccess() {
 					//err := fmt.Errorf("plugin %q failed with: %w", pl.Name(), status.AsError())
 					//errCh.SendErrorWithCancel(err, cancel)
-					return
+					logs.Errorf("plugin %q failed with: %s , node %s ", pl.Name(), status.AsError().Error(), nodeName)
+					logs.Errorf("plugin %q fail on node %s , use default score", pl.Name(), nodeName)
+					s = 5
 				}
 				pluginToNodeScores[pl.Name()][index] = framework.NodeScore{
 					Name:  nodeName,
@@ -253,7 +277,9 @@ func NewDefaultFramework(ctx context.Context, r Registry, name string) (framewor
 	for name, factory := range r {
 		p, err := factory(ctx, f)
 		if err != nil {
-			return nil, fmt.Errorf("initializing plugin %q: %w", name, err)
+			logs.Errorf("initializing plugin %q: %s", name, err.Error())
+			continue
+			//return nil, fmt.Errorf("initializing plugin %q: %w", name, err)
 		}
 		f.pluginsMap[name] = p
 		//在这里加入不同插件队列

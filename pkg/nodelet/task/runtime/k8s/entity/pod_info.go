@@ -1,17 +1,29 @@
 package entity
 
 import (
-	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-//const (
+// const (
+//
 //	TaskExporterName  = "task-exporter-sidecar"
 //	TaskExporterImage = "task-exporter-image:latest" //后期换成镜像仓库所在地址
-//)
+//
+// )
+func GetPodFromYAML(yamlContent []byte, nodeName string) (*corev1.Pod, error) {
+	pod := &corev1.Pod{}
+	if err := yaml.Unmarshal(yamlContent, pod); err != nil {
+		return nil, err
+	}
+	// 添加系统标签（保留原有逻辑）
+	if pod.Labels == nil {
+		pod.Labels = make(map[string]string)
+	}
+	pod.Labels[monitor.CreateorLabel] = nodeName
+	return pod, nil
+}
 
 //type Pod struct {
 //	Namespace          string                      //Pod所在名称空间
@@ -47,438 +59,438 @@ import (
 //			TaskNeedMonitoring: taskNeedMonitoring,
 //		}
 //	}
-func GetPodFromParam1(customPod *apis.Pod) *corev1.Pod {
-	spec := convertPodSpec(customPod.Spec)
-	labels := customPod.ObjectMeta.Labels
-	if labels == nil {
-		labels = make(map[string]string)
-	}
-	labels[monitor.CreateorLabel] = monitor.SystemName
-	pod := &corev1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: customPod.TypeMeta.APIVersion,
-			Kind:       customPod.TypeMeta.Kind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      customPod.ObjectMeta.Name,
-			Namespace: customPod.ObjectMeta.Namespace,
-			Labels:    labels,
-		},
-		Spec: spec,
-	}
-	return pod
-}
-func convertPodSpec(spec apis.PodSpec) corev1.PodSpec {
-	return corev1.PodSpec{
-		Volumes:            convertVolumes(spec.Volumes),
-		InitContainers:     convertContainers(spec.InitContainers),
-		Containers:         convertContainers(spec.Containers),
-		RestartPolicy:      corev1.RestartPolicy(spec.RestartPolicy),
-		DNSPolicy:          corev1.DNSPolicy(spec.DnsPolicy),
-		NodeSelector:       spec.NodeSelector,
-		ServiceAccountName: spec.ServiceAccountName,
-		Affinity:           convertAffinity(spec.Affinity),
-	}
-}
-
-// ----------------------------[ Affinity 转换 ]----------------------------
-func convertAffinity(affinity apis.Affinity) *corev1.Affinity {
-	if isEmptyAffinity(affinity) {
-		return nil
-	}
-
-	return &corev1.Affinity{
-		NodeAffinity:    convertNodeAffinity(affinity.NodeAffinity),
-		PodAffinity:     convertPodAffinity(affinity.PodAffinity),
-		PodAntiAffinity: convertPodAntiAffinity(affinity.PodAntiAffinity),
-	}
-}
-
-// ----------------------------[ 空值判断逻辑 ]----------------------------
-// 总空值判断
-func isEmptyAffinity(a apis.Affinity) bool {
-	return isEmptyNodeAffinity(a.NodeAffinity) &&
-		isEmptyPodAffinity(a.PodAffinity) &&
-		isEmptyPodAntiAffinity(a.PodAntiAffinity)
-}
-
-// NodeAffinity 空值判断
-func isEmptyNodeAffinity(na apis.NodeAffinity) bool {
-	return isEmptyNodeSelector(na.RequiredDuringSchedulingIgnoredDuringExecution) &&
-		len(na.PreferredDuringSchedulingIgnoredDuringExecution) == 0
-}
-
-// NodeSelector 空值判断
-func isEmptyNodeSelector(ns apis.NodeSelector) bool {
-	return len(ns.NodeSelectorTerms) == 0
-}
-
-// PodAffinity/PodAntiAffinity 空值判断（根据你的实际结构补充）
-func isEmptyPodAffinity(pa apis.PodAffinity) bool {
-	// 示例：根据实际字段判断
-	return len(pa.RequiredDuringSchedulingIgnoredDuringExecution) == 0 &&
-		len(pa.PreferredDuringSchedulingIgnoredDuringExecution) == 0
-}
-
-func isEmptyPodAntiAffinity(paa apis.PodAntiAffinity) bool {
-	// 示例：同上
-	return len(paa.RequiredDuringSchedulingIgnoredDuringExecution) == 0 &&
-		len(paa.PreferredDuringSchedulingIgnoredDuringExecution) == 0
-}
-
-// ----------------------------[ NodeAffinity 转换 ]----------------------------
-func convertNodeAffinity(src apis.NodeAffinity) *corev1.NodeAffinity {
-	if isEmptyNodeAffinity(src) {
-		return nil
-	}
-
-	dst := &corev1.NodeAffinity{}
-
-	// 转换 RequiredDuringScheduling...
-	if !isEmptyNodeSelector(src.RequiredDuringSchedulingIgnoredDuringExecution) {
-		dst.RequiredDuringSchedulingIgnoredDuringExecution = convertNodeSelector(src.RequiredDuringSchedulingIgnoredDuringExecution)
-	}
-
-	// 转换 PreferredDuringScheduling...
-	if len(src.PreferredDuringSchedulingIgnoredDuringExecution) > 0 {
-		dst.PreferredDuringSchedulingIgnoredDuringExecution = convertPreferredSchedulingTerms(src.PreferredDuringSchedulingIgnoredDuringExecution)
-	}
-
-	return dst
-}
-
-func convertNodeSelector(src apis.NodeSelector) *corev1.NodeSelector {
-	if isEmptyNodeSelector(src) {
-		return nil
-	}
-
-	return &corev1.NodeSelector{
-		NodeSelectorTerms: convertNodeSelectorTerms(src.NodeSelectorTerms),
-	}
-}
-
-// ----------------------------[ NodeSelectorTerm 转换 ]----------------------------
-func convertNodeSelectorTerms(src []apis.NodeSelectorTerm) []corev1.NodeSelectorTerm {
-	var dst []corev1.NodeSelectorTerm
-	for _, term := range src {
-		if converted := convertNodeSelectorTerm(term); converted != nil {
-			dst = append(dst, *converted)
-		}
-	}
-	return dst
-}
-
-func convertNodeSelectorTerm(src apis.NodeSelectorTerm) *corev1.NodeSelectorTerm {
-	if isEmptyNodeSelectorTerm(src) {
-		return nil
-	}
-
-	return &corev1.NodeSelectorTerm{
-		MatchExpressions: convertNodeSelectorRequirements(src.MatchExpressions),
-		MatchFields:      convertNodeSelectorRequirements(src.MatchFields),
-	}
-}
-
-func isEmptyNodeSelectorTerm(nst apis.NodeSelectorTerm) bool {
-	return len(nst.MatchExpressions) == 0 && len(nst.MatchFields) == 0
-}
-
-// ----------------------------[ NodeSelectorRequirement 转换 ]----------------------------
-func convertNodeSelectorRequirements(src []apis.NodeSelectorRequirement) []corev1.NodeSelectorRequirement {
-	var dst []corev1.NodeSelectorRequirement
-	for _, req := range src {
-		dst = append(dst, corev1.NodeSelectorRequirement{
-			Key:      req.Key,
-			Operator: corev1.NodeSelectorOperator(req.Operator),
-			Values:   req.Values,
-		})
-	}
-	return dst
-}
-
-// ----------------------------[ PreferredSchedulingTerm 转换 ]----------------------------
-func convertPreferredSchedulingTerms(src []apis.PreferredSchedulingTerm) []corev1.PreferredSchedulingTerm {
-	var dst []corev1.PreferredSchedulingTerm
-	for _, term := range src {
-		if converted := convertPreferredSchedulingTerm(term); converted != nil {
-			dst = append(dst, *converted)
-		}
-	}
-	return dst
-}
-
-func convertPreferredSchedulingTerm(src apis.PreferredSchedulingTerm) *corev1.PreferredSchedulingTerm {
-	if src.Weight == 0 || isEmptyNodeSelectorTerm(src.Preference) {
-		return nil
-	}
-
-	return &corev1.PreferredSchedulingTerm{
-		Weight:     src.Weight,
-		Preference: *convertNodeSelectorTerm(src.Preference),
-	}
-}
-
-// ----------------------------[ PodAffinity 转换 ]----------------------------
-func convertPodAffinity(pa apis.PodAffinity) *corev1.PodAffinity {
-	if isEmptyPodAffinity(pa) {
-		return nil
-	}
-
-	return &corev1.PodAffinity{
-		RequiredDuringSchedulingIgnoredDuringExecution:  convertPodAffinityTerms(pa.RequiredDuringSchedulingIgnoredDuringExecution),
-		PreferredDuringSchedulingIgnoredDuringExecution: convertWeightedPodAffinityTerms(pa.PreferredDuringSchedulingIgnoredDuringExecution),
-	}
-}
-
-// ----------------------------[ PodAntiAffinity 转换 ]----------------------------
-func convertPodAntiAffinity(paa apis.PodAntiAffinity) *corev1.PodAntiAffinity {
-	if isEmptyPodAntiAffinity(paa) {
-		return nil
-	}
-
-	return &corev1.PodAntiAffinity{
-		RequiredDuringSchedulingIgnoredDuringExecution:  convertPodAffinityTerms(paa.RequiredDuringSchedulingIgnoredDuringExecution),
-		PreferredDuringSchedulingIgnoredDuringExecution: convertWeightedPodAffinityTerms(paa.PreferredDuringSchedulingIgnoredDuringExecution),
-	}
-}
-
-// ----------------------------[ 通用转换工具函数 ]----------------------------
-// 转换 PodAffinityTerm 列表
-func convertPodAffinityTerms(terms []apis.PodAffinityTerm) []corev1.PodAffinityTerm {
-	var dst []corev1.PodAffinityTerm
-	for _, term := range terms {
-		if converted := convertPodAffinityTerm(term); converted != nil {
-			dst = append(dst, *converted)
-		}
-	}
-	return dst
-}
-
-// 转换单个 PodAffinityTerm
-func convertPodAffinityTerm(term apis.PodAffinityTerm) *corev1.PodAffinityTerm {
-	if isEmptyPodAffinityTerm(term) {
-		return nil
-	}
-
-	return &corev1.PodAffinityTerm{
-		LabelSelector:     convertLabelSelector(term.LabelSelector),
-		Namespaces:        term.Namespaces,
-		TopologyKey:       term.TopologyKey,
-		NamespaceSelector: convertLabelSelector(term.NamespaceSelector),
-	}
-}
-
-// PodAffinityTerm 空值判断
-func isEmptyPodAffinityTerm(term apis.PodAffinityTerm) bool {
-	return term.TopologyKey == "" && // TopologyKey 是必填字段
-		convertLabelSelector(term.LabelSelector) == nil &&
-		convertLabelSelector(term.NamespaceSelector) == nil &&
-		len(term.Namespaces) == 0
-}
-
-// 转换带权重的 PodAffinityTerm
-func convertWeightedPodAffinityTerms(terms []apis.WeightedPodAffinityTerm) []corev1.WeightedPodAffinityTerm {
-	var dst []corev1.WeightedPodAffinityTerm
-	for _, term := range terms {
-		if converted := convertWeightedPodAffinityTerm(term); converted != nil {
-			dst = append(dst, *converted)
-		}
-	}
-	return dst
-}
-
-func convertWeightedPodAffinityTerm(term apis.WeightedPodAffinityTerm) *corev1.WeightedPodAffinityTerm {
-	if term.Weight == 0 || isEmptyPodAffinityTerm(term.PodAffinityTerm) {
-		return nil
-	}
-
-	return &corev1.WeightedPodAffinityTerm{
-		Weight:          term.Weight,
-		PodAffinityTerm: *convertPodAffinityTerm(term.PodAffinityTerm),
-	}
-}
-
-// ----------------------------[ LabelSelector 转换 ]----------------------------
-func convertLabelSelector(selector meta.LabelSelector) *metav1.LabelSelector {
-	if selector.MatchLabels == nil && len(selector.MatchExpressions) == 0 {
-		return nil
-	}
-
-	return &metav1.LabelSelector{
-		MatchLabels:      selector.MatchLabels,
-		MatchExpressions: convertLabelSelectorRequirements(selector.MatchExpressions),
-	}
-}
-
-//func convertLabelSelectorRequirements(reqs []meta.LabelSelectorRequirement) []metav1.LabelSelectorRequirement {
-//	var dst []metav1.LabelSelectorRequirement
-//	for _, req := range reqs {
-//		dst = append(dst, metav1.LabelSelectorRequirement{
+//func GetPodFromParam1(customPod *apis.Pod) *corev1.Pod {
+//	spec := convertPodSpec(customPod.Spec)
+//	labels := customPod.ObjectMeta.Labels
+//	if labels == nil {
+//		labels = make(map[string]string)
+//	}
+//	labels[monitor.CreateorLabel] = monitor.SystemName
+//	pod := &corev1.Pod{
+//		TypeMeta: metav1.TypeMeta{
+//			APIVersion: customPod.TypeMeta.APIVersion,
+//			Kind:       customPod.TypeMeta.Kind,
+//		},
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name:      customPod.ObjectMeta.Name,
+//			Namespace: customPod.ObjectMeta.Namespace,
+//			Labels:    labels,
+//		},
+//		Spec: spec,
+//	}
+//	return pod
+//}
+//func convertPodSpec(spec apis.PodSpec) corev1.PodSpec {
+//	return corev1.PodSpec{
+//		Volumes:            convertVolumes(spec.Volumes),
+//		InitContainers:     convertContainers(spec.InitContainers),
+//		Containers:         convertContainers(spec.Containers),
+//		RestartPolicy:      corev1.RestartPolicy(spec.RestartPolicy),
+//		DNSPolicy:          corev1.DNSPolicy(spec.DnsPolicy),
+//		NodeSelector:       spec.NodeSelector,
+//		ServiceAccountName: spec.ServiceAccountName,
+//		Affinity:           convertAffinity(spec.Affinity),
+//	}
+//}
+//
+//// ----------------------------[ Affinity 转换 ]----------------------------
+//func convertAffinity(affinity apis.Affinity) *corev1.Affinity {
+//	if isEmptyAffinity(affinity) {
+//		return nil
+//	}
+//
+//	return &corev1.Affinity{
+//		NodeAffinity:    convertNodeAffinity(affinity.NodeAffinity),
+//		PodAffinity:     convertPodAffinity(affinity.PodAffinity),
+//		PodAntiAffinity: convertPodAntiAffinity(affinity.PodAntiAffinity),
+//	}
+//}
+//
+//// ----------------------------[ 空值判断逻辑 ]----------------------------
+//// 总空值判断
+//func isEmptyAffinity(a apis.Affinity) bool {
+//	return isEmptyNodeAffinity(a.NodeAffinity) &&
+//		isEmptyPodAffinity(a.PodAffinity) &&
+//		isEmptyPodAntiAffinity(a.PodAntiAffinity)
+//}
+//
+//// NodeAffinity 空值判断
+//func isEmptyNodeAffinity(na apis.NodeAffinity) bool {
+//	return isEmptyNodeSelector(na.RequiredDuringSchedulingIgnoredDuringExecution) &&
+//		len(na.PreferredDuringSchedulingIgnoredDuringExecution) == 0
+//}
+//
+//// NodeSelector 空值判断
+//func isEmptyNodeSelector(ns apis.NodeSelector) bool {
+//	return len(ns.NodeSelectorTerms) == 0
+//}
+//
+//// PodAffinity/PodAntiAffinity 空值判断（根据你的实际结构补充）
+//func isEmptyPodAffinity(pa apis.PodAffinity) bool {
+//	// 示例：根据实际字段判断
+//	return len(pa.RequiredDuringSchedulingIgnoredDuringExecution) == 0 &&
+//		len(pa.PreferredDuringSchedulingIgnoredDuringExecution) == 0
+//}
+//
+//func isEmptyPodAntiAffinity(paa apis.PodAntiAffinity) bool {
+//	// 示例：同上
+//	return len(paa.RequiredDuringSchedulingIgnoredDuringExecution) == 0 &&
+//		len(paa.PreferredDuringSchedulingIgnoredDuringExecution) == 0
+//}
+//
+//// ----------------------------[ NodeAffinity 转换 ]----------------------------
+//func convertNodeAffinity(src apis.NodeAffinity) *corev1.NodeAffinity {
+//	if isEmptyNodeAffinity(src) {
+//		return nil
+//	}
+//
+//	dst := &corev1.NodeAffinity{}
+//
+//	// 转换 RequiredDuringScheduling...
+//	if !isEmptyNodeSelector(src.RequiredDuringSchedulingIgnoredDuringExecution) {
+//		dst.RequiredDuringSchedulingIgnoredDuringExecution = convertNodeSelector(src.RequiredDuringSchedulingIgnoredDuringExecution)
+//	}
+//
+//	// 转换 PreferredDuringScheduling...
+//	if len(src.PreferredDuringSchedulingIgnoredDuringExecution) > 0 {
+//		dst.PreferredDuringSchedulingIgnoredDuringExecution = convertPreferredSchedulingTerms(src.PreferredDuringSchedulingIgnoredDuringExecution)
+//	}
+//
+//	return dst
+//}
+//
+//func convertNodeSelector(src apis.NodeSelector) *corev1.NodeSelector {
+//	if isEmptyNodeSelector(src) {
+//		return nil
+//	}
+//
+//	return &corev1.NodeSelector{
+//		NodeSelectorTerms: convertNodeSelectorTerms(src.NodeSelectorTerms),
+//	}
+//}
+//
+//// ----------------------------[ NodeSelectorTerm 转换 ]----------------------------
+//func convertNodeSelectorTerms(src []apis.NodeSelectorTerm) []corev1.NodeSelectorTerm {
+//	var dst []corev1.NodeSelectorTerm
+//	for _, term := range src {
+//		if converted := convertNodeSelectorTerm(term); converted != nil {
+//			dst = append(dst, *converted)
+//		}
+//	}
+//	return dst
+//}
+//
+//func convertNodeSelectorTerm(src apis.NodeSelectorTerm) *corev1.NodeSelectorTerm {
+//	if isEmptyNodeSelectorTerm(src) {
+//		return nil
+//	}
+//
+//	return &corev1.NodeSelectorTerm{
+//		MatchExpressions: convertNodeSelectorRequirements(src.MatchExpressions),
+//		MatchFields:      convertNodeSelectorRequirements(src.MatchFields),
+//	}
+//}
+//
+//func isEmptyNodeSelectorTerm(nst apis.NodeSelectorTerm) bool {
+//	return len(nst.MatchExpressions) == 0 && len(nst.MatchFields) == 0
+//}
+//
+//// ----------------------------[ NodeSelectorRequirement 转换 ]----------------------------
+//func convertNodeSelectorRequirements(src []apis.NodeSelectorRequirement) []corev1.NodeSelectorRequirement {
+//	var dst []corev1.NodeSelectorRequirement
+//	for _, req := range src {
+//		dst = append(dst, corev1.NodeSelectorRequirement{
 //			Key:      req.Key,
-//			Operator: metav1.LabelSelectorOperator(req.Operator),
+//			Operator: corev1.NodeSelectorOperator(req.Operator),
 //			Values:   req.Values,
 //		})
 //	}
 //	return dst
 //}
-
-func convertVolumes(volumes []apis.Volume) []corev1.Volume {
-	var k8sVolumes []corev1.Volume
-	for _, v := range volumes {
-		kv := corev1.Volume{
-			Name: v.Name,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap:             convertConfigMapSource(v.ConfigMap),
-				Secret:                convertSecretSource(v.Secret),
-				HostPath:              convertHostPathSource(v.HostPath),
-				EmptyDir:              convertEmptyDirSource(v.EmptyDir),
-				PersistentVolumeClaim: convertPersistentVolumeClaimSource(v.PersistentVolumeClaim),
-			},
-		}
-		k8sVolumes = append(k8sVolumes, kv)
-	}
-	return k8sVolumes
-}
-
-func convertConfigMapSource(configMap apis.ConfigMapVolumeSource) *corev1.ConfigMapVolumeSource {
-	if configMap.Name == "" {
-		return nil
-	}
-	return &corev1.ConfigMapVolumeSource{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: configMap.Name,
-		},
-		Items: convertKeyToPaths(configMap.Items),
-	}
-}
-func convertKeyToPaths(items []apis.KeyToPath) []corev1.KeyToPath {
-	var k8sItems []corev1.KeyToPath
-	for _, item := range items {
-		k8sItems = append(k8sItems, corev1.KeyToPath{
-			Key:  item.Key,
-			Path: item.Path,
-		})
-	}
-	return k8sItems
-}
-
-func convertSecretSource(secret apis.SecretVolumeSource) *corev1.SecretVolumeSource {
-	if secret.SecretName == "" {
-		return nil
-	}
-	return &corev1.SecretVolumeSource{
-		SecretName: secret.SecretName,
-		Items:      convertKeyToPaths(secret.Items),
-	}
-}
-
-func convertHostPathSource(hostPath apis.HostPathVolumeSource) *corev1.HostPathVolumeSource {
-	if hostPath.Path == "" {
-		return nil
-	}
-	return &corev1.HostPathVolumeSource{
-		Path: hostPath.Path,
-		Type: convertHostPathType(hostPath.Type),
-	}
-}
-func convertHostPathType(hpType apis.HostPathType) *corev1.HostPathType {
-	var k8sType corev1.HostPathType
-	switch hpType {
-	case apis.HostPathDirectoryOrCreate:
-		k8sType = corev1.HostPathDirectoryOrCreate
-	case apis.HostPathDirectory:
-		k8sType = corev1.HostPathDirectory
-	case apis.HostPathFileOrCreate:
-		k8sType = corev1.HostPathFileOrCreate
-	case apis.HostPathFile:
-		k8sType = corev1.HostPathFile
-	default:
-		return nil
-	}
-	return &k8sType
-}
-
-func convertEmptyDirSource(emptyDir apis.EmptyDirVolumeSource) *corev1.EmptyDirVolumeSource {
-	medium := convertStorageMedium(emptyDir.Medium)
-	return &corev1.EmptyDirVolumeSource{
-		Medium: medium,
-	}
-}
-func convertStorageMedium(medium apis.StorageMedium) corev1.StorageMedium {
-	switch medium {
-	case apis.StorageMediumMemory:
-		return corev1.StorageMediumMemory
-	default:
-		return corev1.StorageMediumDefault
-	}
-}
-
-func convertPersistentVolumeClaimSource(persistentVolumeClaim apis.PersistentVolumeClaimVolumeSource) *corev1.PersistentVolumeClaimVolumeSource {
-	if persistentVolumeClaim.ClaimName == "" {
-		return nil
-	}
-	return &corev1.PersistentVolumeClaimVolumeSource{
-		ClaimName: persistentVolumeClaim.ClaimName,
-	}
-}
-
-func convertContainers(containers []apis.Container) []corev1.Container {
-	var k8sContainers []corev1.Container
-	for _, container := range containers {
-		kc := corev1.Container{
-			Name:         container.Name,
-			Image:        container.Image,
-			Command:      container.Command,
-			Args:         container.Args,
-			Ports:        convertContainerPorts(container.Ports),
-			Env:          convertEnvVars(container.Env),
-			VolumeMounts: convertVolumeMounts(container.VolumeMounts),
-		}
-		k8sContainers = append(k8sContainers, kc)
-	}
-	return k8sContainers
-}
-func convertContainerPorts(ports []apis.ContainerPort) []corev1.ContainerPort {
-	var k8sPorts []corev1.ContainerPort
-	for _, port := range ports {
-		k8sPorts = append(k8sPorts, corev1.ContainerPort{
-			ContainerPort: int32(port.ContainerPort),
-			Protocol:      convertProtocol(port.Protocol),
-		})
-	}
-	return k8sPorts
-}
-func convertProtocol(protocol apis.Protocol) corev1.Protocol {
-	switch protocol {
-	case apis.ProtocolTCP:
-		return corev1.ProtocolTCP
-	case apis.ProtocolUDP:
-		return corev1.ProtocolUDP
-	default:
-		return corev1.ProtocolSCTP
-	}
-}
-func convertEnvVars(env []apis.EnvVar) []corev1.EnvVar {
-	var k8sEnvVars []corev1.EnvVar
-	for _, envVar := range env {
-		k8sEnvVars = append(k8sEnvVars, corev1.EnvVar{
-			Name:  envVar.Name,
-			Value: envVar.Value,
-		})
-	}
-	return k8sEnvVars
-}
-func convertVolumeMounts(volumeMounts []apis.VolumeMount) []corev1.VolumeMount {
-	var k8sVolumeMounts []corev1.VolumeMount
-	for _, volumeMount := range volumeMounts {
-		k8sVolumeMounts = append(k8sVolumeMounts, corev1.VolumeMount{
-			Name:      volumeMount.Name,
-			MountPath: volumeMount.MountPath,
-			ReadOnly:  volumeMount.ReadOnly,
-		})
-	}
-	return k8sVolumeMounts
-}
+//
+//// ----------------------------[ PreferredSchedulingTerm 转换 ]----------------------------
+//func convertPreferredSchedulingTerms(src []apis.PreferredSchedulingTerm) []corev1.PreferredSchedulingTerm {
+//	var dst []corev1.PreferredSchedulingTerm
+//	for _, term := range src {
+//		if converted := convertPreferredSchedulingTerm(term); converted != nil {
+//			dst = append(dst, *converted)
+//		}
+//	}
+//	return dst
+//}
+//
+//func convertPreferredSchedulingTerm(src apis.PreferredSchedulingTerm) *corev1.PreferredSchedulingTerm {
+//	if src.Weight == 0 || isEmptyNodeSelectorTerm(src.Preference) {
+//		return nil
+//	}
+//
+//	return &corev1.PreferredSchedulingTerm{
+//		Weight:     src.Weight,
+//		Preference: *convertNodeSelectorTerm(src.Preference),
+//	}
+//}
+//
+//// ----------------------------[ PodAffinity 转换 ]----------------------------
+//func convertPodAffinity(pa apis.PodAffinity) *corev1.PodAffinity {
+//	if isEmptyPodAffinity(pa) {
+//		return nil
+//	}
+//
+//	return &corev1.PodAffinity{
+//		RequiredDuringSchedulingIgnoredDuringExecution:  convertPodAffinityTerms(pa.RequiredDuringSchedulingIgnoredDuringExecution),
+//		PreferredDuringSchedulingIgnoredDuringExecution: convertWeightedPodAffinityTerms(pa.PreferredDuringSchedulingIgnoredDuringExecution),
+//	}
+//}
+//
+//// ----------------------------[ PodAntiAffinity 转换 ]----------------------------
+//func convertPodAntiAffinity(paa apis.PodAntiAffinity) *corev1.PodAntiAffinity {
+//	if isEmptyPodAntiAffinity(paa) {
+//		return nil
+//	}
+//
+//	return &corev1.PodAntiAffinity{
+//		RequiredDuringSchedulingIgnoredDuringExecution:  convertPodAffinityTerms(paa.RequiredDuringSchedulingIgnoredDuringExecution),
+//		PreferredDuringSchedulingIgnoredDuringExecution: convertWeightedPodAffinityTerms(paa.PreferredDuringSchedulingIgnoredDuringExecution),
+//	}
+//}
+//
+//// ----------------------------[ 通用转换工具函数 ]----------------------------
+//// 转换 PodAffinityTerm 列表
+//func convertPodAffinityTerms(terms []apis.PodAffinityTerm) []corev1.PodAffinityTerm {
+//	var dst []corev1.PodAffinityTerm
+//	for _, term := range terms {
+//		if converted := convertPodAffinityTerm(term); converted != nil {
+//			dst = append(dst, *converted)
+//		}
+//	}
+//	return dst
+//}
+//
+//// 转换单个 PodAffinityTerm
+//func convertPodAffinityTerm(term apis.PodAffinityTerm) *corev1.PodAffinityTerm {
+//	if isEmptyPodAffinityTerm(term) {
+//		return nil
+//	}
+//
+//	return &corev1.PodAffinityTerm{
+//		LabelSelector:     convertLabelSelector(term.LabelSelector),
+//		Namespaces:        term.Namespaces,
+//		TopologyKey:       term.TopologyKey,
+//		NamespaceSelector: convertLabelSelector(term.NamespaceSelector),
+//	}
+//}
+//
+//// PodAffinityTerm 空值判断
+//func isEmptyPodAffinityTerm(term apis.PodAffinityTerm) bool {
+//	return term.TopologyKey == "" && // TopologyKey 是必填字段
+//		convertLabelSelector(term.LabelSelector) == nil &&
+//		convertLabelSelector(term.NamespaceSelector) == nil &&
+//		len(term.Namespaces) == 0
+//}
+//
+//// 转换带权重的 PodAffinityTerm
+//func convertWeightedPodAffinityTerms(terms []apis.WeightedPodAffinityTerm) []corev1.WeightedPodAffinityTerm {
+//	var dst []corev1.WeightedPodAffinityTerm
+//	for _, term := range terms {
+//		if converted := convertWeightedPodAffinityTerm(term); converted != nil {
+//			dst = append(dst, *converted)
+//		}
+//	}
+//	return dst
+//}
+//
+//func convertWeightedPodAffinityTerm(term apis.WeightedPodAffinityTerm) *corev1.WeightedPodAffinityTerm {
+//	if term.Weight == 0 || isEmptyPodAffinityTerm(term.PodAffinityTerm) {
+//		return nil
+//	}
+//
+//	return &corev1.WeightedPodAffinityTerm{
+//		Weight:          term.Weight,
+//		PodAffinityTerm: *convertPodAffinityTerm(term.PodAffinityTerm),
+//	}
+//}
+//
+//// ----------------------------[ LabelSelector 转换 ]----------------------------
+//func convertLabelSelector(selector meta.LabelSelector) *metav1.LabelSelector {
+//	if selector.MatchLabels == nil && len(selector.MatchExpressions) == 0 {
+//		return nil
+//	}
+//
+//	return &metav1.LabelSelector{
+//		MatchLabels:      selector.MatchLabels,
+//		MatchExpressions: convertLabelSelectorRequirements(selector.MatchExpressions),
+//	}
+//}
+//
+////func convertLabelSelectorRequirements(reqs []meta.LabelSelectorRequirement) []metav1.LabelSelectorRequirement {
+////	var dst []metav1.LabelSelectorRequirement
+////	for _, req := range reqs {
+////		dst = append(dst, metav1.LabelSelectorRequirement{
+////			Key:      req.Key,
+////			Operator: metav1.LabelSelectorOperator(req.Operator),
+////			Values:   req.Values,
+////		})
+////	}
+////	return dst
+////}
+//
+//func convertVolumes(volumes []apis.Volume) []corev1.Volume {
+//	var k8sVolumes []corev1.Volume
+//	for _, v := range volumes {
+//		kv := corev1.Volume{
+//			Name: v.Name,
+//			VolumeSource: corev1.VolumeSource{
+//				ConfigMap:             convertConfigMapSource(v.ConfigMap),
+//				Secret:                convertSecretSource(v.Secret),
+//				HostPath:              convertHostPathSource(v.HostPath),
+//				EmptyDir:              convertEmptyDirSource(v.EmptyDir),
+//				PersistentVolumeClaim: convertPersistentVolumeClaimSource(v.PersistentVolumeClaim),
+//			},
+//		}
+//		k8sVolumes = append(k8sVolumes, kv)
+//	}
+//	return k8sVolumes
+//}
+//
+//func convertConfigMapSource(configMap apis.ConfigMapVolumeSource) *corev1.ConfigMapVolumeSource {
+//	if configMap.Name == "" {
+//		return nil
+//	}
+//	return &corev1.ConfigMapVolumeSource{
+//		LocalObjectReference: corev1.LocalObjectReference{
+//			Name: configMap.Name,
+//		},
+//		Items: convertKeyToPaths(configMap.Items),
+//	}
+//}
+//func convertKeyToPaths(items []apis.KeyToPath) []corev1.KeyToPath {
+//	var k8sItems []corev1.KeyToPath
+//	for _, item := range items {
+//		k8sItems = append(k8sItems, corev1.KeyToPath{
+//			Key:  item.Key,
+//			Path: item.Path,
+//		})
+//	}
+//	return k8sItems
+//}
+//
+//func convertSecretSource(secret apis.SecretVolumeSource) *corev1.SecretVolumeSource {
+//	if secret.SecretName == "" {
+//		return nil
+//	}
+//	return &corev1.SecretVolumeSource{
+//		SecretName: secret.SecretName,
+//		Items:      convertKeyToPaths(secret.Items),
+//	}
+//}
+//
+//func convertHostPathSource(hostPath apis.HostPathVolumeSource) *corev1.HostPathVolumeSource {
+//	if hostPath.Path == "" {
+//		return nil
+//	}
+//	return &corev1.HostPathVolumeSource{
+//		Path: hostPath.Path,
+//		Type: convertHostPathType(hostPath.Type),
+//	}
+//}
+//func convertHostPathType(hpType apis.HostPathType) *corev1.HostPathType {
+//	var k8sType corev1.HostPathType
+//	switch hpType {
+//	case apis.HostPathDirectoryOrCreate:
+//		k8sType = corev1.HostPathDirectoryOrCreate
+//	case apis.HostPathDirectory:
+//		k8sType = corev1.HostPathDirectory
+//	case apis.HostPathFileOrCreate:
+//		k8sType = corev1.HostPathFileOrCreate
+//	case apis.HostPathFile:
+//		k8sType = corev1.HostPathFile
+//	default:
+//		return nil
+//	}
+//	return &k8sType
+//}
+//
+//func convertEmptyDirSource(emptyDir apis.EmptyDirVolumeSource) *corev1.EmptyDirVolumeSource {
+//	medium := convertStorageMedium(emptyDir.Medium)
+//	return &corev1.EmptyDirVolumeSource{
+//		Medium: medium,
+//	}
+//}
+//func convertStorageMedium(medium apis.StorageMedium) corev1.StorageMedium {
+//	switch medium {
+//	case apis.StorageMediumMemory:
+//		return corev1.StorageMediumMemory
+//	default:
+//		return corev1.StorageMediumDefault
+//	}
+//}
+//
+//func convertPersistentVolumeClaimSource(persistentVolumeClaim apis.PersistentVolumeClaimVolumeSource) *corev1.PersistentVolumeClaimVolumeSource {
+//	if persistentVolumeClaim.ClaimName == "" {
+//		return nil
+//	}
+//	return &corev1.PersistentVolumeClaimVolumeSource{
+//		ClaimName: persistentVolumeClaim.ClaimName,
+//	}
+//}
+//
+//func convertContainers(containers []apis.Container) []corev1.Container {
+//	var k8sContainers []corev1.Container
+//	for _, container := range containers {
+//		kc := corev1.Container{
+//			Name:         container.Name,
+//			Image:        container.Image,
+//			Command:      container.Command,
+//			Args:         container.Args,
+//			Ports:        convertContainerPorts(container.Ports),
+//			Env:          convertEnvVars(container.Env),
+//			VolumeMounts: convertVolumeMounts(container.VolumeMounts),
+//		}
+//		k8sContainers = append(k8sContainers, kc)
+//	}
+//	return k8sContainers
+//}
+//func convertContainerPorts(ports []apis.ContainerPort) []corev1.ContainerPort {
+//	var k8sPorts []corev1.ContainerPort
+//	for _, port := range ports {
+//		k8sPorts = append(k8sPorts, corev1.ContainerPort{
+//			ContainerPort: int32(port.ContainerPort),
+//			Protocol:      convertProtocol(port.Protocol),
+//		})
+//	}
+//	return k8sPorts
+//}
+//func convertProtocol(protocol apis.Protocol) corev1.Protocol {
+//	switch protocol {
+//	case apis.ProtocolTCP:
+//		return corev1.ProtocolTCP
+//	case apis.ProtocolUDP:
+//		return corev1.ProtocolUDP
+//	default:
+//		return corev1.ProtocolSCTP
+//	}
+//}
+//func convertEnvVars(env []apis.EnvVar) []corev1.EnvVar {
+//	var k8sEnvVars []corev1.EnvVar
+//	for _, envVar := range env {
+//		k8sEnvVars = append(k8sEnvVars, corev1.EnvVar{
+//			Name:  envVar.Name,
+//			Value: envVar.Value,
+//		})
+//	}
+//	return k8sEnvVars
+//}
+//func convertVolumeMounts(volumeMounts []apis.VolumeMount) []corev1.VolumeMount {
+//	var k8sVolumeMounts []corev1.VolumeMount
+//	for _, volumeMount := range volumeMounts {
+//		k8sVolumeMounts = append(k8sVolumeMounts, corev1.VolumeMount{
+//			Name:      volumeMount.Name,
+//			MountPath: volumeMount.MountPath,
+//			ReadOnly:  volumeMount.ReadOnly,
+//		})
+//	}
+//	return k8sVolumeMounts
+//}
 
 //// CreatePodTemplate 使用 Pod 对象的信息生成 Kubernetes Pod 资源
 //func (p *Pod) CreatePodTemplate() (corev1.Pod, error) {

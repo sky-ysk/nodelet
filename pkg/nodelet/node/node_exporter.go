@@ -190,11 +190,27 @@ func (n *NodeExporter) UploadCache(node *apis.Node, cacheType string) {
 
 	//TODO 实现上传逻辑到API-server{  ----先放入到NodeStatus当中，然后通过client-go写入到api-server当中
 	// 方法一：Update方法更新node信息
-	_, err := n.nodesClient.Update(context.TODO(), node, metav1.UpdateOptions{})
+	//直接patch修改node的Spec和Status
+	nodePatch1, err := json.Marshal(map[string]interface{}{
+		"spec": node.Spec,
+	})
+	nodePatch2, err2 := json.Marshal(map[string]interface{}{
+		"status": node.Status,
+	})
+	_, err = n.nodesClient.Patch(context.TODO(), node.Name, types.StrategicMergePatchType, nodePatch1, metav1.PatchOptions{})
 	if err != nil {
-		logs.Errorf("Failed to update Node, err:%v", err)
-		return
+		logs.Errorf("Patch node error-1:%v", err)
 	}
+	_, err2 = n.nodesClient.Patch(context.TODO(), node.Name, types.StrategicMergePatchType, nodePatch2, metav1.PatchOptions{})
+	if err2 != nil {
+		logs.Errorf("Patch node error-2:%v", err2)
+	}
+
+	//_, err := n.nodesClient.Update(context.TODO(), node, metav1.UpdateOptions{})
+	//if err != nil {
+	//	logs.Errorf("Failed to update Node, err:%v", err)
+	//	return
+	//}
 	// 方法二：patch方法更新node信息--目前这条路有点问题，因为此处获取不到更新完的map
 	//if cacheType == "static" {
 	//	patchNode, err := json.Marshal(map[string]interface{}{

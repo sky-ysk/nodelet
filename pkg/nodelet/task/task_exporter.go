@@ -8,6 +8,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
+	"hit.edu/framework/pkg/utils"
 
 	scheme "hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -52,6 +53,9 @@ type TaskExporter struct {
 	// 处理从上游（API-Server）中的Group的更新事件
 	groupHandler *monitor.GroupHandler
 
+	//处理condition
+	conditionEngine *utils.ConditionEngine
+
 	// 切换模块
 	//groupSwitcher *_switch.GroupSwitch
 	migrationController *controller.MigrationController
@@ -74,6 +78,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	eventClient := clientset.Core().Events("test")
 	actionClient := clientset.Core().Actions("test")
 	deviceClient := clientset.Core().Devices("test")
+	//runtimeClient := clientset.Core().Run
+	//事件总线--只使用与Runtime运行时传输状态的
 	//事件配置
 	eb := eventbus.NewEventBus()
 	// 全局事件组件的配置
@@ -85,18 +91,19 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
-	// Manager 配置Task
-	taskManager := task.NewTaskManager()
+
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
 	runtimeManager := runtime.NewRuntimeManager(eb, recorder, deviceClient, actionClient, groupClient)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
+	//condition engine配置
+	conditionEngine := utils.NewConditionEngine(nodeClient, taskClient, groupClient, actionClient)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
-	workers := group.NewGroupWorkers(groupManager, taskManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient)
+	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient)
 	// 当前Taskexporter所在节点的NodeName
 	nodeName := cfg.NodeName
 
@@ -106,11 +113,11 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		tasksClient:         taskClient,
 		gropsClient:         groupClient,
 		eventBroadcaster:    eventBroadcaster,
+		conditionEngine: 	 conditionEngine,
 		groupManager:        groupManager,
-		taskManager:         taskManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, taskManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, depenManager),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, , groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, depenManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient),
 		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
@@ -145,8 +152,8 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 		te.ReceiveGroupInfo(ctx) // 持续从etcd当中读取group
 	}()
 
-	go te.migrationController.Run(5, ctx.Done())
-	go te.nodeMonitor.Run(2, ctx.Done())
+	//go te.migrationController.Run(5, ctx.Done())
+	//go te.nodeMonitor.Run(2, ctx.Done())
 	<-ctx.Done()
 	wg.Wait()
 	return ctx.Err()

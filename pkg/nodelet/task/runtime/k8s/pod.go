@@ -21,3 +21,11 @@ func CreatePod(clientset *kubernetes.Clientset, pod *corev1.Pod) {
 	logs.Info("Pod started successfully", "Pod:", pod.Name)
 	//return CreatePod(groupName, runtime)
 }
+func CreatePodFromYAML(clientset *kubernetes.Clientset, pod *corev1.Pod) error {
+	// 调用原生API创建
+	_, err := clientset.CoreV1().Pods(pod.Namespace).Create(
+		context.TODO(),
+		pod,
+		metav1.CreateOptions{FieldValidation: "Strict"})
+	return err
+}

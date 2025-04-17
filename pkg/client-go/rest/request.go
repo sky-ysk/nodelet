@@ -4,16 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/apimachinery/errors"
-	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
-	"hit.edu/framework/pkg/apimachinery/runtime/serializer/streaming"
-	"hit.edu/framework/pkg/apimachinery/watch"
-	metav1 "hit.edu/framework/pkg/apis/meta"
-	restclientwatch "hit.edu/framework/pkg/client-go/rest/watch"
-	"hit.edu/framework/pkg/component-base/logs"
 	"io"
-	"k8s.io/utils/clock"
 	"mime"
 	"net/http"
 	"net/http/httptrace"
@@ -25,6 +16,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"hit.edu/framework/pkg/apimachinery/errors"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer/streaming"
+	"hit.edu/framework/pkg/apimachinery/watch"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	restclientwatch "hit.edu/framework/pkg/client-go/rest/watch"
+	"hit.edu/framework/pkg/component-base/logs"
+	"k8s.io/utils/clock"
 )
 
 // 在tryThrottleWithInfo方法中会用到
@@ -119,6 +120,12 @@ func NewRequest(c *RESTClient) *Request {
 		r.SetHeader("Accept", c.content.AcceptContentTypes)
 	case len(c.content.ContentType) > 0:
 		r.SetHeader("Accept", c.content.ContentType+", */*")
+	}
+	if len(c.content.FlowType) > 0 {
+		r.SetHeader("FlowType", c.content.FlowType)
+	}
+	if len(c.content.ClusterID) > 0 {
+		r.SetHeader("ClusterID", c.content.ClusterID)
 	}
 	return r
 }
@@ -463,8 +470,8 @@ func (r *Request) URL() *url.URL {
 	if r.c.base != nil {
 		*finalURL = *r.c.base
 	}
-	finalURL.Path = p
 
+	finalURL.Path = p
 	query := url.Values{}
 	for key, values := range r.params {
 		for _, value := range values {
@@ -475,6 +482,15 @@ func (r *Request) URL() *url.URL {
 	// timeout is handled specially here.
 	if r.timeout != 0 {
 		query.Set("timeout", r.timeout.String())
+	}
+	//单独处理需要跨域的请求
+	if r.c.content.FlowType == "etcd" {
+		finalURL.Path = "/forward"
+		rawquery := "target=" + r.c.content.TargetURL + p + "?"
+
+		finalURL.RawQuery = rawquery + query.Encode()
+		return finalURL
+
 	}
 	finalURL.RawQuery = query.Encode()
 	return finalURL

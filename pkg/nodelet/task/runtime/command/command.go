@@ -59,10 +59,9 @@ func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *
 func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
 	logs.Infof("command runtime for runtime task:%s", runtime.Name)
 	// 执行时所需命令
-	cmd := runtime.Command
+	cmd := runtime.Spec.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
-	args := runtime.Args
-
+	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
 	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, false)
 	if err != nil {
@@ -81,8 +80,13 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 
 	// TODO: 不同系统平台下的CMD，根据运行平台选择对应路径下的解释器等
 	//判断程序所在Linux还是Windows环境，决定python等解释器路径
-	// 创建命令
-	envVars := runtime.EnvVar
+	// 创建命令,填入input的值
+	input := runtime.Spec.Inputs
+	for i := range input {
+		args = append(args, input[i].Value)
+	}
+
+	envVars := runtime.Spec.EnvVar
 	if cmd == "python" {
 		for _, value := range envVars {
 			if value.Name == "" {
@@ -250,7 +254,7 @@ func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Act
 func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
 	// client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
-	client := cr.getClient(runtime.EnableFineGrainedControlPort)
+	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
 	// rpc调用store()
 	_, error := client.RunAppStore()
 	if error != nil {
@@ -277,7 +281,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//	time.Sleep(100 * time.Millisecond)
 	//}
 	// rpc调用restore()
-	client := cr.getClient(runtime.EnableFineGrainedControlPort)
+	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
 	_, error := client.RunAppRestore(keyStatus)
 	if error != nil {
 		logs.Errorf("任务恢复状态失败: %e", error)
@@ -296,7 +300,7 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 	//if cr.client == nil {
 	//	cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, runtime.Name)
 	//}
-	client := cr.getClient(runtime.EnableFineGrainedControlPort)
+	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
 	if client == nil {
 		logs.Info("client is nil")
 	}
@@ -316,9 +320,9 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 // 细粒度控制（grpc）：初始化任务
 func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
 	// 1、运行任务进程
-	cmd := runtime.Command
+	cmd := runtime.Spec.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
-	args := runtime.Args
+	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
 	go func() {
 		err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, true)
@@ -334,7 +338,7 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	//if cr.client == nil {
 	//	cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, "")
 	//}
-	client := cr.getClient(runtime.EnableFineGrainedControlPort)
+	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
 	// 3、rpc调用init()
 	_, error := client.RunAppInit()
 	if error != nil {
@@ -351,7 +355,7 @@ func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, ru
 
 	//---------停止
 	// rpc调用restore()
-	client := cr.getClient(runtime.EnableFineGrainedControlPort)
+	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
 	_, error := client.RunAppStop()
 	if error != nil {
 		logs.Errorf("任务关闭失败: %e", error)

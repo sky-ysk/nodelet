@@ -49,6 +49,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&SceneList{},
 		&Resource_Node{},
 		&Resource_NodeList{},
+		&Runtime{},
+		&RuntimeList{},
 	)
 
 	// Add common types

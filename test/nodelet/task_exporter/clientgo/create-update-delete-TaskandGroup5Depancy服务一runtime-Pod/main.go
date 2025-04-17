@@ -442,7 +442,7 @@ func main() {
 								EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 								Pod: apis.Pod{
 									TypeMeta:   metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
-									ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: podNamespace, Labels: map[string]string{"app": "grpc-server"}},
+									ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: podNamespace},
 									Spec: apis.PodSpec{
 										Affinity: apis.Affinity{
 											NodeAffinity: apis.NodeAffinity{
@@ -453,7 +453,7 @@ func main() {
 																{
 																	Key:      "kubernetes.io/hostname",
 																	Operator: apis.NodeSelectorOpIn,
-																	Values:   []string{"server7"},
+																	Values:   []string{"server1"},
 																},
 															},
 														},
@@ -463,7 +463,7 @@ func main() {
 										},
 										Containers: []apis.Container{
 											apis.Container{
-												Name:  "grpc-server",
+												Name:  "pod",
 												Image: "registry.cn-hangzhou.aliyuncs.com/sudasuzhou/grpc_service:grpc-server-pod-v1.0",
 												Ports: []apis.ContainerPort{
 													apis.ContainerPort{

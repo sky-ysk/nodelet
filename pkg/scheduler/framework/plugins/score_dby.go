@@ -5,7 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
@@ -16,6 +23,8 @@ import (
 
 type ScorePluginDBY struct {
 	pluginClient ScorePluginClient
+	clientSet    *clients.ClientSet
+	taskClient   core.TaskInterface
 }
 
 type ScorePluginClient struct {
@@ -24,7 +33,7 @@ type ScorePluginClient struct {
 
 func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, error) {
 	// 自动处理 Content-Length 和 Body 封装
-	httpReq, err := http.NewRequest("POST", "http://127.0.0.1:5000"+path, bytes.NewBuffer(data))
+	httpReq, err := http.NewRequest("POST", "http://172.150.0.11:5000"+path, bytes.NewBuffer(data))
 	if err != nil {
 		panic(err)
 	}
@@ -32,13 +41,13 @@ func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, err
 	httpRes, err := client.client.Do(httpReq)
 	if err != nil {
 		fmt.Println(err)
-		logs.Fatal(err)
+		logs.Error(err.Error())
 		return nil, err
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logs.Fatal(err)
+			logs.Error(err.Error())
 		}
 	}(httpRes.Body)
 	//TODO 后续再确定下返回的细节
@@ -56,6 +65,7 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		logs.Fatal(err)
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
+	logs.Infof("the groups request send to dts is %s", string(jsonData))
 	data, err := client.SendData(jsonData, "/schedule/postGroup")
 	if err != nil {
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
@@ -84,9 +94,12 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 func NewScorePluginClient() ScorePluginClient {
 	return ScorePluginClient{
 		&http.Client{
-			Timeout: time.Second * 1200,
+			Timeout: time.Second * 3600 * 24,
 			//走http1
 			Transport: &http.Transport{
+				MaxIdleConns:        100,              // 最大空闲连接数
+				MaxIdleConnsPerHost: 10,               // 每个主机的最大空闲连接数
+				IdleConnTimeout:     30 * time.Second, // 空闲连接的超时时间
 				//AllowHTTP: true, // 允许非加密的HTTP/2连接（测试环境可用，生产环境建议使用TLS加密）
 			},
 		},
@@ -97,32 +110,52 @@ func (sp *ScorePluginDBY) Name() string {
 	return "ScorePluginForDuBoyu"
 }
 
-// 测试下现在啥情况ggggg
+func (sp *ScorePluginDBY) getTaskNameByID(ctx context.Context, taskID string) string {
+	list, err := sp.taskClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+		return ""
+	}
+	for _, item := range list.Items {
+		if item.Status.TaskID == taskID {
+			logs.Info("get taskname %s by id %s", item.Name, taskID)
+			return item.Name
+		}
+	}
+	return ""
+}
+
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
+	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
+	taskName := sp.getTaskNameByID(ctx, group.Status.Belongs.TaskID)
+
 	request := transport.ScoreRequest{
-		GroupID: group.Status.GroupID,
-		TaskID:  group.Status.Belongs.TaskID,
+		GroupID: group.Spec.Name,
+		TaskID:  taskName,
 		NodeID:  nodeName,
 	}
 	jsonData, err := json.Marshal(request)
+	logs.Infof("the request send to dts is %s", string(jsonData))
 	if err != nil {
 		logs.Fatal(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	fmt.Println("request is")
-	fmt.Println(string(jsonData))
 	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	time.Sleep(5 * time.Second)
+	logs.Info("sleep 5s to get dts score")
+	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	fmt.Println(data)
+	logs.Infof("raw result given by dts is %s ", string(data))
 	var resp transport.ScoreRespData
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
-		logs.Fatal(err)
-		return 0, nil
+		logs.Error(err)
+		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
+	logs.Infof("score given by dts plugin : %d, group : %s", resp.Score, resp.GroupID)
 	return resp.Score, framework.NewStatus(framework.Success)
 }
 
@@ -136,7 +169,38 @@ func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (bool
 }
 
 func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugin, error) {
+	scheme := runtime.NewScheme()
+	apis.AddToScheme(scheme)
+	c := &rest.Config{
+		Host:    "http://localhost:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 3600 * time.Second,
+	}
+
+	cs, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+
+	tc := cs.Core().Tasks("test")
 	return &ScorePluginDBY{
+		clientSet:    cs,
+		taskClient:   tc,
 		pluginClient: NewScorePluginClient(),
 	}, nil
 }
@@ -166,21 +230,21 @@ func buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsReq
 	topInfo := make([]GroupTopInfo, 0)
 	groupsID := make([]string, 0)
 	resourcesMap := make(map[string][]apis.ResourceRequirement)
-	taskID := task.Status.TaskID
+	taskID := task.Spec.Name
 	//TODO 可能需要做深复制 @lbh
 	for _, group := range task.Spec.Groups {
-		groupsID = append(groupsID, group.Status.GroupID)
+		groupsID = append(groupsID, group.Spec.Name)
 		resources := make([]apis.ResourceRequirement, 0)
 		for _, requirement := range group.Spec.ResourceRequirements {
 			resources = append(resources, requirement)
 		}
 		if len(resources) > 0 {
-			resourcesMap[group.Status.GroupID] = resources
+			resourcesMap[group.Spec.Name] = resources
 		}
 		for _, parent := range group.Spec.Parents {
 			//fmt.Println("parent : ", parent, " child ", group.Status.GroupID)
 			topInfo = append(topInfo, GroupTopInfo{
-				Child:  group.Status.GroupID,
+				Child:  group.Spec.Name,
 				Parent: parent,
 			})
 		}

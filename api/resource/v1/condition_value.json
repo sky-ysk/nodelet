@@ -7,6 +7,5 @@
     "value" : {"type" :  "string"} ,
     "value_type" : {"type" :  "string"}
   },
-  "required" : ["type" , "name" , "value" , "value_type"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

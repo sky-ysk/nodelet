@@ -1,11 +1,13 @@
 package informer
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
-	"github.com/gorilla/mux"
+	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
@@ -31,48 +33,96 @@ func printHTTPRequest(r *http.Request) {
 	}
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	resource := vars["resource"]
-	//fmt.Printf("Received request for resource: %s\n", resource)
-	//printHTTPRequest(r)
-	//TODO: 转发给apiserver
-
-	switch r.Method {
-	case "POST":
-		PostHandler(r)
-	case "PUT":
-		PutHandler(r)
-	case "DELETE":
-		DeleteHandler(r)
-	case "GET":
-		GetHandler(r)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	response := fmt.Sprintf(`{"message": "Received request for resource: %s"}`, resource)
-	w.Write([]byte(response))
-	_, err := w.Write([]byte(response))
-	if err != nil {
-		logs.Errorf("Failed to write response: %v", err)
-	}
-}
-
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "OK\n")
 }
 
-func CreateWebHandler() {
+func (c Sever_Config) CreateWebHandler(config *rest.Config, listen_ip string) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		requestURI := r.RequestURI
+		segments := strings.Split(requestURI, "/")
+		method := segments[4]
+
+		switch method {
+		case "POST":
+			{
+				logs.Infof("receive a POST")
+				obj, err := c.PostHandler(r)
+				if err != nil {
+					logs.Errorf("Failed to create resource: %v", err)
+					http.Error(w, fmt.Sprintf("Failed to create resource: %v", err), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+
+				err = json.NewEncoder(w).Encode(obj)
+				if err != nil {
+					logs.Errorf("Failed to serialize response: %v", err)
+					http.Error(w, fmt.Sprintf("Failed to serialize response: %v", err), http.StatusInternalServerError)
+				}
+			}
+		case "PUT":
+			{
+				obj, err := c.PutHandler(r)
+				if err != nil {
+					logs.Errorf("Failed to update resource: %v", err)
+					http.Error(w, fmt.Sprintf("Failed to update resource: %v", err), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+
+				err = json.NewEncoder(w).Encode(obj)
+				if err != nil {
+					logs.Errorf("Failed to serialize response: %v", err)
+					http.Error(w, fmt.Sprintf("Failed to serialize response: %v", err), http.StatusInternalServerError)
+				}
+			}
+		case "DELETE":
+			{
+				err := c.DeleteHandler(r)
+				if err != nil {
+					logs.Errorf("Failed to delete resource: %v", err)
+					http.Error(w, fmt.Sprintf("Failed to delete resource: %v", err), http.StatusBadRequest)
+					return
+				}
+			}
+
+		case "GET":
+			{
+				obj, err := c.GetHandler(r)
+				if err != nil {
+					logs.Errorf("Failed to get resource: %v", err)
+					http.Error(w, fmt.Sprintf("Failed to get resource: %v", err), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+
+				err = json.NewEncoder(w).Encode(obj)
+				if err != nil {
+					logs.Errorf("Failed to serialize response: %v", err)
+					http.Error(w, fmt.Sprintf("Failed to serialize response: %v", err), http.StatusInternalServerError)
+				}
+			}
+		default:
+			{
+				logs.Errorf("Unsupported method: %s", method)
+				http.Error(w, fmt.Sprintf("Unsupported method: %s", r.Method), http.StatusMethodNotAllowed)
+			}
+
+		}
+
+	}
 	//http.HandleFunc("/apis/resources/v1/{resource}/{name}", handler)
-	http.HandleFunc("/apis/resources/v1/{resource}/{namespace}/{name}", handler)
-	http.HandleFunc("/apis/resources/v1/{resource}", handler)
+	http.HandleFunc("/apis/resources/v1/{method}/{resource}/{namespace}/{name}", handler)
+	http.HandleFunc("/apis/resources/v1/{method}/{resource}", handler)
 	http.HandleFunc("/healthz", healthzHandler)
 
-	port := "127.0.0.1:14399" // 监听 14399 端口
-	fmt.Println("Starting server on port", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
-		fmt.Println("Failed to start server:", err)
+	logs.Infof("Starting server on %s", listen_ip)
+	if err := http.ListenAndServe(listen_ip, nil); err != nil {
+		logs.Errorf("Failed to start server:%v", err)
 	}
 }

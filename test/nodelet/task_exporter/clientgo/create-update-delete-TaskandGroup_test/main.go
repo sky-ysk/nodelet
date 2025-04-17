@@ -7,7 +7,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
-	"hit.edu/framework/pkg/apimachinery/util/json"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -65,27 +64,29 @@ func main() {
 
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
+	actionsClient := clientSet.Core().Actions("test")
+	eventsClient := clientSet.Core().Events("test")
 
-	group1 := &apis.Group{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "TrainGroup-1",
-			Namespace: "test",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Group",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.GroupSpec{
-			Name: "demo-group",
-		},
-		Status: apis.GroupStatus{
-			ActionStatus: []apis.ActionStatus{
-				apis.ActionStatus{
-					CopyStatus: "running",
-				},
-			},
-		},
-	}
+	//group1 := &apis.Group{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "TrainGroup-1",
+	//		Namespace: "test",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Group",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.GroupSpec{
+	//		Name: "demo-group",
+	//	},
+	//	Status: apis.GroupStatus{
+	//		ActionStatus: []apis.ActionStatus{
+	//			apis.ActionStatus{
+	//				CopyStatus: "running",
+	//			},
+	//		},
+	//	},
+	//}
 
 	//监听事件并打印  监听resources/v1/tasks
 	go func() {
@@ -126,45 +127,93 @@ func main() {
 			}
 		}
 	}()
-
-	//如果已经存在，先删掉
-	err1 := groupsClient.Delete(context.TODO(), "TrainGroup-1", metav1.DeleteOptions{})
-	err2 := groupsClient.Delete(context.TODO(), "TrainGroup-1-Copy", metav1.DeleteOptions{})
-
-	if err1 != nil {
-		logs.Errorf("group1 delete error: %v", err1)
-	}
-	if err2 != nil {
-		logs.Errorf("group1-copy delete error: %v", err2)
-	}
-	logs.Infof("groupInfo:%v", group1)
-	logs.Infof("creating")
-	g, err1 := groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
-
-	if err1 != nil {
-		logs.Errorf("Failed to create group1: %v", err)
+	// group资源
+	list1, err := groupsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
 		panic(err)
 	}
-	data, err := json.Marshal(g)
-	if err != nil {
-		logs.Errorf("Marshal group:%v error:%v", g.Name, err)
+	for _, group := range list1.Items {
+		err := groupsClient.Delete(context.TODO(), group.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Info("删除成功: ", group.Name)
 	}
-	// 反序列化为新的对象
-	var copyGroup apis.Group // 非指针
-	err = json.Unmarshal(data, &copyGroup)
+	// action 资源
+	list2, err := actionsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Unmarshal group:%v error:%v", g.Name, err)
+		panic(err)
 	}
-	var groupCopy = &copyGroup // 转换为指针
-	// 接下来修改这个复制出来的Group信息，首先修改group.Name
-	groupCopy.Name = g.Name + "-Copy"
-	groupCopy.ResourceVersion = ""
+	for _, action := range list2.Items {
+		err := actionsClient.Delete(context.TODO(), action.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Info("删除成功: ", action.Name)
+	}
 
-	logs.Infof("groupInfo:%v", groupCopy)
-	_, err1 = groupsClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
-	if err1 != nil {
-		logs.Errorf("Failed to create task: %v", err1)
+	// Task资源
+	list3, err := tasksClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
 	}
+	for _, task := range list3.Items {
+		err := tasksClient.Delete(context.TODO(), task.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Info("删除成功: ", task.Name)
+	}
+	// Event资源
+	list4, err := eventsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, event := range list4.Items {
+		err := eventsClient.Delete(context.TODO(), event.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Info("删除成功: ", event.Name)
+	}
+	////如果已经存在，先删掉
+	//err1 := groupsClient.Delete(context.TODO(), "TrainGroup-1", metav1.DeleteOptions{})
+	//err2 := groupsClient.Delete(context.TODO(), "TrainGroup-1-Copy", metav1.DeleteOptions{})
+	//
+	//if err1 != nil {
+	//	logs.Errorf("group1 delete error: %v", err1)
+	//}
+	//if err2 != nil {
+	//	logs.Errorf("group1-copy delete error: %v", err2)
+	//}
+	//logs.Infof("groupInfo:%v", group1)
+	//logs.Infof("creating")
+	//g, err1 := groupsClient.Create(context.TODO(), group1, metav1.CreateOptions{})
+	//
+	//if err1 != nil {
+	//	logs.Errorf("Failed to create group1: %v", err)
+	//	panic(err)
+	//}
+	//data, err := json.Marshal(g)
+	//if err != nil {
+	//	logs.Errorf("Marshal group:%v error:%v", g.Name, err)
+	//}
+	//// 反序列化为新的对象
+	//var copyGroup apis.Group // 非指针
+	//err = json.Unmarshal(data, &copyGroup)
+	//if err != nil {
+	//	logs.Errorf("Unmarshal group:%v error:%v", g.Name, err)
+	//}
+	//var groupCopy = &copyGroup // 转换为指针
+	//// 接下来修改这个复制出来的Group信息，首先修改group.Name
+	//groupCopy.Name = g.Name + "-Copy"
+	//groupCopy.ResourceVersion = ""
+	//
+	//logs.Infof("groupInfo:%v", groupCopy)
+	//_, err1 = groupsClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+	//if err1 != nil {
+	//	logs.Errorf("Failed to create task: %v", err1)
+	//}
 
 }
 

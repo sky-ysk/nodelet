@@ -12,6 +12,7 @@ const (
 	DEVICES_PATH = API_PREFIX + "/devices"
 	DEVICE_PATH  = API_PREFIX + "/device"
 	DEVICE_NAME  = "Name"
+	NAME_SPACE   = "Namespace"
 )
 
 type Handler interface {

@@ -9,7 +9,7 @@ import (
 
 const (
 	NamespaceDefault string = "defaultNamespace"
-	NamespaceAll     string = ""
+	NamespaceAll     string = "test"
 )
 
 // 定义框架基础资源
@@ -373,7 +373,7 @@ type ConditionValue struct {
 	//  	比如前序任务的执行状态
 	//		或者循环计数器的数量
 	// 		或者任务的执行结果
-	// TODO: 使用DataType代替，更新相关文档
+	// TODO: 使用DataType代替，更新相关文档：常量、Result、Local
 	Type DataType `json:"type,omitempty" yaml:"type"` //ConditionValueType
 	//
 	Name string `json:"name,omitempty" yaml:"name"`
@@ -385,7 +385,38 @@ type ConditionValue struct {
 	// +Optional
 	ValueType ValueType `json:"value_type,omitempty" yaml:"value_type"`
 	//从对应的地方获取需要的数据
+	//来源于哪个group/action/runtime
 	From string `json:"from,omitempty" yaml:"from"`
+	//来源于上面对象的哪个字段
+	Field string `json:"field,omitempty" yaml:"field"`
+}
+
+// 解析字段的类型，Status还是Spec
+type FieldType string
+
+const (
+	StatusType FieldType = "Status"
+	Spectype   FieldType = "Spec"
+)
+
+// 解析对象的类型
+type ItemType string
+
+const (
+	TaskItemType    ItemType = "Task"
+	GroupItemType   ItemType = "Group"
+	ActionItemType  ItemType = "Action"
+	RuntimeItemType ItemType = "Runtime"
+)
+
+// 解析结果的结构体，包含字符串解析的信息、返回值的两类类型（便于Get)
+type FromItemInfo struct {
+	TaskName    string `json:"task_name,omitempty" yaml:"task_name"`
+	GroupName   string `json:"group_name,omitempty" yaml:"group_name"`
+	ActionName  string `json:"action_name,omitempty" yaml:"action_name"`
+	RuntimeName string `json:"runtime_name,omitempty" yaml:"runtime_name"`
+	// ItemType	ItemType	`json:"item_type,omitempty" yaml:"item_type"`
+	IsLocal bool `json:"is_local,omitempty" yaml:"is_local"` //是否是本地的Item
 }
 
 // 条件连接符，支持大小写
@@ -420,6 +451,7 @@ const (
 // 输出结果为Bool类型的值
 // TODO: Value格式检查和调整，比如存在空格的情况
 type ConditionFormula struct {
+	Type       conditionType  `json:"type,omitempty" yaml:"type"`
 	LeftValue  ConditionValue `json:"left_value,omitempty" yaml:"left_value"`
 	RightValue ConditionValue `json:"right_value,omitempty" yaml:"right_value"`
 	// == 或 !=
@@ -439,16 +471,6 @@ type Conditions struct {
 	Formulas []ConditionFormula `json:"formulas,omitempty" yaml:"formulas"`
 }
 
-// 工作流相关Ref
-// 表示一个工作流属于哪个ID
-// 唯一标识
-type IDRef struct {
-	WorkflowID string `json:"workflow_id,omitempty" yaml:"workflow_id"`
-	TaskID     string `json:"task_id,omitempty" yaml:"task_id"`
-	GroupID    string `json:"group_id,omitempty" yaml:"group_id"`
-	ActionID   string `json:"action_id,omitempty" yaml:"action_id"`
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Workflow struct {
 	//
@@ -466,7 +488,9 @@ type Workflow struct {
 
 type WorkflowSpec struct {
 	// Workflow Name, 用户提交时提供的Name
-	// FIXME: Name应当唯一，否则不允许提交
+	// 该Name不会改变
+	// 如果TypeMeta.Name提供，则使用TypeMeta.Name
+	// 否则，TypeMeta.Name = Spec.Name + UUID
 	Name string `json:"name,omitempty" yaml:"name"`
 
 	// 对工作流的描述
@@ -476,20 +500,19 @@ type WorkflowSpec struct {
 	// 目前只支持Task=>Group=>Action
 	// TODO: 更为宽松的Task关系定义
 	// 目前与Action的定义方式类似
-	Tasks []Task `json:"tasks,omitempty" yaml:"tasks"`
+	Tasks []TaskSpec `json:"tasks,omitempty" yaml:"tasks"`
 	// TODO: Tasks的拓扑关系
 }
 
 type WorkflowStatus struct {
-	// Workflow ID，系统为根据Desc中的Name为Workflow分配的唯一标识, 用户填写时应该为空
-	WorkflowID string `json:"workflow_id,omitempty" yaml:"workflow_id"`
-
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
 	//
-	TaskStatus []TaskStatus `json:"status,omitempty" yaml:"status"`
+	Tasks map[string]ObjectReference `json:"tasks,omitempty" yaml:"tasks"`
 
+	// 创建时间
+	CreateAt Time `json:"create,omitempty" yaml:"create"`
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`
 	// 结束时间
@@ -537,24 +560,19 @@ type TaskSpec struct {
 	// 可以有多个Group作为Group的入口，支持多个图形结构
 	// 支持并发执行多组Group
 	// TODO: 增加Level支持
-	Groups []Group `json:"groups,omitempty" yaml:"groups"`
+	Groups []GroupSpec `json:"groups,omitempty" yaml:"groups"`
 }
 
 type TaskStatus struct {
 	//
-	TaskID string `json:"task_id,omitempty" yaml:"task_id"`
-
-	//
-	Belongs IDRef `json:"belongs,omitempty" yaml:"belongs"`
-
-	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
 	//
-	GroupStatus []GroupStatus `json:"group_status,omitempty" yaml:"group_status"`
+	Groups map[string]ObjectReference `json:"groups,omitempty" yaml:"groups"`
 
 	// TODO: Events定义
-
+	// 创建时间
+	CreateAt Time `json:"create,omitempty" yaml:"create"`
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`
 	// 结束时间
@@ -610,7 +628,7 @@ type GroupSpec struct {
 
 	// 存储当前Group所属的所有Action
 	// Group中可以只有一个Action, 简化实现逻辑
-	Actions []Action `json:"actions,omitempty" yaml:"actions"`
+	Actions []ActionSpec `json:"actions,omitempty" yaml:"actions"`
 	// TODO: 生成时是否可以直接分析依赖关系？
 	// TODO: Action的依赖关系描述, 需要先遍历Actions构建DAG图
 	// Group中的Action需要有较严格的依赖顺序，可以支持分支,条件,循环
@@ -627,9 +645,6 @@ type GroupSpec struct {
 	IsCopy   bool              `json:"is_copy,omitempty" yaml:"is_copy"`     //标记当前group是否是副本
 	CopyInfo map[string]string `json:"copy_info,omitempty" yaml:"copy_info"` //存放任务的副本信息的  key：副本的ObjectMeta.Name  value:副本在本域还是在哪个域  如果是本域为："local" ,如果是跨域，则为连接那个域的ip或者是XX（待定）
 
-	//-临时添加-k8s运行时相关，还未重构，后期会重构
-	Labels map[string]string // 添加 Labels 字段，用于选择器
-
 	//亲和节点，如果该字段不为空的话，那么group就必须放在这些节点上执行
 	AffinityNodes []string `json:"affinity_nodes,omitempty" yaml:"affinity_nodes"`
 }
@@ -642,22 +657,18 @@ type ResourceRequirement struct {
 
 type GroupStatus struct {
 	//
-	GroupID string `json:"group_id,omitempty" yaml:"group_id"`
-
-	//
-	Belongs IDRef `json:"belongs,omitempty" yaml:"belongs"`
-
-	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
 	// TODO: 所属Actions的状态
-	ActionStatus []ActionStatus `json:"action_status,omitempty" yaml:"action_status"`
+	Actions map[string]ObjectReference `json:"actions,omitempty" yaml:"actions"`
 
 	// TODO: 整体资源使用情况
 
 	// TODO: Events定义
 	//部署在哪个节点
 	Node string `json:"node,omitempty" yaml:"node"`
+	// 创建时间
+	CreateAt Time `json:"create,omitempty" yaml:"create"`
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`
 	// 结束时间
@@ -711,7 +722,7 @@ type ActionSpec struct {
 	// 串行执行Runtime中的运行环境
 	// 如果使用Pod方式部署的任务，建议只部署一个阻塞的Runtime
 	// 可以用于执行命令，环境准备等操作
-	Runtimes []Runtime `json:"runtimes,omitempty" yaml:"runtimes"`
+	Runtimes []RuntimeSpec `json:"runtimes,omitempty" yaml:"runtimes"`
 
 	// 其他配置/选项
 	// 细粒度任务控制
@@ -1120,8 +1131,30 @@ type SceneStatus struct {
 	Lock Lock
 }
 
-// Action所需执行环境
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Runtime struct {
+	//
+	meta.TypeMeta
+
+	//
+	meta.ObjectMeta
+
+	//
+	Spec RuntimeSpec
+
+	//
+	Status RuntimeStatus
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type RuntimeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Runtime `json:"items" yaml:"items"`
+}
+
+// Action所需执行环境
+type RuntimeSpec struct {
 	// 定义Action所需资源
 	// 在Group调度完成后，Action需要被分配和保留，直到Action开始执行
 	// 动态资源分配所需字段
@@ -1195,6 +1228,7 @@ type Runtime struct {
 	// 输出数据
 	//  输出数据作为参数注入到命令参数中
 	Outputs []Output `json:"outputs,omitempty" yaml:"outputs"`
+
 	//添加-hzy
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
 	//Waiting                      bool     `json:"waiting" yaml:"waiting"`
@@ -1234,8 +1268,11 @@ type Input struct {
 	Type DataType `json:"type,omitempty" yaml:"type"`
 
 	// 名称
-	Name string `json:"name,omitempty" yaml:"name"`
-
+	Name      string `json:"name,omitempty" yaml:"name"`
+	Value     string `json:"value,omitempty" yaml:"value"`
+	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	From      string `json:"from,omitempty" yaml:"from"`
+	Field     string `json:"field,omitempty" yaml:"field"`
 	// 值
 	//   对应常量类型，ValueType对应常量的类型，Value对应常量的值，类型与值应该对应，支持的类型
 	// 		包括：整数、浮点数、布尔值
@@ -1253,45 +1290,26 @@ type Input struct {
 	//			Scenes.{Name}： 从本地场景中获取
 	//			Data.{Name}： 从本地数据中获取
 	//      Local类型的数据对其他节点不可见
-	Value     string `json:"value,omitempty" yaml:"value"`
-	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
-	From      string `json:"from,omitempty" yaml:"from"`
 }
 
 // TODO: 数据格式后续还需要调整
 type Output struct {
-	//
-	Type DataType `json:"type,omitempty" yaml:"type"`
-
-	Name string `json:"name,omitempty" yaml:"name"`
-
-	// TODO:
-	Value     string `json:"value,omitempty" yaml:"value"`
-	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	Type      DataType `json:"type,omitempty" yaml:"type"`
+	Name      string   `json:"name,omitempty" yaml:"name"`
+	Value     string   `json:"value,omitempty" yaml:"value"`
+	ValueType string   `json:"value_type,omitempty" yaml:"value_type"`
 }
 
 type ActionStatus struct {
-	// 在开始执行时，确定Action所属的Workflow,Task,Group
-	// ID组成格式为ActionName+GroupID
-	ActionID string `json:"action_id,omitempty" yaml:"action_id"`
-	// Action所属标识
-	Belongs IDRef `json:"belongs,omitempty" yaml:"belongs"`
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
-	// 当前资源使用情况
-	Resources map[string]ResourceStatus `json:"resources,omitempty" yaml:"resources"`
-	// 当前设备使用情况
-	Devices map[string]DeviceStatus `json:"devices,omitempty" yaml:"devices"`
-	// 当前数据使用情况
-	Data map[string]DataStatus `json:"data,omitempty" yaml:"data"`
-	// 当前场景更新情况
-	Scenes map[string]SceneStatus `json:"scenes,omitempty" yaml:"scenes"`
 	// 当前Runtime执行状态
-	RuntimeStatus []RuntimeStatus `json:"status,omitempty" yaml:"status"`
+	// Key是Action中Runtime.Spec.Name，可能与真实的名字不同
+	Runtimes map[string]ObjectReference `json:"runtimes,omitempty" yaml:"runtimes"` // TODO: 修改为Map
 	// 任务执行结果
 	Results []Result `json:"results,omitempty" yaml:"results"`
 	// TODO: Events定义
-
+	CreateAt Time `json:"create,omitempty" yaml:"create"`
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`
 	// 结束时间
@@ -1304,14 +1322,24 @@ type ActionStatus struct {
 }
 
 type RuntimeStatus struct {
+	// 当前资源使用情况
+	Resources map[string]ObjectReference `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
+	// 当前设备使用情况
+	Devices map[string]ObjectReference `json:"devices,omitempty" yaml:"devices"`
+	// 当前数据使用情况
+	Data map[string]ObjectReference `json:"data,omitempty" yaml:"data"`
+	// 当前场景更新情况
+	Scenes map[string]ObjectReference `json:"scenes,omitempty" yaml:"scenes"`
 	// 当前任务的执行情况
 	// 任务在哪里执行,进程ID
-	NodeName  string `json:"name,omitempty" yaml:"name"`
+	NodeName  string `json:"node_name,omitempty" yaml:"node_name"`
 	ProcessId string `json:"process_id,omitempty" yaml:"process_id"`
 
 	// 执行状态
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
+	// 创建时间
+	CreateAt Time `json:"create,omitempty" yaml:"create"`
 	// 执行时间
 	StartAt Time `json:"start,omitempty" yaml:"start"`
 	// 结束时间
@@ -1319,7 +1347,6 @@ type RuntimeStatus struct {
 	// 最新获取状态的时间
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数0hzy
-	RuntimeID          string `json:"runtime_id,omitempty" yaml:"runtime_id"`
 	Waiting            bool   `json:"waiting" yaml:"waiting"`
 	Initing            bool   `json:"initing,omitempty" yaml:"initing"`
 	Starting           bool   `json:"starting,omitempty" yaml:"starting"`
@@ -1328,8 +1355,6 @@ type RuntimeStatus struct {
 	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
 	IsParsed           bool   `json:"isparsed" yaml:"isparsed"`             //是否已经被解析过
 	DepenPreparing     bool   `json:"DepenPreparing" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
-	// 当前资源使用情况
-	Resources []ResourceStatus `json:"resources,omitempty" yaml:"resources"`
 }
 
 // 任务的输出结果
@@ -1338,8 +1363,6 @@ type RuntimeStatus struct {
 type Result struct {
 	//Result唯一表示，由ActionID
 	ResultID string `json:"result_id,omitempty" yaml:"result_id"`
-	// Result属于哪个Action/Group/Task/Workflow
-	Belongs IDRef `json:"belongs,omitempty" yaml:"belongs"`
 	// Results类型，有如下的类型
 	// 		存在内存中的结果,可以通过etcd模块同步
 	// 		比较大的数据，需要提供资源的访问方式，资源同步模块需要该字段，由该模块实现资源的点对点同步
@@ -1375,8 +1398,8 @@ type PodSpec struct {
 	Affinity           Affinity          `json:"affinity,omitempty" yaml:"affinity"`
 }
 type Volume struct {
-	Name         string `json:"name" yaml:"name"` // 存储卷名称
-	VolumeSource `json:",inline" yaml:",inline"`  // 存储卷来源（如ConfigMap、Secret）
+	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
+	VolumeSource `json:",inline" yaml:",inline"` // 存储卷来源（如ConfigMap、Secret）
 }
 
 // VolumeSource 定义存储卷的数据来源（必须且常用的类型）
@@ -1748,4 +1771,9 @@ const (
 	DataDependency     conditionType = "DataDependency"
 	ResourceDependency conditionType = "ResourceDependency"
 	ProgramDependency  conditionType = "ProgramDependency"
+)
+
+// 数据文件存储位置，后续可更改
+const (
+	BasePath = "../tmp/data/"
 )

@@ -12,6 +12,5 @@
     "os" : {"type" :  "string"} ,
     "architecture" : {"type" :  "string"}
   },
-  "required" : ["machine_id" , "system_uuid" , "boot_id" , "kernel_version" , "os_image" , "container_runtime_version" , "nodelet_version" , "os" , "architecture"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

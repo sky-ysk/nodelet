@@ -15,7 +15,17 @@ type Strategy struct {
 
 var thisStrategy = &Strategy{legacyscheme.Scheme}
 
-func (t Strategy) PrepareForCreate(ctx context.Context, obj runtime.Object)      {}
+func (t Strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
+	//action, ok := obj.(*apis.Action)
+	//if !ok {
+	//	return
+	//}
+	////生成 actionid
+	//if action.Status.ActionID == "" {
+	//	action.Status.ActionID = string(action.ObjectMeta.UID)
+	//}
+}
+
 func (t Strategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {}
 func (t Strategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
 	return nil

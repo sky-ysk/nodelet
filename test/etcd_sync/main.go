@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,21 +11,35 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/test/etcd_sync/informer"
 )
 
 func main() {
-	// 目前已经实现了域内的监视，只要把需要转发到的域的IP和端口写在这里，然后里面加上域和资源信息即可
-	// TODO：把得到的消息转发出去
-	//informer.Synctest("http://broker.registry-svc.test.svc.clusterset.local:3001/forward?target=127.0.0.1:14399")
-	//informer.Synctest("127.0.0.1:14399")
 
-	//注册资源
+	var apiserverAddress string
+	var serverAddress string
+	var apiserverPort int
+	var serverPort int
+	flag.StringVar(&apiserverAddress, "apiserver-address", "0.0.0.0", "apiserver 监听的 IP 地址 (default 0.0.0.0)")
+	flag.IntVar(&apiserverPort, "apiserver-port", 10000, "apiserver 监听的 端口号 (default 10000)")
+
+	flag.StringVar(&serverAddress, "bind-address", "0.0.0.0", "syncserver 监听的 IP 地址 (default 0.0.0.0)")
+	flag.IntVar(&serverPort, "bind-port", 14399, "syncserver 监听的端口号 (default 14399)")
+
+	flag.Parse()
+
+	apiserverhost := fmt.Sprintf("http://%s:%d", apiserverAddress, apiserverPort)
+	serverhost := fmt.Sprintf("%s:%d", serverAddress, serverPort)
+
+	// fmt.Println(apiserverhost)
+	// fmt.Println(serverhost)
+	// return
+	logs.Init("sync_server")
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    apiserverhost,
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8",
@@ -36,20 +52,15 @@ func main() {
 		},
 		UserAgent: "defaultUserAgent",
 		Transport: &http.Transport{
-			MaxIdleConns:        10000,
-			IdleConnTimeout:     90 * time.Second,
-			TLSHandshakeTimeout: 10 * time.Second,
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 1000 * time.Second,
+		Timeout: 10 * time.Second,
 	}
-
-	config := &informer.Config{Client: c}
-
-	informer.Synctest(config, "http://127.0.0.1:14399")
-
-	// informer.AddToTargets(config, "broker", "registry-svc.test.svc.clusterset.local", 3001, "172.100.0.109", 4399)
-	// informer.AddToTargets(config, "pve2", "registry-svc.test.svc.clusterset.local", 3001, "172.110.0.109", 4399)
-	// informer.UpdateTarget(config, "pve2", "registry-svc.test.svc.clusterset.local", 3001, "172.110.0.109", 4299)
-	// //informer.DeleteTarget(config, "broker")
-	// informer.PrintTargets(*config)
+	server := &informer.Sever_Config{
+		Client: c,
+	}
+	logs.Infof("apisever run on %s", apiserverhost)
+	server.CreateWebHandler(c, serverhost) //本地服务暴露的位置
 }

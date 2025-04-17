@@ -2,13 +2,14 @@ package gentype
 
 import (
 	"context"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	"hit.edu/framework/pkg/apis/meta"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/rest"
-	"time"
 )
 
 // 各类资源的形式化生成过程描述
@@ -23,7 +24,7 @@ type Client[T objectWithMeta] struct {
 	client    rest.Interface
 	namespace string
 	newObject func() T
-	
+
 	parameterCodec runtime.ParameterCodec
 }
 
