@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -25,17 +24,20 @@ func NewManagers() *Managers {
 	}
 }
 
-func MonitorAllDevicesState(deviceClient core.DeviceInterface, managers *Managers) error {
+func MonitorAllDevicesState(deviceClient core.DeviceInterface) error {
+	// 获取全部的device
 	deviceList, err := deviceClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("[DEVICE EXPORTER] list device err!")
 		return err
 	}
 	logs.Infof("[DEVICE EXPORTER] ETCD has %d Devices", len(deviceList.Items))
+
 	// 并发同步控制
 	var wg sync.WaitGroup
 	// 错误处理通道
 	errChan := make(chan error, len(deviceList.Items))
+
 	// 遍历所有的Device
 	for _, d := range deviceList.Items {
 		device := d
@@ -44,151 +46,76 @@ func MonitorAllDevicesState(deviceClient core.DeviceInterface, managers *Manager
 			wg.Add(1)
 			// 每个Device单独开一个协程
 			go func() {
-				logs.Infof("[DEVICE EXPORTER] Monitor Device[%s]'s Status", device.Name)
-				defer wg.Done()
-				// 获取uuid url name
-				uuid := device.Status.Abilities[0].InstanceID
-				url := device.Spec.AccessMethod.URL
-				abilityName := device.Status.Abilities[0].Name
-				// 首先判断能力框架是否开启
-				_, err = GetAbilityInstances(url)
-				if err != nil {
-					logs.Errorf("[DEVICE EXPORTER] AbilityFramework is closed")
-					return
-				}
-				// 如果开启了
-				if uuid == "" { // 如果uuid为空
-					// 为这个device绑定一个manager
+				devicePhase := device.Status.Phase
+				switch devicePhase {
+				case apis.DeviceDisconnected:
+					logs.Infof("[DEVICE EXPORTER] Device[%s] is Disconnected...", device.Name)
+					break
+				case apis.DeviceRunning:
+					logs.Infof("[DEVICE EXPORTER] Device[%s] is Running...", device.Name)
+					break
+				case apis.DeviceReadyStartUp:
+					logs.Infof("[DEVICE EXPORTER] Device[%s] is Ready To StartUp...", device.Name)
+					logs.Infof("[DEVICE EXPORTER] Try to StartUp Device[%s]...", device.Name)
+					// 获取URL和Name
+					url := device.Spec.AccessMethod.URL
+					class := device.Spec.Abilities[0]
+					abilityName := device.Status.Abilities[class].Name
+					// 创建AbilityManager
 					am := NewAbilityManager(url, abilityName)
-					err = am.BindUUID(managers.IDList)
+					err = am.BindUUID()
 					if err != nil {
 						logs.Errorf("[DEVICE EXPORTER] Bind uuid fail")
 						errChan <- err
 						return
 					}
-					managers.Mutex.Lock()
-					// 注册到manager中
-					managers.IDList[am.UUid] = true
-					managers.AbilityManagers[am.UUid] = am
-					managers.Mutex.Unlock()
-					// 进行能力的声明周期操作
-					var heartBeat HeartBeat
-					heartBeat, err = am.StartupAbility()
+					// 首先先判断一下设备是否在线，不在线才能进行拉起设备的操作
+					var flag bool
+					flag, err = am.IsOnline()
 					if err != nil {
-						logs.Errorf("[DEVICE EXPORTER] StartupAbility fail")
-						errChan <- err
+						logs.Errorf("[Device EXPORTER] Device[%s] Judge Online fail", device.Name)
 						return
 					}
-					// 把内容填充到Device中
-					for index, a := range device.Status.Abilities {
-						for i, s := range a.Services {
-							port := strconv.Itoa(heartBeat.AbilityPort)
-							s.Port = port
-							a.Services[i] = s
-						}
-						device.Status.Abilities[index] = a
-						device.Status.Abilities[index].InstanceID = am.UUid
-					}
-					device.Status.Phase = apis.DeviceIdle
-					_, err = deviceClient.Update(context.TODO(), &device, metav1.UpdateOptions{})
-					if err != nil {
-						errChan <- err
-						logs.Errorf("[DEVICE EXPORTER] update device fail")
-					}
-
-				} else { // 如果uuid不为空
-					am := managers.AbilityManagers[uuid]
-					if am == nil { // 找不到am
-						// 尝试重新进行am的绑定
-						am = NewAbilityManager(url, abilityName)
-						am.UUid = uuid
-						managers.Mutex.Lock()
-						managers.IDList[am.UUid] = true
-						managers.AbilityManagers[am.UUid] = am
-						managers.Mutex.Unlock()
-
-						_, err = am.GetHeartBeat()
+					if flag { // 如果设备在线说明错误
+						logs.Errorf("[DEVICE EXPORTER] Device[%s] is Online", device.Name)
+						errChan <- fmt.Errorf("[DEVICE EXPORTER] Device[%s] is Online, It should be Offline", device.Name)
+						return
+					} else { // 如果设备不在线是正常的
+						logs.Infof("[DEVICE EXPORTER] Device[%s] is Offline, Normal", device.Name)
+						logs.Infof("[DEVICE EXPORTER] Device[%s] Try to StartUp...", device.Name)
+						// 尝试拉起设备
+						var hb HeartBeat
+						hb, err = am.StartupAbility()
 						if err != nil {
-							managers.Mutex.Lock()
-							delete(managers.AbilityManagers, am.UUid)
-							delete(managers.IDList, am.UUid)
-							managers.Mutex.Unlock()
-							// 把内容填充到Device中
-							for index, a := range device.Status.Abilities {
-								for i, s := range a.Services {
-									s.Port = ""
-									a.Services[i] = s
-								}
-								device.Status.Abilities[index] = a
-								device.Status.Abilities[index].InstanceID = ""
-							}
-							device.Status.Phase = apis.DeviceDisconnected
-							_, err = deviceClient.Update(context.TODO(), &device, metav1.UpdateOptions{})
-							if err != nil {
-								errChan <- err
-								logs.Errorf("[DEVICE EXPORTER] update device fail")
-							}
-						}
-						// 注册到manager中
-
-					} else { // 可以找到am
-						var heartbeat HeartBeat
-						heartbeat, err = am.GetHeartBeat()
-						if err != nil {
+							logs.Errorf("[DEVICE EXPORTER] Device[%s] Startup fail", device.Name)
 							errChan <- err
-							logs.Errorf("[DEVICE EXPORTER] get heartbeat fail")
-							customErr := errors.New("empty heartbeats")
-							if err.Error() == customErr.Error() { // 能力框架重启了
-								logs.Errorf("[DEVICE EXPORTER] get empty heartbeat")
-								managers.Mutex.Lock()
-								delete(managers.AbilityManagers, am.UUid)
-								delete(managers.IDList, am.UUid)
-								managers.Mutex.Unlock()
-								// 把内容填充到Device中
-								for index, a := range device.Status.Abilities {
-									for i, s := range a.Services {
-										s.Port = ""
-										a.Services[i] = s
-									}
-									device.Status.Abilities[index] = a
-									device.Status.Abilities[index].InstanceID = ""
-								}
-								device.Status.Phase = apis.DeviceDisconnected
-								_, err = deviceClient.Update(context.TODO(), &device, metav1.UpdateOptions{})
-								if err != nil {
-									errChan <- err
-									logs.Errorf("[DEVICE EXPORTER] update device fail")
-								}
-							}
 							return
 						}
-						logs.Infof("[DEVICE EXPORTER] get heartbeat success")
-						logs.Infof("[DEVICE EXPORTER] heartbeat state is %s", heartbeat.State)
-						state := heartbeat.State
-						switch state {
-						case Running: // running是正常装填
-							break
-						case Terminated, Inactive: // 不正常状态
-							logs.Infof("[DEVICE EXPORTER] state is not running")
-							// 更新为离线状态
-							device.Status.Phase = apis.DeviceDisconnected
-							for index, a := range device.Status.Abilities {
-								for i, s := range a.Services {
-									s.Port = ""
-									a.Services[i] = s
-								}
-								// uuid和端口设置为空
-								device.Status.Abilities[index] = a
-								device.Status.Abilities[index].InstanceID = ""
-							}
-							// 更新到etcd中
-							_, err = deviceClient.Update(context.TODO(), &device, metav1.UpdateOptions{})
-							if err != nil {
-								errChan <- err
-								logs.Errorf("[DEVICE EXPORTER] update device fail")
-							}
+						logs.Infof("[DEVICE EXPORTER] Device[%s] Try to StartUp Successfully", device.Name)
+						// 拉起成功 更新设备字段
+						device.Status.Phase = apis.DeviceIdle
+						for index, service := range device.Status.Abilities[class].Services {
+							port := new(string)
+							*port = strconv.Itoa(hb.AbilityPort)
+							service.Port = port
+							device.Status.Abilities[class].Services[index] = service
 						}
+						_, err = deviceClient.Get(context.TODO(), device.Name, metav1.GetOptions{})
+						if err != nil {
+							logs.Errorf("[DEVICE EXPORTER] Get device[%s] fail", device.Name)
+							errChan <- err
+							return
+						}
+						_, err = deviceClient.Update(context.TODO(), &device, metav1.UpdateOptions{})
+						if err != nil {
+							logs.Errorf("[DEVICE EXPORTER] update device fail...")
+							errChan <- err
+							return
+						}
+
 					}
+
+				case apis.DeviceReadyClose:
 
 				}
 			}()

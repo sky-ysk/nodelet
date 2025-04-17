@@ -239,10 +239,10 @@ func FindHeartBeatByUUID(hearBeats []HeartBeat, uuid string) (HeartBeat, error) 
 
 // GetAbilityState 获取所有心跳包 根据uuid找到对应的心跳包
 func GetAbilityState(url string, uuid string) (HeartBeat, error) {
-	logs.Infof("getting heart beat......\n")
+	logs.Infof("[DEVICE EXPORTER] Try to get heart beat......\n")
 	hearBeats, err := GetAbilityHeartBeat(url)
 	if err != nil {
-		logs.Error("get heart beats error\n")
+		logs.Error("[DEVICE EXPORTER] Get heart beats error\n")
 		return HeartBeat{}, err
 	}
 
@@ -250,14 +250,14 @@ func GetAbilityState(url string, uuid string) (HeartBeat, error) {
 		logs.Errorf("[DEVICE EXPORTER] empty heartbeats!")
 		return HeartBeat{}, errors.New("empty heartbeats")
 	}
-	logs.Info("get heart beats successfully\n")
-	logs.Info("try to find state by UUID\n")
+	logs.Info("[DEVICE EXPORTER] Get heart beats successfully\n")
+	logs.Info("[DEVICE EXPORTER] Try to find state by UUID\n")
 	heartBeat, err := FindHeartBeatByUUID(hearBeats, uuid)
 	if err != nil {
-		logs.Error("find state by UUID error\n")
+		logs.Error("[DEVICE EXPORTER] Find state by UUID error\n")
 		return HeartBeat{}, err
 	}
-	logs.Info("find state by UUID successfully  heart beat :  ", heartBeat)
+	logs.Info("[DEVICE EXPORTER] Find state by UUID successfully  heart beat :  ", heartBeat)
 	fmt.Println(heartBeat)
 	return heartBeat, nil
 }
@@ -301,18 +301,16 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 }
 
 // FindIdByAbilityName 根据能力名字寻找uuid
-func FindIdByAbilityName(abilityName string, abilityInstances []AbilityInstance) ([]string, error) {
-	var idList []string
+func FindIdByAbilityName(abilityName string, abilityInstances []AbilityInstance) (string, error) {
+	// 遍历abilityInstances
 	for _, abilityInstance := range abilityInstances {
-		fmt.Println("instance is", abilityInstance, abilityInstance.MetaData.Name)
-		fmt.Println("hh", abilityInstance.Spec.AbilityName)
-
+		// 找到了就返回
 		if abilityInstance.Spec.AbilityName == abilityName {
-			idList = append(idList, abilityInstance.Id)
+			return abilityInstance.Id, nil
 		}
-
 	}
-	return idList, errors.New(abilityName + " is not found")
+	logs.Errorf("[DEVICE EXPORTER] Can Not Find %s", abilityName)
+	return "", errors.New(abilityName + " is not found")
 }
 
 func GetAbilityExeStatus(uuid string, url string) (AdjustStatus, error) {

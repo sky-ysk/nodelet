@@ -28,7 +28,7 @@ func NewAbilityManager(url string, name string) *ManagerOfAbility {
 }
 
 // BindUUID 进行ManagerOfAbility与UUID的绑定
-func (am *ManagerOfAbility) BindUUID(idList map[string]bool) error {
+func (am *ManagerOfAbility) BindUUID() error {
 	// 首先获取所有的ability信息
 	instances, err := GetAbilityInstances(am.Url)
 	if err != nil {
@@ -37,18 +37,15 @@ func (am *ManagerOfAbility) BindUUID(idList map[string]bool) error {
 	}
 
 	// 通过AbilityName找到所有对应的uuid
-	ids, err := FindIdByAbilityName(am.Name, instances)
-	for _, id := range ids {
-		_, exists := idList[id]
-		if exists { // 说明已经存在了
-			continue
-		} else { // 说明不存在
-			am.UUid = id
-			return nil
-		}
-
+	var id string
+	id, err = FindIdByAbilityName(am.Name, instances)
+	if err != nil {
+		logs.Errorf("[DEVICE EXPORTER] Find UUId By AbilityName fail")
+		return err
 	}
-	return fmt.Errorf("[DEVICE EXPORTER] dont have enough ability")
+	// 填写相应字段
+	am.UUid = id
+	return nil
 }
 
 func (am *ManagerOfAbility) GetUUID() (string, error) {
@@ -63,6 +60,27 @@ func (am *ManagerOfAbility) GetHeartBeat() (HeartBeat, error) {
 		return HeartBeat{}, err
 	}
 	return heartBeat, nil
+}
+
+func (am *ManagerOfAbility) IsOnline() (bool, error) {
+	// 获取全部的心跳包
+	logs.Infof("[DEVICE EXPORTER] Try to get heart beat......\n")
+	hearBeats, err := GetAbilityHeartBeat(am.Url)
+	if err != nil {
+		logs.Error("[DEVICE EXPORTER] Get heart beats error\n")
+		return false, err
+	}
+
+	// 遍历全部的心跳包
+	for _, hearBeat := range hearBeats {
+		// 如果找到了对应的id 说明在线
+		if hearBeat.ID == am.UUid {
+			return true, nil
+		}
+	}
+
+	// 没找到返回false
+	return false, nil
 }
 
 // StartupAbility 启动一个能力
