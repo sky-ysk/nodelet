@@ -5,6 +5,7 @@ import (
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
+	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -14,40 +15,30 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/proxy/server/handlers/util"
 	"net/http"
-	"sync"
+	"time"
 )
 
+// var _ Handler = &WorkflowHandler{}
+
 type WorkflowHandler struct {
-	Client    core.WorkflowInterface
-	ClientSet *clients.ClientSet
+	manager *util.Manager
 }
 
-var _ Handler = &WorkflowHandler{}
-
+// NewGroupHandler 创建一个 GroupHandler
 //
-//// GetClient 根据 namespace 获取 client，如果不存在则创建
-//func (h *Manager) GetWorkflowClient(namespace string) *WorkflowHandler {
-//	h.mu.Lock()
-//	defer h.mu.Unlock()
-//
-//	// 如果已经存在，直接返回
-//	if c, exists := h.WorkflowClients[namespace]; exists {
-//		return &WorkflowHandler{
-//			client:    c,
-//			clientSet: h.clientSet,
+//	func NewWorkflowHandler(clientSet *clients.ClientSet) *util.WorkflowHandler {
+//		c := clientSet.Core().Workflows(apis.NamespaceAll)
+//		return &util.WorkflowHandler{
+//			Client: c,
 //		}
 //	}
-//
-//	// 否则创建新的 client
-//	newClient := h.clientSet.Core().Workflows(namespace)
-//	h.WorkflowClients[namespace] = newClient
-//	return &WorkflowHandler{
-//		client:    newClient,
-//		clientSet: h.clientSet,
-//	}
-//}
+func NewWorkflowHandler(manager *util.Manager) *WorkflowHandler {
+	return &WorkflowHandler{
+		manager: manager,
+	}
+}
 
-func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restful.Response) {
+func GetWorkflow(request *restful.Request, response *restful.Response) {
 	// 尝试从url中获取参数
 	c := &WorkflowHandler{}
 	name := request.QueryParameter(WORKFLOW_NAME)
@@ -105,49 +96,22 @@ func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restfu
 	}
 }
 
-func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *restful.Response) {
-	// 先查询Workflow是否存在
-	// 尝试从url中获取参数
-	c := &CurrentWorkflowHandler{}
-	name := request.QueryParameter(WORKFLOW_NAME)
+func CreateWorkflow(request *restful.Request, response *restful.Response) {
+	// 获取workflow数据
 	ew := &apis.Workflow{}
-	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-
-		err := request.ReadEntity(&ew)
-		if err != nil || ew.Name == "" {
-			if err != nil {
-				logs.Errorf("Failed to deserialize json data, error: %v", err)
-				err := response.WriteError(http.StatusBadRequest, err)
-				if err != nil {
-					logs.Errorf("failed to return a status code")
-					return
-				}
-				return
-			} else {
-				err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide Workflow name , the key is Name "))
-				if err != nil {
-					logs.Errorf("failed to return a status code ")
-					return
-				}
-				return
-			}
-		} else {
-			name = ew.Name
-		}
-	} else {
-		err := request.ReadEntity(&ew)
+	err := request.ReadEntity(&ew)
+	if err != nil {
+		logs.Errorf("Failed to deserialize json data, error: %v", err)
+		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
-			logs.Errorf("Failed to deserialize json data, error: %v", err)
-			err := response.WriteError(http.StatusBadRequest, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
+			logs.Errorf("failed to return a status code")
 			return
 		}
+		return
 	}
+	logs.Info(*ew)
 
+	// 获取namespace
 	namespace := ew.Namespace
 	if namespace == "" {
 		logs.Error("namespace is empty")
@@ -157,57 +121,19 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		logs.Infof("Get workflow %s error: %v , workflow not exist! create it ", name, err)
-	} else if result.Name == name {
-		logs.Errorf("Create workflow %s error, workflow existed: %v", name, result)
-		err = fmt.Errorf("create workflow %s error, workflow existed: %v", name, result)
-		err := response.WriteError(http.StatusConflict, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
-
-	// 不存在，解析用户的输入
-	//ew := &apis.Workflow{}
-	//err = request.ReadEntity(ew)
-	//if err != nil {
-	//	logs.Errorf("Failed to create workflow %s, error: %v", name, err)
-	//	err := response.WriteError(http.StatusInternalServerError, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//	return
-	//}
-
-	logs.Info(*ew)
-
-	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Workflow{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		// return
-	}
-
-	// workflow分配ID
-	uuid := util.GenerateUUID()
-	logs.Debugf("Create workflow  success, workflow id : %s ", uuid)
+	// 创建一个随机串UUID，该串由时间+10位随机串构成
+	// UUID应该唯一
+	// 同一个Workflow/Task/Group/Action/Runtime的UUID应该相同
+	//UUID
+	timestamp := time.Now().Format("20060102T150405")
+	randomStr := uuid.New().String()[:10]
+	UUID := timestamp + "-" + randomStr
+	logs.Debugf("Create workflow  success, workflow id : %s ", UUID)
 
 	// 将Workflow写入数据库中
-	result, err = util.CreateWorkflow(ew.Spec, namespace, uuid)
+	result, err := util.CreateWorkflow(ew.Spec, namespace, UUID)
 	if err != nil || result == nil {
 		err1 := response.WriteError(http.StatusBadRequest, err)
 		if err1 != nil {
@@ -237,7 +163,7 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	logs.Debugf("Create workflow %v", result)
 }
 
-func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *restful.Response) {
+func UpdateWorkflow(request *restful.Request, response *restful.Response) {
 	// 先检查workflow是否存在
 	// 存在：更新
 	// 不存在：返回错误
@@ -353,7 +279,7 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 	}
 }
 
-func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *restful.Response) {
+func DeleteWorkflow(request *restful.Request, response *restful.Response) {
 	// 查看workflow是否存在
 	// 如果存在，删除workflow
 	// 如果不存在，返回 404 not found
@@ -420,7 +346,7 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 	}
 }
 
-func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *restful.Response) {
+func PatchWorkflow(request *restful.Request, response *restful.Response) {
 	// 先检查资源是否存在
 	// 存在：更新
 	// 不存在：返回错误
@@ -511,14 +437,14 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 	}
 }
 
-func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
+func NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
 	ws.Path(WORKFLOW_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("/").
-		To(h.GetWorkflow).
+		To(GetWorkflow).
 		Doc("Get a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
@@ -529,7 +455,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 	)
 
 	ws.Route(ws.POST("/").
-		To(h.CreateWorkflow).
+		To(CreateWorkflow).
 		Doc("Create a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
@@ -541,7 +467,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 	)
 
 	ws.Route(ws.PUT("/").
-		To(h.UpdateWorkflow).
+		To(UpdateWorkflow).
 		Doc("Update a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
@@ -553,7 +479,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 	)
 
 	ws.Route(ws.PATCH("/").
-		To(h.PatchWorkflow).
+		To(PatchWorkflow).
 		Doc("Patch a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
@@ -565,7 +491,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 	)
 
 	ws.Route(ws.DELETE("/").
-		To(h.DeleteWorkflow).
+		To(DeleteWorkflow).
 		Doc("Delete a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
