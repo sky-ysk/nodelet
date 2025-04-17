@@ -3,14 +3,11 @@ package util
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/proxy/server/handlers/task"
-	"hit.edu/framework/pkg/proxy/server/handlers/workflow"
 	"sync"
 	"time"
 )
@@ -26,103 +23,68 @@ type Manager struct {
 	mu              sync.Mutex
 }
 
+func NewMangerHandler(clientSet *clients.ClientSet) *Manager {
+	return &Manager{
+		WorkflowClients: make(map[string]core.WorkflowInterface),
+		TaskClients:     make(map[string]core.TaskInterface),
+		GroupClients:    make(map[string]core.GroupInterface),
+		ActionClients:   make(map[string]core.ActionInterface),
+		RuntimeClients:  make(map[string]core.RuntimeInterface),
+		ClientSet:       clientSet,
+	}
+}
+
+type WorkflowHandler struct {
+	Client core.WorkflowInterface
+}
+
 // 根据 namespace 获取 client，如果不存在则创建
-func (h *Manager) GetWorkflowClient(namespace string) *workflow.WorkflowHandler {
+func (h *Manager) GetWorkflowClient(namespace string) *WorkflowHandler {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	// 如果已经存在，直接返回
 	if c, exists := h.WorkflowClients[namespace]; exists {
-		return &workflow.WorkflowHandler{
-			Client:    c,
-			ClientSet: h.ClientSet,
+		return &WorkflowHandler{
+			Client: c,
 		}
 	}
 
 	// 否则创建新的 client
 	newClient := h.ClientSet.Core().Workflows(namespace)
 	h.WorkflowClients[namespace] = newClient
-	return &workflow.WorkflowHandler{
-		Client:    newClient,
-		ClientSet: h.ClientSet,
+	return &WorkflowHandler{
+		Client: newClient,
 	}
 }
 
-func (h *Manager) GetTaskClient(namespace string) *task.TaskHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+// TODO: GetWorkflow
+func (h *Manager) GetWorkflow(name string, namespace string) (*apis.Workflow, error) {
+	// 获取workflow的handler
+	c := h.GetWorkflowClient(namespace)
 
-	// 如果已经存在，直接返回
-	if c, exists := h.WorkflowClients[namespace]; exists {
-		return &workflow.WorkflowHandler{
-			Client:    c,
-			ClientSet: h.ClientSet,
-		}
+	// 获取Workflow
+	result, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	} else {
+		return result, nil
 	}
-
-	// 否则创建新的 client
-	newClient := h.ClientSet.Core().Workflows(namespace)
-	h.WorkflowClients[namespace] = newClient
-	return &workflow.WorkflowHandler{
-		Client:    newClient,
-		ClientSet: h.ClientSet,
-	}
-}
-
-func (h *Manager) GetGroupClient(namespace string) *workflow.WorkflowHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// 如果已经存在，直接返回
-	if c, exists := h.WorkflowClients[namespace]; exists {
-		return &workflow.WorkflowHandler{
-			Client:    c,
-			ClientSet: h.ClientSet,
-		}
-	}
-
-	// 否则创建新的 client
-	newClient := h.ClientSet.Core().Workflows(namespace)
-	h.WorkflowClients[namespace] = newClient
-	return &workflow.WorkflowHandler{
-		Client:    newClient,
-		ClientSet: h.ClientSet,
-	}
-}
-
-func (h *Manager) GetWorkflowClient(namespace string) *workflow.WorkflowHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// 如果已经存在，直接返回
-	if c, exists := h.WorkflowClients[namespace]; exists {
-		return &workflow.WorkflowHandler{
-			Client:    c,
-			ClientSet: h.ClientSet,
-		}
-	}
-
-	// 否则创建新的 client
-	newClient := h.ClientSet.Core().Workflows(namespace)
-	h.WorkflowClients[namespace] = newClient
-	return &workflow.WorkflowHandler{
-		Client:    newClient,
-		ClientSet: h.ClientSet,
-	}
-}
-
-// 创建一个随机串UUID，该串由时间+10位随机串构成
-// UUID应该唯一
-// 同一个Workflow/Task/Group/Action/Runtime的UUID应该相同
-func GenerateUUID() string {
-	timestamp := time.Now().Format("20060102T150405")
-	randomStr := uuid.New().String()[:10]
-	return fmt.Sprintf("%s%s", timestamp, randomStr)
 }
 
 // TODO: CreateWorkflow
-// TODO: workflow 没有父亲节点了，这样改？
-func CreateWorkflow(as apis.WorkflowSpec, namespace string, uuid string) (*apis.Workflow, error) {
+
+func (h *Manager) CreateWorkflow(as apis.WorkflowSpec, namespace string, uuid string) (*apis.Workflow, error) {
+	// 查看workflow是否存在
+	res, err := h.GetWorkflow(as.Name, namespace)
+	if err != nil {
+		logs.Infof("Get workflow %s error: %v , node not exist ! creat it ", res.Name, err)
+	} else {
+		logs.Errorf("Create node %s error, node existed: %v", res.Name, res)
+		return res, fmt.Errorf("create node %s error, node existed: %v", res.Name, res)
+	}
+
+	// workflow 不存在， 创建
 	// 临时创建一个Workflow对象
 	a := apis.Workflow{}
 	// 构造名称
@@ -163,14 +125,18 @@ func CreateWorkflow(as apis.WorkflowSpec, namespace string, uuid string) (*apis.
 			Kind:      r.Kind,
 		}
 	}
-	// TODO: 写入数据库
-	wf, err := c.client.Create(context.TODO(), a, metav1.CreateOptions{})
+
+	// 获取workflow的handler
+	c := h.GetWorkflowClient(a.Namespace)
+
+	// 写入数据库
+	wf, err := c.Client.Create(context.TODO(), &a, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Create workflow fail , failed write to database ,error: %v", err)
 		return nil, err
 	}
 
-	return &wf, nil // TODO: 应当返回实际的fa
+	return wf, nil
 }
 
 // TODO: CreateTasks
@@ -193,7 +159,7 @@ func CreateTask(as apis.TaskSpec, gs *apis.WorkflowSpec, namespace string, uuid 
 	// 临时创建一个Task对象
 	a := apis.Task{}
 	// 构造名称
-	a.Name = as.Name + uuid
+	a.Name = gs.Name + as.Name + uuid
 	// 构造Namespace
 	if namespace == "" {
 		a.Namespace = apis.NamespaceDefault

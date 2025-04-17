@@ -9,11 +9,13 @@ import (
 	"hit.edu/framework/pkg/proxy/server/handlers/group"
 	"hit.edu/framework/pkg/proxy/server/handlers/node"
 	"hit.edu/framework/pkg/proxy/server/handlers/task"
+	"hit.edu/framework/pkg/proxy/server/handlers/util"
 	"hit.edu/framework/pkg/proxy/server/handlers/workflow"
 )
 
 type Handlers struct {
 	// ClientSets
+	// 改成一个manager
 	ClientSet *clients.ClientSet
 }
 
@@ -21,6 +23,10 @@ func NewHandlers(clientSets *clients.ClientSet) *Handlers {
 	return &Handlers{
 		ClientSet: clientSets,
 	}
+}
+
+func (h *Handlers) InstallManagerHandlers(container *restful.Container) {
+	_ = util.NewMangerHandler(h.ClientSet)
 }
 
 func (h *Handlers) InstallWorkflowHandlers(container *restful.Container) {
