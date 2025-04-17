@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	sutils "hit.edu/framework/pkg/scheduler/utils"
 	"reflect"
 	"strconv"
 	"strings"
@@ -21,6 +22,18 @@ type ConditionEngine struct {
 	taskClient   core.TaskInterface
 	actionClient core.ActionInterface
 	stopCh       chan struct{}
+}
+
+func NewDefaultConditionEngine() *ConditionEngine {
+	cs, err := sutils.CreateClientSetWithTimeOut(3600)
+	if err != nil {
+		logs.Fatal(err.Error())
+	}
+	nc := cs.Core().Nodes("test")
+	tc := cs.Core().Tasks("test")
+	gc := cs.Core().Groups("test")
+	ac := cs.Core().Actions("test")
+	return NewConditionEngine(nc, tc, gc, ac)
 }
 
 func NewConditionEngine(nodeClient core.NodeInterface, taskClient core.TaskInterface, groupClient core.GroupInterface, actionClient core.ActionInterface) *ConditionEngine {
