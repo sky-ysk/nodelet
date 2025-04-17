@@ -41,7 +41,7 @@ func NewCommandRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecor
 		connectionPool: pool,
 	}
 }
-func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("command runtime kill task:%s", group.Name)
 	// 如果 stopSignals[runtime.Name] 已经被关闭，直接返回
 	if cr.stopSignals[runtime.Name] == nil {
@@ -56,7 +56,7 @@ func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *
 	return nil
 }
 
-func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("command runtime for runtime task:%s", runtime.Name)
 	// 执行时所需命令
 	cmd := runtime.Spec.Command
@@ -164,7 +164,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 
 // 停止某个CMD对应的进程
 // TODO：保存现场
-func (cr *CommandRuntime) stopCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime) error {
+func (cr *CommandRuntime) stopCMD(groupName string, actionIndex, actionSpecName, runtimeSpecName string) error {
 	//nowTime := apis.Time{time.Now()}
 	CMD, exists := cr.processManager.GetProcess(runtime.Name)
 	if !exists {
@@ -251,7 +251,7 @@ func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Act
 }
 
 // 细粒度控制（grpc）：保存任务状态
-func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
 	// client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
 	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
@@ -267,7 +267,7 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 }
 
 // 细粒度控制（grpc）：恢复任务状态
-func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// 恢复任务状态，调用grpc接口通知任务恢复任务状态，任务状态存放在etcd当中（group下对应runtime下的runtimeStatus下的keyStatus属性）
 	nowTime := apis.Time{time.Now()}
 	// keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
@@ -293,7 +293,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 }
 
 // 细粒度控制（grpc）：启动任务状态
-func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// 运行任务进程
 	go cr.Run(group, action, runtime, actionIndex, runtimeIndex) // 这里需要加协程进行启动
 	// 初始化rpc客户端
@@ -318,7 +318,7 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 }
 
 // 细粒度控制（grpc）：初始化任务
-func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// 1、运行任务进程
 	cmd := runtime.Spec.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
@@ -350,7 +350,7 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 }
 
 // 细粒度控制（grpc）：停止任务
-func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("runtime has stop====")
 
 	//---------停止

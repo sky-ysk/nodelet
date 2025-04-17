@@ -70,7 +70,7 @@ var _ Exporter = &TaskExporter{}
 
 func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
 	// Task Exporter配置 config
-
+	targetMap := cfg.TargetMap
 	// Client-Go配置
 	nodeClient := clientset.Core().Nodes("test")
 	taskClient := clientset.Core().Tasks("test")
@@ -78,7 +78,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	eventClient := clientset.Core().Events("test")
 	actionClient := clientset.Core().Actions("test")
 	deviceClient := clientset.Core().Devices("test")
-	runtimeClient := clientset.Core().Run
+	runtimeClient := clientset.Core().Runtimes("test")
 	//事件总线--只使用与Runtime运行时传输状态的
 	eb := eventbus.NewEventBus()
 	// 全局事件组件的配置
@@ -112,11 +112,11 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		tasksClient:         taskClient,
 		gropsClient:         groupClient,
 		eventBroadcaster:    eventBroadcaster,
-		conditionEngine: 	 conditionEngine,
+		conditionEngine:     conditionEngine,
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, , groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, depenManager),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, runtimeClient, depenManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient),
 		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
