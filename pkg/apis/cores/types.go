@@ -505,6 +505,7 @@ type WorkflowSpec struct {
 }
 
 type WorkflowStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
@@ -564,6 +565,7 @@ type TaskSpec struct {
 }
 
 type TaskStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
@@ -656,6 +658,7 @@ type ResourceRequirement struct {
 }
 
 type GroupStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
@@ -1132,6 +1135,13 @@ type SceneStatus struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type RuntimeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Runtime `json:"items" yaml:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Runtime struct {
 	//
 	meta.TypeMeta
@@ -1140,17 +1150,10 @@ type Runtime struct {
 	meta.ObjectMeta
 
 	//
-	Spec RuntimeSpec
+	Spec RuntimeSpec `json:"spec,omitempty" yaml:"spec"`
 
 	//
-	Status RuntimeStatus
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type RuntimeList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Runtime `json:"items" yaml:"items"`
+	Status RuntimeStatus `json:"status,omitempty" yaml:"status"`
 }
 
 // Action所需执行环境
@@ -1235,16 +1238,6 @@ type RuntimeSpec struct {
 	EnableFineGrainedControl        bool   `json:"enable_control,omitempty" yaml:"enable_control"`
 	EnableFineGrainedControlService string `json:"enable_control_service,omitempty" yaml:"enable_control_service"`
 	EnableFineGrainedControlPort    string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
-	//-hzy暂时添加
-	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
-	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
-	Ports       []Port            `json:"ports,omitempty" yaml:"ports"`             // 容器/服务端口
-	ServiceType string            `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
-	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
-	Replicas    int32             `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
-	Pod         Pod               `json:"pod,omitempty" yaml:"pod"`                 // 如果是Pod，则放入该参数
-	Service     Service           `json:"service,omitempty" yaml:"service"`
-	Deployment  Deployment        `json:"deployment,omitempty" yaml:"deployment"`
 	//ysk添加
 	Dependency     string        `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
 	Packages       []Requirement `json:"package,omitempty" yaml:"package"`       //解析之后的包
@@ -1301,6 +1294,7 @@ type Output struct {
 }
 
 type ActionStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 	// 当前Runtime执行状态
@@ -1322,6 +1316,7 @@ type ActionStatus struct {
 }
 
 type RuntimeStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	// 当前资源使用情况
 	Resources map[string]ObjectReference `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
 	// 当前设备使用情况
