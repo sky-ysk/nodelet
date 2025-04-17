@@ -9,7 +9,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
@@ -110,26 +109,25 @@ func (sp *ScorePluginDBY) Name() string {
 	return "ScorePluginForDuBoyu"
 }
 
-func (sp *ScorePluginDBY) getTaskNameByID(ctx context.Context, taskID string) string {
-	list, err := sp.taskClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-		return ""
-	}
-	for _, item := range list.Items {
-		if item.Status.TaskID == taskID {
-			logs.Info("get taskname %s by id %s", item.Name, taskID)
-			return item.Name
-		}
-	}
-	return ""
-}
+//func (sp *ScorePluginDBY) getTaskNameByID(ctx context.Context, taskID string) string {
+//	list, err := sp.taskClient.List(ctx, metav1.ListOptions{})
+//	if err != nil {
+//		logs.Error(err.Error())
+//		return ""
+//	}
+//	for _, item := range list.Items {
+//		if item.Status.TaskID == taskID {
+//			logs.Info("get taskname %s by id %s", item.Name, taskID)
+//			return item.Name
+//		}
+//	}
+//	return ""
+//}
 
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
 	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
-	group.Spec.
-	taskName := sp.getTaskNameByID(ctx, group.Status.Belongs.TaskID)
+	taskName := group.Status.Belongs.Name
 
 	request := transport.ScoreRequest{
 		GroupID: group.Spec.Name,
