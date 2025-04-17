@@ -128,6 +128,7 @@ func (sp *ScorePluginDBY) getTaskNameByID(ctx context.Context, taskID string) st
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
 	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
+	group.Spec.
 	taskName := sp.getTaskNameByID(ctx, group.Status.Belongs.TaskID)
 
 	request := transport.ScoreRequest{
@@ -233,18 +234,18 @@ func buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsReq
 	taskID := task.Spec.Name
 	//TODO 可能需要做深复制 @lbh
 	for _, group := range task.Spec.Groups {
-		groupsID = append(groupsID, group.Spec.Name)
+		groupsID = append(groupsID, group.Name)
 		resources := make([]apis.ResourceRequirement, 0)
-		for _, requirement := range group.Spec.ResourceRequirements {
+		for _, requirement := range group.ResourceRequirements {
 			resources = append(resources, requirement)
 		}
 		if len(resources) > 0 {
-			resourcesMap[group.Spec.Name] = resources
+			resourcesMap[group.Name] = resources
 		}
-		for _, parent := range group.Spec.Parents {
+		for _, parent := range group.Parents {
 			//fmt.Println("parent : ", parent, " child ", group.Status.GroupID)
 			topInfo = append(topInfo, GroupTopInfo{
-				Child:  group.Spec.Name,
+				Child:  group.Name,
 				Parent: parent,
 			})
 		}
