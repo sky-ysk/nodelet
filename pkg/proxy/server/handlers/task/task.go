@@ -11,6 +11,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 type TaskHandler struct {
 	clients      map[string]core.TaskInterface
 	groupClients map[string]core.GroupInterface
+	manager      *manager.Manager
 	clientSet    *clients.ClientSet
 	mu           sync.Mutex
 }
@@ -46,6 +48,7 @@ func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
 		clients:      make(map[string]core.TaskInterface),
 		groupClients: make(map[string]core.GroupInterface),
 		clientSet:    clientSet,
+		manager:      manager.NewManager(clientSet),
 	}
 }
 
@@ -136,14 +139,12 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Response) {
 	// 先查询 task 是否存在
 	// 尝试从url中获取参数
-	c := &CurrentTaskHandler{}
 	name := request.QueryParameter(TASK_NAME)
-	ew := &apis.Task{}
+	et := &apis.Task{}
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
-
-		err := request.ReadEntity(&ew)
-		if err != nil || ew.Name == "" {
+		err := request.ReadEntity(&et)
+		if err != nil || et.Name == "" {
 			if err != nil {
 				logs.Errorf("Failed to deserialize json data, error: %v", err)
 				err := response.WriteError(http.StatusBadRequest, err)
@@ -161,10 +162,10 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 				return
 			}
 		} else {
-			name = ew.Name
+			name = et.Name
 		}
 	} else {
-		err := request.ReadEntity(&ew)
+		err := request.ReadEntity(&et)
 		if err != nil {
 			logs.Errorf("Failed to deserialize json data, error: %v", err)
 			err := response.WriteError(http.StatusBadRequest, err)
@@ -176,7 +177,7 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		}
 	}
 
-	namespace := ew.Namespace
+	namespace := et.Namespace
 	if namespace == "" {
 		logs.Error("namespace is empty")
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
@@ -185,59 +186,26 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		logs.Infof("Get task %s error: %v   , task not exist! creat it ", name, err)
-	} else if result.Name == name {
-		logs.Errorf("Create task %s error, task existed: %v ", name, result)
-		err = fmt.Errorf("create task %s error, task existed: %v ", name, result)
-		err := response.WriteError(http.StatusConflict, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	logs.Info(*et)
 
-	// 不存在，解析用户的输入
-	//ew := &apis.Task{}
-	//err = request.ReadEntity(ew)
+	////格式校验
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Task{})
 	//if err != nil {
-	//	logs.Errorf("Failed to create task %s , error : %v ", name, err)
-	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	err := response.WriteError(http.StatusBadRequest, err)
 	//	if err != nil {
 	//		logs.Errorf("failed to return a status code ")
 	//		return
 	//	}
-	//	return
+	//	// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
+	//	// return
 	//}
 
-	logs.Info(*ew)
-
-	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Task{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
-		// return
-	}
-
-	//Task分配ID
-	tu := uuid.New().String()
-	ew.Status.TaskID = tu
-	logs.Debugf("Create task %s success, task id : %s  ", name, tu)
-
+	u := uuid.Must(uuid.NewV7())
 	// 将 Task写入数据库中
-	result, err = c.client.Create(context.TODO(), ew, metav1.CreateOptions{})
+	result, err := h.manager.CreateTask(et.Spec, nil, namespace, u.String(), "")
 	if err != nil {
 		err1 := response.WriteError(http.StatusInternalServerError, err)
 		if err1 != nil {
@@ -248,36 +216,36 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		return
 	}
 
-	// 构造Groups
-	for _, g := range ew.Spec.Groups {
-		//
-		g.ObjectMeta = metav1.ObjectMeta{
-			Name: g.Spec.Name,
-		}
-		//
-		g.TypeMeta = metav1.TypeMeta{
-			Kind:       "Group",
-			APIVersion: "resources/v1",
-		}
-
-		// 分配Group的GroupID
-		gu := uuid.New().String()
-		g.Status.GroupID = gu
-
-		// Group的TaskID
-		g.Status.Belongs.TaskID = tu
-
-		_, err = c.groupClient.Create(context.TODO(), &g, metav1.CreateOptions{})
-		if err != nil {
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				return
-			}
-			logs.Errorf("Create task %s group %s error: %v ", name, g.Name, err)
-			logs.Errorf("Group %v ", g)
-			return
-		}
-	}
+	//// 构造Groups
+	//for _, g := range ew.Spec.Groups {
+	//	//
+	//	g.ObjectMeta = metav1.ObjectMeta{
+	//		Name: g.Spec.Name,
+	//	}
+	//	//
+	//	g.TypeMeta = metav1.TypeMeta{
+	//		Kind:       "Group",
+	//		APIVersion: "resources/v1",
+	//	}
+	//
+	//	// 分配Group的GroupID
+	//	gu := uuid.New().String()
+	//	g.Status.GroupID = gu
+	//
+	//	// Group的TaskID
+	//	g.Status.Belongs.TaskID = tu
+	//
+	//	_, err = c.groupClient.Create(context.TODO(), &g, metav1.CreateOptions{})
+	//	if err != nil {
+	//		err := response.WriteError(http.StatusInternalServerError, err)
+	//		if err != nil {
+	//			return
+	//		}
+	//		logs.Errorf("Create task %s group %s error: %v ", name, g.Name, err)
+	//		logs.Errorf("Group %v ", g)
+	//		return
+	//	}
+	//}
 
 	// TODO: 错误处理
 
