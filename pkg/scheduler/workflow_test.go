@@ -1,8 +1,11 @@
 package scheduler
 
 import (
+	"context"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/scheduler/utils"
+	"testing"
 )
 
 func createConditionTask() apis.Task {
@@ -84,4 +87,36 @@ func createOrangeTask() apis.Task {
 func createSceneOneTask() apis.Task {
 	task := apis.Task{}
 	return task
+}
+
+// go test -run TestAddGroup -v
+func TestAddGroup(t *testing.T) {
+	group := apis.Group{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testGroup1",
+			Namespace: apis.NamespaceAll,
+		},
+		Spec: apis.GroupSpec{
+			Name: "testGroup1",
+		},
+		Status: apis.GroupStatus{
+			Phase: apis.Unknown,
+		},
+	}
+
+	cs, err := utils.CreateClientSet()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	ctx := context.Background()
+	gc := cs.Core().Groups(apis.NamespaceAll)
+	_, err = gc.Create(ctx, &group, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("%v", err)
+		return
+	}
 }
