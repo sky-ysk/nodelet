@@ -9,7 +9,6 @@ import (
 	"hit.edu/framework/pkg/proxy/server/handlers/group"
 	"hit.edu/framework/pkg/proxy/server/handlers/node"
 	"hit.edu/framework/pkg/proxy/server/handlers/task"
-	"hit.edu/framework/pkg/proxy/server/handlers/util"
 	"hit.edu/framework/pkg/proxy/server/handlers/workflow"
 )
 
@@ -25,16 +24,12 @@ func NewHandlers(clientSets *clients.ClientSet) *Handlers {
 	}
 }
 
-func (h *Handlers) InstallManagerHandlers(container *restful.Container) {
-	_ = util.NewMangerHandler(h.ClientSet)
-}
-
 func (h *Handlers) InstallWorkflowHandlers(container *restful.Container) {
 	// Workflows相关
 	wsh := workflow.NewWorkflowsHandler(h.ClientSet)
 	// 查询Workflows
 	container.Add(wsh.NewGetWebService())
-
+	
 	// Workflow相关
 	// 查询单个Workflow
 	wh := workflow.NewWorkflowHandler(h.ClientSet)
@@ -46,7 +41,7 @@ func (h *Handlers) InstallTaskHandlers(container *restful.Container) {
 	tsh := task.NewTasksHandler(h.ClientSet)
 	// 查询Tasks
 	container.Add(tsh.NewGetWebService())
-
+	
 	// Task相关
 	// 查询单个Task
 	th := task.NewTaskHandler(h.ClientSet)
@@ -58,7 +53,7 @@ func (h *Handlers) InstallNodeHandlers(container *restful.Container) {
 	nsh := node.NewNodesHandler(h.ClientSet)
 	// 查询Nodes
 	container.Add(nsh.NewGetWebService())
-
+	
 	// Node相关
 	// 查询单个Node
 	nh := node.NewNodeHandler(h.ClientSet)
@@ -70,7 +65,7 @@ func (h *Handlers) InstallGroupHandlers(container *restful.Container) {
 	gsh := group.NewGroupsHandler(h.ClientSet)
 	// 查询Groups
 	container.Add(gsh.NewGetWebService())
-
+	
 	// Group相关
 	// 查询单个Group
 	gh := group.NewGroupHandler(h.ClientSet)
@@ -82,7 +77,7 @@ func (h *Handlers) InstallActionHandlers(container *restful.Container) {
 	gsh := action.NewActionsHandler(h.ClientSet)
 	// 查询Actions
 	container.Add(gsh.NewGetWebService())
-
+	
 	// Action相关
 	gh := action.NewActionHandler(h.ClientSet)
 	// 查询单个Action
@@ -94,7 +89,7 @@ func (h *Handlers) InstallEventHandlers(container *restful.Container) {
 	gsh := event.NewEventsHandler(h.ClientSet)
 	// 查询Events
 	container.Add(gsh.NewGetWebService())
-
+	
 	// Event相关
 	gh := event.NewEventHandler(h.ClientSet)
 	// 查询单个Event
@@ -106,7 +101,7 @@ func (h *Handlers) InstallDeviceHandlers(container *restful.Container) {
 	gsh := device.NewDevicesHandler(h.ClientSet)
 	// 查询Devices
 	container.Add(gsh.NewGetWebService())
-
+	
 	// Device相关
 	gh := device.NewDeviceHandler(h.ClientSet)
 	// 查询单个Device
