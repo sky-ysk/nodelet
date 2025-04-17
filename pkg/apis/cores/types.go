@@ -391,30 +391,32 @@ type ConditionValue struct {
 	Field string `json:"field,omitempty" yaml:"field"`
 }
 
-//解析字段的类型，Status还是Spec
+// 解析字段的类型，Status还是Spec
 type FieldType string
+
 const (
-	StatusType	FieldType = "Status"
-	Spectype	FieldType = "Spec"
+	StatusType FieldType = "Status"
+	Spectype   FieldType = "Spec"
 )
 
-//解析对象的类型
+// 解析对象的类型
 type ItemType string
+
 const (
-	TaskItemType	ItemType = "Task"
-	GroupItemType	ItemType = "Group"
-	ActionItemType	ItemType = "Action"
-	RuntimeItemType	ItemType = "Runtime"
+	TaskItemType    ItemType = "Task"
+	GroupItemType   ItemType = "Group"
+	ActionItemType  ItemType = "Action"
+	RuntimeItemType ItemType = "Runtime"
 )
 
-//解析结果的结构体，包含字符串解析的信息、返回值的两类类型（便于Get)
+// 解析结果的结构体，包含字符串解析的信息、返回值的两类类型（便于Get)
 type FromItemInfo struct {
-	TaskName	string	`json:"task_name,omitempty" yaml:"task_name"`
-	GroupName	string	`json:"group_name,omitempty" yaml:"group_name"`
-	ActionName	string	`json:"action_name,omitempty" yaml:"action_name"`
-	RuntimeName	string	`json:"runtime_name,omitempty" yaml:"runtime_name"`
+	TaskName    string `json:"task_name,omitempty" yaml:"task_name"`
+	GroupName   string `json:"group_name,omitempty" yaml:"group_name"`
+	ActionName  string `json:"action_name,omitempty" yaml:"action_name"`
+	RuntimeName string `json:"runtime_name,omitempty" yaml:"runtime_name"`
 	// ItemType	ItemType	`json:"item_type,omitempty" yaml:"item_type"`
-	IsLocal		bool	`json:"is_local,omitempty" yaml:"is_local"`	//是否是本地的Item
+	IsLocal bool `json:"is_local,omitempty" yaml:"is_local"` //是否是本地的Item
 }
 
 // 条件连接符，支持大小写
@@ -503,6 +505,7 @@ type WorkflowSpec struct {
 }
 
 type WorkflowStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
@@ -562,11 +565,12 @@ type TaskSpec struct {
 }
 
 type TaskStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
 	//
-	Groups map[string]GroupStatus `json:"groups,omitempty" yaml:"groups"`
+	Groups map[string]ObjectReference `json:"groups,omitempty" yaml:"groups"`
 
 	// TODO: Events定义
 	// 创建时间
@@ -654,6 +658,7 @@ type ResourceRequirement struct {
 }
 
 type GroupStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 
@@ -1088,6 +1093,13 @@ type DataSpec struct {
 type DataStatus struct{}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type RuntimeList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []Runtime `json:"items" yaml:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Runtime struct {
 	//
 	meta.TypeMeta
@@ -1096,17 +1108,10 @@ type Runtime struct {
 	meta.ObjectMeta
 
 	//
-	Spec RuntimeSpec
+	Spec RuntimeSpec `json:"spec,omitempty" yaml:"spec"`
 
 	//
-	Status RuntimeStatus
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type RuntimeList struct {
-	meta.TypeMeta
-	meta.ListMeta
-	Items []Runtime `json:"items" yaml:"items"`
+	Status RuntimeStatus `json:"status,omitempty" yaml:"status"`
 }
 
 // Action所需执行环境
@@ -1191,16 +1196,6 @@ type RuntimeSpec struct {
 	EnableFineGrainedControl        bool   `json:"enable_control,omitempty" yaml:"enable_control"`
 	EnableFineGrainedControlService string `json:"enable_control_service,omitempty" yaml:"enable_control_service"`
 	EnableFineGrainedControlPort    string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
-	//-hzy暂时添加
-	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
-	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
-	Ports       []Port            `json:"ports,omitempty" yaml:"ports"`             // 容器/服务端口
-	ServiceType string            `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
-	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
-	Replicas    int32             `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
-	Pod         Pod               `json:"pod,omitempty" yaml:"pod"`                 // 如果是Pod，则放入该参数
-	Service     Service           `json:"service,omitempty" yaml:"service"`
-	Deployment  Deployment        `json:"deployment,omitempty" yaml:"deployment"`
 	//ysk添加
 	Dependency string        `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
 	Packages   []Requirement `json:"package,omitempty" yaml:"package"`       //解析之后的包
@@ -1223,7 +1218,7 @@ type Input struct {
 	Type DataType `json:"type,omitempty" yaml:"type"`
 
 	// 名称
-	Name string `json:"name,omitempty" yaml:"name"`
+	Name      string `json:"name,omitempty" yaml:"name"`
 	Value     string `json:"value,omitempty" yaml:"value"`
 	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
 	From      string `json:"from,omitempty" yaml:"from"`
@@ -1249,13 +1244,14 @@ type Input struct {
 
 // TODO: 数据格式后续还需要调整
 type Output struct {
-	Type DataType `json:"type,omitempty" yaml:"type"`
-	Name string `json:"name,omitempty" yaml:"name"`
-	Value     string `json:"value,omitempty" yaml:"value"`
-	ValueType string `json:"value_type,omitempty" yaml:"value_type"`
+	Type      DataType `json:"type,omitempty" yaml:"type"`
+	Name      string   `json:"name,omitempty" yaml:"name"`
+	Value     string   `json:"value,omitempty" yaml:"value"`
+	ValueType string   `json:"value_type,omitempty" yaml:"value_type"`
 }
 
 type ActionStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
 	// 当前Runtime执行状态
@@ -1277,6 +1273,7 @@ type ActionStatus struct {
 }
 
 type RuntimeStatus struct {
+	Belongs ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	// 当前资源使用情况
 	Resources map[string]ObjectReference `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
 	// 当前设备使用情况
