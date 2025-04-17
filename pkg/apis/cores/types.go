@@ -514,6 +514,9 @@ type TaskStatus struct {
 	//
 	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
 
+	// Prefix
+	Prefix string `json:"prefix,omitempty" yaml:"prefix"`
+
 	//
 	Groups map[string]ObjectReference `json:"groups,omitempty" yaml:"groups"`
 
@@ -1192,6 +1195,7 @@ const (
 	ConstData   DataType = "constants"
 	ResultsData DataType = "results"
 	LocalData   DataType = "local"
+	DeviceData  DataType = "device"
 )
 
 // 值类型，表示数据使用
@@ -1249,6 +1253,9 @@ type ActionStatus struct {
 }
 
 type RuntimeStatus struct {
+	// 输出的结果
+	Outputs map[string]Value `json:"outputs,omitempty" yaml:"outputs"`
+	//
 	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	// 当前资源使用情况
 	Resources map[string]ObjectReference `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
