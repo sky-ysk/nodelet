@@ -11,6 +11,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 type TaskHandler struct {
 	clients      map[string]core.TaskInterface
 	groupClients map[string]core.GroupInterface
+	manager      *manager.Manager
 	clientSet    *clients.ClientSet
 	mu           sync.Mutex
 }
@@ -46,6 +48,7 @@ func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
 		clients:      make(map[string]core.TaskInterface),
 		groupClients: make(map[string]core.GroupInterface),
 		clientSet:    clientSet,
+		manager:      manager.NewManager(clientSet),
 	}
 }
 
@@ -53,7 +56,7 @@ func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
 func (h *TaskHandler) GetClient(namespace string) *CurrentTaskHandler {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-
+	
 	// 如果已经存在，直接返回   c 和 gc 会一起创建
 	c, exists := h.clients[namespace]
 	gc, groupExists := h.groupClients[namespace]
@@ -63,7 +66,7 @@ func (h *TaskHandler) GetClient(namespace string) *CurrentTaskHandler {
 			groupClient: gc,
 		}
 	}
-
+	
 	// 否则创建新的 client
 	newClient := h.clientSet.Core().Tasks(namespace)
 	newGroupClient := h.clientSet.Core().Groups(namespace)
@@ -94,7 +97,7 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 			name = req.Name
 		}
 	}
-
+	
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
@@ -107,7 +110,7 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 	} else {
 		c = h.GetClient(namespace)
 	}
-
+	
 	result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Get task %s error: %v , task not exist! ", name, err)
@@ -118,7 +121,7 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 		}
 		return
 	}
-
+	
 	if result.Name == name {
 		err = response.WriteEntity(result)
 		if err != nil {
@@ -136,14 +139,12 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Response) {
 	// 先查询 task 是否存在
 	// 尝试从url中获取参数
-	c := &CurrentTaskHandler{}
 	name := request.QueryParameter(TASK_NAME)
-	ew := &apis.Task{}
+	et := &apis.Task{}
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
-
-		err := request.ReadEntity(&ew)
-		if err != nil || ew.Name == "" {
+		err := request.ReadEntity(&et)
+		if err != nil || et.Name == "" {
 			if err != nil {
 				logs.Errorf("Failed to deserialize json data, error: %v", err)
 				err := response.WriteError(http.StatusBadRequest, err)
@@ -161,10 +162,10 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 				return
 			}
 		} else {
-			name = ew.Name
+			name = et.Name
 		}
 	} else {
-		err := request.ReadEntity(&ew)
+		err := request.ReadEntity(&et)
 		if err != nil {
 			logs.Errorf("Failed to deserialize json data, error: %v", err)
 			err := response.WriteError(http.StatusBadRequest, err)
@@ -175,8 +176,8 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 			return
 		}
 	}
-
-	namespace := ew.Namespace
+	
+	namespace := et.Namespace
 	if namespace == "" {
 		logs.Error("namespace is empty")
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
@@ -185,59 +186,26 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
-
-	result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		logs.Infof("Get task %s error: %v   , task not exist! creat it ", name, err)
-	} else if result.Name == name {
-		logs.Errorf("Create task %s error, task existed: %v ", name, result)
-		err = fmt.Errorf("create task %s error, task existed: %v ", name, result)
-		err := response.WriteError(http.StatusConflict, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
-
-	// 不存在，解析用户的输入
-	//ew := &apis.Task{}
-	//err = request.ReadEntity(ew)
+	
+	logs.Info(*et)
+	
+	////格式校验
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Task{})
 	//if err != nil {
-	//	logs.Errorf("Failed to create task %s , error : %v ", name, err)
-	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	err := response.WriteError(http.StatusBadRequest, err)
 	//	if err != nil {
 	//		logs.Errorf("failed to return a status code ")
 	//		return
 	//	}
-	//	return
+	//	// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
+	//	// return
 	//}
-
-	logs.Info(*ew)
-
-	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Task{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
-		// return
-	}
-
-	//Task分配ID
-	tu := uuid.New().String()
-	ew.Status.TaskID = tu
-	logs.Debugf("Create task %s success, task id : %s  ", name, tu)
-
+	
+	u := uuid.Must(uuid.NewV7())
 	// 将 Task写入数据库中
-	result, err = c.client.Create(context.TODO(), ew, metav1.CreateOptions{})
+	result, err := h.manager.CreateTask(et.Spec, nil, namespace, u.String(), "")
 	if err != nil {
 		err1 := response.WriteError(http.StatusInternalServerError, err)
 		if err1 != nil {
@@ -247,40 +215,40 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		logs.Errorf("Create task %s  ,failed write to database , error: %v ", name, err)
 		return
 	}
-
-	// 构造Groups
-	for _, g := range ew.Spec.Groups {
-		//
-		g.ObjectMeta = metav1.ObjectMeta{
-			Name: g.Spec.Name,
-		}
-		//
-		g.TypeMeta = metav1.TypeMeta{
-			Kind:       "Group",
-			APIVersion: "resources/v1",
-		}
-
-		// 分配Group的GroupID
-		gu := uuid.New().String()
-		g.Status.GroupID = gu
-
-		// Group的TaskID
-		g.Status.Belongs.TaskID = tu
-
-		_, err = c.groupClient.Create(context.TODO(), &g, metav1.CreateOptions{})
-		if err != nil {
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				return
-			}
-			logs.Errorf("Create task %s group %s error: %v ", name, g.Name, err)
-			logs.Errorf("Group %v ", g)
-			return
-		}
-	}
-
+	
+	//// 构造Groups
+	//for _, g := range ew.Spec.Groups {
+	//	//
+	//	g.ObjectMeta = metav1.ObjectMeta{
+	//		Name: g.Spec.Name,
+	//	}
+	//	//
+	//	g.TypeMeta = metav1.TypeMeta{
+	//		Kind:       "Group",
+	//		APIVersion: "resources/v1",
+	//	}
+	//
+	//	// 分配Group的GroupID
+	//	gu := uuid.New().String()
+	//	g.Status.GroupID = gu
+	//
+	//	// Group的TaskID
+	//	g.Status.Belongs.TaskID = tu
+	//
+	//	_, err = c.groupClient.Create(context.TODO(), &g, metav1.CreateOptions{})
+	//	if err != nil {
+	//		err := response.WriteError(http.StatusInternalServerError, err)
+	//		if err != nil {
+	//			return
+	//		}
+	//		logs.Errorf("Create task %s group %s error: %v ", name, g.Name, err)
+	//		logs.Errorf("Group %v ", g)
+	//		return
+	//	}
+	//}
+	
 	// TODO: 错误处理
-
+	
 	// 返回结果
 	err = response.WriteEntity(result)
 	if err != nil {
@@ -291,7 +259,7 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		}
 		return
 	}
-
+	
 	err = response.WriteError(http.StatusOK, err)
 	if err != nil {
 		logs.Errorf("failed to return a status code ")
@@ -322,7 +290,7 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 			name = req.Name
 		}
 	}
-
+	
 	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
@@ -335,7 +303,7 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 	} else {
 		c = h.GetClient(namespace)
 	}
-
+	
 	// 查看task是否存在
 	task, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -346,7 +314,7 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 			return
 		}
 	}
-
+	
 	// task 存在
 	if task.Name == name {
 		err := c.client.Delete(context.TODO(), name, metav1.DeleteOptions{})
@@ -358,14 +326,14 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 				return
 			}
 		}
-
+		
 		// 返回停止成功的状态
 		response.WriteHeader(http.StatusOK)
-
+		
 		// 记录日志
 		logs.Debugf("delete task : %v", name)
 	}
-
+	
 }
 
 // TODO ：StopTask
@@ -413,7 +381,7 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 			return
 		}
 	}
-
+	
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
@@ -425,7 +393,7 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 	} else {
 		c = h.GetClient(namespace)
 	}
-
+	
 	// 检查task是否存在
 	task, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -437,7 +405,7 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 		}
 		return
 	}
-
+	
 	// task存在，更新
 	if task.Name == name {
 		//err := request.ReadEntity(&task)
@@ -450,7 +418,7 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 		//	return
 		//}
 		//logs.Debugf("Update task to : %v", task)
-
+		
 		// 格式验证
 		res, err := analyzer.SerializeToJson(ew)
 		_, err = analyzer.Deserialize(res, apis.Task{})
@@ -462,7 +430,7 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 			}
 			// return
 		}
-
+		
 		// 这个函数执行的时候返回错误
 		updatedTask, updateErr := c.client.Update(context.TODO(), ew, metav1.UpdateOptions{})
 		if updateErr != nil {
@@ -473,17 +441,17 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 				return
 			}
 		}
-
+		
 		//返回成功修改的通知
 		err = response.WriteHeaderAndEntity(http.StatusOK, updatedTask)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}
-
+		
 		// 记录日志
 		logs.Debugf("update task : %v", name)
-
+		
 	}
 }
 
@@ -509,7 +477,7 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 			name = req.Name
 		}
 	}
-
+	
 	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
@@ -522,7 +490,7 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 	} else {
 		c = h.GetClient(namespace)
 	}
-
+	
 	// 检查task是否存在
 	task, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -534,7 +502,7 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 		}
 		return
 	}
-
+	
 	// task 存在，部分更新
 	if task.Name == name {
 		err := request.ReadEntity(task)
@@ -567,14 +535,14 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 			}
 		}
 		// logs.Debugf("Patched task : %v", patchedTask)
-
+		
 		//返回成功修改的通知
 		err = response.WriteHeaderAndEntity(http.StatusOK, patchedTask)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}
-
+		
 		// 记录日志
 		logs.Debugf("patch task : %v", name)
 	}
@@ -585,7 +553,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 	ws.Path(TASK_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
-
+	
 	// 查询任务
 	ws.Route(ws.GET("/").
 		To(h.GetTask).
@@ -597,7 +565,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
 	)
-
+	
 	//创建任务
 	ws.Route(ws.POST("/").
 		To(h.CreateTask).
@@ -610,7 +578,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
 	)
-
+	
 	//修改任务
 	ws.Route(ws.PUT("/").
 		To(h.UpdateTask).
@@ -623,7 +591,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
 	)
-
+	
 	//部分修改任务
 	ws.Route(ws.PATCH("/").
 		To(h.PatchTask).
@@ -636,7 +604,7 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
 	)
-
+	
 	// 删除任务
 	ws.Route(ws.DELETE("/").
 		To(h.DeleteTask).
@@ -648,6 +616,6 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		Returns(200, "OK", apis.Task{}).
 		Returns(400, "Not Found", nil),
 	)
-
+	
 	return ws
 }
