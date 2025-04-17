@@ -2,6 +2,7 @@ package etcd3
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -22,6 +23,23 @@ var (
 
 func init() {
 	endpointsMap = make(map[string]struct{})
+}
+
+func ensureCompactRevKeyExists(ctx context.Context, client *clientv3.Client) error {
+	resp, err := client.Get(ctx, compactRevKey)
+	if err != nil {
+		return err
+	}
+	if len(resp.Kvs) == 0 {
+		_, err := client.Put(ctx, compactRevKey, "0")
+		if err != nil {
+			return fmt.Errorf("failed to initialize compactRevKey: %v", err)
+		}
+		logs.Info("initialized compactRevKey in etcd")
+	} else {
+		logs.Info("compactRevKey already exists in etcd")
+	}
+	return nil
 }
 
 func StartCompactor(ctx context.Context, client *clientv3.Client, compactInterval time.Duration) {
@@ -48,6 +66,10 @@ func compactor(ctx context.Context, client *clientv3.Client, interval time.Durat
 	var compactTime int64
 	var rev int64
 	var err error
+	if err := ensureCompactRevKeyExists(ctx, client); err != nil {
+		logs.Error("failed to initialize compactRevKey: ", err)
+		return
+	}
 	for {
 		select {
 		case <-time.After(interval):
@@ -65,6 +87,7 @@ func compactor(ctx context.Context, client *clientv3.Client, interval time.Durat
 
 // compact 完成对etcd的压缩，并返回当前的版本
 func compact(ctx context.Context, client *clientv3.Client, t, rev int64) (int64, int64, error) {
+	logs.Info("start compact")
 	resp, err := client.KV.Txn(ctx).If(
 		clientv3.Compare(clientv3.Version(compactRevKey), "=", t),
 	).Then(
@@ -79,12 +102,19 @@ func compact(ctx context.Context, client *clientv3.Client, t, rev int64) (int64,
 	curRev := resp.Header.Revision
 
 	if !resp.Succeeded {
-		curTime := resp.Responses[0].GetResponseRange().Kvs[0].Version
+		kvs := resp.Responses[0].GetResponseRange().Kvs
+		if len(kvs) == 0 {
+			logs.Info("etcd compact failed since compactRevKey not found in etcd")
+			return 0, 0, fmt.Errorf("compactRevKey not found in etcd")
+		}
+		curTime := kvs[0].Version
+		logs.Infof("compact skipped, curTime=%d, rev=%d", curTime, curRev)
 		return curTime, curRev, nil
 	}
 	curTime := t + 1
 
 	if rev == 0 {
+		logs.Infof("compact skipped due to rev=0, curTime=%d, curRev=%d", curTime, curRev)
 		return curTime, curRev, nil
 	}
 	if _, err = client.Compact(ctx, rev); err != nil {
