@@ -2,15 +2,23 @@ package nodelet
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
+	run "hit.edu/framework/pkg/apimachinery/runtime"
+	"hit.edu/framework/pkg/apimachinery/runtime/schema"
+	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/node"
 	"hit.edu/framework/pkg/nodelet/task"
-	"hit.edu/framework/test/etcd_sync/informer"
+	"hit.edu/framework/test/etcd_sync/active/clients"
+	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -129,10 +137,10 @@ type FrameworkConfig struct {
 }
 
 // 创建目标映射的函数
-func BuildTargetMap(config *FrameworkConfig) (map[string]*informer.Target[*apis.Group], map[string]*informer.Target[*apis.Action], map[string]*informer.Target[*apis.Runtime], error) {
-	groupTargetMap := make(map[string]*informer.Target[*apis.Group])
-	actionTargetMap := make(map[string]*informer.Target[*apis.Action])
-	runtimeTargetMap := make(map[string]*informer.Target[*apis.Runtime])
+func BuildTargetMap(config *FrameworkConfig) (map[string]cross_core.GroupInterface, map[string]cross_core.ActionInterface, map[string]cross_core.RuntimeInterface, error) {
+	groupTargetMap := make(map[string]cross_core.GroupInterface)
+	actionTargetMap := make(map[string]cross_core.ActionInterface)
+	runtimeTargetMap := make(map[string]cross_core.RuntimeInterface)
 	// 参数校验
 	if config == nil {
 		return groupTargetMap, actionTargetMap, runtimeTargetMap, nil
@@ -173,30 +181,14 @@ func BuildTargetMap(config *FrameworkConfig) (map[string]*informer.Target[*apis.
 			return nil, nil, nil, fmt.Errorf("无效的集群配置: %s", key)
 		}
 		// 这里演示参数组合，请根据实际需求调整
-		groupTarget := informer.CreateTarget[*apis.Group](
-			localID,                                  // 使用Name作为第一个参数
-			cluster.ClusterID,                        // 示例固定值，可替换为配置项
-			"registry-svc.test.svc.clusterset.local", // 服务发现地址
-			3001,                                     // 默认端口1
-			cluster.ClusterIP,                        // 使用Value作为IP地址
-			14399,                                    // 默认端口2
-		)
-		actionTarget := informer.CreateTarget[*apis.Action](
-			localID,                                  // 使用Name作为第一个参数
-			cluster.ClusterID,                        // 示例固定值，可替换为配置项
-			"registry-svc.test.svc.clusterset.local", // 服务发现地址
-			3001,                                     // 默认端口1
-			cluster.ClusterIP,                        // 使用Value作为IP地址
-			14399,                                    // 默认端口2
-		)
-		runtimeTarget := informer.CreateTarget[*apis.Runtime](
-			localID,                                  // 使用Name作为第一个参数
-			cluster.ClusterID,                        // 示例固定值，可替换为配置项
-			"registry-svc.test.svc.clusterset.local", // 服务发现地址
-			3001,                                     // 默认端口1
-			cluster.ClusterIP,                        // 使用Value作为IP地址
-			14399,                                    // 默认端口2
-		)
+		clientSet, err := InitCrossClient(localID, cluster.ClusterID, cluster.ClusterIP)
+		if err != nil {
+			logs.Errorf("init client failed: %v", err)
+		}
+		groupTarget := clientSet.Core().Groups("test")
+		actionTarget := clientSet.Core().Actions("test")
+		runtimeTarget := clientSet.Core().Runtimes("test")
+
 		groupTargetMap[cluster.ClusterID] = groupTarget
 		actionTargetMap[cluster.ClusterID] = actionTarget
 		runtimeTargetMap[cluster.ClusterID] = runtimeTarget
@@ -268,4 +260,39 @@ func getEnvWithFallback(key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+func InitCrossClient(localID, clusterID, clusterIP string) (*clients.ClientSet, error) {
+	scheme := run.NewScheme()
+	apis.AddToScheme(scheme)
+	c := &rest.Config{
+		//Host: "http://broker.registry-svc.test.svc.clusterset.local:3001/forward?target=",
+		//Host:    "http://localhost:10000",
+		Host:    "http://" + localID + ".registry-svc.test.svc.clusterset.local:3001",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+			TargetURL:            "http://" + "clusterIP" + ":10000",
+			FlowType:             "etcd",
+			ClusterID:            clusterID,
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        10000,            // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 1000 * time.Second,
+	}
+	//创建ClientSet
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
+	}
+	return clientSet, nil
 }

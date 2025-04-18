@@ -273,7 +273,7 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	// 修改Group上层的Task 的Status状态为deploychecking
 	// 为了适配迁移，副本group在handleCheckingUpdate方法当中无需再将Task的状态设置为DeployChecking，由源任务进行修改
 	if !gr.Spec.IsCopy {
-		taskName := gr.Status.Belongs.Name // 查找该group所属的Task
+		taskName := gr.Status.Belong.Name // 查找该group所属的Task
 		// client-go 查看task-list
 		task1, err1 := gw.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
 		if err1 != nil {

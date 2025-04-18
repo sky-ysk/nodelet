@@ -96,7 +96,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
-	conditionEngine := utils.NewConditionEngine(nodeClient, taskClient, groupClient, actionClient)
+	conditionEngine := utils.NewConditionEngine()
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -115,8 +115,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupLister:         lister,
 		groupWorkers:        workers,
 		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, runtimeClient, depenManager, groupTargetMap, actionTargetMap, runtimeTargetMap),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient, groupTargetMap),
-		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, actionClient, runtimeClient, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		migrationController: controller.NewMigrationController(clientset, groupClient, actionClient, runtimeClient, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
@@ -181,7 +181,7 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 				//if err != nil {
 				//	logs.Errorf("get group:%s failed", groupName)
 				//}
-				if gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
+				if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 					if gr.Status.Phase == apis.ReadyToDeploy {
 						groupUpdate := types.GroupUpdate{
 							Group: gr,

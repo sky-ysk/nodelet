@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"hit.edu/framework/test/etcd_sync/informer"
+	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"reflect"
 	"sync"
 	"time"
@@ -52,12 +52,12 @@ type GroupMonitor struct {
 	runtimeClient core.RuntimeInterface
 	stopCh        chan struct{}
 	// 跨域
-	groupTargets   map[string]*informer.Target[*apis.Group]
-	actionTargets  map[string]*informer.Target[*apis.Action]
-	runtimeTargets map[string]*informer.Target[*apis.Runtime]
+	groupTargets   map[string]cross_core.GroupInterface
+	actionTargets  map[string]cross_core.ActionInterface
+	runtimeTargets map[string]cross_core.RuntimeInterface
 }
 
-func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface, runtimeClient core.RuntimeInterface, dependencyManager *dependency.DependencyManager, groupTarget map[string]*informer.Target[*apis.Group], actionTarget map[string]*informer.Target[*apis.Action], runtimeTarget map[string]*informer.Target[*apis.Runtime]) *GroupMonitor {
+func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface, runtimeClient core.RuntimeInterface, dependencyManager *dependency.DependencyManager, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:      groupManager,
 		groupQueues:       groupQueues,
@@ -797,7 +797,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	groupSpec := &getGroup.Spec
 	groupStatus := &getGroup.Status
 	//var actionStart = true              //action是否需要标记启动（下面的runtime如果都没启动，则说明action要标记Running）
-	taskName := getGroup.Status.Belongs.Name // group的Belongs属性当中的TaskName(全局唯一的)
+	taskName := getGroup.Status.Belong.Name // group的Belongs属性当中的TaskName(全局唯一的)
 	// 是否为副本任务
 	isCopyGroup := getGroup.Spec.IsCopy
 	var taskIsFirstSet = false  // 为了适配发送最全的Task信息
@@ -824,11 +824,11 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 			}
 			if task.Status.Phase == apis.DeployCheck { // 说明是Task中的第一个Group启动，那说明Task也是第一次启动，要标记状态为Phase（running or Failed）
 				if phase == apis.Failed {
-					task.Status.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
+					task.Status.FinishAt = &startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
 				}
-				task.Status.StartAt = startTime
+				task.Status.StartAt = &startTime
 				task.Status.Phase = phase
-				task.Status.LastTime = lastTime
+				task.Status.LastTime = &lastTime
 				taskIsFirstSet = true
 			}
 		}
@@ -854,18 +854,18 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 				}
 				runtimeStatus := &runtime.Status
 				if phase == apis.Failed { //对于Phase等于Failed，标记startTime
-					runtimeStatus.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
+					runtimeStatus.FinishAt = &startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
 					actionIsFailed = true
 					groupIsFailed = true
 					taskIsFailed = true
 				} else {
 					if processId != "" { // 细粒度任务Init已经初始化了，恢复运行的时候，这里没有传入进程id（在Init阶段传的），判断为空的话说明这个processId是有值的，不做覆盖
-						runtimeStatus.ProcessId = processId
+						runtimeStatus.ProcessId = &processId
 					}
 				}
-				runtimeStatus.StartAt = startTime
+				runtimeStatus.StartAt = &startTime
 				runtimeStatus.Phase = phase // 这里的Phase有可能是Failed，也有可能是running
-				runtimeStatus.LastTime = lastTime
+				runtimeStatus.LastTime = &lastTime
 				// 设置副本runtime的状态为Phase（running or failed），如果是跨域的话，这里估计还得再修改
 				gmo.updateCopyIngfoForRuntime(getGroup, phase, actionSpecName, runtimeSpecName)
 				// 更新一下etcd当中的Runtime的Status
@@ -878,20 +878,20 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 		}
 		if actionIsFailed {
 			actionStatus.Phase = apis.Failed
-			actionStatus.LastTime = lastTime
-			actionStatus.FinishAt = startTime
+			actionStatus.LastTime = &lastTime
+			actionStatus.FinishAt = &startTime
 		}
 		// TODO 待解决 有Init--时间的问题
 		if actionStatus.Phase == apis.DeployCheck || actionStatus.Phase == apis.Init { // 说明action的刚从DeployCheck(Init)切换到启动状态，需要更改状态
 			logs.Trace("=======================================================4")
 			if phase == apis.Failed {
-				actionStatus.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
+				actionStatus.FinishAt = &startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
 			}
 			if phase == apis.Running {
-				actionStatus.StartAt = startTime
+				actionStatus.StartAt = &startTime
 			}
 			actionStatus.Phase = phase
-			actionStatus.LastTime = lastTime
+			actionStatus.LastTime = &lastTime
 			// 当前group有副本，那么需要将该任务对应的副本任务的action的开始状态也设置一下
 			gmo.updateCopyIngfoForAction(groupSpec, phase, actionSpecName)
 
@@ -905,21 +905,21 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 		}
 	}
 	if groupIsFailed {
-		groupStatus.LastTime = startTime
-		groupStatus.FinishAt = startTime
+		groupStatus.LastTime = &startTime
+		groupStatus.FinishAt = &startTime
 		groupStatus.Phase = apis.Failed
 	}
 	// TODO 待解决 有Init--时间的问题
 	//修改group下面的groupStatus下面的ActionStatus，ActionStatus下面的RuntimeStatus
 	if groupStatus.Phase == apis.DeployCheck || groupStatus.Phase == apis.Init { // 说明Group刚从DeployCheck(Init)状态边为执行状态
 		if phase == apis.Failed {
-			groupStatus.FinishAt = startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
+			groupStatus.FinishAt = &startTime //任务在执行的时候就发送错误，那么开始和结束时间都标记为同一时刻
 		}
 		if phase == apis.Running {
-			groupStatus.StartAt = startTime
+			groupStatus.StartAt = &startTime
 		}
 		groupStatus.Phase = phase //说明当前处理的任务是在第一个action当中，所以Group的Phase也得设置为phase（running or Failed）
-		groupStatus.LastTime = lastTime
+		groupStatus.LastTime = &lastTime
 		groupIsFirstSet = true
 	}
 
@@ -931,8 +931,8 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	// 修改Task信息
 	if !isCopyGroup {
 		if taskIsFailed {
-			task.Status.FinishAt = startTime
-			task.Status.LastTime = startTime
+			task.Status.FinishAt = &startTime
+			task.Status.LastTime = &startTime
 			task.Status.Phase = apis.Failed
 		}
 		// 更新一下etcd当中的task的Status
@@ -985,7 +985,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	finshTime := event.FinishAt
 	lastTime := event.LastTime
 	// Task 信息
-	taskName := get.Status.Belongs.Name
+	taskName := get.Status.Belong.Name
 
 	// 是否为副本任务
 	isCopyGroup := get.Spec.IsCopy
@@ -1106,8 +1106,8 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			runtimeStatus := &allRuntime.Status
 			if rSpecName == runtimeSpecName {
 				runtimeStatus.Phase = phase
-				runtimeStatus.FinishAt = finshTime
-				runtimeStatus.LastTime = lastTime
+				runtimeStatus.FinishAt = &finshTime
+				runtimeStatus.LastTime = &lastTime
 				// 如果说该group有副本，并且该副本group是提前部署副本的，那么这里除了修改源runtime的状态，还得修改副本runtime的状态
 				gmo.updateCopyIngfoForRuntime(get, phase, actionSpecName, runtimeSpecName)
 				// 更新一下etcd当中的Runtime的Status
@@ -1133,15 +1133,15 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		}
 		// 得加一个逻辑：如果Action下有一个Runtime执行Failed或Killed，在这里得检查一下
 		if finalActionIsFailed {
-			actionStatus.FinishAt = finshTime
-			actionStatus.LastTime = lastTime
+			actionStatus.FinishAt = &finshTime
+			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Failed
 			gmo.recorder.Event(action, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Action Name:\t %s is Failed", action.Name))
 			gmo.updateCopyIngfoForAction(groupSpec, phase, actionSpecName)
 		}
 		if finalActionIsKilled {
-			actionStatus.FinishAt = finshTime
-			actionStatus.LastTime = lastTime
+			actionStatus.FinishAt = &finshTime
+			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Killed
 			gmo.recorder.Event(action, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name))
 			gmo.updateCopyIngfoForAction(groupSpec, phase, actionSpecName)
@@ -1149,8 +1149,8 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		if allRuntiemCompleted { //如果说ActionStatus下面的RuntimeStatus都被执行了，还得修改ActionStatus的phase状态
 			//后续可能还要补充:Results
 			//actionStatus.Results = results
-			actionStatus.FinishAt = finshTime
-			actionStatus.LastTime = lastTime
+			actionStatus.FinishAt = &finshTime
+			actionStatus.LastTime = &lastTime
 			// 还得发送Action执行完成的事件，同时将etcd当中的Action资源状态进行修改
 			if !finalActionIsKilled && !finalActionIsFailed {
 				actionStatus.Phase = phase
@@ -1167,21 +1167,21 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	}
 	// 得加一个逻辑：如果Group下有一个Action执行Failed或Killed，在这里得检查一下
 	if finalGroupIsFailed {
-		groupStatus.FinishAt = finshTime
-		groupStatus.LastTime = lastTime
+		groupStatus.FinishAt = &finshTime
+		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Failed
 		gmo.recorder.Event(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name))
 	}
 	if finalGroupIsKilled {
-		groupStatus.FinishAt = finshTime
-		groupStatus.LastTime = lastTime
+		groupStatus.FinishAt = &finshTime
+		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Killed
 		gmo.recorder.Event(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name))
 	}
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
 	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
-		groupStatus.FinishAt = finshTime
-		groupStatus.LastTime = lastTime
+		groupStatus.FinishAt = &finshTime
+		groupStatus.LastTime = &lastTime
 		if !finalGroupIsKilled && !finalGroupIsFailed {
 			groupStatus.Phase = phase //Group的状态等于当前Action执行完成的状态  Succeed
 			gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
@@ -1203,20 +1203,20 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	if !isCopyGroup {
 		// 将修改后的Group状态值赋值给Task
 		if finalTaskIsFailed {
-			task.Status.FinishAt = finshTime
-			task.Status.LastTime = lastTime
+			task.Status.FinishAt = &finshTime
+			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Failed
 			gmo.recorder.Event(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name))
 		}
 		if finalTaskIsKilled {
-			task.Status.FinishAt = finshTime
-			task.Status.LastTime = lastTime
+			task.Status.FinishAt = &finshTime
+			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Killed
 			gmo.recorder.Event(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name))
 		}
 		if otherGroupCompleted && nowGroupCompleted {
-			task.Status.FinishAt = finshTime
-			task.Status.LastTime = lastTime
+			task.Status.FinishAt = &finshTime
+			task.Status.LastTime = &lastTime
 			if !finalTaskIsFailed && !finalTaskIsKilled {
 				task.Status.Phase = phase //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，如果为Succeed，则Task也为Succeed，反正为Failed
 				gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
@@ -1631,24 +1631,24 @@ func (gmo *GroupMonitor) handleStatusUpdate(group *apis.Group, failed apis.Phase
 	// 设置当前group的状态为Failed，同时去找Task，标记其状态也为Failed
 	time := apis.Time{time.Now()}
 	group.Status.Phase = failed
-	group.Status.StartAt = time
-	group.Status.FinishAt = time
-	group.Status.LastTime = time
+	group.Status.StartAt = &time
+	group.Status.FinishAt = &time
+	group.Status.LastTime = &time
 	// 更新一下etcd当中的Group的Status
 	err := gmo.UpdateGroupStatus(&group.Status, group.Name)
 	if err != nil {
 		logs.Errorf("Update group status err-555:%v", err)
 	}
-	taskName := group.Status.Belongs.Name // 当前所属的Task的Name(全局唯一)
+	taskName := group.Status.Belong.Name // 当前所属的Task的Name(全局唯一)
 	// 获取这个Task
 	task, err := gmo.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Get task from etcd err:%v", err)
 	}
 	task.Status.Phase = failed
-	task.Status.StartAt = time
-	task.Status.FinishAt = time
-	task.Status.LastTime = time
+	task.Status.StartAt = &time
+	task.Status.FinishAt = &time
+	task.Status.LastTime = &time
 	// 更新一下etcd当中的Task的Status
 	err = gmo.updateTaskStatus(&task.Status, task.Name)
 	if err != nil {
@@ -1664,11 +1664,11 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 
 	// GroupStatus下面的ActionStatus、RuntimeStatus
 	action.Status.Phase = apis.Migrated
-	action.Status.LastTime = nowTime
-	action.Status.FinishAt = nowTime
+	action.Status.LastTime = &nowTime
+	action.Status.FinishAt = &nowTime
 	runtime.Status.Phase = apis.Migrated
-	runtime.Status.LastTime = nowTime
-	runtime.Status.FinishAt = nowTime
+	runtime.Status.LastTime = &nowTime
+	runtime.Status.FinishAt = &nowTime
 
 	// 检查group下的信息是否都修改完成
 	var IsModify = true
@@ -1706,15 +1706,15 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 						continue
 					}
 					runtimeStatus.Phase = apis.Migrated
-					runtimeStatus.LastTime = nowTime
-					runtimeStatus.FinishAt = nowTime
+					runtimeStatus.LastTime = &nowTime
+					runtimeStatus.FinishAt = &nowTime
 				}
 				if actionStatus.Phase == apis.Migrated {
 					continue
 				}
 				actionStatus.Phase = apis.Migrated
-				actionStatus.LastTime = nowTime
-				actionStatus.FinishAt = nowTime
+				actionStatus.LastTime = &nowTime
+				actionStatus.FinishAt = &nowTime
 			}
 		}
 		group.Status.Phase = apis.Migrated
@@ -1724,7 +1724,7 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 		var err error
 		var otherGroupCompleted = true
 		var finalTaskIsFailed = false
-		taskName := group.Status.Belongs.Name
+		taskName := group.Status.Belong.Name
 		task, err = gmo.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
 		if err != nil {
 			logs.Error("Get task by taskID error from etcd:%v", err)
@@ -1772,8 +1772,8 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 			} else {
 				task.Status.Phase = apis.Running //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，因为当前的Group正在迁移，只有当前group的副本任务完成了，那么到时候在Migrated队列当中，就会修改Task的状态的，这里设置为Running，合理
 			}
-			task.Status.FinishAt = nowTime
-			task.Status.LastTime = nowTime
+			task.Status.FinishAt = &nowTime
+			task.Status.LastTime = &nowTime
 		}
 		// 更新一下etcd当中的Task的Status
 		err = gmo.updateTaskStatus(&task.Status, task.Name)
@@ -1895,9 +1895,9 @@ func (gmo *GroupMonitor) handleRuntimeSucceedUpdate(action *apis.Action, runtime
 func (gmo *GroupMonitor) handleCopyRuntimeFailedUpdate(groupCopy *apis.Group, action *apis.Action) {
 	nowTime := apis.Time{time.Now()}
 	groupCopy.Status.Phase = apis.Failed
-	groupCopy.Status.LastTime = nowTime
-	groupCopy.Status.FinishAt = nowTime
-	groupCopy.Status.StartAt = nowTime
+	groupCopy.Status.LastTime = &nowTime
+	groupCopy.Status.FinishAt = &nowTime
+	groupCopy.Status.StartAt = &nowTime
 	// 更新一下etcd当中的Group的Status
 	err := gmo.UpdateGroupStatus(&groupCopy.Status, groupCopy.Name)
 	if err != nil {
@@ -1905,9 +1905,9 @@ func (gmo *GroupMonitor) handleCopyRuntimeFailedUpdate(groupCopy *apis.Group, ac
 	}
 	// groupStatus下面的Action以及runtime的Phase修改为Succeed
 	action.Status.Phase = apis.Failed
-	action.Status.LastTime = nowTime
-	action.Status.FinishAt = nowTime
-	action.Status.StartAt = nowTime
+	action.Status.LastTime = &nowTime
+	action.Status.FinishAt = &nowTime
+	action.Status.StartAt = &nowTime
 	// 更新一下etcd当中的Action的Status
 	err = gmo.UpdateActionStatus(&action.Status, action.Name)
 	if err != nil {
@@ -1922,9 +1922,9 @@ func (gmo *GroupMonitor) handleCopyRuntimeFailedUpdate(groupCopy *apis.Group, ac
 		runtimeStatus := &runtime.Status
 		if runtimeStatus.CopyStatus == "Failed" {
 			runtimeStatus.Phase = apis.Failed
-			runtimeStatus.LastTime = nowTime
-			runtimeStatus.FinishAt = nowTime
-			runtimeStatus.StartAt = nowTime
+			runtimeStatus.LastTime = &nowTime
+			runtimeStatus.FinishAt = &nowTime
+			runtimeStatus.StartAt = &nowTime
 			// 更新一下etcd当中的Runtime的Status
 			err := gmo.UpdateRuntimeStatus(runtimeStatus, runtime.Name)
 			if err != nil {
@@ -1948,7 +1948,7 @@ func (gmo *GroupMonitor) handleTaskFailedUpdate(gro *apis.Group) {
 	}
 	// 修改Group所属的Task的Phase为Failed
 	nowTime := apis.Time{time.Now()}
-	taskName := gro.Status.Belongs.Name // group的Belongs属性当中的TaskID
+	taskName := gro.Status.Belong.Name // group的Belongs属性当中的TaskID
 	var task *apis.Task
 	var err2 error
 	task, err2 = gmo.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
@@ -1985,7 +1985,7 @@ func (gmo *GroupMonitor) handleTaskSucceedUpdate(gro *apis.Group) {
 	}
 	// 修改Group所属的Task的Phase为Succed
 	nowTime := apis.Time{time.Now()}
-	taskName := gro.Status.Belongs.Name // group的Belongs属性当中的TaskID
+	taskName := gro.Status.Belong.Name // group的Belongs属性当中的TaskID
 	var task *apis.Task
 	var err2 error
 	task, err2 = gmo.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
@@ -2064,26 +2064,27 @@ func (gmo *GroupMonitor) updateCopyIngfoForRuntime(group *apis.Group, phase apis
 			groupTarget := gmo.groupTargets[value]
 			actionTarget := gmo.actionTargets[value]   //-=-=-=-=
 			runtimeTarget := gmo.runtimeTargets[value] //-=-=-=-=
-			getGroup, err := groupTarget.Get(context.TODO(), "test", copyGroupName, "groups", metav1.GetOptions{})
+			getGroup, err := groupTarget.Get(context.TODO(), copyGroupName, metav1.GetOptions{})
 			if err != nil {
 				logs.Infof("Failed to get group: %v", err)
 			}
 			for aSpecName, actionReference := range getGroup.Status.Actions {
 				if aSpecName == actionSpecName {
-					action, err := actionTarget.Get(context.TODO(), "test", actionReference.Name, "actions", metav1.GetOptions{})
+					action, err := actionTarget.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
 					if err != nil {
 						logs.Infof("Failed to get action: %v", err)
 					}
 					for rSpecName, runtimeReference := range action.Status.Runtimes {
 						if rSpecName == runtimeSpecName {
-							runtime, err := runtimeTarget.Get(context.TODO(), "test", runtimeReference.Name, "runtimes", metav1.GetOptions{})
+							patchRuntime, err := json.Marshal(map[string]interface{}{
+								"status": map[string]interface{}{
+									"copy_status": string(phase),
+								},
+							})
+							//runtime.Status.CopyStatus = string(phase)
+							_, err = runtimeTarget.Patch(context.TODO(), runtimeReference.Name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
 							if err != nil {
-								logs.Infof("Failed to get runtime: %v", err)
-							}
-							runtime.Status.CopyStatus = string(phase)
-							_, err = runtimeTarget.Update(context.TODO(), runtime, metav1.UpdateOptions{})
-							if err != nil {
-								logs.Infof("Failed to update runtime: %v", err)
+								logs.Infof("Failed to Patch runtime: %v", err)
 							}
 						}
 					}
@@ -2163,18 +2164,18 @@ func (gmo *GroupMonitor) updateCopyIngfoForAction(groupSpec *apis.GroupSpec, pha
 			copyGroupName := key
 			groupTarget := gmo.groupTargets[value]   //-=-=-=-=
 			actionTarget := gmo.actionTargets[value] //-=-=-=-=
-			getGroup, err := groupTarget.Get(context.TODO(), "test", copyGroupName, "groups", metav1.GetOptions{})
+			getGroup, err := groupTarget.Get(context.TODO(), copyGroupName, metav1.GetOptions{})
 			if err != nil {
 				logs.Infof("Failed to get group: %v", err)
 			}
 			for aSpecName, actionReference := range getGroup.Status.Actions {
 				if aSpecName == actionSpecName {
-					action, err := actionTarget.Get(context.TODO(), "test", actionReference.Name, "actions", metav1.GetOptions{})
-					if err != nil {
-						logs.Infof("Failed to get action: %v", err)
-					}
-					action.Status.CopyStatus = string(phase)
-					_, err = actionTarget.Update(context.TODO(), action, metav1.UpdateOptions{})
+					patchAction, err := json.Marshal(map[string]interface{}{
+						"status": map[string]interface{}{
+							"copy_status": string(phase),
+						},
+					})
+					_, err = actionTarget.Patch(context.TODO(), actionReference.Name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
 					if err != nil {
 						logs.Infof("Failed to update action: %v", err)
 					}
