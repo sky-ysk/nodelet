@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	NamespaceDefault string = "defaultNamespace"
+	NamespaceDefault string = "test"
 	NamespaceTest           = "test"
 	NamespaceAll     string = ""
 )
@@ -514,6 +514,9 @@ type TaskStatus struct {
 	//
 	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
 
+	// Prefix
+	Prefix string `json:"prefix,omitempty" yaml:"prefix"`
+
 	//
 	Groups map[string]ObjectReference `json:"groups,omitempty" yaml:"groups"`
 
@@ -823,8 +826,6 @@ const (
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
 	DeviceComplete     DevicePhase = "Complete"
-	DeviceReadyStartUp DevicePhase = "ReadyStartUp"
-	DeviceReadyClose   DevicePhase = "ReadyClose"
 	DeviceDisconnected DevicePhase = "Disconnected"
 )
 
@@ -1194,6 +1195,7 @@ const (
 	ConstData   DataType = "constants"
 	ResultsData DataType = "results"
 	LocalData   DataType = "local"
+	DeviceData  DataType = "device"
 )
 
 // 值类型，表示数据使用
@@ -1251,6 +1253,9 @@ type ActionStatus struct {
 }
 
 type RuntimeStatus struct {
+	// 输出的结果
+	Outputs map[string]Value `json:"outputs,omitempty" yaml:"outputs"`
+	//
 	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	// 当前资源使用情况
 	Resources map[string]ObjectReference `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map

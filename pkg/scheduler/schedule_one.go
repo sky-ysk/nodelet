@@ -108,7 +108,7 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 }
 
 func (sched *Scheduler) frameworkForGroup(group *apis.Group) (framework.Framework, error) {
-	fwk, ok := sched.Profiles[group.Spec.SchedulerName]
+	fwk, ok := sched.Profiles[*group.Spec.SchedulerName]
 	if !ok {
 		return sched.DefaultFramework, nil
 		//return nil, fmt.Errorf("profile not found for scheduler name %q", group.Spec.SchedulerName)
@@ -448,7 +448,7 @@ func getNodeFromApiServer() []*config.NodeInfo {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	nodesClient := clientSet.Core().Nodes("test")
+	nodesClient := clientSet.Core().Nodes(apis.NamespaceTest)
 	lstOpts := metav1.ListOptions{}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {

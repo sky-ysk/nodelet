@@ -4,7 +4,12 @@ import (
 	"context"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/utils"
+	"io"
+	"net/http"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -53,7 +58,7 @@ func createConditionTask() apis.Task {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ConditionTask",
-			Namespace: apis.NamespaceAll,
+			Namespace: apis.NamespaceTest,
 		},
 		Spec: apis.TaskSpec{
 			Name: "ConditionTask",
@@ -98,7 +103,7 @@ func TestAddGroup(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testGroup1",
-			Namespace: apis.NamespaceAll,
+			Namespace: apis.NamespaceTest,
 		},
 		Spec: apis.GroupSpec{
 			Name: "testGroup1",
@@ -113,10 +118,44 @@ func TestAddGroup(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 	ctx := context.Background()
-	gc := cs.Core().Groups(apis.NamespaceAll)
+	gc := cs.Core().Groups(apis.NamespaceTest)
 	_, err = gc.Create(ctx, &group, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("%v", err)
 		return
 	}
+}
+
+// go test -run TestSendToProxy -v
+func TestSendToProxy(t *testing.T) {
+	logs.Init("testModule")
+	orange, err := os.ReadFile("orange.json")
+	client := &http.Client{}
+
+	url := "http://192.168.8.176:8899/framework/v1/task?Name=T1&&Namesapce=test"
+	logs.Info(url)
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(orange)))
+	if err != nil {
+		logs.Fatal(err)
+	}
+	//Content-Type很重要，下文解释
+	//req.Header.Set("Content-Type", "application/x-www")
+	req.Header.Set("Content-Type", "application/json")
+	//req.Header.Set("Content-Type", "multipart/form-data")
+
+	rep, err := client.Do(req)
+	if err != nil {
+		logs.Fatal(err.Error())
+	}
+	data, err := io.ReadAll(rep.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logs.Error(err)
+		}
+	}(rep.Body)
+	if err != nil {
+		logs.Fatal(err)
+	}
+	logs.Infof("resp is : %s", string(data))
 }
