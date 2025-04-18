@@ -51,7 +51,6 @@ func (n *DeviceExporter) Run() error {
 		return err
 	}
 	deviceClient := clientSet.Core().Devices("test")
-	managers := manager.NewManagers()
 	//// 定期Gather一次数据
 	//err := n.deviceCollector.GatherStaticData()
 	//if err != nil {
@@ -86,7 +85,7 @@ func (n *DeviceExporter) Run() error {
 		case <-monitorTicker.C:
 			logs.Infof("[DEVICE EXPORTER] monitor all device....")
 			go func() {
-				err := manager.MonitorAllDevicesState(deviceClient, managers)
+				err := manager.MonitorAllDevicesState(deviceClient)
 				if err != nil {
 					logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
 				}

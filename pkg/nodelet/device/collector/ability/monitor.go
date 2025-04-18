@@ -48,13 +48,13 @@ func MonitorAllDevicesState(deviceClient core.DeviceInterface) error {
 			go func() {
 				devicePhase := device.Status.Phase
 				switch devicePhase {
-				case apis.DeviceDisconnected:
+				case apis.DeviceDisconnected: // 离线状态
 					logs.Infof("[DEVICE EXPORTER] Device[%s] is Disconnected...", device.Name)
 					break
-				case apis.DeviceRunning:
+				case apis.DeviceRunning: // 运行状态
 					logs.Infof("[DEVICE EXPORTER] Device[%s] is Running...", device.Name)
 					break
-				case apis.DeviceReadyStartUp:
+				case apis.DeviceReadyStartUp: // 准备启动状态
 					logs.Infof("[DEVICE EXPORTER] Device[%s] is Ready To StartUp...", device.Name)
 					logs.Infof("[DEVICE EXPORTER] Try to StartUp Device[%s]...", device.Name)
 					// 获取URL和Name
@@ -112,10 +112,65 @@ func MonitorAllDevicesState(deviceClient core.DeviceInterface) error {
 							errChan <- err
 							return
 						}
-
 					}
 
-				case apis.DeviceReadyClose:
+				case apis.DeviceReadyClose: // 准备关闭状态
+					logs.Infof("[DEVICE EXPORTER] Device[%s] is Ready To Terminate...", device.Name)
+					logs.Infof("[DEVICE EXPORTER] Try to Terminate Device[%s]...", device.Name)
+					// 获取URL和Name
+					url := device.Spec.AccessMethod.URL
+					class := device.Spec.Abilities[0]
+					abilityName := device.Status.Abilities[class].Name
+					// 创建AbilityManager
+					am := NewAbilityManager(url, abilityName)
+					err = am.BindUUID()
+					if err != nil {
+						logs.Errorf("[DEVICE EXPORTER] Bind uuid fail")
+						errChan <- err
+						return
+					}
+					// 首先先判断一下设备是否在线，在线才能进行关闭设备的操作
+					var flag bool
+					flag, err = am.IsOnline()
+					if err != nil {
+						logs.Errorf("[Device EXPORTER] Device[%s] Judge Online fail", device.Name)
+						return
+					}
+					if !flag { // 如果设备不在线说明不正常
+						logs.Errorf("[DEVICE EXPORTER] Device[%s] is Offline", device.Name)
+						errChan <- fmt.Errorf("[DEVICE EXPORTER] Device[%s] is Offline, It should be Online", device.Name)
+						return
+					} else { // 设备在线说明正常
+						logs.Infof("[DEVICE EXPORTER] Device[%s] is Online, Normal", device.Name)
+						logs.Infof("[DEVICE EXPORTER] Device[%s] Try to Terminate...", device.Name)
+						err = am.TerminateAbility()
+						if err != nil {
+							logs.Infof("[DEVICE EXPORTER] Device[%s] Terminate fail", device.Name)
+							errChan <- err
+						}
+						logs.Infof("[DEVICE EXPORTER] Device[%s] Terminate successfully...", device.Name)
+						// 拉起成功 更新设备字段
+						device.Status.Phase = apis.DeviceDisconnected
+						for index, service := range device.Status.Abilities[class].Services {
+							service.Port = nil
+							device.Status.Abilities[class].Services[index] = service
+						}
+						_, err = deviceClient.Get(context.TODO(), device.Name, metav1.GetOptions{})
+						if err != nil {
+							logs.Errorf("[DEVICE EXPORTER] Get device[%s] fail", device.Name)
+							errChan <- err
+							return
+						}
+						_, err = deviceClient.Update(context.TODO(), &device, metav1.UpdateOptions{})
+						if err != nil {
+							logs.Errorf("[DEVICE EXPORTER] update device fail...")
+							errChan <- err
+							return
+						}
+					}
+				case apis.DeviceIdle: // 空闲状态
+
+				case apis.DeviceError: // 错误状态
 
 				}
 			}()
