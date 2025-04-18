@@ -131,21 +131,8 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
-	// 获取Group
-	groupName := ew.Status.Belong.Name
-	group, err := h.manager.GetGroup(groupName, namespace)
-	if err != nil {
-		logs.Errorf("Get group %s error: %v", groupName, err)
-		err := response.WriteError(http.StatusNotFound, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
-
 	// 创建action
-	result, err := h.manager.CreateAction(ew.Spec, group, namespace, UUID, group.Name)
+	result, err := h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
 	if err != nil {
 		err1 := response.WriteError(http.StatusInternalServerError, err)
 		if err1 != nil {
