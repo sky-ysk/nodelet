@@ -18,9 +18,9 @@ func TestCreateGroupWithoutActions(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-	
+
 	logs.Init("main")
-	
+
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -33,7 +33,7 @@ func TestCreateGroupWithoutActions(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-	
+
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -41,12 +41,12 @@ func TestCreateGroupWithoutActions(t *testing.T) {
 			rs2,
 		},
 	}
-	
+
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-	
+
 	gs := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -54,19 +54,46 @@ func TestCreateGroupWithoutActions(t *testing.T) {
 			as2,
 		},
 	}
-	
-	g, err := m.CreateGroupWithoutActions(gs, nil, "Guochuang", u.String(), "")
+
+	ts := apis.TaskSpec{
+		Name:   "T1",
+		Groups: []apis.GroupSpec{gs},
+	}
+
+	//task := apis.Task{
+	//	ObjectMeta: meta.ObjectMeta{
+	//		Name: "T1",
+	//	},
+	//	Spec: apis.TaskSpec{
+	//		Name:   "T1",
+	//		Groups: []apis.GroupSpec{gs},
+	//	},
+	//}
+
+	//g, err := m.CreateGroupWithoutActions(gs, &task, "Guochuang", u.String(), "")
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	
+
 	time.Sleep(10 * time.Second)
-	g, err = m.FillGroupWithActions(g)
-	if err != nil {
-		panic(err)
+	for _, g := range task.Status.Groups {
+		g, err := m.GetGroup(g.Name, g.Namespace)
+		if err != nil {
+			panic(err)
+		}
+		g, err = m.FillGroupWithActions(g)
+
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(g)
 	}
-	
-	fmt.Println(g)
+
 }
 
 func TestCreateGroup(t *testing.T) {
@@ -76,9 +103,9 @@ func TestCreateGroup(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-	
+
 	logs.Init("main")
-	
+
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -91,7 +118,7 @@ func TestCreateGroup(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-	
+
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -99,12 +126,12 @@ func TestCreateGroup(t *testing.T) {
 			rs2,
 		},
 	}
-	
+
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-	
+
 	gs := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -112,12 +139,12 @@ func TestCreateGroup(t *testing.T) {
 			as2,
 		},
 	}
-	
+
 	g, err := m.CreateGroup(gs, nil, "Guochuang", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	
+
 	fmt.Println(g)
 }
 
@@ -128,9 +155,9 @@ func TestCreateGroups(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-	
+
 	logs.Init("main")
-	
+
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -143,7 +170,7 @@ func TestCreateGroups(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-	
+
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -151,12 +178,12 @@ func TestCreateGroups(t *testing.T) {
 			rs2,
 		},
 	}
-	
+
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-	
+
 	gs1 := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -164,31 +191,31 @@ func TestCreateGroups(t *testing.T) {
 			as2,
 		},
 	}
-	
+
 	gs2 := apis.GroupSpec{
 		Name:    "G2",
 		Actions: []apis.ActionSpec{},
 	}
-	
+
 	ts := apis.TaskSpec{
 		Name: "T1",
 		Groups: []apis.GroupSpec{
 			gs1, gs2,
 		},
 	}
-	
+
 	task := apis.Task{
 		ObjectMeta: meta.ObjectMeta{
 			Name: "T1",
 		},
 		Spec: ts,
 	}
-	
+
 	g, err := m.CreateGroups(&task, "Guochuang", u.String(), "T1.")
 	if err != nil {
 		panic(err)
 	}
-	
+
 	fmt.Println(g)
 }
 
@@ -199,14 +226,14 @@ func TestGetGroups(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-	
+
 	logs.Init("main")
-	
+
 	alist, err := m.GetActions("Guochuang")
 	if err != nil {
 		panic(err)
 	} else {
-		
+
 		for _, item := range alist.Items {
 			str, err := analyzer.SerializeToJson(item)
 			if err != nil {
