@@ -7,6 +7,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"strings"
 	"time"
 )
 
@@ -15,15 +16,15 @@ func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, pref
 	groups := []*apis.Group{}
 	for _, as := range g.Spec.Groups {
 		// 默认情况下，创建Groups不填充Actions
-		//a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
-		a, err := m.CreateGroup(as, g, namespace, uuid, prefix)
+		a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
+		//a, err := m.CreateGroup(as, g, namespace, uuid, prefix)
 		if err != nil {
 			return nil, err
 		}
 		// TODO: 返回的应该是已经创建的Runtime
 		groups = append(groups, a) // a替换成实际的fa
 	}
-
+	
 	return groups, nil
 }
 
@@ -39,32 +40,32 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 		g.Name = gs.Name + "-" + uuid
 		prefix = gs.Name + "."
 	}
-
+	
 	// 构造Namespace
 	if namespace == "" {
 		g.Namespace = apis.NamespaceDefault
 	} else {
 		g.Namespace = namespace
 	}
-
+	
 	g.Kind = "Group"
 	g.APIVersion = "resources/v1"
-
+	
 	// 构造Labels
 	g.Labels = map[string]string{}
-
+	
 	// 复制Spec
 	g.Spec = gs
-
+	
 	// 构造Status
 	g.Status = apis.GroupStatus{}
-
+	
 	// 记录Create时间
 	g.Status.CreateAt = &apis.Time{time.Now()}
-
+	
 	// 初始化状态
 	g.Status.Phase = apis.Pending
-
+	
 	// 打上Label, 当前任务属于哪个Group和uuid域
 	if t != nil {
 		g.Status.Belong = &apis.ObjectReference{
@@ -77,22 +78,25 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 		g.Labels["belong"] = t.Name
 	}
 	g.Labels["uuid"] = uuid
-
+	
 	// 写入Client-Go中, 返回实际的Runtime
 	c := m.GetGroupClient(g.Namespace)
-
+	
 	fg, err := c.Client.Create(context.TODO(), &g, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
 	}
 	logs.Debugf("Created group: %v", fg)
-
+	
 	return fg, nil // TODO: 应当返回实际的fa
 }
 
 // 填充Group的Actions
 func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
-	prefix := g.Spec.Name + "."
+	// 根据当前Group的Name来获取Prefix
+	// Prefix固定为g.Name - uuid的部分
+	suffix := "-" + g.Labels["uuid"]
+	prefix := strings.TrimSuffix(g.Name, suffix) + "."
 
 	// 根据Spec创建Runtimes
 	actions, err := m.CreateActions(g, g.Namespace, g.Labels["uuid"], prefix)
@@ -100,7 +104,7 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 		return nil, err
 	}
 	g.Status.Actions = map[string]apis.ObjectReference{}
-
+	
 	// 根据生成的Runtime修改Group.Status.Actions
 	for _, r := range actions {
 		g.Status.Actions[r.Spec.Name] = apis.ObjectReference{
@@ -112,15 +116,16 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 		}
 	}
 
+	// 写入Client-Go中, 返回实际的Runtime
 	c := m.GetGroupClient(g.Namespace)
-
+	
 	fg, err := c.Client.Update(context.TODO(), g, metav1.UpdateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to fill group: %v", err)
 	}
 	logs.Debugf("Created fill: %v", fg)
 
-	return fg, nil
+	return fg, nil // TODO: 应当返回实际的fa
 }
 
 // 创建完整的Group
@@ -135,33 +140,33 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 		g.Name = gs.Name + "-" + uuid
 		prefix = gs.Name + "."
 	}
-
+	
 	// 构造Namespace
 	if namespace == "" {
 		g.Namespace = apis.NamespaceDefault
 	} else {
 		g.Namespace = namespace
 	}
-
+	
 	g.Kind = "Group"
 	g.APIVersion = "resources/v1"
-
+	
 	// 构造Labels
 	g.Labels = map[string]string{}
-
+	
 	// 复制Spec
 	g.Spec = gs
-
+	
 	// 构造Status
 	g.Status = apis.GroupStatus{}
-
+	
 	// 记录Create时间
 	g.Status.CreateAt = &apis.Time{time.Now()}
-
+	
 	// 初始化状态
 	g.Status.Phase = apis.Pending
 	g.Status.Actions = map[string]apis.ObjectReference{}
-
+	
 	// 打上Label, 当前任务属于哪个Group和uuid域
 	if t != nil {
 		g.Status.Belong = &apis.ObjectReference{
@@ -174,13 +179,13 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 		g.Labels["belong"] = t.Name
 	}
 	g.Labels["uuid"] = uuid
-
+	
 	// 根据Spec创建Runtimes
 	actions, err := m.CreateActions(&g, namespace, uuid, prefix)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	// 根据生成的Runtime修改Group.Status.Actions
 	for _, r := range actions {
 		g.Status.Actions[r.Spec.Name] = apis.ObjectReference{
@@ -193,13 +198,13 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	}
 	// 写入Client-Go中, 返回实际的Runtime
 	c := m.GetGroupClient(g.Namespace)
-
+	
 	fg, err := c.Client.Create(context.TODO(), &g, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
 	}
 	logs.Debugf("Created group: %v", fg)
-
+	
 	return fg, nil // TODO: 应当返回实际的fa
 }
 
