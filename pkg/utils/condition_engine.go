@@ -15,7 +15,7 @@ func NewConditionEngine() *ConditionEngine {
 }
 
 func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis.ResultType, error) {
-
+	
 	//if len(conditions.Formulas) == 0 {
 	//	return apis.True, nil
 	//}
@@ -33,7 +33,7 @@ func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis
 }
 
 func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis.ResultType, error) {
-
+	
 	leftReady, leftVal := engine.extractValue(formula.RightValue)
 	rightReady, rightVal := engine.extractValue(formula.LeftValue)
 	if !leftReady || !rightReady {
@@ -55,19 +55,19 @@ func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis
 }
 
 // TODO 解析具体的值，返回bool表示值是否就绪，string表示值
-func (engine *ConditionEngine) extractValue(value apis.ConditionValue) (bool, string) {
-
-	switch value.ValueType {
-	case apis.ConstantType:
+func (engine *ConditionEngine) extractValue(value apis.Value) (bool, string) {
+	
+	switch value.DataType {
+	case apis.Constant:
 		return true, value.Value
-
+	
 	//Task{task1}.Group{group1}.Action{action1}.Output{completed}
 	//
 	//Succeed Group状态
 	//目前做一些特殊逻辑，只去捞Action里面的东西
 	case apis.ArgumentRefType:
 		//re := regexp.MustCompile(`Action\{([^}]+)}`)
-
+		
 		// 查找子匹配
 		//match := re.FindStringSubmatch(value.Value)
 		//if len(match) < 2 {
