@@ -825,9 +825,6 @@ const (
 	DeviceRunning      DevicePhase = "Running"
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
-	DeviceReadyClose   DevicePhase = "ReadyClose"
-	DeviceReadyStartUp DevicePhase = "ReadyStartUp"
-	DeviceComplete     DevicePhase = "Complete"
 	DeviceDisconnected DevicePhase = "Disconnected"
 )
 
@@ -978,6 +975,13 @@ type AbilityService struct {
 
 // TODO: 增加具体的值限制
 type AbilityState int
+
+const (
+	AbilityRunning        AbilityState = 1
+	AbilityReadyStartUp   AbilityState = 2
+	AbilityReadyTerminate AbilityState = 3
+	AbilityTerminated     AbilityState = 4
+)
 
 type DeviceStatus struct {
 	Abilities map[string]Ability `json:"abilities,omitempty" yaml:"abilities"`

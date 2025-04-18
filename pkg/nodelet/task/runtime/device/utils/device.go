@@ -139,47 +139,6 @@ func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.De
 	return nil, devices
 }
 
-// UpdateDeviceStatus 更新DeviceStatus
-func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]*apis.Device, deviceClient core.DeviceInterface) error {
-
-	for _, spec := range runtime.Devices {
-		status := action.Status.Devices[spec.Name]
-		name := spec.Name
-		logs.Infof("device name is %s\n", name)
-		status.Status = "running"
-		status.Phase = apis.DeviceRunning
-		status.InstanceID = taskId
-		status.Lock = apis.Lock{Type: status.Lock.Type, Lock: true, Ref: status.Lock.Ref}
-		status.LastTime = apis.Time{Time: time.Now()}
-
-		action.Status.Devices[spec.Name] = status
-
-		newDevice := &apis.Device{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      spec.Name,
-				Namespace: "test",
-				Labels: map[string]string{
-					"environment": "dev",
-				},
-			},
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Device",
-				APIVersion: "resources/v1",
-			},
-			Spec:   spec,
-			Status: status,
-		}
-		_, err := deviceClient.Update(context.TODO(), newDevice, metav1.UpdateOptions{})
-		if err != nil {
-			logs.Errorf("update device %s status failed, %s", name, err)
-			return err
-		}
-		logs.Infof("update device %s's status\n", name)
-	}
-
-	return nil
-}
-
 // UpdateDeviceRunning 用于在发布任务指令成功后(但是还不知道业务执行情况)时 更新device的状态
 func UpdateDeviceRunning(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
 	// 绑定ActionID
@@ -194,73 +153,5 @@ func UpdateDeviceRunning(runtime *apis.Runtime, action *apis.Action, device *api
 		return err
 	}
 	logs.Infof("update device [%s] successfully[stage running]\n", device.Name)
-	return nil
-}
-
-//func UpdateDeviceSuccess(runtime *apis.Runtime, action *apis.Action, device *apis.Device) error {
-//	// Lock
-//
-//	// ActionID更改为空
-//	device.Status.ActionID = ""
-//	// 设置更新时间
-//	device.Status.LastTime = apis.Time{Time: time.Now()}
-//	// 更新phase
-//	device.Status.Phase = apis.DeviceIdle
-//
-//}
-
-func UpdateDevice(runtime *apis.Runtime, device *apis.Device, taskId string, deviceClient core.DeviceInterface) error {
-	parts := strings.Split(runtime.Name, "_")
-	if parts[0] == "manage" {
-		device.Status.Status = "Init"
-		device.Status.Phase = apis.DeviceInit
-	} else if parts[0] == "service" {
-		device.Status.Status = "Running"
-		device.Status.Phase = apis.DeviceRunning
-	}
-	device.Status.InstanceID = taskId
-
-	_, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})
-	if err != nil {
-		logs.Errorf("update device %s  failed, %s", device.Name, err)
-		return err
-	}
-
-	return nil
-}
-
-func UpdateDeviceStatusFailed(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
-	device.Status.Status = "failed"
-	device.Status.Phase = apis.DeviceError
-	device.Status.LastTime = apis.Time{time.Now()}
-	if _, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
-		logs.Errorf("update device %s status failed, %s", device.Name, err)
-		return err
-	}
-
-	for _, spec := range runtime.Devices {
-		if spec.Name == device.Spec.Name {
-			action.Status.Devices[spec.Name] = device.Status
-
-		}
-	}
-	return nil
-}
-
-func UpdateDeviceStatusCompleted(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
-	device.Status.Status = "completed"
-	//device.Status.Phase = apis.DeviceComplete
-	device.Status.LastTime = apis.Time{time.Now()}
-	if _, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
-		logs.Errorf("update device %s status failed, %s", device.Name, err)
-		return err
-	}
-
-	for _, spec := range runtime.Devices {
-		if spec.Name == device.Spec.Name {
-			action.Status.Devices[spec.Name] = device.Status
-
-		}
-	}
 	return nil
 }

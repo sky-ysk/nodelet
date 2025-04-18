@@ -5,7 +5,7 @@ import (
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"strconv"
 	"sync"
@@ -24,22 +24,23 @@ func NewManagers() *Managers {
 	}
 }
 
-func MonitorAllDevicesState(deviceClient core.DeviceInterface) error {
-	// 获取全部的device
-	deviceList, err := deviceClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		logs.Errorf("[DEVICE EXPORTER] list device err!")
-		return err
-	}
-	logs.Infof("[DEVICE EXPORTER] ETCD has %d Devices", len(deviceList.Items))
-
+func MonitorAllAbilities(clientManager *m.Manager) error {
+	//// 获取全部的device
+	//deviceClient := clientManager.ClientSet.Core().Devices("test")
+	//deviceList, err := deviceClient.List(context.TODO(), metav1.ListOptions{})
+	//if err != nil {
+	//	logs.Errorf("[DEVICE EXPORTER] list device err!")
+	//	return err
+	//}
+	//logs.Infof("[DEVICE EXPORTER] ETCD has %d Devices", len(deviceList.Items))
+	deviceList := []apis.Device
 	// 并发同步控制
 	var wg sync.WaitGroup
 	// 错误处理通道
-	errChan := make(chan error, len(deviceList.Items))
+	errChan := make(chan error, 10)
 
 	// 遍历所有的Device
-	for _, d := range deviceList.Items {
+	for _, d := range deviceList {
 		device := d
 		// Ability类型的device
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
@@ -192,4 +193,8 @@ func MonitorAllDevicesState(deviceClient core.DeviceInterface) error {
 		return fmt.Errorf("device processing errors: %v", errs)
 	}
 	return nil
+}
+
+func MonitorAllDevices(clientManager *m.Manager) error {
+
 }

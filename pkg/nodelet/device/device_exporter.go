@@ -8,6 +8,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
+	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/device/collector"
 	"hit.edu/framework/pkg/nodelet/device/collector/ability"
@@ -50,7 +51,8 @@ func (n *DeviceExporter) Run() error {
 		logs.Errorf("[DEVICE EXPORTER] init client failed")
 		return err
 	}
-	deviceClient := clientSet.Core().Devices("test")
+	clientManager := m.NewManager(clientSet)
+
 	//// 定期Gather一次数据
 	//err := n.deviceCollector.GatherStaticData()
 	//if err != nil {
@@ -68,8 +70,9 @@ func (n *DeviceExporter) Run() error {
 	//defer dynamicTicker.Stop()
 
 	// 加入关于Ability的信息收集
-	monitorTicker := time.NewTicker(time.Second * 5)
-	defer monitorTicker.Stop()
+	deviceMonitorTicker := time.NewTicker(time.Second * 20)
+	abilityMonitorTicker := time.NewTicker(time.Second * 10)
+	defer deviceMonitorTicker.Stop()
 	for {
 		select {
 		//case <-staticTicker.C:
@@ -82,10 +85,18 @@ func (n *DeviceExporter) Run() error {
 		//	if err != nil {
 		//		return err
 		//	}
-		case <-monitorTicker.C:
+		case <-deviceMonitorTicker.C:
 			logs.Infof("[DEVICE EXPORTER] monitor all device....")
 			go func() {
-				err := manager.MonitorAllDevicesState(deviceClient)
+				err := manager.MonitorAllDevices(clientManager)
+				if err != nil {
+					logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
+				}
+			}()
+		case <-abilityMonitorTicker.C:
+			logs.Infof("[DEVICE EXPORTER] monitor all device....")
+			go func() {
+				err := manager.MonitorAllAbilities(clientManager)
 				if err != nil {
 					logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
 				}
