@@ -148,3 +148,19 @@ func (m *Manager) DeleteWorkflow(name string, namespace string) error {
 	}
 	return nil
 }
+
+func (m *Manager) DeleteWorkflows(namespace string) error {
+	c := m.GetWorkflowClient(namespace)
+
+	str := "Spec.Name=" + namespace
+
+	lstOpts := metav1.ListOptions{
+		FieldSelector: str,
+	}
+
+	err := c.Client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	if err != nil {
+		return fmt.Errorf("Delete workflows failed: %v", err)
+	}
+	return nil
+}
