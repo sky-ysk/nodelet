@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	sutils "hit.edu/framework/pkg/scheduler/utils"
+	"hit.edu/framework/pkg/utils/value"
+
 	//scheutils "hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -57,16 +58,24 @@ type PriorityQueue struct {
 	lock sync.RWMutex
 
 	conditionEngine *utils.ConditionEngine
+
+	valueEngine *value.Engine
 }
 
 func NewPriorityQueue() *PriorityQueue {
 	logs.Info("NewPriorityQueue method")
+	cs, err := sutils.CreateClientSetWithTimeOut(3600)
+	if err != nil {
+		logs.Error(err.Error())
+		return nil
+	}
 	return &PriorityQueue{
 		stop:            make(chan struct{}),
 		readyQ:          newReadyQueue(),
 		pendingQueue:    *newPendingQueue(),
 		lock:            sync.RWMutex{},
 		conditionEngine: utils.NewDefaultConditionEngine(),
+		valueEngine:     value.NewEngine(cs),
 	}
 }
 
@@ -153,20 +162,22 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 
 // TODO 这个方法目前不完善，只检查了父母节点的依赖
 func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
-	cs, err := sutils.CreateClientSetWithTimeOut(3600)
-	if err != nil {
-		logs.Error(err.Error())
-		return apis.NotReady, nil
-	}
-	groupClient := cs.Core().Groups("test")
 	for _, par := range gInfo.Group.Spec.Parents {
-		parent, err := groupClient.Get(ctx, par, metav1.GetOptions{})
+		fromStr := fmt.Sprintf("Group{%s}.Status{phase}", par)
+		valueTmp := apis.Value{
+			Name:      "",
+			Type:      apis.LocalData,
+			ValueType: apis.StringType,
+			From:      fromStr,
+		}
+		parentValue, err := p.valueEngine.ExtractLocalValue(&valueTmp, *(gInfo.Group))
 		if err != nil {
 			logs.Error(err.Error())
 			return apis.False, err
 		}
-		if parent.Status.Phase != apis.Successed {
-			logs.Infof("parent group is not ready %s", parent.Name)
+
+		if parentValue.Value != string(apis.Successed) {
+			logs.Infof("parent group is not ready %s", par)
 			return apis.NotReady, nil
 		}
 	}
