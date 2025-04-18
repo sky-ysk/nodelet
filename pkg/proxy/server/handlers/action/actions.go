@@ -39,7 +39,7 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 		}
 		return
 	}
-
+	
 	results, err := h.manager.GetActions(namespace)
 	if err != nil {
 		logs.Errorf("Get actions failed: %v", err)
@@ -49,7 +49,7 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 			return
 		}
 	}
-
+	
 	err = response.WriteEntity(results)
 	if err != nil {
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -66,7 +66,7 @@ func (h *ActionsHandler) NewGetWebService() *restful.WebService {
 	ws.Path(ACTIONS_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
-
+	
 	ws.Route(ws.GET("/").
 		Doc("Get all actions").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
@@ -76,6 +76,6 @@ func (h *ActionsHandler) NewGetWebService() *restful.WebService {
 		Returns(200, "OK", []apis.Action{}).
 		Returns(400, "Not Found", nil),
 	)
-
+	
 	return ws
 }

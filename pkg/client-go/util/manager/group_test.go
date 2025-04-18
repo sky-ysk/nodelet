@@ -55,18 +55,45 @@ func TestCreateGroupWithoutActions(t *testing.T) {
 		},
 	}
 
-	g, err := m.CreateGroupWithoutActions(gs, nil, "Guochuang", u.String(), "")
+	ts := apis.TaskSpec{
+		Name:   "T1",
+		Groups: []apis.GroupSpec{gs},
+	}
+
+	//task := apis.Task{
+	//	ObjectMeta: meta.ObjectMeta{
+	//		Name: "T1",
+	//	},
+	//	Spec: apis.TaskSpec{
+	//		Name:   "T1",
+	//		Groups: []apis.GroupSpec{gs},
+	//	},
+	//}
+
+	//g, err := m.CreateGroupWithoutActions(gs, &task, "Guochuang", u.String(), "")
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
 
 	time.Sleep(10 * time.Second)
-	g, err = m.FillGroupWithActions(g)
-	if err != nil {
-		panic(err)
+	for _, g := range task.Status.Groups {
+		g, err := m.GetGroup(g.Name, g.Namespace)
+		if err != nil {
+			panic(err)
+		}
+		g, err = m.FillGroupWithActions(g)
+
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(g)
 	}
 
-	fmt.Println(g)
 }
 
 func TestCreateGroup(t *testing.T) {

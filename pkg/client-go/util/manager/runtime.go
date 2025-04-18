@@ -2,28 +2,29 @@ package manager
 
 import (
 	"context"
+	"fmt"
+	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
 	"time"
 )
 
-// 根据ActionSpec创建Runtime
+// CreateRuntimes 根据ActionSpec创建Runtime
 func (m *Manager) CreateRuntimes(a *apis.Action, namespace string, uuid string, prefix string) ([]*apis.Runtime, error) {
-	runtimes := []*apis.Runtime{}
+	var runtimes []*apis.Runtime
 	// 遍历所有的Runtime Spec
 	for _, rs := range a.Spec.Runtimes {
 		r, err := m.CreateRuntime(rs, a, namespace, uuid, prefix)
 		if err != nil {
 			return nil, err
 		}
-		// TODO: 返回的应该是已经创建的Runtime
-		runtimes = append(runtimes, r) // r替换成实际的fr
+		runtimes = append(runtimes, r)
 	}
 	return runtimes, nil
 }
 
-// 创建单个Runtime
+// CreateRuntime 创建单个Runtime
 func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace string, uuid string, prefix string) (*apis.Runtime, error) {
 	// 临时创建一个Runtime对象
 	r := apis.Runtime{}
@@ -53,7 +54,7 @@ func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace s
 	r.Status = apis.RuntimeStatus{}
 
 	// 记录Create时间
-	r.Status.CreateAt = &apis.Time{time.Now()}
+	r.Status.CreateAt = &apis.Time{Time: time.Now()}
 
 	// 初始化状态
 	r.Status.Phase = apis.Pending
@@ -102,4 +103,59 @@ func (m *Manager) GetRuntimes(namespace string) (*apis.RuntimeList, error) {
 	} else {
 		return g, nil
 	}
+}
+
+func (m *Manager) UpdateRuntime(namespace string, name string, a *apis.Runtime) (*apis.Runtime, error) {
+	c := m.GetRuntimeClient(namespace)
+
+	// 检查runtime是否存在
+	_, err := m.GetRuntime(name, namespace)
+	if err != nil {
+		logs.Errorf("Get runtime %s error: %v , runtime not exist !", name, err)
+		return nil, err
+	}
+
+	// 存在更新runtime
+	updatedRuntime, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
+	if updateErr != nil {
+		logs.Errorf("Update runtime %s error: %v", name, updateErr)
+		return nil, updateErr
+	}
+	return updatedRuntime, nil
+
+}
+
+func (m *Manager) PatchRuntime(name string, namespace string, patchRuntime string) (*apis.Runtime, error) {
+	c := m.GetRuntimeClient(namespace)
+
+	// 检查runtime是否存在
+	_, err := m.GetRuntime(name, namespace)
+	if err != nil {
+		logs.Errorf("Get runtime %s error: %v , runtime not exist !", name, err)
+		return nil, err
+	}
+
+	// 部分更新runtime
+	patchedRuntime, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchRuntime), metav1.PatchOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("patch runtime %s error: %v", name, err)
+	}
+	return patchedRuntime, nil
+}
+
+func (m *Manager) DeleteRuntime(name string, namespace string) error {
+	c := m.GetRuntimeClient(namespace)
+
+	// 检查runtime是否存在
+	_, err := m.GetRuntime(name, namespace)
+	if err != nil {
+		return fmt.Errorf("get runtime %s error: %v , runtime not exist ", name, err)
+	}
+
+	// 存在，删除
+	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("delete runtime %s error: %v", name, err)
+	}
+	return nil
 }

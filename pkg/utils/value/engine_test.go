@@ -25,9 +25,9 @@ func TestCreateTask(t *testing.T) {
 	}
 	// 构造Manager
 	m := manager.NewManager(clientset)
-
+	
 	logs.Init("main")
-
+	
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -40,7 +40,7 @@ func TestCreateTask(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-
+	
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -48,12 +48,12 @@ func TestCreateTask(t *testing.T) {
 			rs2,
 		},
 	}
-
+	
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-
+	
 	gs1 := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -61,12 +61,12 @@ func TestCreateTask(t *testing.T) {
 			as2,
 		},
 	}
-
+	
 	gs2 := apis.GroupSpec{
 		Name:    "G2",
 		Actions: []apis.ActionSpec{},
 	}
-
+	
 	ts := apis.TaskSpec{
 		Name: "T1",
 		Groups: []apis.GroupSpec{
@@ -74,14 +74,14 @@ func TestCreateTask(t *testing.T) {
 			gs2,
 		},
 	}
-
+	
 	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-
+	
 	fmt.Println(task)
-
+	
 }
 
 func TestValueExtract(t *testing.T) {
@@ -89,45 +89,45 @@ func TestValueExtract(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
+	
 	engine := NewEngine(clientSet)
-
+	
 	name := "T1.G1-0196434c-279b-7e67-8ac6-0bf756da1c7f"
 	namespace := "Guochuang"
-
+	
 	g, err := engine.manager.GetGroup(name, namespace)
 	if err != nil {
 		panic(err)
 	}
-
+	
 	value := apis.Value{
 		Name:      "Test",
 		Type:      apis.LocalData,
 		From:      "Group{G1}.Action{A1}.Status{phase}",
 		ValueType: apis.StringType,
 	}
-
+	
 	v, err := engine.ExtractLocalValue(&value, *g)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("-----------")
 	fmt.Println(v)
-
+	
 	value = apis.Value{
 		Name:      "Test",
 		Type:      apis.LocalData,
 		From:      "Group{G1}.Status{phase}",
 		ValueType: apis.StringType,
 	}
-
+	
 	v, err = engine.ExtractLocalValue(&value, *g)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("-----------")
 	fmt.Println(v)
-
+	
 }
 
 func CreateClientSet() (*clients.ClientSet, error) {
@@ -156,7 +156,7 @@ func CreateClientSet() (*clients.ClientSet, error) {
 		},
 		Timeout: 1000 * time.Second,
 	}
-
+	
 	//创建ClientSet
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
@@ -170,7 +170,7 @@ func TestCreateDevice(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
+	
 	ip := "127.0.0.1"
 	inter := "api/control/start_task"
 	port := "2387"
@@ -199,7 +199,7 @@ func TestCreateDevice(t *testing.T) {
 		Spec:   spec,
 		Status: status,
 	}
-
+	
 	client := clientset.Core().Devices(device.Namespace)
 	client.Create(context.TODO(), &device, metav1.CreateOptions{})
 }
@@ -209,12 +209,12 @@ func TestGetDeviceImage(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
+	
 	engine := NewEngine(clientSet)
-
+	
 	namespace := "Guochuang"
 	from := "Device{Robot}.Ability{Move}.Service{Start}"
-
+	
 	v, err := engine.ExtractDeviceValue(from, namespace)
 	if err != nil {
 		panic(err)

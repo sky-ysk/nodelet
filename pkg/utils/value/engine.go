@@ -51,19 +51,19 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 		// 本地进行寻址，寻找本地变量
 		// 寻址范围在Workflow、Task、Group、Action和Runtime的相关字段，主要为Outputs、Status
 		// 使用Spec.Name进行寻址，与实际的Name无关
-
+		
 		// Local的访问格式对应
 		//  Workflow{W1}.Task{T1}.Group{G1}.Action{A1}.Runtime{R1}
 		//  Task{T1}.Group{G1}.Action{A1}.Runtime{R1}
 		//  Group{G1}.Action{A1}.Runtime{R1}
 		//  Action{A1}.Runtime{R1}
 		//  Runtime{R1}
-
+		
 		//  Workflow{W1}.Task{T1}.Group{G1}.Action{A1}
 		//  Workflow{W1}
 		//  Workflow{W1}.Task{T1}.Group{G1}
 		//  Workflow{W1}.Task{T1}
-
+		
 		// 缺省值，默认访问本地
 		return value, nil
 	case apis.DeviceData:
@@ -107,7 +107,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 	var from string
 	var fromKey string
 	var namespace string
-
+	
 	switch kind {
 	case "Runtime":
 		r := (o).(apis.Runtime)
@@ -145,7 +145,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 			return nil, err
 		}
 	}
-
+	
 	switch kindType {
 	case "Runtime":
 		v, err := e.ExtractRuntimeValue(name, namespace, from, fromKey, value)
@@ -183,7 +183,7 @@ func (e *Engine) GetNameFromWorkflow(name string, parts []string, workflow *apis
 		from := parts[2]
 		fromKey := parts[3]
 		return wn, string(WorkflowType), from, fromKey, nil
-
+	
 	case "WorkflowAbsoluteExpr":
 		// 只允许Workflow为最高层时使用
 		uuid := workflow.Labels["uuid"]
@@ -336,12 +336,12 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 			rn := fmt.Sprintf("%s.%s.%s-%s", groupName, actionName, runtimeName, uuid)
 			return rn, string(RuntimeType), "", "", nil
 		}
-
+	
 	case "TaskGroupExpr":
 		// TODO:
 		return "", string(UnknownType), "", "", errors.New(string("Unsupported group " + name))
 	}
-
+	
 	return "", string(UnknownType), "", "", errors.New(string("Unsupported group " + name))
 }
 
@@ -413,7 +413,7 @@ func (e *Engine) GetNameFromRuntime(name string, parts []string, runtime *apis.R
 		target := parts[1]
 		from := parts[2]
 		fromKey := parts[3]
-
+		
 		if target == runtime.Spec.Name {
 			// 寻址的是当前的Runtime
 			gn := runtime.Name
@@ -436,7 +436,7 @@ func (e *Engine) GetNameFromRuntime(name string, parts []string, runtime *apis.R
 		targetRuntime := parts[2]
 		from := parts[3]
 		fromKey := parts[4]
-
+		
 		// 寻址的是当前Action下的Runtime
 		action, err := e.manager.GetAction(runtime.Status.Belong.Name, runtime.Status.Belong.Namespace)
 		if err == nil {
@@ -457,7 +457,7 @@ func (e *Engine) ExtractWorkflowValue(workflow string, namespace string, target 
 	if err != nil {
 		return nil, err
 	}
-
+	
 	switch target {
 	case "Status":
 		// 目前只支持Status.Phase
@@ -474,7 +474,7 @@ func (e *Engine) ExtractTaskValue(task string, namespace string, target string, 
 	if err != nil {
 		return nil, err
 	}
-
+	
 	switch target {
 	case "Status":
 		// 目前只支持Status.Phase
@@ -491,7 +491,7 @@ func (e *Engine) ExtractGroupValue(group string, namespace string, target string
 	if err != nil {
 		return nil, err
 	}
-
+	
 	switch target {
 	case "Status":
 		// 目前只支持Status.Phase
@@ -508,7 +508,7 @@ func (e *Engine) ExtractActionValue(action string, namespace string, target stri
 	if err != nil {
 		return nil, err
 	}
-
+	
 	switch target {
 	case "Status":
 		// 目前只支持Status.Phase
@@ -525,7 +525,7 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 	if err != nil {
 		return nil, err
 	}
-
+	
 	switch target {
 	case "Status":
 		// 目前只支持Status.Phase
@@ -556,7 +556,7 @@ func (e *Engine) ExtractDeviceService(robot string, namespace string, target str
 	if err != nil {
 		return "", err
 	}
-
+	
 	// 直接访问对应的能力
 	a, ok := d.Status.Abilities[target]
 	if ok {
@@ -566,7 +566,7 @@ func (e *Engine) ExtractDeviceService(robot string, namespace string, target str
 			return r, nil
 		}
 	}
-
+	
 	return "", errors.New(string("Unsupported Target " + target))
 }
 

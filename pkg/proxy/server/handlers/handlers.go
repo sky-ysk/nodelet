@@ -8,6 +8,7 @@ import (
 	"hit.edu/framework/pkg/proxy/server/handlers/event"
 	"hit.edu/framework/pkg/proxy/server/handlers/group"
 	"hit.edu/framework/pkg/proxy/server/handlers/node"
+	"hit.edu/framework/pkg/proxy/server/handlers/runtime"
 	"hit.edu/framework/pkg/proxy/server/handlers/task"
 	"hit.edu/framework/pkg/proxy/server/handlers/workflow"
 )
@@ -105,5 +106,17 @@ func (h *Handlers) InstallDeviceHandlers(container *restful.Container) {
 	// Device相关
 	gh := device.NewDeviceHandler(h.ClientSet)
 	// 查询单个Device
+	container.Add(gh.NewGetWebService())
+}
+
+func (h *Handlers) InstallRuntimeHandlers(container *restful.Container) {
+	// Runtimes相关
+	gsh := runtime.NewRuntimesHandler(h.ClientSet)
+	// 查询Runtimes
+	container.Add(gsh.NewGetWebService())
+
+	// Runtime相关
+	gh := runtime.NewRuntimeHandler(h.ClientSet)
+	// 查询单个Runtime
 	container.Add(gh.NewGetWebService())
 }

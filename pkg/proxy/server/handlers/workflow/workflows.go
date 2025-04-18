@@ -1,68 +1,34 @@
 package workflow
 
 import (
-	"context"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"sync"
 )
 
 type WorkflowsHandler struct {
-	clients   map[string]core.WorkflowInterface
 	clientSet *clients.ClientSet
+	manager   *manager.Manager
 	mu        sync.Mutex
-}
-
-type CurrentWorkflowsHandler struct {
-	client core.WorkflowInterface
 }
 
 var _ Handler = &WorkflowsHandler{}
 
-//func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
-//	c := clientSet.Core().Workflows("test") //apis.NamespaceAll
-//	return &WorkflowsHandler{
-//		client: c,
-//	}
-//}
-
 // NewWorkflowHandler 创建一个 ActionHandler
 func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
 	return &WorkflowsHandler{
-		clients:   make(map[string]core.WorkflowInterface),
+		manager:   manager.NewManager(clientSet),
 		clientSet: clientSet,
 	}
 }
 
-// GetClient 根据 namespace 获取 client，如果不存在则创建
-func (h *WorkflowsHandler) GetClient(namespace string) *CurrentWorkflowsHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// 如果已经存在，直接返回
-	if c, exists := h.clients[namespace]; exists {
-		return &CurrentWorkflowsHandler{
-			client: c,
-		}
-	}
-
-	// 否则创建新的 client
-	newClient := h.clientSet.Core().Workflows(namespace)
-	h.clients[namespace] = newClient
-	return &CurrentWorkflowsHandler{
-		client: newClient,
-	}
-}
-
 func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *restful.Response) {
-	c := &CurrentWorkflowsHandler{}
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
@@ -72,10 +38,9 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
-	results, err := c.client.List(context.TODO(), metav1.ListOptions{})
+
+	results, err := h.manager.GetWorkflows(namespace)
 	if err != nil {
 		logs.Errorf("Get workflows failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -83,6 +48,7 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 			logs.Errorf("failed to return a status code")
 			return
 		}
+		return
 	}
 
 	err = response.WriteEntity(results)
@@ -98,8 +64,7 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 
 // DeleteAll
 func (h *WorkflowsHandler) DeleteAllWorkflow(request *restful.Request, response *restful.Response) {
-	c := &CurrentWorkflowsHandler{}
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
@@ -108,16 +73,9 @@ func (h *WorkflowsHandler) DeleteAllWorkflow(request *restful.Request, response 
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	str := "Spec.Name=" + namespace
-
-	lstOpts := metav1.ListOptions{
-		FieldSelector: str,
-	}
-	err := c.client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	err := h.manager.DeleteWorkflows(namespace)
 	if err != nil {
 		logs.Errorf("Delete workflows failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -127,6 +85,7 @@ func (h *WorkflowsHandler) DeleteAllWorkflow(request *restful.Request, response 
 		}
 		return
 	}
+
 	// 返回停止成功的状态
 	response.WriteHeader(http.StatusOK)
 	// 记录日志

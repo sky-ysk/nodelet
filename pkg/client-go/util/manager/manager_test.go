@@ -37,7 +37,7 @@ func CreateClientSet() (*clients.ClientSet, error) {
 		},
 		Timeout: 1000 * time.Second,
 	}
-
+	
 	//创建ClientSet
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {

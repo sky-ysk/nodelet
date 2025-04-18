@@ -11,16 +11,16 @@ import (
 )
 
 func TestCreateAction(t *testing.T) {
-
+	
 	clientset, err := CreateClientSet()
 	if err != nil {
 		panic(err)
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-
+	
 	logs.Init("main")
-
+	
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -33,7 +33,7 @@ func TestCreateAction(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-
+	
 	as := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -41,17 +41,17 @@ func TestCreateAction(t *testing.T) {
 			rs2,
 		},
 	}
-
+	
 	a, err := m.CreateAction(as, nil, "Guochaung", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-
+	
 	str, err := analyzer.SerializeToJson(a)
 	if err != nil {
 		return
 	}
-
+	
 	fmt.Println(str)
 }
 
@@ -62,9 +62,9 @@ func TestCreateActions(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-
+	
 	logs.Init("main")
-
+	
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -77,7 +77,7 @@ func TestCreateActions(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-
+	
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -85,12 +85,12 @@ func TestCreateActions(t *testing.T) {
 			rs2,
 		},
 	}
-
+	
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-
+	
 	gs := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -98,14 +98,14 @@ func TestCreateActions(t *testing.T) {
 			as2,
 		},
 	}
-
+	
 	g := apis.Group{
 		ObjectMeta: meta.ObjectMeta{
 			Name: "G1",
 		},
 		Spec: gs,
 	}
-
+	
 	actions, err := m.CreateActions(&g, "Guochaung", u.String(), "G1.")
 	if err != nil {
 		panic(err)
@@ -120,14 +120,14 @@ func TestGetActions(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-
+	
 	logs.Init("main")
-
+	
 	alist, err := m.GetActions("Guochuang")
 	if err != nil {
 		panic(err)
 	} else {
-
+		
 		for _, item := range alist.Items {
 			str, err := analyzer.SerializeToJson(item)
 			if err != nil {

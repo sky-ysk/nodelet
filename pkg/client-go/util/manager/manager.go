@@ -50,14 +50,14 @@ type RuntimeClient struct {
 func (m *Manager) GetWorkflowClient(namespace string) *WorkflowClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
+	
 	// 如果已经存在，直接返回
 	if c, exists := m.WorkflowClients[namespace]; exists {
 		return &WorkflowClient{
 			Client: c,
 		}
 	}
-
+	
 	// 否则创建新的 client
 	newClient := m.ClientSet.Core().Workflows(namespace)
 	m.WorkflowClients[namespace] = newClient
@@ -70,14 +70,14 @@ func (m *Manager) GetWorkflowClient(namespace string) *WorkflowClient {
 func (m *Manager) GetTaskClient(namespace string) *TaskClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
+	
 	// 如果已经存在，直接返回
 	if c, exists := m.TaskClients[namespace]; exists {
 		return &TaskClient{
 			Client: c,
 		}
 	}
-
+	
 	// 否则创建新的 client
 	newClient := m.ClientSet.Core().Tasks(namespace)
 	m.TaskClients[namespace] = newClient
@@ -90,14 +90,14 @@ func (m *Manager) GetTaskClient(namespace string) *TaskClient {
 func (m *Manager) GetGroupClient(namespace string) *GroupClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
+	
 	// 如果已经存在，直接返回
 	if c, exists := m.GroupClients[namespace]; exists {
 		return &GroupClient{
 			Client: c,
 		}
 	}
-
+	
 	// 否则创建新的 client
 	newClient := m.ClientSet.Core().Groups(namespace)
 	m.GroupClients[namespace] = newClient
@@ -110,14 +110,14 @@ func (m *Manager) GetGroupClient(namespace string) *GroupClient {
 func (m *Manager) GetActionClient(namespace string) *ActionClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
+	
 	// 如果已经存在，直接返回
 	if c, exists := m.ActionClients[namespace]; exists {
 		return &ActionClient{
 			Client: c,
 		}
 	}
-
+	
 	// 否则创建新的 client
 	newClient := m.ClientSet.Core().Actions(namespace)
 	m.ActionClients[namespace] = newClient
@@ -130,14 +130,14 @@ func (m *Manager) GetActionClient(namespace string) *ActionClient {
 func (m *Manager) GetRuntimeClient(namespace string) *RuntimeClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
+	
 	// 如果已经存在，直接返回
 	if c, exists := m.RuntimeClients[namespace]; exists {
 		return &RuntimeClient{
 			Client: c,
 		}
 	}
-
+	
 	// 否则创建新的 client
 	newClient := m.ClientSet.Core().Runtimes(namespace)
 	m.RuntimeClients[namespace] = newClient

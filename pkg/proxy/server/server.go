@@ -42,6 +42,9 @@ func (s *Server) InstallDefaultHandlers() {
 	// Task相关
 	s.handlers.InstallTaskHandlers(s.container)
 
+	// Runtime 相关
+	s.handlers.InstallRuntimeHandlers(s.container)
+
 	// Resource相关
 	// Node
 	s.handlers.InstallNodeHandlers(s.container)

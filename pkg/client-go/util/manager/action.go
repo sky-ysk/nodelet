@@ -2,6 +2,8 @@ package manager
 
 import (
 	"context"
+	"fmt"
+	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -10,14 +12,13 @@ import (
 
 // 根据GroupSpec创建Action
 func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, prefix string) ([]*apis.Action, error) {
-	actions := []*apis.Action{}
+	var actions []*apis.Action
 	for _, as := range g.Spec.Actions {
 		a, err := m.CreateAction(as, g, namespace, uuid, prefix)
 		if err != nil {
 			return nil, err
 		}
-		// TODO: 返回的应该是已经创建的Runtime
-		actions = append(actions, a) // a替换成实际的fa
+		actions = append(actions, a)
 	}
 
 	return actions, nil
@@ -101,7 +102,7 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 	}
 	logs.Debugf("Created runtime: %v", fa)
 
-	return fa, nil // 应当返回实际的fa
+	return fa, nil
 }
 
 func (m *Manager) GetAction(name string, namespace string) (*apis.Action, error) {
@@ -122,4 +123,59 @@ func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
 	} else {
 		return a, nil
 	}
+}
+
+func (m *Manager) UpdateAction(namespace string, name string, a *apis.Action) (*apis.Action, error) {
+	c := m.GetActionClient(namespace)
+
+	// 检查action是否存在
+	_, err := m.GetAction(name, namespace)
+	if err != nil {
+		logs.Errorf("Get action %s error: %v , action not exist !", name, err)
+		return nil, err
+	}
+
+	// 存在更新action
+	updatedAction, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
+	if updateErr != nil {
+		logs.Errorf("Update action %s error: %v", name, updateErr)
+		return nil, updateErr
+	}
+	return updatedAction, nil
+
+}
+
+func (m *Manager) PatchAction(name string, namespace string, patchAction string) (*apis.Action, error) {
+	c := m.GetActionClient(namespace)
+
+	// 检查action是否存在
+	_, err := m.GetAction(name, namespace)
+	if err != nil {
+		logs.Errorf("Get action %s error: %v , action not exist !", name, err)
+		return nil, err
+	}
+
+	// 部分更新action
+	patchedAction, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchAction), metav1.PatchOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Patch action %s error: %v", name, err)
+	}
+	return patchedAction, nil
+}
+
+func (m *Manager) DeleteAction(name string, namespace string) error {
+	c := m.GetActionClient(namespace)
+
+	// 检查action是否存在
+	_, err := m.GetAction(name, namespace)
+	if err != nil {
+		return fmt.Errorf("get action %s error: %v , action not exist ", name, err)
+	}
+
+	// 存在，删除
+	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("delete action %s error: %v", name, err)
+	}
+	return nil
 }

@@ -13,21 +13,21 @@ const (
 	GroupExpr    = `^Group{([^}]+)}\.(Status){([^}]+)}$`
 	ActionExpr   = `^Action{([^}]+)}\.(Status){([^}]+)}$`
 	RuntimeExpr  = `^Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
-
+	
 	// 用于父子节点之间的相互引用
 	// 目前只支持父引用子
 	WorkflowTaskExpr  = `^Workflow{([^}]+)}\.Task{([^}]+)}\.(Status){([^}]+)}$`
 	TaskGroupExpr     = `^Task{([^}]+)}\.Group{([^}]+)}\.(Status){([^}]+)}$`
 	GroupActionExpr   = `^Group{([^}]+)}\.Action{([^}]+)}\.(Status){([^}]+)}$`
 	ActionRuntimeExpr = `^Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
-
+	
 	// 绝对位置寻址
 	// 只支持到Group层级
 	// 系统中最高层级可能为Workflow、Task或Group
 	WorkflowAbsoluteExpr = `^Workflow{([^}]+)}\.Task{([^}]+)}\.Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
 	TaskAbsoluteExpr     = `^Task{([^}]+)}\.Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
 	GroupAbsoluteExpr    = `^Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
-
+	
 	// 设备寻址
 	DeviceExpr = `^Device{([^}]+)}\.Ability{([^}]+)}\.Service{([^}]+)}`
 )
@@ -112,54 +112,54 @@ func NewRegExprComparor() *RegExprComparor {
 	if err != nil {
 		return nil
 	}
-
+	
 	regExprComparor := &RegExprComparor{
 		exprs:          make(map[string]*RegExpr),
 		supportedExprs: exprMap,
 	}
-
+	
 	kind := "Workflow"
 	workflowRegExpr, err := CreateRegExpr(WorkflowSupportedExprs, exprMap)
 	if err != nil {
 		return nil
 	}
 	regExprComparor.exprs[kind] = workflowRegExpr
-
+	
 	kind = "Task"
 	taskRegExpr, err := CreateRegExpr(TaskSupportedExprs, exprMap)
 	if err != nil {
 		return nil
 	}
 	regExprComparor.exprs[kind] = taskRegExpr
-
+	
 	kind = "Group"
 	groupRegExpr, err := CreateRegExpr(GroupSupportedExprs, exprMap)
 	if err != nil {
 		return nil
 	}
 	regExprComparor.exprs[kind] = groupRegExpr
-
+	
 	kind = "Action"
 	actionRegExpr, err := CreateRegExpr(ActionSupportedExprs, exprMap)
 	if err != nil {
 		return nil
 	}
 	regExprComparor.exprs[kind] = actionRegExpr
-
+	
 	kind = "Runtime"
 	runtimeRegExpr, err := CreateRegExpr(RuntimeSupportedExprs, exprMap)
 	if err != nil {
 		return nil
 	}
 	regExprComparor.exprs[kind] = runtimeRegExpr
-
+	
 	kind = "Device"
 	deviceRegExpr, err := CreateRegExpr(DeviceSupportedExprs, exprMap)
 	if err != nil {
 		return nil
 	}
 	regExprComparor.exprs[kind] = deviceRegExpr
-
+	
 	// TODO: Device
 	return regExprComparor
 }
@@ -181,7 +181,7 @@ func CreateRegExpr(expr []string, supportedExpr *map[string]*regexp.Regexp) (*Re
 	regExpr := RegExpr{
 		expr: make(map[string]*regexp.Regexp),
 	}
-
+	
 	// TODO: 空值检查
 	for _, exprStr := range expr {
 		regExpr.expr[exprStr] = (*supportedExpr)[exprStr]

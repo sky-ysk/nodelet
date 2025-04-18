@@ -1,69 +1,34 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"sync"
 )
 
 type TasksHandler struct {
-	clients   map[string]core.TaskInterface
 	clientSet *clients.ClientSet
+	manager   *manager.Manager
 	mu        sync.Mutex
-}
-
-type CurrentTasksHandler struct {
-	client core.TaskInterface
 }
 
 var _ Handler = &TasksHandler{}
 
-//func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
-//	c := clientSet.Core().Tasks("test") //apis.NamespaceAll
-//	return &TasksHandler{
-//		client: c,
-//	}
-//}
-
 // NewTaskHandler 创建一个 TaskHandler
 func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
 	return &TasksHandler{
-		clients:   make(map[string]core.TaskInterface),
+		manager:   manager.NewManager(clientSet),
 		clientSet: clientSet,
 	}
 }
 
-// GetClient 根据 namespace 获取 client，如果不存在则创建
-func (h *TasksHandler) GetClient(namespace string) *CurrentTasksHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// 如果已经存在，直接返回   c 和 gc 会一起创建
-	c, exists := h.clients[namespace]
-	if exists {
-		return &CurrentTasksHandler{
-			client: c,
-		}
-	}
-
-	// 否则创建新的 client
-	newClient := h.clientSet.Core().Tasks(namespace)
-	h.clients[namespace] = newClient
-	return &CurrentTasksHandler{
-		client: newClient,
-	}
-}
-
 func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Response) {
-	c := &CurrentTasksHandler{}
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
@@ -73,14 +38,12 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	results, err := c.client.List(context.TODO(), metav1.ListOptions{})
+	results, err := h.manager.GetTasks(namespace)
 	if err != nil {
-		logs.Errorf("Get tasks failed : %v", err)
-		err := response.WriteHeaderAndEntity(http.StatusInternalServerError, err)
+		logs.Errorf("Get tasks failed: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return

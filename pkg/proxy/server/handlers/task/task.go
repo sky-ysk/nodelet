@@ -1,86 +1,38 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	"github.com/google/uuid"
-	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type TaskHandler struct {
-	clients      map[string]core.TaskInterface
-	groupClients map[string]core.GroupInterface
-	manager      *manager.Manager
-	clientSet    *clients.ClientSet
-	mu           sync.Mutex
-}
-
-type CurrentTaskHandler struct {
-	client      core.TaskInterface
-	groupClient core.GroupInterface
+	manager   *manager.Manager
+	clientSet *clients.ClientSet
+	mu        sync.Mutex
 }
 
 var _ Handler = &TaskHandler{}
 
-//func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
-//	c := clientSet.Core().Tasks("test")   // apis.NamespaceAll
-//	gc := clientSet.Core().Groups("test") //apis.NamespaceAll
-//	return &TaskHandler{
-//		client:      c,
-//		groupClient: gc,
-//	}
-//}
-
 // NewTaskHandler 创建一个 TaskHandler
 func NewTaskHandler(clientSet *clients.ClientSet) *TaskHandler {
 	return &TaskHandler{
-		clients:      make(map[string]core.TaskInterface),
-		groupClients: make(map[string]core.GroupInterface),
-		clientSet:    clientSet,
-		manager:      manager.NewManager(clientSet),
-	}
-}
-
-// GetClient 根据 namespace 获取 client，如果不存在则创建
-func (h *TaskHandler) GetClient(namespace string) *CurrentTaskHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// 如果已经存在，直接返回   c 和 gc 会一起创建
-	c, exists := h.clients[namespace]
-	gc, groupExists := h.groupClients[namespace]
-	if exists && groupExists {
-		return &CurrentTaskHandler{
-			client:      c,
-			groupClient: gc,
-		}
-	}
-
-	// 否则创建新的 client
-	newClient := h.clientSet.Core().Tasks(namespace)
-	newGroupClient := h.clientSet.Core().Groups(namespace)
-	h.clients[namespace] = newClient
-	h.groupClients[namespace] = newGroupClient
-	return &CurrentTaskHandler{
-		client:      newClient,
-		groupClient: newGroupClient,
+		clientSet: clientSet,
+		manager:   manager.NewManager(clientSet),
 	}
 }
 
 func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Response) {
 	// 尝试从url中获取参数
-	c := &CurrentTaskHandler{}
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
@@ -107,16 +59,14 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
+	result, err := h.manager.GetTask(name, namespace)
 	if err != nil {
 		logs.Errorf("Get task %s error: %v , task not exist! ", name, err)
 		err := response.WriteError(http.StatusNotFound, err)
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return
@@ -127,56 +77,30 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 		if err != nil {
 			err := response.WriteError(http.StatusOK, err)
 			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get task ")
-	}
-}
-
-func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Response) {
-	// 先查询 task 是否存在
-	// 尝试从url中获取参数
-	name := request.QueryParameter(TASK_NAME)
-	et := &apis.Task{}
-	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		err := request.ReadEntity(&et)
-		if err != nil || et.Name == "" {
-			if err != nil {
-				logs.Errorf("Failed to deserialize json data, error: %v", err)
-				err := response.WriteError(http.StatusBadRequest, err)
-				if err != nil {
-					logs.Errorf("failed to return a status code")
-					return
-				}
-				return
-			} else {
-				err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
-				if err != nil {
-					logs.Errorf("failed to return a status code ")
-					return
-				}
-				return
-			}
-		} else {
-			name = et.Name
-		}
-	} else {
-		err := request.ReadEntity(&et)
-		if err != nil {
-			logs.Errorf("Failed to deserialize json data, error: %v", err)
-			err := response.WriteError(http.StatusBadRequest, err)
-			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
 			}
 			return
 		}
+		logs.Debugf("Get task")
+	}
+}
+
+func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Response) {
+	// 获取 task 数据
+	et := &apis.Task{}
+	err := request.ReadEntity(&et)
+	if err != nil {
+		logs.Errorf("Failed to deserialize json data, error: %v", err)
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
+	// 获取 namespace
 	namespace := et.Namespace
 	if namespace == "" {
 		logs.Error("namespace is empty")
@@ -203,20 +127,24 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 	//	// return
 	//}
 
-	u := uuid.Must(uuid.NewV7())
+	// 产生UUID
+	timestamp := time.Now().Format("20060102T150405")
+	randomStr := uuid.New().String()[:5]
+	UUID := timestamp + "-" + randomStr
+
 	// 将 Task写入数据库中
-	result, err := h.manager.CreateTask(et.Spec, nil, namespace, u.String(), "")
+	result, err := h.manager.CreateTask(et.Spec, nil, namespace, UUID, "")
 	if err != nil {
 		err1 := response.WriteError(http.StatusInternalServerError, err)
 		if err1 != nil {
 			logs.Errorf("failed to return a status code ,error : %v ", err1)
 			return
 		}
-		logs.Errorf("Create task %s  ,failed write to database , error: %v ", name, err)
+		logs.Errorf("Create task fail  ,failed write it to database , error: %v ", err)
 		return
 	}
 
-	//// 构造Groups
+	//// 构造tasks
 	//for _, g := range ew.Spec.Groups {
 	//	//
 	//	g.ObjectMeta = metav1.ObjectMeta{
@@ -265,15 +193,12 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		logs.Errorf("failed to return a status code ")
 		return
 	}
+
 	logs.Debugf("Create task %v ", result)
 }
 
 func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Response) {
-	// 查看task是否存在
-	// 如果存在，删除任务
-	// 如果不存在，返回 404 not found
 	// 尝试从url中获取参数
-	c := &CurrentTaskHandler{}
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
@@ -300,88 +225,51 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	// 查看task是否存在
-	task, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
+	// 删除task
+	err := h.manager.DeleteTask(namespace, name)
 	if err != nil {
-		logs.Errorf("Get task %s error: %v , task not exist!", name, err)
-		err := response.WriteError(http.StatusNotFound, err)
+		logs.Error(err)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		return
 	}
 
-	// task 存在
-	if task.Name == name {
-		err := c.client.Delete(context.TODO(), name, metav1.DeleteOptions{})
-		if err != nil {
-			logs.Errorf("Delete task %s error: %v", name, err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-		}
+	// 返回停止成功的状态
+	response.WriteHeader(http.StatusOK)
 
-		// 返回停止成功的状态
-		response.WriteHeader(http.StatusOK)
-
-		// 记录日志
-		logs.Debugf("delete task : %v", name)
-	}
+	// 记录日志
+	logs.Debugf("delete task : %v", name)
 
 }
 
 // TODO ：StopTask
 
 func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Response) {
-	// 先检查task是否存在
-	// 存在：更新
-	// 不存在：返回错误
-	// 尝试从url中获取参数
-	c := &CurrentTaskHandler{}
-	name := request.QueryParameter(TASK_NAME)
+	// 获取task
 	ew := &apis.Task{}
-	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		err := request.ReadEntity(&ew)
-		if err != nil || ew.Name == "" {
-			if err != nil {
-				logs.Errorf("Failed to deserialize json data, error: %v", err)
-				err := response.WriteError(http.StatusBadRequest, err)
-				if err != nil {
-					logs.Errorf("failed to return a status code")
-					return
-				}
-				return
-			} else {
-				err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
-				if err != nil {
-					logs.Errorf("failed to return a status code ")
-					return
-				}
-				return
-			}
-		} else {
-			name = ew.Name
-		}
-	} else {
-		err := request.ReadEntity(&ew)
+	err := request.ReadEntity(&ew)
+	if err != nil {
+		logs.Errorf("Failed to deserialize json data, error: %v", err)
+		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
-			logs.Errorf("Failed to deserialize json data, error: %v", err)
-			err := response.WriteError(http.StatusBadRequest, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
+			logs.Errorf("failed to return a status code")
 			return
 		}
+		return
 	}
 
+	// 获取name
+	name := request.QueryParameter(TASK_NAME)
+	if name == "" {
+		name = ew.Name
+	}
+
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
@@ -390,91 +278,68 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	// 检查task是否存在
-	task, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
+	// 格式验证
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Task{})
 	if err != nil {
-		logs.Errorf("Get task %s error: %v , task not exist!", name, err)
-		err := response.WriteError(http.StatusNotFound, err)
+		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
+			logs.Errorf("failed to return a status code ")
 			return
 		}
 		return
 	}
 
-	// task存在，更新
-	if task.Name == name {
-		//err := request.ReadEntity(&task)
-		//if err != nil {
-		//	err := response.WriteError(http.StatusInternalServerError, err)
-		//	if err != nil {
-		//		logs.Errorf("failed to return a status code")
-		//		return
-		//	}
-		//	return
-		//}
-		//logs.Debugf("Update task to : %v", task)
-
-		// 格式验证
-		res, err := analyzer.SerializeToJson(ew)
-		_, err = analyzer.Deserialize(res, apis.Task{})
-		if err != nil {
-			err := response.WriteError(http.StatusBadRequest, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
-			// return
-		}
-
-		// 这个函数执行的时候返回错误
-		updatedTask, updateErr := c.client.Update(context.TODO(), ew, metav1.UpdateOptions{})
-		if updateErr != nil {
-			logs.Errorf("Update task %s error: %v", name, updateErr)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-		}
-
-		//返回成功修改的通知
-		err = response.WriteHeaderAndEntity(http.StatusOK, updatedTask)
+	// 更新task
+	updatedTask, updateErr := h.manager.UpdateTask(namespace, name, ew)
+	if updateErr != nil {
+		logs.Errorf("Update task %s error: %v", name, updateErr)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}
-
-		// 记录日志
-		logs.Debugf("update task : %v", name)
-
 	}
+
+	// 返回成功修改的通知
+	err = response.WriteHeaderAndEntity(http.StatusOK, updatedTask)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
+	}
+
+	// 记录日志
+	logs.Debugf("update task : %v", name)
 }
 
 func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Response) {
-	// 先检查task是否存在
-	// 存在：更新
-	// 不存在：返回错误
-	// 尝试从url中获取参数
-	c := &CurrentTaskHandler{}
+	// 获取json
+	req := &apis.Task{}
+	err := request.ReadEntity(&req)
+	if err != nil {
+		logs.Errorf("Failed to deserialize json data, error: %v", err)
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	}
+
+	// 获取name
 	name := request.QueryParameter(TASK_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Task{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide task name , the key is Name "))
+		if req.Name != "" {
+			name = req.Name
+		} else {
+			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
 			if err != nil {
 				logs.Errorf("failed to return a status code ")
 				return
 			}
 			return
-		} else {
-			name = req.Name
 		}
 	}
 
@@ -487,65 +352,39 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	// 检查task是否存在
-	task, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
+	// 序列化PatchTask
+	patchTask, err := analyzer.SerializeToJson(req)
 	if err != nil {
-		logs.Errorf("Get task %s error: %v , task not exist!", name, err)
-		err := response.WriteError(http.StatusNotFound, err)
+		logs.Errorf("Serialize patch task error: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
+			return
+		}
+	}
+
+	patchedTask, err := h.manager.PatchTask(namespace, name, patchTask)
+	if err != nil {
+		logs.Error(err)
+		err := response.WriteError(http.StatusInternalServerError, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
 		return
 	}
 
-	// task 存在，部分更新
-	if task.Name == name {
-		err := request.ReadEntity(task)
-		if err != nil {
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		// logs.Debugf("Patch task to : %v", task)
-		patchTask, err := analyzer.SerializeToJson(task)
-		if err != nil {
-			logs.Errorf("Serialize patch task error: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-		}
-		// logs.Debugf("change Patch task to json : %v", patchTask)
-		patchedTask, err := c.client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchTask), metav1.PatchOptions{})
-		if err != nil {
-			logs.Errorf("Patch:task %s error: %v", name, err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-		}
-		// logs.Debugf("Patched task : %v", patchedTask)
-
-		//返回成功修改的通知
-		err = response.WriteHeaderAndEntity(http.StatusOK, patchedTask)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-
-		// 记录日志
-		logs.Debugf("patch task : %v", name)
+	// 返回成功修改的通知
+	err = response.WriteHeaderAndEntity(http.StatusOK, patchedTask)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	// 记录日志
+	logs.Debugf("patch task : %v", name)
 }
 
 func (h *TaskHandler) NewGetWebService() *restful.WebService {
@@ -571,7 +410,6 @@ func (h *TaskHandler) NewGetWebService() *restful.WebService {
 		To(h.CreateTask).
 		Doc("Create a task with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Name", "The name of the task").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
 		Param(ws.BodyParameter("Task", "The json string of the Task object").DataType("string")).
 		Operation("createTask").
