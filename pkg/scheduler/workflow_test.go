@@ -126,13 +126,13 @@ func TestAddGroup(t *testing.T) {
 	}
 }
 
-// go test -run TestSendToProxyFromJsonFlie -v
+// go test -run TestSendToProxy -v
 func TestSendToProxy(t *testing.T) {
 	logs.Init("testModule")
 	orange, err := os.ReadFile("orange.json")
 	client := &http.Client{}
 
-	url := "http://192.168.8.191:8899/framework/v1/task?Name=T1&&Namesapce=test"
+	url := "http://192.168.8.176:8899/framework/v1/task?Name=T1&&Namesapce=test"
 	logs.Info(url)
 	req, err := http.NewRequest("POST", url, strings.NewReader(string(orange)))
 	if err != nil {
@@ -145,7 +145,7 @@ func TestSendToProxy(t *testing.T) {
 
 	rep, err := client.Do(req)
 	if err != nil {
-		logs.Fatal(err)
+		logs.Fatal(err.Error())
 	}
 	data, err := io.ReadAll(rep.Body)
 	defer func(Body io.ReadCloser) {
