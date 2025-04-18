@@ -29,7 +29,7 @@
                                     {
                                         "name": "Arm",
                                         "expected_properties": {
-                                            "domain": "Leju.Guochuang"
+                                            "Domain": {"value": "Leju.Guochuang"}
                                         },
                                         "abilities": [
                                             "Arm_Control"
@@ -37,7 +37,7 @@
                                     }
                                 ],
                                 "type": "device",
-                                "image": "Device{Arm}.Ability{Arm_Control}.Skill{Arm_Angle}",
+                                "image": "Device{Arm}.Ability{Arm_Control}.Service{Arm_Angle}",
                                 "inputs": [
                                     {
                                         "name": "left",
@@ -66,7 +66,7 @@
                                     {
                                         "name": "Arm",
                                         "expected_properties": {
-                                            "domain": "Leju.Guochuang"
+                                            "Domain": {"value": "Leju.Guochuang"}
                                         },
                                         "abilities": [
                                             "Arm_Control"
@@ -74,7 +74,7 @@
                                     }
                                 ],
                                 "type": "Device",
-                                "image": "Device{Arm}.Abiltiy{Arm_Control}.Skill{Arm_Angle}",
+                                "image": "Device{Arm}.Abiltiy{Arm_Control}.Service{Arm_Angle}",
                                 "conditions": {},
                                 "inputs": [
                                     {
@@ -112,8 +112,8 @@
                                     {
                                         "name": "Camera",
                                         "expected_properties": {
-                                            "name": "Camera1",
-                                            "domain": "Leju.Guochuang"
+                                            "Name": {"value": "Camera1"},
+                                            "Domain": {"value": "Leju.Guochuang"}
                                         },
                                         "abilities": [
                                             "Camera"
@@ -122,8 +122,8 @@
                                     {
                                         "name": "Detector",
                                         "expected_properties": {
-                                            "name": "Detector1",
-                                            "domain": ""
+                                            "Name": {"value": "Detector1"},
+                                            "Domain": {"value": ""}
                                         },
                                         "abilities": [
                                             "Detect"
@@ -131,13 +131,13 @@
                                     }
                                 ],
                                 "type": "device",
-                                "image": "Device{Detector}.Ability{Detect}.Skill{Predict_By_Url}",
+                                "image": "Device{Detector}.Ability{Detect}.Service{Predict_By_Url}",
                                 "conditions": {},
                                 "inputs": [
                                     {
                                         "name": "url",
-                                        "type": "local",
-                                        "from": "Device{Camera}.Ability{Camera}.Skill{Camera_Status}.Property{URL}"
+                                        "type": "device",
+                                        "from": "Device{Camera}.Ability{Camera}.Service{Camera_Status}"
                                     },
                                     {
                                         "name": "position",
@@ -153,7 +153,7 @@
                                     },
                                     {
                                         "name": "compressed",
-                                        "type": "contant",
+                                        "type": "constant",
                                         "value": "true",
                                         "value_type": "bool"
                                     }
@@ -202,8 +202,8 @@
                                     {
                                         "name": "Robot",
                                         "expected_properties": {
-                                            "name": "Robot2",
-                                            "domain": "Xinghaitu.Guochuang"
+                                            "Name": {"value": "Robot2"},
+                                            "Domain": {"value": "Xinghaitu.Guochuang"}
                                         },
                                         "abilities": [
                                             "Grab"
@@ -211,7 +211,7 @@
                                     }
                                 ],
                                 "type": "device",
-                                "image": "Device{Robot}.Ability{Grab}.Skill{Go_Standby}",
+                                "image": "Device{Robot}.Ability{Grab}.Service{Go_Standby}",
                                 "conditions": {},
                                 "inputs": [
                                     {
@@ -246,8 +246,8 @@
                                     {
                                         "name": "Robot",
                                         "expected_properties": {
-                                            "name": "Robot2",
-                                            "domain": "Xinghaitu.Guochuang"
+                                            "Name": {"value": "Robot2"},
+                                            "Domain": {"value": "Xinghaitu.Guochuang"}
                                         },
                                         "abilities": [
                                             "Grab"
@@ -255,7 +255,7 @@
                                     }
                                 ],
                                 "type": "device",
-                                "image": "Device{Robot}.Ability{Grab}.Skill{Start_Task}",
+                                "image": "Device{Robot}.Ability{Grab}.Service{Start_Task}",
                                 "conditions": {},
                                 "inputs": [
                                     {

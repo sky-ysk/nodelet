@@ -108,6 +108,9 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 }
 
 func (sched *Scheduler) frameworkForGroup(group *apis.Group) (framework.Framework, error) {
+	if group.Spec.SchedulerName == nil {
+		return sched.DefaultFramework, nil
+	}
 	fwk, ok := sched.Profiles[*group.Spec.SchedulerName]
 	if !ok {
 		return sched.DefaultFramework, nil
