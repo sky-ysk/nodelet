@@ -127,7 +127,7 @@ func (sp *ScorePluginDBY) Name() string {
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
 	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
-	taskName := group.Status.Belongs.Name
+	taskName := group.Status.Belong.Name
 
 	request := transport.ScoreRequest{
 		GroupID: group.Spec.Name,

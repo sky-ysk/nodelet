@@ -108,7 +108,7 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 }
 
 func (sched *Scheduler) frameworkForGroup(group *apis.Group) (framework.Framework, error) {
-	fwk, ok := sched.Profiles[group.Spec.SchedulerName]
+	fwk, ok := sched.Profiles[*group.Spec.SchedulerName]
 	if !ok {
 		return sched.DefaultFramework, nil
 		//return nil, fmt.Errorf("profile not found for scheduler name %q", group.Spec.SchedulerName)
