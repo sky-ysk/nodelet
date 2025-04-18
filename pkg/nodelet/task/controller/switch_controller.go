@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
+	"hit.edu/framework/test/etcd_sync/informer"
 	"regexp"
 	"strconv"
 	"strings"
@@ -49,9 +50,15 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	startTime time.Time
 	// event事件发布器
 	recorder recorder.EventRecorder
+	// 跨域迁移
+	groupTargets   map[string]*informer.Target[*apis.Group]
+	actionTargets  map[string]*informer.Target[*apis.Action]
+	runtimeTargets map[string]*informer.Target[*apis.Runtime]
+	// group_manager
+	groupManager group.Manager
 }
 
-func NewMigrationController(clientSet *clients.ClientSet, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string) *MigrationController {
+func NewMigrationController(clientSet *clients.ClientSet, groupClient core.GroupInterface, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string, groupTarget map[string]*informer.Target[*apis.Group], ActionTarget map[string]*informer.Target[*apis.Action], runtimeTarget map[string]*informer.Target[*apis.Runtime], groupManager group.Manager) *MigrationController {
 	nowTime := time.Now()
 	//创建资源的List Watcher
 	eventListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "events", "test", fields.Everything())
@@ -65,6 +72,10 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 		groupQueues:    groupQueues,
 		startTime:      nowTime,
 		recorder:       recorder,
+		groupTargets:   groupTarget,
+		actionTargets:  ActionTarget,
+		runtimeTargets: runtimeTarget,
+		groupManager:   groupManager,
 	}
 	eventOptions := cache.InformerOptions{
 		ListerWatcher: eventListWatcher,
@@ -83,16 +94,29 @@ func NewMigrationController(clientSet *clients.ClientSet, groupClient core.Group
 				//}
 				// 类型断言放在最外层，避免重复断言
 				event, ok := obj.(*apis.Event)
-				logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, ctrl.startTime)
+				//logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, ctrl.startTime)
 				if !ok {
 					return
 				}
 				//logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
 				// 合并时间判断和事件条件判断
+				//if event.EventTime.Time.Before(ctrl.startTime) ||
+				//	event.InvolvedObject.Name != nodeName ||
+				//	(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
+				//	return // 跳过历史事件/非本节点事件/非迁移触发事件
+				//}
 				if event.EventTime.Time.Before(ctrl.startTime) ||
-					event.InvolvedObject.Name != nodeName ||
 					(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
 					return // 跳过历史事件/非本节点事件/非迁移触发事件
+				}
+				if event.InvolvedObject.Kind == "Node" && event.InvolvedObject.Name != nodeName { //我们希望处理对Group的Migration和Node的Migration，如果是Node的Migration，需要保证和节点的名字一致
+					return
+				}
+				if event.InvolvedObject.Kind == "Group" {
+					_, err := groupManager.GetGroupByName(event.InvolvedObject.Name)
+					if err != nil { // 说明该节点上没这个任务，那就不用触发迁移
+						return
+					}
 				}
 				logs.Info("++++++++++++++++++++++Events--------事件为迁移事件")
 				// 所有条件满足时入队
@@ -187,6 +211,7 @@ func (mc *MigrationController) handleDeleteEvent(key string) error {
 
 // 触发Group迁移，带重试机制
 func (mc *MigrationController) triggerGroupMigration(groupName string, event *apis.Event) error {
+	logs.Info("-----------------------认为触发迁移-------------------------")
 	group, err := mc.groupClient.Get(context.TODO(), groupName, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Get group %s failed: %v", groupName, err)
@@ -202,7 +227,7 @@ func (mc *MigrationController) triggerGroupMigration(groupName string, event *ap
 
 // 这里有个优化的地方，就是迁移的话，涉及到多个group同时迁移，那么这里普通做法是遍历，但是效果不咋好，所以我们这里可以加一个工作池（协程）
 func (c *MigrationController) triggerNodeMigration(nodeName string, event *apis.Event) error {
-	logs.Info("-----------------------触发迁移-------------------------")
+	logs.Info("-----------------------节点资源不足，触发迁移-------------------------")
 	// 标记节点为迁移状态，这样就不要调度到本节点---这个好像没有必要？
 	// 通过索引获取关联的Groups
 	//groups, err := c.groupIndexer.ByIndex("ByNode", nodeName)
@@ -278,9 +303,27 @@ func retryOnError(attempts int, fn func() error) error {
 func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event) error { // 该group是从etcd当中获取的
 	// 增加一条规则：如果Group不是细粒度控制的，那么就不进行迁移---可能
 	// 1、检查当前状态
-	logs.Info("+++++++++++++++++++++++++++migrateGroup+++++++++++++++++++++++")
 	if group.Status.Phase == apis.Migrating || group.Status.Phase == apis.Migrated {
 		logs.Infof("Group:%v has Migrated", group.Name)
+		return nil
+	}
+	// 检查该Group下面是否有Runtime是细粒度控制的，如果有的话，才适合迁移
+	var needMigration = false
+	for actionIndex := range group.Spec.Actions {
+		action := group.Spec.Actions[actionIndex]
+		for runtimeIndex := range action.Spec.Runtimes {
+			runtime := action.Spec.Runtimes[runtimeIndex]
+			if runtime.EnableFineGrainedControl {
+				needMigration = true
+				break
+			}
+		}
+		if needMigration {
+			break
+		}
+	}
+	if !needMigration {
+		logs.Infof("No-trigger switching")
 		return nil
 	}
 	// 2、迁移
@@ -299,9 +342,18 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		// 从etcd-GroupSpec-copyInfo当中获取,还需要获取Condition，是执行一个副本还是执行全部副本---目前做的简单一下 就选一个副本进行迁移即可
 		for key, value := range group.Spec.CopyInfo { // 这里相当于只遍历CopyInfo这个数组当中的第一个元素
 			groupCopyName = key
-			if value != "local" && event.Reason == events.TriggerCrossMigration {
-				// 跨域迁移 通过跨域的通信总线通知另一个域的副本copyGroup进行状态的恢复
-				// TODO
+			if value != "local" { // && event.Reason == events.TriggerCrossMigration
+				// 跨域迁移 通过跨域的通信总线通知另一个域的副本copyGroup进行状态的恢复,暂时使用update--后期改成patch
+				groupTarget := mc.groupTargets[value] //=-=-=-=-
+				copyGroup, err := groupTarget.Get(context.TODO(), "test", groupCopyName, "groups", metav1.GetOptions{})
+				if err != nil {
+					logs.Infof("Failed to get group from other domain: %v", err)
+				}
+				copyGroup.Status.CopyStatus = "Starting"
+				_, err = groupTarget.Update(context.TODO(), copyGroup, metav1.UpdateOptions{})
+				if err != nil {
+					logs.Errorf("Update group %s cross domain failed: %v", groupCopyName, err)
+				}
 			} else {
 				// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
 				_, err = mc.groupClient.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
@@ -320,7 +372,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		if event.Reason == events.TriggerLocalMigration { // 本域迁移，指定了目标节点
 			// TODO 本域迁移，则直接生成group副本并写入本域etcd当中
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
-			groupCopy := NewGroupInfoCopy(group, false, groupCopyName, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
+			groupCopy := NewGroupInfoCopy(group, false, groupCopyName, nodeName, false) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
 			logs.Infof("group:%v######################################1", groupCopy.Name)
 			_, err := mc.groupClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
 			if err != nil {
@@ -340,14 +392,18 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				logs.Errorf("Patch group error:%v", err)
 			}
 			logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
-		} else {
-			if nodeName != "" { // 跨域迁移，指定了目标节点
-				// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作
-
+		} else { // 为跨域迁移
+			if nodeName != "" { // 跨域迁移，指定了别的域的目标节点
+				// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
+				// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
+				groupCopy := NewGroupInfoCopy(group, false, groupCopyName, nodeName, true) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
+				logs.Infof("group:%v######################################1", groupCopy.Name)
+				groupTarget := mc.groupTargets["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+				_, err := groupTarget.Create(context.TODO(), group, metav1.CreateOptions{})
 				// 将副本任务信息写入到源任务的CopyInfo当中，将nodeName转换为连接
 				patchGroup, err := json.Marshal(map[string]interface{}{
 					"spec": map[string]interface{}{
-						"copy_info": map[string]string{groupCopyName: "cross-IP"}, //value值不同
+						"copy_info": map[string]string{groupCopyName: "broker"}, // TODO 后期这里也得改
 					},
 				})
 				if err != nil {
@@ -360,8 +416,9 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopyName])
 			} else { // 跨域迁移，未指定迁移到哪个节点，这里直接生成一个事件通过调度器，里面放Group信息
 				// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息
-				groupCopy := NewGroupInfoCopy(group, false, groupCopyName, "") //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
+				groupCopy := NewGroupInfoCopy(group, false, groupCopyName, "", true) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
 				mc.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
+				// TODO 这里还是需要调度器选择完节点后生成一个事件来通知部署器，接下来要做的是，监听事件，这块的方法可以自己从group_handler.go当中拿，已经写好
 			}
 		}
 	}
@@ -405,27 +462,44 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						//	logs.Errorf("Stop runtime error:%v", err)
 						//}
 						// 将获取到的任务关键装填数据写入到本域或者跨域的etcd上的副本group当中
+						// 遍历copyInfo，
+						for key, value := range group.Spec.CopyInfo {
+							groupCopyName = key
+							if value != "local" {
+								// 为跨域迁移--暂时修改--暂时使用update
+								groupTarget := mc.groupTargets[value] //-=-=
+								copyGroup, err := groupTarget.Get(context.TODO(), "test", groupCopyName, "groups", metav1.GetOptions{})
+								if err != nil {
+									logs.Infof("Failed to get group from other domain: %v", err)
+								}
+								copyGroup.Status.CopyStatus = "Starting"
+								_, err = groupTarget.Update(context.TODO(), copyGroup, metav1.UpdateOptions{})
+								if err != nil {
+									logs.Errorf("Update group %s cross domain failed: %v", groupCopyName, err)
+								}
+							} else {
+								patchGroup, err := json.Marshal([]map[string]interface{}{
+									{
+										"op":    "replace",
+										"path":  "/status/action_status/" + strconv.Itoa(i) + "/status/" + strconv.Itoa(j) + "/key_status",
+										"value": data, // 这里替换为你需要的 Phase 值
+									},
+								})
+								if err != nil {
+									logs.Errorf("Json Marshal failed, err:%v", err)
+								}
+								patchResult, err = mc.groupClient.Patch(context.TODO(), groupCopyName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
+								if err != nil {
+									logs.Errorf("Patch group error-5:%v", err)
+								}
+							}
+						}
 
-						patchGroup, err := json.Marshal([]map[string]interface{}{
-							{
-								"op":    "replace",
-								"path":  "/status/action_status/" + strconv.Itoa(i) + "/status/" + strconv.Itoa(j) + "/key_status",
-								"value": data, // 这里替换为你需要的 Phase 值
-							},
-						})
-						if err != nil {
-							logs.Errorf("Json Marshal failed, err:%v", err)
-						}
-						patchResult, err = mc.groupClient.Patch(context.TODO(), groupCopyName, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-						if err != nil {
-							logs.Errorf("Patch group error-5:%v", err)
-						}
 						//logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[i].RuntimeStatus[j].KeyStatus)
 						// 关闭源任务当中的runtime
 						logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 						//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
 						//time.Sleep(1 * time.Second)
-
 					}
 					err = mc.runtimeManager.Kill(group, action, runtime, i, j) //最后都需要将runtime进程关闭
 					if err != nil {
@@ -455,7 +529,8 @@ func extractNode(str string) string {
 }
 
 // 新增一个创建一个空白的Group信息，删除不必要的内容（例如Running、DeployCheck的属性都得改为Unknown，时间也得修改）
-func NewGroupInfoCopy(g *apis.Group, isAhead bool, copyGroupName string, nodeName string) *apis.Group {
+func NewGroupInfoCopy(g *apis.Group, isAhead bool, copyGroupName string, nodeName string, isCrossDomain bool) *apis.Group {
+	logs.Info("=====================NewGroupInfoCopy=======================================")
 	// 将原始对象序列化为JSON
 	data, err := json.Marshal(g)
 	if err != nil {
@@ -470,6 +545,7 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, copyGroupName string, nodeNam
 	var groupCopy = &copyGroup // 转换为指针
 	// 接下来修改这个复制出来的Group信息，首先修改group.Name
 	groupCopy.Name = copyGroupName
+	groupCopy.Status.GroupID = groupCopy.Status.GroupID + "-copy"
 
 	// 将groupCopy的ResourceVersion置空，注意：这是必须的，否则报错
 	groupCopy.ResourceVersion = ""
@@ -479,7 +555,7 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, copyGroupName string, nodeNam
 	groupCopy.Spec.Replicas = []int32{0, 0}
 	for i := range groupCopy.Spec.Actions {
 		action := &groupCopy.Spec.Actions[i]
-		action.Name = action.Name + "Copy"
+		action.Name = action.Name + "-copy"
 		if action.Status.Phase == apis.Successed {
 			continue
 		} else {
@@ -490,10 +566,40 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, copyGroupName string, nodeNam
 		for j := range action.Status.RuntimeStatus {
 			runtimeStatus := &action.Status.RuntimeStatus[j]
 			runtimeStatus.ProcessId = ""
+			copyRuntime := &action.Spec.Runtimes[j]
 			if runtimeStatus.Phase != apis.Successed {
 				runtimeStatus.Phase = apis.Unknown
 				runtimeStatus.StartAt = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
 				runtimeStatus.LastTime = apis.Time{time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)}
+			}
+			if copyRuntime.Type == apis.ByPod { // 如果pod资源要创建副本的话，pod资源的name不能重复
+				copyRuntime.Pod.ObjectMeta.Name = copyRuntime.Pod.ObjectMeta.Name + "-copy"
+				copyRuntime.Service.ObjectMeta.Name = copyRuntime.Service.ObjectMeta.Name + "-copy"
+
+				parts := strings.Split(copyRuntime.EnableFineGrainedControlService, ".")
+				if len(parts) >= 2 { // 至少包含 service.namespace.svc...
+					// 提取原服务名和命名空间
+					parts[0] = copyRuntime.Service.ObjectMeta.Name
+					copyRuntime.EnableFineGrainedControlService = strings.Join(parts, ".") // 替换服务名（此处直接使用 newServiceName，也可动态替换如 oldServiceName+"-copy"）
+				}
+				// 修改Service的Selector
+				//修改Pod的ObjectMeta.Labels
+				for key, value := range copyRuntime.Service.Spec.Selector {
+					// 更新Pod的Label值（追加后缀）
+					newValue := value + "-v2"
+					copyRuntime.Pod.ObjectMeta.Labels[key] = newValue
+					// 同步更新Service的Selector值
+					copyRuntime.Service.Spec.Selector[key] = newValue
+				}
+				// 判断是否是跨域迁移，如果是的话，得再加一个ClusterID
+				if isCrossDomain { // 如果是跨域迁移，那么Pod之间的连接需要加上域名
+					copyRuntime.Pod.Spec.Containers[0].Env[0].Value = "pve2." + copyRuntime.Pod.Spec.Containers[0].Env[0].Value
+				}
+				//copyRuntime.Pod.Spec.NodeSelector = map[string]string{"kubernetes.io/hostname": "broker"} // 这个之后想办法  ---二进制测试
+				//copyRuntime.EnableFineGrainedControlService = "172.100.0.130"                             // 这个之后想办法  ---二进制测试
+			}
+			if copyRuntime.Type == apis.ByDeployment {
+				copyRuntime.Deployment.ObjectMeta.Name = copyRuntime.Deployment.ObjectMeta.Name + "-copy"
 			}
 		}
 	}

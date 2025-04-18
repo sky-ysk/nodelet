@@ -73,7 +73,7 @@ func NewConfig() *Config {
 	nodeName := GetNodeName(config)
 	clusterCategory := GetClusterCategory(config)
 	address := GetAPIServerHost(config)
-	targetMap, err := BuildTargetMap(config)
+	groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
 	if err != nil {
 		logs.Errorf("targetMap build failed")
 		return nil
@@ -81,7 +81,7 @@ func NewConfig() *Config {
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
 		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory),
-		tc:            task.NewConfig(nodeName, targetMap),
+		tc:            task.NewConfig(nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap),
 		apiserverAddr: address,
 	}
 }
@@ -129,16 +129,18 @@ type FrameworkConfig struct {
 }
 
 // 创建目标映射的函数
-func BuildTargetMap(config *FrameworkConfig) (map[string]*informer.Target[*apis.Group], error) {
-	targetMap := make(map[string]*informer.Target[*apis.Group])
+func BuildTargetMap(config *FrameworkConfig) (map[string]*informer.Target[*apis.Group], map[string]*informer.Target[*apis.Action], map[string]*informer.Target[*apis.Runtime], error) {
+	groupTargetMap := make(map[string]*informer.Target[*apis.Group])
+	actionTargetMap := make(map[string]*informer.Target[*apis.Action])
+	runtimeTargetMap := make(map[string]*informer.Target[*apis.Runtime])
 	// 参数校验
 	if config == nil {
-		return targetMap, nil
+		return groupTargetMap, actionTargetMap, runtimeTargetMap, nil
 	}
 	// 获取本地集群ID（环境变量优先）
 	localID := getEnvWithFallback("LOCAL_CLUSTER_ID", config.LocalClusterID)
 	if localID == "" {
-		return nil, fmt.Errorf("missing local cluster ID")
+		return nil, nil, nil, fmt.Errorf("missing local cluster ID")
 	}
 	// 优先从环境变量获取集群配置
 	envClusters := parseClusterEnv()
@@ -168,10 +170,10 @@ func BuildTargetMap(config *FrameworkConfig) (map[string]*informer.Target[*apis.
 	for key, cluster := range clusters {
 		// 参数有效性检查
 		if cluster.ClusterID == "" || cluster.ClusterIP == "" {
-			return nil, fmt.Errorf("无效的集群配置: %s", key)
+			return nil, nil, nil, fmt.Errorf("无效的集群配置: %s", key)
 		}
 		// 这里演示参数组合，请根据实际需求调整
-		target := informer.CreateTarget[*apis.Group](
+		groupTarget := informer.CreateTarget[*apis.Group](
 			localID,                                  // 使用Name作为第一个参数
 			cluster.ClusterID,                        // 示例固定值，可替换为配置项
 			"registry-svc.test.svc.clusterset.local", // 服务发现地址
@@ -179,9 +181,27 @@ func BuildTargetMap(config *FrameworkConfig) (map[string]*informer.Target[*apis.
 			cluster.ClusterIP,                        // 使用Value作为IP地址
 			14399,                                    // 默认端口2
 		)
-		targetMap[cluster.ClusterID] = target
+		actionTarget := informer.CreateTarget[*apis.Action](
+			localID,                                  // 使用Name作为第一个参数
+			cluster.ClusterID,                        // 示例固定值，可替换为配置项
+			"registry-svc.test.svc.clusterset.local", // 服务发现地址
+			3001,                                     // 默认端口1
+			cluster.ClusterIP,                        // 使用Value作为IP地址
+			14399,                                    // 默认端口2
+		)
+		runtimeTarget := informer.CreateTarget[*apis.Runtime](
+			localID,                                  // 使用Name作为第一个参数
+			cluster.ClusterID,                        // 示例固定值，可替换为配置项
+			"registry-svc.test.svc.clusterset.local", // 服务发现地址
+			3001,                                     // 默认端口1
+			cluster.ClusterIP,                        // 使用Value作为IP地址
+			14399,                                    // 默认端口2
+		)
+		groupTargetMap[cluster.ClusterID] = groupTarget
+		actionTargetMap[cluster.ClusterID] = actionTarget
+		runtimeTargetMap[cluster.ClusterID] = runtimeTarget
 	}
-	return targetMap, nil
+	return groupTargetMap, actionTargetMap, runtimeTargetMap, nil
 }
 
 // 配置加载函数

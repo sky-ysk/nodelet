@@ -7,13 +7,17 @@ import (
 
 type Config struct {
 	// Node Name
-	NodeName  string
-	TargetMap map[string]*informer.Target[*apis.Group]
+	NodeName         string
+	groupTargetMap   map[string]*informer.Target[*apis.Group]
+	actionTargetMap  map[string]*informer.Target[*apis.Action]
+	runtimeTargetMap map[string]*informer.Target[*apis.Runtime]
 }
 
-func NewConfig(name string, targetMap map[string]*informer.Target[*apis.Group]) *Config {
+func NewConfig(name string, grouptargetMap map[string]*informer.Target[*apis.Group], actiontargetMap map[string]*informer.Target[*apis.Action], runtimetargetMap map[string]*informer.Target[*apis.Runtime]) *Config {
 	return &Config{
-		NodeName:  name,
-		TargetMap: targetMap,
+		NodeName:         name,
+		groupTargetMap:   grouptargetMap,
+		actionTargetMap:  actiontargetMap,
+		runtimeTargetMap: runtimetargetMap,
 	}
 }

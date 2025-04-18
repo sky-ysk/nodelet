@@ -20,7 +20,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/monitor"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
-	"hit.edu/framework/pkg/nodelet/task/task"
 	"hit.edu/framework/pkg/nodelet/task/types"
 )
 
@@ -41,9 +40,6 @@ type TaskExporter struct {
 
 	// 管理所有所有的Group
 	groupManager group.Manager
-	// 管理所有的Task
-	taskManager task.Manager
-
 	// Group的实际执行单元
 	groupWorkers group.GroupWorkers
 
@@ -70,7 +66,9 @@ var _ Exporter = &TaskExporter{}
 
 func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
 	// Task Exporter配置 config
-	targetMap := cfg.TargetMap
+	groupTargetMap := cfg.groupTargetMap
+	actionTargetMap := cfg.actionTargetMap
+	runtimeTargetMap := cfg.runtimeTargetMap
 	// Client-Go配置
 	nodeClient := clientset.Core().Nodes("test")
 	taskClient := clientset.Core().Tasks("test")
@@ -102,7 +100,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
-	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient)
+	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient, runtimeClient)
 	// 当前Taskexporter所在节点的NodeName
 	nodeName := cfg.NodeName
 
@@ -116,9 +114,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, runtimeClient, depenManager),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient),
-		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, runtimeClient, depenManager, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, recorder, eventClient, groupTargetMap),
+		migrationController: controller.NewMigrationController(clientset, groupClient, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
@@ -214,62 +212,3 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 		}
 	}
 }
-
-// 读取Task
-//func (te *TaskExporter) ReceiveTaskInfo() {
-//	for {
-//		tasks := te.GetTask() //读取etcd但中的Task列表
-//		for i := range tasks {
-//			task := tasks[i]
-//			logs.Debugf("receive task：%v, readey to check whether task has been submitted", task.Name)
-//			te.taskManager.AddTask(task) //将Task放入到TaskManager当中
-//			for j := range task.Spec.Groups {
-//				//_, err := te.taskManager.GetTaskByID(task.Status.TaskID)
-//				groupName := task.Spec.Groups[j].Name
-//				// 从etcd当中读group的信息
-//				gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-//				if err != nil {
-//					logs.Errorf("get group %s failed", groupName)
-//				}
-//				if gr.Status.Node == "CloudNode1" { // if gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
-//					if gr.Status.Phase == apis.ReadyToDeploy {
-//						groupUpdate := types.GroupUpdate{
-//							Group: gr,
-//							Op:    types.ADD,
-//						}
-//						te.updateCh <- groupUpdate
-//					} else if gr.Status.Phase == apis.ReadyToKill {
-//						//TODO
-//						groupUpdate := types.GroupUpdate{
-//							Group: gr,
-//							Op:    types.KILL,
-//						}
-//						te.updateCh <- groupUpdate
-//					}
-//				}
-//			}
-//		}
-//		time.Sleep(1 * time.Second)
-//	}
-//}
-//
-//// 从client-go中读取task信息
-//func (te *TaskExporter) GetTask() []*apis.Task {
-//	//读取 etcd当中的Task列表
-//	list, err := te.tasksClient.List(context.TODO(), metav1.ListOptions{})
-//	if err != nil {
-//		logs.Errorf("get task list err:%v", err)
-//	}
-//	var tasks []*apis.Task
-//	for _, t := range list.Items { //遍历etcd当中的所有task
-//		if t.Status.Phase == apis.ReadyToDeploy { // 如果taskStatus的phase为ReadyToDeploy
-//			task, err2 := te.tasksClient.Get(context.TODO(), t.Name, metav1.GetOptions{})
-//			if err2 != nil {
-//				logs.Error("Get task by taskID error from etcd：", err2)
-//			}
-//			tasks = append(tasks, task)
-//		}
-//	}
-//
-//	return tasks
-//}
