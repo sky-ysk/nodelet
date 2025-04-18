@@ -1,0 +1,287 @@
+{
+    "kind": "Task",
+    "apiVersion": "resources/v1",
+    "name": "T1",
+    "namespace": "test",
+    "spec": {
+        "name": "T1",
+        "desc": {
+            "docs": "国创中心抓橙子演示任务"
+        },
+        "type": "Normal",
+        "conditions": {},
+        "groups": [
+            {
+                "name": "G1",
+                "desc": {
+                    "docs": "挥手动作"
+                },
+                "actions": [
+                    {
+                        "name": "A1",
+                        "desc": {
+                            "docs": "抬手"
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R1",
+                                "devices": [
+                                    {
+                                        "name": "Arm",
+                                        "expected_properties": {
+                                            "domain": "Leju.Guochuang"
+                                        },
+                                        "abilities": [
+                                            "Arm_Control"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Arm}.Ability{Arm_Control}.Skill{Arm_Angle}",
+                                "inputs": [
+                                    {
+                                        "name": "left",
+                                        "value": "-1.221,0.0872,0,0,0,0,0"
+                                    },
+                                    {
+                                        "name": "right",
+                                        "value": "0,0,0,0,0,0,0"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "A2",
+                        "desc": {
+                            "docs": "放手"
+                        },
+                        "parents": [
+                            "A1"
+                        ],
+                        "runtimes": [
+                            {
+                                "name": "R1",
+                                "devices": [
+                                    {
+                                        "name": "Arm",
+                                        "expected_properties": {
+                                            "domain": "Leju.Guochuang"
+                                        },
+                                        "abilities": [
+                                            "Arm_Control"
+                                        ]
+                                    }
+                                ],
+                                "type": "Device",
+                                "image": "Device{Arm}.Abiltiy{Arm_Control}.Skill{Arm_Angle}",
+                                "conditions": {},
+                                "inputs": [
+                                    {
+                                        "name": "left",
+                                        "value": "0,0,0,0,0,0,0"
+                                    },
+                                    {
+                                        "name": "right",
+                                        "value": "0,0,0,0,0,0,0"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "G2",
+                "desc": {
+                    "docs": "抓橙子"
+                },
+                "parents": [
+                    "G1"
+                ],
+                "actions": [
+                    {
+                        "name": "A1",
+                        "desc": {
+                            "docs": "检查橙子是否存在"
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R1",
+                                "devices": [
+                                    {
+                                        "name": "Camera",
+                                        "expected_properties": {
+                                            "name": "Camera1",
+                                            "domain": "Leju.Guochuang"
+                                        },
+                                        "abilities": [
+                                            "Camera"
+                                        ]
+                                    },
+                                    {
+                                        "name": "Detector",
+                                        "expected_properties": {
+                                            "name": "Detector1",
+                                            "domain": ""
+                                        },
+                                        "abilities": [
+                                            "Detect"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Detector}.Ability{Detect}.Skill{Predict_By_Url}",
+                                "conditions": {},
+                                "inputs": [
+                                    {
+                                        "name": "url",
+                                        "type": "local",
+                                        "from": "Device{Camera}.Ability{Camera}.Skill{Camera_Status}.Property{URL}"
+                                    },
+                                    {
+                                        "name": "position",
+                                        "type": "constant",
+                                        "value": "head",
+                                        "value_type": "string"
+                                    },
+                                    {
+                                        "name": "type",
+                                        "type": "constant",
+                                        "value": "rgb",
+                                        "value_type": "string"
+                                    },
+                                    {
+                                        "name": "compressed",
+                                        "type": "contant",
+                                        "value": "true",
+                                        "value_type": "bool"
+                                    }
+                                ],
+                                "outputs": [
+                                    {
+                                        "name": "prediction",
+                                        "type": "constant",
+                                        "value_type": "int"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "A2",
+                        "desc": {
+                            "docs": "抓橙子"
+                        },
+                        "conditions": {
+                            "formulas": [
+                                {
+                                    "left_value": {
+                                        "type": "results",
+                                        "name": "NodeDependency",
+                                        "value_type": "int",
+                                        "from": "Action{A1}.Runtime{R1}.Outputs{prediction}"
+                                    },
+                                    "right_value": {
+                                        "type": "constants",
+                                        "name": "ExpectValue",
+                                        "value": "1",
+                                        "value_type": "int"
+                                    },
+                                    "signal": "=="
+                                }
+                            ]
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R1",
+                                "desc": {
+                                    "docs": "回到待机点"
+                                },
+                                "devices": [
+                                    {
+                                        "name": "Robot",
+                                        "expected_properties": {
+                                            "name": "Robot2",
+                                            "domain": "Xinghaitu.Guochuang"
+                                        },
+                                        "abilities": [
+                                            "Grab"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Robot}.Ability{Grab}.Skill{Go_Standby}",
+                                "conditions": {},
+                                "inputs": [
+                                    {
+                                        "name": "taskType",
+                                        "type": "constant",
+                                        "value": "0",
+                                        "valueType": "int"
+                                    }
+                                ],
+                                "outputs": [
+                                    {
+                                        "name": "status",
+                                        "type": "constant",
+                                        "value_type": "string"
+                                    },
+                                    {
+                                        "name": "message",
+                                        "type": "constant",
+                                        "value_type": "string"
+                                    }
+                                ]
+                            }, 
+                            {
+                                "name": "R2",
+                                "parents": [
+                                    "R1"
+                                ],
+                                "desc": {
+                                    "docs": "抓取"
+                                },
+                                "devices": [
+                                    {
+                                        "name": "Robot",
+                                        "expected_properties": {
+                                            "name": "Robot2",
+                                            "domain": "Xinghaitu.Guochuang"
+                                        },
+                                        "abilities": [
+                                            "Grab"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Robot}.Ability{Grab}.Skill{Start_Task}",
+                                "conditions": {},
+                                "inputs": [
+                                    {
+                                        "name": "taskType",
+                                        "type": "constant",
+                                        "value": "0",
+                                        "valueType": "int"
+                                    }
+                                ],
+                                "outputs": [
+                                    {
+                                        "name": "status",
+                                        "type": "constant",
+                                        "value_type": "string"
+                                    },
+                                    {
+                                        "name": "message",
+                                        "type": "constant",
+                                        "value_type": "string"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
