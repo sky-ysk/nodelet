@@ -159,3 +159,36 @@ func TestSendToProxy(t *testing.T) {
 	}
 	logs.Infof("resp is : %s", string(data))
 }
+
+// go test -run TestAddDevice -v
+func TestAddDevice(t *testing.T) {
+	logs.Init("testModule")
+	ctx := context.Background()
+	cs, err := createClientSet()
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	dc := cs.Core().Nodes(apis.NamespaceTest)
+	node := apis.Node{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Node",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "TestEnvNode1",
+			Namespace: apis.NamespaceTest,
+		},
+		Spec: apis.NodeSpec{
+			NodeName: "TestEnvNode1",
+			HostName: "192.168.8.176",
+		},
+		Status: apis.NodeStatus{},
+	}
+	_, err = dc.Create(ctx, &node, metav1.CreateOptions{})
+	if err != nil {
+		logs.Error(err.Error())
+		return
+	}
+
+}

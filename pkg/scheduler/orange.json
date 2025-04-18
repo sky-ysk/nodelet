@@ -2,7 +2,7 @@
     "kind": "Task",
     "apiVersion": "resources/v1",
     "name": "T1",
-    "namespace": "Test",
+    "namespace": "test",
     "spec": {
         "name": "T1",
         "desc": {

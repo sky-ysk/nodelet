@@ -241,29 +241,29 @@ func TestClearEtcd(t *testing.T) {
 	}
 
 	//删group
-	groupClient := cs.Core().Groups("test")
+	groupClient := cs.Core().Groups(apis.NamespaceTest)
 	groups, err := groupClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
 	}
 	for _, g := range groups.Items {
 		logs.Infof("delete group %s ", g.Name)
-		err := groupClient.Delete(ctx, g.Spec.Name, metav1.DeleteOptions{})
+		err := groupClient.Delete(ctx, g.Name, metav1.DeleteOptions{})
 		if err != nil {
-			logs.Error(err)
+			logs.Error(err.Error())
 			return
 		}
 	}
 
 	//删actions
-	actionClient := cs.Core().Actions("test")
+	actionClient := cs.Core().Actions(apis.NamespaceTest)
 	acts, err := actionClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
 	}
 	for _, a := range acts.Items {
 		logs.Infof("delete act %s ", a.Name)
-		err := actionClient.Delete(ctx, a.Spec.Name, metav1.DeleteOptions{})
+		err := actionClient.Delete(ctx, a.Name, metav1.DeleteOptions{})
 		if err != nil {
 			logs.Error(err)
 			return
@@ -286,7 +286,7 @@ func TestClearEtcd(t *testing.T) {
 	//}
 
 	//删events
-	eventClient := cs.Core().Events("test")
+	eventClient := cs.Core().Events(apis.NamespaceTest)
 	events, err := eventClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
@@ -301,7 +301,7 @@ func TestClearEtcd(t *testing.T) {
 	}
 
 	//删task
-	taskClient := cs.Core().Tasks("test")
+	taskClient := cs.Core().Tasks(apis.NamespaceTest)
 	tasks, err := taskClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
