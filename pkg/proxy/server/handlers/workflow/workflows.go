@@ -98,7 +98,7 @@ func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
-	ws.Route(ws.GET(fmt.Sprintf("/{Namespace}")).
+	ws.Route(ws.GET(fmt.Sprintf("/")).
 		Doc("Get all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Namespace", "The namespace of the workflows").DataType("string")).
@@ -108,7 +108,7 @@ func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 		Returns(400, "Not Found", nil),
 	)
 
-	ws.Route(ws.DELETE(fmt.Sprintf("/{Namespace}")).
+	ws.Route(ws.DELETE(fmt.Sprintf("/")).
 		Doc("Delete all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Namespace", "The namespace of the workflows").DataType("string")).
