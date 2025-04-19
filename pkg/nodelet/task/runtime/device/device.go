@@ -29,36 +29,13 @@ func NewDeviceRuntime(deviceClient core.DeviceInterface, actionClient core.Actio
 	}
 }
 
-func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 
-	// 获取action
-	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
-	if err != nil {
-		logs.Errorf("Action[%s] Runtime[%s] can not get action from etcd!", a.Name, runtime.Name)
-		return err
+	// 获取Device
+	for name, obj := range runtime.Status.Devices {
+		device, err := dr.deviceClient.Get(context.TODO(), obj.Name, metav1.GetOptions{})
 	}
-
-	// 获取runtime(从action中获取)
-	runtime = &action.Spec.Runtimes[runtimeIndex]
-
-	// 构建一个device map
-	devices := make(map[string]*apis.Device)
-	for _, d := range runtime.Devices {
-		device, err := dr.deviceClient.Get(context.TODO(), d.Name, metav1.GetOptions{})
-		if err != nil {
-			logs.Errorf("can not get device: %s from etcd!", d.Name)
-		}
-		devices[d.Name] = device
-	}
-
 	// 检查Device
-	logs.Infof("Action[%s] Runtime[%s] CheckDevice start\n", action.Spec.Name, runtime.Name)
-	err = utils.CheckDevice2(devices, group.Status.GroupID, dr.deviceClient)
-	if err != nil {
-		logs.Errorf("Action[%s] Runtime[%s] CheckDevice failed\n", action.Spec.Name, runtime.Name)
-		return err
-	}
-	logs.Infof("Action[%s] Runtime[%s] CheckDevice is successful\n", action.Spec.Name, runtime.Name)
 
 	// 遍历device
 	for name, device := range devices {
@@ -148,7 +125,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, a *apis.Action, runtime *apis.Ru
 	return nil
 }
 
-func (dr *DeviceRuntime) Kill(group *apis.Group, a *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error { // 首先获取action
+func (dr *DeviceRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error { // 首先获取action
 	logs.Infof("this is a test for kill")
 	action, err := dr.actionClient.Get(context.TODO(), a.Name, metav1.GetOptions{})
 	if err != nil {
