@@ -1495,7 +1495,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 
 			if i.LeftValue.Value == i.RightValue.Value {
 				i.Result = apis.True
-				logs.Info("NodeCondition success : parent RuntimeName:", i.LeftValue.From)
+				logs.Trace("NodeCondition success : parent RuntimeName:", i.LeftValue.From)
 			}
 
 			if i.Result != apis.True {
