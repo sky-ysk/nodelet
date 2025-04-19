@@ -812,10 +812,10 @@ type Device struct {
 	meta.ObjectMeta
 	
 	//
-	Spec DeviceSpec
+	Spec DeviceSpec `json:"spec,omitempty" yaml:"spec"`
 	
 	//
-	Status DeviceStatus
+	Status DeviceStatus `json:"status,omitempty" yaml:"status"`
 }
 
 type DevicePhase string

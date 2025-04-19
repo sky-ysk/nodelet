@@ -1,0 +1,13 @@
+EtcdPort : 2379
+ApiServerAddr : "http://127.0.0.1:10000"
+#ApiServerPort : 11006
+NodeName : "EdegeNode1"
+ClusterCategory : "Cloud"
+LocalClusterID : "pve2"
+#OtherCluster:
+#  cluster1:
+#    ClusterID : "broker"
+#    ClusterIP : "172.100.0.130"
+#ServiceDiscovery:
+#  Address: "registry-svc.test.svc.clusterset.local"
+#  Ports: [3001, 14399]
