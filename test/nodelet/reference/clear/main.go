@@ -64,10 +64,11 @@ func main() {
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
 	actionsClient := clientSet.Core().Actions("test")
-	runtimesClient := clientSet.Core().Actions("test")
+	runtimesClient := clientSet.Core().Runtimes("test")
 	eventsClient := clientSet.Core().Events("test")
 
 	// Task资源
+	logs.Info("======Task")
 	list1, err := tasksClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
@@ -80,6 +81,7 @@ func main() {
 		logs.Infof("Task删除成功: %v", task.Name)
 	}
 	// group资源
+	logs.Info("======Group")
 	list2, err := groupsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
@@ -92,6 +94,7 @@ func main() {
 		logs.Infof("Group删除成功: %v", group.Name)
 	}
 	// action 资源
+	logs.Info("======Action")
 	list3, err := actionsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
@@ -104,6 +107,7 @@ func main() {
 		logs.Infof("Action删除成功: %v", action.Name)
 	}
 	// runtime 资源
+	logs.Info("======Runtime")
 	list4, err := runtimesClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
@@ -117,6 +121,7 @@ func main() {
 	}
 
 	// Event资源
+	logs.Info("======Event")
 	list5, err := eventsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)

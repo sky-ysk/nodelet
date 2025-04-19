@@ -59,7 +59,7 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	logs.Infof("k8s runtime for task: %s", group.Name)
 	//先执行共同的操作,再各自调用代码
 	k.monitor.SetState(group, action, runtime, actionIndex, runtimeIndex)
-	switch runtime.Type {
+	switch runtime.Spec.Type {
 	case apis.ByDeployment:
 		deployment1 := entity.GetDeploymentFromParam1(&runtime.Deployment)
 		logs.Info("[RUN]-----------------k8s deployment created----------------------------")

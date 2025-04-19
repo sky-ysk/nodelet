@@ -13,9 +13,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/runtime/binary"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
 	"hit.edu/framework/pkg/nodelet/task/runtime/container"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
 	"hit.edu/framework/pkg/nodelet/task/runtime/net"
-	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
 )
 
 type Runtime interface {
@@ -83,7 +81,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			runtime = device.NewDeviceRuntime(rm.deviceClient, rm.actionClient, rm.eventbus)
+			//runtime = device.NewDeviceRuntime(rm.deviceClient, rm.actionClient, rm.eventbus)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

@@ -16,8 +16,8 @@ func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, pref
 	groups := []*apis.Group{}
 	for _, as := range g.Spec.Groups {
 		// 默认情况下，创建Groups不填充Actions
-		a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
-		//a, err := m.CreateGroup(as, g, namespace, uuid, prefix)
+		//a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
+		a, err := m.CreateGroup(as, g, namespace, uuid, prefix)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +64,7 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	g.Status.CreateAt = &apis.Time{time.Now()}
 
 	// 初始化状态
-	g.Status.Phase = apis.Pending
+	g.Status.Phase = apis.Unknown
 
 	// 打上Label, 当前任务属于哪个Group和uuid域
 	if t != nil {

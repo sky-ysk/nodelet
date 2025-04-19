@@ -416,8 +416,8 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 				if err != nil {
 					logs.Errorf("Etcd get group error-3:%v", err)
 				}
-				var isSuccess = true                                 // 标记group下面的action是否都执行成功
-				for _, actionReference := range group.Spec.Actions { // 遍历group当中的Action
+				var isSuccess = true                                   // 标记group下面的action是否都执行成功
+				for _, actionReference := range group.Status.Actions { // 遍历group当中的Action
 					action, err := gmo.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
 					if err != nil {
 						logs.Errorf("Etcd get action error-4:%v", err)
@@ -594,7 +594,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 					if actionStatus.Phase == apis.Init { //说明当前action下面有Init的runtime了（即：有细粒度控制的runtime）
 						//logs.Info("========================================Init")
 						isSuccess = false
-						for _, runtimeReference := range action.Spec.Runtimes {
+						for _, runtimeReference := range action.Status.Runtimes {
 							runtime, err := gmo.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
 							if err != nil {
 								logs.Errorf("Get runtime error-7:%v", err)
