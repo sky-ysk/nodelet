@@ -812,10 +812,10 @@ type Device struct {
 	meta.ObjectMeta
 
 	//
-	Spec DeviceSpec
+	Spec DeviceSpec `json:"spec,omitempty" yaml:"spec"`
 
 	//
-	Status DeviceStatus
+	Status DeviceStatus `json:"status,omitempty" yaml:"status"`
 }
 
 type DevicePhase string
@@ -825,7 +825,6 @@ const (
 	DeviceRunning      DevicePhase = "Running"
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
-	DeviceComplete     DevicePhase = "Complete"
 	DeviceDisconnected DevicePhase = "Disconnected"
 )
 
@@ -976,6 +975,13 @@ type AbilityService struct {
 
 // TODO: 增加具体的值限制
 type AbilityState int
+
+const (
+	AbilityRunning        AbilityState = 1
+	AbilityReadyStartUp   AbilityState = 2
+	AbilityReadyTerminate AbilityState = 3
+	AbilityTerminated     AbilityState = 4
+)
 
 type DeviceStatus struct {
 	Abilities map[string]Ability `json:"abilities,omitempty" yaml:"abilities"`
