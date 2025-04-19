@@ -6,6 +6,10 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
+	sutils "hit.edu/framework/pkg/scheduler/utils"
+	"hit.edu/framework/pkg/utils/value"
+
+	//scheutils "hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -54,16 +58,24 @@ type PriorityQueue struct {
 	lock sync.RWMutex
 
 	conditionEngine *utils.ConditionEngine
+
+	valueEngine *value.Engine
 }
 
 func NewPriorityQueue() *PriorityQueue {
 	logs.Info("NewPriorityQueue method")
+	cs, err := sutils.CreateClientSetWithTimeOut(3600)
+	if err != nil {
+		logs.Error(err.Error())
+		return nil
+	}
 	return &PriorityQueue{
 		stop:            make(chan struct{}),
 		readyQ:          newReadyQueue(),
 		pendingQueue:    *newPendingQueue(),
 		lock:            sync.RWMutex{},
-		conditionEngine: utils.NewConditionEngine(),
+		conditionEngine: utils.NewDefaultConditionEngine(),
+		valueEngine:     value.NewEngine(cs),
 	}
 }
 
@@ -126,9 +138,9 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	//logs.Debug("now run the flush method")
 	//fmt.Println("now run the flush method")
 	for k, v := range p.pendingQueue.groupInfoMap {
-		readyRes, err := p.checkGroupReady(v)
+		readyRes, err := p.checkGroupReady(ctx, v)
 		if err != nil {
-			logs.Fatal(err)
+			logs.Error(err.Error())
 			continue
 		}
 		if readyRes == apis.True {
@@ -148,9 +160,29 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	}
 }
 
-// TODO 这个方法等待后续完善
-func (p *PriorityQueue) checkGroupReady(gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
-	return p.conditionEngine.CheckConditions(gInfo.Group.Spec.Conditions)
+// TODO 这个方法目前不完善，只检查了父母节点的依赖
+func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
+	for _, par := range gInfo.Group.Spec.Parents {
+		fromStr := fmt.Sprintf("Group{%s}.Status{phase}", par)
+		valueTmp := apis.Value{
+			Name:      "",
+			Type:      apis.LocalData,
+			ValueType: apis.StringType,
+			From:      fromStr,
+		}
+		parentValue, err := p.valueEngine.ExtractLocalValue(&valueTmp, *(gInfo.Group))
+		if err != nil {
+			logs.Error(err.Error())
+			return apis.False, err
+		}
+
+		if parentValue.Value != string(apis.Successed) {
+			logs.Infof("parent group is not ready %s, Phase : %s", par, parentValue.Value)
+			return apis.NotReady, nil
+		}
+	}
+	return apis.True, nil
+	//return p.conditionEngine.CheckConditions(gInfo.Group.Spec.Conditions)
 }
 
 func (p *PriorityQueue) moveToActiveQ(ctx context.Context, gInfo *config.QueuedGroupInfo) bool {

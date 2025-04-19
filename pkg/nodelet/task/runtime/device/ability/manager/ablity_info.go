@@ -1,4 +1,4 @@
-package inst
+package manager
 
 import (
 	"encoding/json"
@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+type AdjustStatus struct {
+	status interface{}
+}
 type AbilityInstance struct {
 	Id           string       `json:"id"`
 	Kind         string       `json:"kind"`
@@ -84,7 +87,7 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 	logs.Info("publish get request\n")
 	response, err := client.Get(requestForGet.Url)
 	if err != nil {
-		logs.Error("get response error: %v\n", err)
+		logs.Errorf("get response error: %v\n", err)
 		return []AbilityInstance{}, err
 	}
 	defer response.Body.Close()
@@ -109,6 +112,9 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 // FindIdByAbilityName 根据能力名字寻找uuid
 func FindIdByAbilityName(abilityName string, abilityInstances []AbilityInstance) (string, error) {
 	for _, abilityInstance := range abilityInstances {
+		fmt.Println("instance is", abilityInstance, abilityInstance.MetaData.Name)
+		fmt.Println("hh", abilityInstance.Spec.AbilityName)
+
 		if abilityInstance.Spec.AbilityName == abilityName {
 			return abilityInstance.Id, nil
 		}
@@ -121,4 +127,35 @@ func FindIdByAbilityName(abilityName string, abilityInstances []AbilityInstance)
 		}
 	}
 	return "", errors.New(abilityName + " is not found")
+}
+
+func GetAbilityExeStatus(uuid string, url string) (AdjustStatus, error) {
+	requestForGet := NewGetRequest(fmt.Sprintf("%s/ability/%s/adjust-status", url, uuid))
+	// 创建HTTP client
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+	logs.Info("publish get request\n")
+	response, err := client.Get(requestForGet.Url)
+	if err != nil {
+		logs.Error("get response error: %v\n", err)
+		return AdjustStatus{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		logs.Error("response code is %v\n", response.StatusCode)
+		return AdjustStatus{}, errors.New(response.Status)
+	}
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return AdjustStatus{}, err
+	}
+	var adjustStatus AdjustStatus
+	err = json.Unmarshal(responseBody, &adjustStatus)
+	if err != nil {
+		logs.Error("unmarshal response error: %v\n", err)
+		return AdjustStatus{}, err
+	}
+	logs.Info("unmarshal response successfully\n")
+	return adjustStatus, nil
 }

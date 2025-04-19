@@ -9,7 +9,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
@@ -110,25 +109,25 @@ func (sp *ScorePluginDBY) Name() string {
 	return "ScorePluginForDuBoyu"
 }
 
-func (sp *ScorePluginDBY) getTaskNameByID(ctx context.Context, taskID string) string {
-	list, err := sp.taskClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		logs.Error(err.Error())
-		return ""
-	}
-	for _, item := range list.Items {
-		if item.Status.TaskID == taskID {
-			logs.Info("get taskname %s by id %s", item.Name, taskID)
-			return item.Name
-		}
-	}
-	return ""
-}
+//func (sp *ScorePluginDBY) getTaskNameByID(ctx context.Context, taskID string) string {
+//	list, err := sp.taskClient.List(ctx, metav1.ListOptions{})
+//	if err != nil {
+//		logs.Error(err.Error())
+//		return ""
+//	}
+//	for _, item := range list.Items {
+//		if item.Status.TaskID == taskID {
+//			logs.Info("get taskname %s by id %s", item.Name, taskID)
+//			return item.Name
+//		}
+//	}
+//	return ""
+//}
 
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
 	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
-	taskName := sp.getTaskNameByID(ctx, group.Status.Belongs.TaskID)
+	taskName := group.Status.Belong.Name
 
 	request := transport.ScoreRequest{
 		GroupID: group.Spec.Name,
@@ -233,18 +232,18 @@ func buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsReq
 	taskID := task.Spec.Name
 	//TODO 可能需要做深复制 @lbh
 	for _, group := range task.Spec.Groups {
-		groupsID = append(groupsID, group.Spec.Name)
+		groupsID = append(groupsID, group.Name)
 		resources := make([]apis.ResourceRequirement, 0)
-		for _, requirement := range group.Spec.ResourceRequirements {
+		for _, requirement := range group.ResourceRequirements {
 			resources = append(resources, requirement)
 		}
 		if len(resources) > 0 {
-			resourcesMap[group.Spec.Name] = resources
+			resourcesMap[group.Name] = resources
 		}
-		for _, parent := range group.Spec.Parents {
+		for _, parent := range group.Parents {
 			//fmt.Println("parent : ", parent, " child ", group.Status.GroupID)
 			topInfo = append(topInfo, GroupTopInfo{
-				Child:  group.Spec.Name,
+				Child:  group.Name,
 				Parent: parent,
 			})
 		}

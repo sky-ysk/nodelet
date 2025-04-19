@@ -48,8 +48,7 @@ const (
 
 func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
-	//fmt.Println("now schedule one running")
-	logs.Info("now schedule one running..test")
+	logs.Trace("now schedule one running")
 	groupInfo, err := sched.ReadyGroup(ctx)
 	msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
 	logs.Info(msg)
@@ -109,7 +108,10 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 }
 
 func (sched *Scheduler) frameworkForGroup(group *apis.Group) (framework.Framework, error) {
-	fwk, ok := sched.Profiles[group.Spec.SchedulerName]
+	if group.Spec.SchedulerName == nil {
+		return sched.DefaultFramework, nil
+	}
+	fwk, ok := sched.Profiles[*group.Spec.SchedulerName]
 	if !ok {
 		return sched.DefaultFramework, nil
 		//return nil, fmt.Errorf("profile not found for scheduler name %q", group.Spec.SchedulerName)
@@ -449,7 +451,7 @@ func getNodeFromApiServer() []*config.NodeInfo {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	nodesClient := clientSet.Core().Nodes("test")
+	nodesClient := clientSet.Core().Nodes(apis.NamespaceTest)
 	lstOpts := metav1.ListOptions{}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {

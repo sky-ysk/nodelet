@@ -83,7 +83,7 @@ func NewCancelTaskInst(taskId string) (string, error) {
 	}
 	cancelTaskStr, err := json.Marshal(cancelTask)
 	if err != nil {
-		return "", fmt.Errorf("marshal cancel task inst failed: %v", err)
+		return "", fmt.Errorf("marshal cancel task manager failed: %v", err)
 	}
 	return string(cancelTaskStr), nil
 }

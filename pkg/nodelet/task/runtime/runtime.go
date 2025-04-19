@@ -5,7 +5,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
-	"hit.edu/framework/pkg/nodelet/task/runtime/container"
 	"sync"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -13,7 +12,10 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/binary"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
+	"hit.edu/framework/pkg/nodelet/task/runtime/container"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
 	"hit.edu/framework/pkg/nodelet/task/runtime/net"
+	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
 )
 
 type Runtime interface {
@@ -81,7 +83,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			//runtime = device.NewDeviceRuntime(rm.deviceClient, rm.groupClient)
+			runtime = device.NewDeviceRuntime(rm.deviceClient, rm.actionClient, rm.eventbus)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

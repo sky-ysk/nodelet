@@ -1424,7 +1424,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 			}
 		}
 		if i.Result != apis.True {
-			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
+			logs.Tracef("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
 			// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)

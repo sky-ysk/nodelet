@@ -112,7 +112,7 @@ func PublishCancelTaskInstruction(device apis.Device, taskId string) (bool, erro
 	instruction, err := inst.NewCancelTaskInst(taskId)
 	logs.Infof("cancel task instruction has been created\n")
 	if err != nil {
-		logs.Errorf("Error new cancel task inst: %v\n", err)
+		logs.Errorf("Error new cancel task manager: %v\n", err)
 		return false, err
 	}
 	logs.Info("cancel instruction has been created\n")
@@ -170,7 +170,7 @@ func PublishCancelPhaseInstruction(device apis.Device, phaseId int, taskId strin
 	instruction, err := inst.NewCancelPhaseInst(taskId, phaseId)
 	logs.Infof(" cancel phase instruction has been created\n")
 	if err != nil {
-		logs.Errorf("Error new cancel phase inst: %v\n", err)
+		logs.Errorf("Error new cancel phase manager: %v\n", err)
 		return false, err
 	}
 	requestForPost := NewPostRequest(fmt.Sprintf("%s/tasks/skip_phase", device.Spec.AccessMethod.URL), instruction)

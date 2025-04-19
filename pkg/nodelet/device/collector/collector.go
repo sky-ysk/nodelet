@@ -60,17 +60,17 @@ func NewDeviceCollector(enabledCollectors []string) (*DeviceCollector, error) {
 			fmt.Println("name:" + name)
 			collectors[name], err = f()
 			if err != nil {
-				logs.V2().Errorf("Warning: failed to initialize collector %s: %v", name, err)
+				logs.Errorf("Warning: failed to initialize collector %s: %v", name, err)
 				failedCollectors = append(failedCollectors, name)
 				continue
 			}
 			if collectors[name] == nil {
-				logs.V2().Errorf("Warning: failed to initialize %s collector: collector does not exist", name)
+				logs.Errorf("Warning: failed to initialize %s collector: collector does not exist", name)
 			}
 		}
 	}
 	if len(failedCollectors) > 0 {
-		logs.V2().Errorf("Warning: failed to initialize the following collectors: %v", failedCollectors)
+		logs.Errorf("Warning: failed to initialize the following collectors: %v", failedCollectors)
 	}
 	return &DeviceCollector{Collectors: collectors}, nil
 }
@@ -87,30 +87,30 @@ func contains(slice []string, item string) bool {
 
 // GatherStaticData 进行静态信息数据收集
 func (n *DeviceCollector) GatherStaticData() error {
-	
+
 	var metricChan = make(chan Metric, capMetricChan)
 	var wg sync.WaitGroup
-	
+
 	//wg.Add(len(n.Collectors))
-	
+
 	for name, c := range n.Collectors {
 		if c == nil {
-			logs.V2().Error("collector %s does not exist", name)
+			logs.Error("collector %s does not exist", name)
 			continue
 		}
 		wg.Add(1)
 		go func(name string, c Collector) {
 			if err := c.UpdateStaticInfo(metricChan); err != nil {
-				logs.V2().Error("failed to update static metrics: %v", err)
+				logs.Error("failed to update static metrics: %v", err)
 			}
 			wg.Done()
 		}(name, c)
 	}
-	
+
 	// 所有的数据收集完后，清除Chan
 	wg.Wait()
 	close(metricChan)
-	
+
 	// 在主线程中接收 metricChan 中的数据
 	for metric := range metricChan { //循环会阻塞，直到有数据进入 metricChan
 		if err := processMetric(metric); err != nil {
@@ -122,26 +122,26 @@ func (n *DeviceCollector) GatherStaticData() error {
 
 // GatherDynamicData 进行动态的数据收集
 func (n *DeviceCollector) GatherDynamicData() error {
-	
+
 	var metricChan = make(chan Metric, capMetricChan)
 	var wg sync.WaitGroup
-	
+
 	//wg.Add(len(n.Collectors))
-	
+
 	for name, c := range n.Collectors {
 		wg.Add(1)
 		go func(name string, c Collector) {
 			if err := c.UpdateDynamicInfo(metricChan); err != nil {
-				logs.V2().Error("failed to update static metrics: %v", err)
+				logs.Error("failed to update static metrics: %v", err)
 			}
 			wg.Done()
 		}(name, c)
 	}
-	
+
 	// 所有的数据收集完后，清除Chan
 	wg.Wait()
 	close(metricChan)
-	
+
 	// 在主线程中接收 metricChan 中的数据
 	for metric := range metricChan { //循环会阻塞，直到有数据进入 metricChan
 		if err := processMetric(metric); err != nil {
@@ -154,15 +154,15 @@ func (n *DeviceCollector) GatherDynamicData() error {
 func processMetric(metric Metric) error {
 	// TODO：处理Metric
 	// TODO: 存入本地Cache或同步到manager中？待定
-	
+
 	//暂时先实现写入本地Cache
 	key := fmt.Sprintf("%s-%v", metric.Item.name, metric.Item.labels)
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 	cache[key] = metric // 将 metric 存储到缓存中
-	logs.V2().Info("successfully processed metric: ", key, metric.toString())
+	logs.Info("successfully processed metric: ", key, metric.toString())
 	// TODO: 将Cache放到nodelet.go中
 	// TODO: 数据预处理，然后放入Node中，然后写入API-Server中
-	
+
 	return nil
 }

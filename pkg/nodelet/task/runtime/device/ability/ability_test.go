@@ -2,53 +2,267 @@ package ability
 
 import (
 	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"testing"
+	"time"
 )
 
-func TestGetUUID(t *testing.T) {
-	moduleName := "testModule"
-	logs.Init(moduleName)
-	logs.Infof("[test] testing run.....\n")
-	var url string = "http://127.0.0.1:8123"
-	var name string = "Mock"
-	abilityManager := NewAbilityManager(url, name)
-	uuid, err := abilityManager.GetUUID()
+// go test -run TestPublishAbilityInst -v
+func TestPublishAbilityInst(t *testing.T) {
+
+	// 发布指令 service开头为业务请求 manage开头为能力框架操作
+	instService := "service_PredictByUrl"
+	instManage := "manage_Detect"
+
+	logs.Init("test")
+
+	// 选择不同的测试device
+	// 在创建device测试函数中填写参数
+	//device := CreateArmAngleDevice()
+	//device := CreateLeftArmUpDevice()
+	//device := CreateLeftArmDownDevice()
+	//device := CreatePredictDevice()
+	device := CreatePredictByUrlDevice()
+
+	output, err := PublishAbilityInst(instManage, device, "")
 	if err != nil {
-		t.Error(err)
+		logs.Errorf("error is %v", err)
+		return
 	}
-	fmt.Println(uuid)
+	logs.Infof("output is %v", output)
+	for _, a := range device.Status.Abilities {
+		for _, service := range a.Services {
+			fmt.Println(service.Port)
+		}
+	}
+
+	logs.Infof("output is %v", output)
+	output, err = PublishAbilityInst(instService, device, "")
+	if err != nil {
+		return
+	}
+
+	logs.Infof("output is %v", output)
+
+	time.Sleep(5 * time.Second)
+
+	//能力框架的终止方式通过操作字段operation来进行
+	output, err = PublishAbilityInst(instManage, device, "terminate")
 }
 
-func TestStartupAbility(t *testing.T) {
-	moduleName := "testModule"
-	logs.Init(moduleName)
-	logs.Infof("[test] testing run.....\n")
-	var url string = "http://127.0.0.1:8123"
-	var name string = "Mock"
-	abilityManager := NewAbilityManager(url, name)
-	err := abilityManager.StartupAbility()
+func TestTerminateAbilityInst(t *testing.T) {
+	instManage := "manage_ArmControl.Leju.Guochuang"
+	device := CreateLeftArmUpDevice()
+	output, err := PublishAbilityInst(instManage, device, "terminate")
 	if err != nil {
-		t.Error(err)
+		logs.Errorf("error is %v", err)
 	}
-	logs.Info("start mock ability successfully...")
-	logs.Infof("terminate mock ability....")
-	err = abilityManager.TerminateAbility()
-	if err != nil {
-		t.Error(err)
-	}
-	logs.Info("terminate mock ability successfully")
+	logs.Infof("output is %v", output)
 }
 
-func TestTerminateAbility(t *testing.T) {
-	moduleName := "testModule"
-	logs.Init(moduleName)
-	logs.Infof("[test] testing run.....\n")
-	var url string = "http://127.0.0.1:8123"
-	var name string = "Mock"
-	abilityManager := NewAbilityManager(url, name)
-	err := abilityManager.TerminateAbility()
-	if err != nil {
-		t.Error(err)
+// 创建ArmAngle的测试device
+func CreateArmAngleDevice() *apis.Device {
+
+	url := "http://192.168.8.165:8080"
+	device := &apis.Device{
+		Spec: apis.DeviceSpec{
+			AccessMethod: apis.AccessMethod{
+				URL: url,
+			},
+			ExpectedProperties: make(map[string]apis.Property),
+		},
+		Status: apis.DeviceStatus{
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
 	}
+	device.Spec.ExpectedProperties["left"] = apis.Property{
+		Value: "-1.221,0.0872,0,0,0,0,0",
+	}
+	device.Spec.ExpectedProperties["right"] = apis.Property{
+		Value: "0,0,0,0,0,0,0",
+	}
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Arm",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "ArmAngle",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/arm_angle",
+			},
+			{
+				Name:      "LeftArmUp",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/left_arm_up",
+			},
+			{
+				Name:      "LeftArmDown",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/left_arm_down",
+			},
+		},
+	})
+	return device
+}
+
+// 创建LeftArmUp的测试device
+func CreateLeftArmUpDevice() *apis.Device {
+	url := "http://192.168.8.165:8080" // 填写框架url
+	device := &apis.Device{
+		Spec: apis.DeviceSpec{
+			AccessMethod: apis.AccessMethod{
+				URL: url,
+			},
+			ExpectedProperties: make(map[string]apis.Property),
+		},
+		Status: apis.DeviceStatus{
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+	device.Spec.ExpectedProperties["left"] = apis.Property{
+		Value: "-1.221,0.0872,0,0,0,0,0",
+	}
+	device.Spec.ExpectedProperties["right"] = apis.Property{
+		Value: "0,0,0,0,0,0,0",
+	}
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Arm",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "ArmAngle",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/arm_angle",
+			},
+			{
+				Name:      "LeftArmUp",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/left_arm_up",
+			},
+			{
+				Name:      "LeftArmDown",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/left_arm_down",
+			},
+		},
+	})
+	return device
+}
+
+// // 创建LeftArmDown能力的测试device
+func CreateLeftArmDownDevice() *apis.Device {
+	url := "http://192.168.8.165:8080"
+	device := &apis.Device{
+		Spec: apis.DeviceSpec{
+			AccessMethod: apis.AccessMethod{
+				URL: url,
+			},
+			ExpectedProperties: make(map[string]apis.Property),
+		},
+		Status: apis.DeviceStatus{
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+	device.Spec.ExpectedProperties["left"] = apis.Property{
+		Value: "-1.221,0.0872,0,0,0,0,0",
+	}
+	device.Spec.ExpectedProperties["right"] = apis.Property{
+		Value: "0,0,0,0,0,0,0",
+	}
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Arm",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "ArmAngle",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/arm_angle",
+			},
+			{
+				Name:      "LeftArmUp",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/left_arm_up",
+			},
+			{
+				Name:      "LeftArmDown",
+				Ip:        "192.168.8.165",
+				Interface: "/api/control/left_arm_down",
+			},
+		},
+	})
+	return device
+}
+
+// 创建predict能力的测试device
+func CreatePredictDevice() *apis.Device {
+	url := "http://192.168.8.165:8080"
+
+	path := ""
+	device := &apis.Device{
+		Spec: apis.DeviceSpec{
+			AccessMethod: apis.AccessMethod{
+				URL: url,
+			},
+			ExpectedProperties: make(map[string]apis.Property),
+		},
+		Status: apis.DeviceStatus{
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+	device.Spec.ExpectedProperties["path"] = apis.Property{Value: path}
+
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Predict",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "Predict",
+				Ip:        "192.168.8.165",
+				Interface: "/predict",
+			},
+			{
+				Name:      "PredictByUrl",
+				Ip:        "192.168.8.165",
+				Interface: "/predict_by_url",
+			},
+		},
+	})
+	return device
+}
+
+// 创建predictByUrl能力的测试device
+func CreatePredictByUrlDevice() *apis.Device {
+	url := "http://192.168.8.165:8080"
+	cameraUrl := "http://127.0.0.1:51169/api/status/camera"
+	compressed := "false"
+	imageType := "rgb"
+	position := "head"
+	device := &apis.Device{
+		Spec: apis.DeviceSpec{
+			AccessMethod: apis.AccessMethod{
+				URL: url,
+			},
+			ExpectedProperties: make(map[string]apis.Property),
+		},
+		Status: apis.DeviceStatus{
+			Abilities: make([]apis.AbilityStatus, 0),
+		},
+	}
+	device.Spec.ExpectedProperties["cameraUrl"] = apis.Property{Value: cameraUrl}
+	device.Spec.ExpectedProperties["compressed"] = apis.Property{Value: compressed}
+	device.Spec.ExpectedProperties["imageType"] = apis.Property{Value: imageType}
+	device.Spec.ExpectedProperties["position"] = apis.Property{Value: position}
+	device.Status.Abilities = append(device.Status.Abilities, apis.AbilityStatus{
+		Name: "Predict",
+		Services: []apis.AbilityServiceStatus{
+			{
+				Name:      "Predict",
+				Ip:        "192.168.8.165",
+				Interface: "/predict",
+			},
+			{
+				Name:      "PredictByUrl",
+				Ip:        "192.168.8.165",
+				Interface: "/predict_by_url",
+			},
+		},
+	})
+	return device
 }

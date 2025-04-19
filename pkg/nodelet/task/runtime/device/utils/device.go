@@ -7,6 +7,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/component-base/logs"
+	"strings"
 	"time"
 )
 
@@ -18,42 +19,92 @@ type DeviceWorker interface {
 }
 
 // CheckDevice 检查设备情况
-func CheckDevice(runtime *apis.Runtime, action *apis.Action) (error, map[string]*apis.Device) {
-	devices := make(map[string]*apis.Device)
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
-		// device必须已经被上锁（已经经过检查)
-		//TODO:
-		if status.Lock.IsLocked == false {
-			logs.Errorf("Device %s is not locked", status.DeviceID)
-			return fmt.Errorf("Device %s is not locked\n", status.DeviceID), nil
+func CheckDevice1(devices map[string]*apis.Device) error {
+
+	for name, device := range devices {
+		logs.Infof("check device %s status", name)
+		status := device.Status
+		if status.Lock.Lock == false {
+			logs.Errorf("Device %s is not locked", device.Name)
+			return fmt.Errorf("device %s is not locked", device.Name)
 		}
 
 		// device状态为idle(系统内状态和运行时状态)
-		if status.Status != "idle" || status.Phase != apis.DeviceIdle {
-			logs.Errorf("device %s is busy", spec.Name)
-			return fmt.Errorf("device %s is busy", spec.Name), nil
+		if status.Status != "idle" || (status.Phase != apis.DeviceIdle && status.Phase != apis.DeviceInit) {
+			logs.Errorf("device %s is busy", device.Name)
+			return fmt.Errorf("device %s is busy", device.Name)
 		}
 
 		// device的Task ID应该为空
 		if status.InstanceID != "" || status.ActionID != "" {
-			logs.Errorf("device %s's task_id is not null", spec.Name)
-			return fmt.Errorf("device %s's task_id is not null", spec.Name), nil
+			logs.Errorf("device %s's task_id is not null", device.Name)
+			return fmt.Errorf("device %s's task_id is not null", device.Name)
 		}
-		devices[spec.Name] = &apis.Device{Spec: spec, Status: status}
 	}
 
-	return nil, devices
+	return nil
+}
+
+func CheckDevice2(devices map[string]*apis.Device, groupID string, deviceClient core.DeviceInterface) error {
+
+	var err error = nil
+	for name, device := range devices {
+		logs.Infof("check device %s status", name)
+
+		for {
+
+			status := device.Status
+			// 首先判断GroupID
+			logs.Infof("check device groupID...")
+			if status.GroupID != groupID {
+				// GroupID 不通过 说明device没有被分配到这个Group中
+				logs.Warnf("device %s's GroupID is wrong", device.Name)
+				time.Sleep(3 * time.Second)
+
+				// 重新获取device
+				device, err = deviceClient.Get(context.TODO(), device.Name, metav1.GetOptions{})
+				if err != nil {
+					logs.Errorf("get device:%s failed", name)
+					return err
+				}
+
+			} else {
+				// GroupID合格 证明device绑定的Group是对的
+				// 判断是否上锁
+				if status.Lock.Lock == false {
+					logs.Errorf("Device %s is not locked", device.Name)
+					return fmt.Errorf("device %s is not locked", device.Name)
+				}
+
+				// device状态为idle(系统内状态和运行时状态)
+				if status.Phase != apis.DeviceIdle {
+					logs.Errorf("device %s is busy", device.Name)
+					return fmt.Errorf("device %s is busy", device.Name)
+				}
+
+				// device的Task ID应该为空
+				if status.ActionID != "" {
+					logs.Errorf("device %s's ActionID is not null", device.Name)
+					return fmt.Errorf("device %s's ActionID is not null", device.Name)
+				}
+				break
+			}
+
+		}
+		devices[name] = device
+	}
+
+	return err
 }
 
 // GetDevices 获取所有设备
 func GetDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Device) {
 	devices := make([]apis.Device, 0)
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
+	for _, spec := range runtime.Devices {
+		status := action.Status.Devices[spec.Name]
 		// device必须已经被上锁（已经经过检查)
 		//TODO:
-		if !status.Lock.IsLocked {
+		if !status.Lock.Lock {
 			logs.Errorf("device %s is not locked", spec.Name)
 			return fmt.Errorf("device %s is not locked", spec.Name), nil
 		}
@@ -79,8 +130,8 @@ func GetDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Devic
 // GetDevices 获取所有设备
 func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.Device) {
 	devices := make([]apis.Device, 0)
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
+	for _, spec := range runtime.Devices {
+		status := action.Status.Devices[spec.Name]
 		device := apis.Device{Spec: spec, Status: status}
 		devices = append(devices, device)
 	}
@@ -88,118 +139,19 @@ func ObtainDevices(runtime *apis.Runtime, action *apis.Action) (error, []apis.De
 	return nil, devices
 }
 
-// UpdateDeviceStatus 更新DeviceStatus
-func UpdateDeviceStatusList(runtime *apis.Runtime, action *apis.Action, taskId string, deviceMap map[string]*apis.Device, deviceClient core.DeviceInterface) error {
-
-	devices := action.Status.Devices
-	for index, spec := range runtime.Devices {
-		status := action.Status.Devices[index]
-		name := spec.Name
-		logs.Infof("device name is %s\n", name)
-		ds := apis.DeviceStatus{
-			// 更新device的相应字段
-			Phase:      apis.DeviceRunning,
-			InstanceID: taskId,
-			Status:     "running",
-			ActionID:   action.Status.ActionID,
-			Lock:       apis.Lock{Type: status.Lock.Type, IsLocked: true, Ref: status.Lock.Ref},
-			LastTime:   apis.Time{Time: time.Now()},
-
-			// 不需要更新的字段直接复制
-			DeviceID:   status.DeviceID,
-			Events:     status.Events,
-			Properties: status.Properties,
-		}
-
-		// 在etcd中更新数据内容
-		newDevice := &apis.Device{
-			Spec:   deviceMap[name].Spec,
-			Status: ds,
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "deviceTest",
-				Namespace: "test",
-				Labels: map[string]string{
-					"environment": "dev",
-				},
-			},
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Device",
-				APIVersion: "resources/v1",
-			},
-		}
-		deviceMap[name] = newDevice
-		action.Status.Devices[index] = ds
-		_, err := deviceClient.Update(context.TODO(), newDevice, metav1.UpdateOptions{})
-		if err != nil {
-			logs.Errorf("update device %s status failed, %s", name, err)
-			return err
-		}
-		logs.Infof("update device %s's status\n", name)
-	}
-	action.Status.Devices = devices
-	return nil
-}
-
-func UpdateDeviceStatusFailed(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
-	device.Status.Status = "failed"
-	device.Status.Phase = apis.DeviceError
-	device.Status.LastTime = apis.Time{time.Now()}
-	if _, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
-		logs.Errorf("update device %s status failed, %s", device.Name, err)
+// UpdateDeviceRunning 用于在发布任务指令成功后(但是还不知道业务执行情况)时 更新device的状态
+func UpdateDeviceRunning(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
+	// 绑定ActionID
+	device.Status.ActionID = action.Status.ActionID
+	// 将phase更改为running
+	device.Status.Phase = apis.DeviceRunning
+	// 设置更新时间
+	device.Status.LastTime = apis.Time{Time: time.Now()}
+	_, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})
+	if err != nil {
+		logs.Errorf("update device [%s]  failed[stage running], %s", device.Name, err)
 		return err
 	}
-
-	for index, spec := range runtime.Devices {
-		if spec.Name == device.Spec.Name {
-			action.Status.Devices[index] = device.Status
-
-		}
-	}
-	return nil
-}
-
-func UpdateDeviceStatusCompleted(runtime *apis.Runtime, action *apis.Action, device *apis.Device, deviceClient core.DeviceInterface) error {
-	device.Status.Status = "completed"
-	device.Status.Phase = apis.DeviceComplete
-	device.Status.LastTime = apis.Time{time.Now()}
-	if _, err := deviceClient.Update(context.TODO(), device, metav1.UpdateOptions{}); err != nil {
-		logs.Errorf("update device %s status failed, %s", device.Name, err)
-		return err
-	}
-
-	for index, spec := range runtime.Devices {
-		if spec.Name == device.Spec.Name {
-			action.Status.Devices[index] = device.Status
-
-		}
-	}
-	return nil
-}
-
-// RecoverDeviceStatus 恢复DeviceStatus的数据
-func RecoverDeviceStatus(action *apis.Action) error {
-	devices := action.Status.Devices
-	for name, device := range devices {
-		logs.Infof("device name is %s\n", name)
-		ds := apis.DeviceStatus{
-			// 更新device的相应字段
-			Phase:      apis.DeviceIdle,
-			InstanceID: "",
-			Status:     "idle",
-			ActionID:   "",
-			Lock:       apis.Lock{Type: device.Lock.Type, IsLocked: false, Ref: device.Lock.Ref - 1},
-			LastTime:   apis.Time{Time: time.Now()},
-
-			// 不需要更新的字段直接复制
-			DeviceID: device.DeviceID,
-
-			// todo
-			Events:     device.Events,
-			Properties: device.Properties,
-		}
-		action.Status.Devices[name] = ds
-		logs.Infof("update device %s's status\n", name)
-	}
-	action.Status.Devices = devices
+	logs.Infof("update device [%s] successfully[stage running]\n", device.Name)
 	return nil
 }

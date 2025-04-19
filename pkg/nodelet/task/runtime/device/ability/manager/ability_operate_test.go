@@ -1,4 +1,4 @@
-package inst
+package manager
 
 import (
 	"encoding/json"
@@ -11,15 +11,16 @@ func TestGetHeartBeats(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	var url string = "http://127.0.0.1:8123"
+	var url string = "http://192.168.8.165:8080"
 	var heartBeats []HeartBeat
 	heartBeats, err := GetAbilityHeartBeat(url)
 
 	if err != nil {
 		t.Error(err)
 	}
+	fmt.Println("heart beat is", heartBeats)
+	logs.Infof("heart beats is %v", heartBeats)
 
-	fmt.Println(heartBeats)
 }
 
 func TestNewOperatorStr(t *testing.T) {

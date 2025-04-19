@@ -1,4 +1,4 @@
-package inst
+package manager
 
 import (
 	"bytes"
@@ -84,7 +84,17 @@ func PostLifeCycleRequest(Id string, command Command, url string) (string, error
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
+		// 读取响应的 Body 内容
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			fmt.Printf("读取响应 Body 时出错: %v\n", err)
+			return "", err
+		}
+
+		// 输出响应的 Body 内容
 		logs.Errorf("response code is %v\n", response.StatusCode)
+		fmt.Println("response code is", string(body))
+
 		return "", fmt.Errorf("response code is %v\n", response.StatusCode)
 	}
 	responseBody, err := io.ReadAll(response.Body)
@@ -155,30 +165,35 @@ func GetTaskState(taskId string, url string) (TaskState, error) {
 	return taskState, nil
 }
 
-func FindStateByUUID(hearBeats []HeartBeat, uuid string) (AbilityState, error) {
+func FindHeartBeatByUUID(hearBeats []HeartBeat, uuid string) (HeartBeat, error) {
 	for _, hearBeat := range hearBeats {
 		if hearBeat.ID == uuid {
-			return hearBeat.State, nil
+			fmt.Println("now find ", hearBeat)
+			return hearBeat, nil
 		}
 	}
-	return "", errors.New(uuid)
+	return HeartBeat{}, errors.New(uuid)
 }
 
-func GetAbilityState(url string, uuid string) (AbilityState, error) {
+func GetAbilityState(url string, uuid string) (HeartBeat, error) {
 	logs.Infof("getting heart beat......\n")
 	hearBeats, err := GetAbilityHeartBeat(url)
 	if err != nil {
 		logs.Error("get heart beats error\n")
-		return "", err
+		return HeartBeat{}, err
 	}
 	logs.Info("get heart beats successfully\n")
-
 	logs.Info("try to find state by UUID\n")
-	state, err := FindStateByUUID(hearBeats, uuid)
+	logs.Infof("all heartbeats:")
+	for index, hearBeat := range hearBeats {
+		logs.Infof("[%d] {%v}", index, hearBeat)
+	}
+	heartBeat, err := FindHeartBeatByUUID(hearBeats, uuid)
 	if err != nil {
 		logs.Error("find state by UUID error\n")
-		return "", err
+		return HeartBeat{}, err
 	}
-	logs.Infof("find state by UUID successfully\n")
-	return state, nil
+	logs.Info("find state by UUID successfully  heart beat :  ", heartBeat)
+	fmt.Println(heartBeat)
+	return heartBeat, nil
 }

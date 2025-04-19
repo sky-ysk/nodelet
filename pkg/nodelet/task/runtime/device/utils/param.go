@@ -10,8 +10,8 @@ type ParamsWorker interface {
 	StringToPropertyType(s string) apis.PropertyType
 }
 
-// ConstructParam 构造device的参数，存放到ExpectedProperties成员中
-func ConstructParam(devices map[string]*apis.Device, runtime *apis.Runtime) error {
+// ConstructParamRMF 构造device的参数，存放到ExpectedProperties成员中
+func ConstructParamRMF(devices map[string]*apis.Device, runtime *apis.Runtime) error {
 	// 只有一个device的情况
 	if len(devices) == 1 {
 		for name, device := range devices {
@@ -41,6 +41,23 @@ func ConstructParam(devices map[string]*apis.Device, runtime *apis.Runtime) erro
 			}
 			logs.Infof("construct device[%s] param done\n", name)
 		}
+	}
+	return nil
+}
+
+func ConstructParamAbility(devices map[string]*apis.Device, runtime *apis.Runtime) error {
+	if len(devices) == 1 {
+		for name, device := range devices {
+			logs.Infof("constructing device[%s] param.....\n", name)
+			for _, input := range runtime.Inputs {
+				property := apis.Property{Value: input.Value, Name: input.Name}
+				device.Spec.ExpectedProperties[input.Name] = property
+			}
+			logs.Infof("construct device[%s] param done\n", name)
+		}
+		return nil
+	} else {
+
 	}
 	return nil
 }
