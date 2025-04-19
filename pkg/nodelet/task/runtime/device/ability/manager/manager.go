@@ -61,7 +61,7 @@ func (am *ManagerOfAbility) StartupAbility() (HeartBeat, error) {
 	am.TaskId = taskId
 	fmt.Println("taskId is ", taskId)
 	for {
-		time.Sleep(5000 * time.Millisecond)
+		time.Sleep(10000 * time.Millisecond)
 		var state AbilityState
 		var heartBeat HeartBeat
 		logs.Infof("getting ability state\n")
