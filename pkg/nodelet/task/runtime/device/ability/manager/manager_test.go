@@ -25,9 +25,9 @@ func TestStartupAbility(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	var url string = "http://192.168.8.165:8080" // 更改ip和端口
-	var name string = "GrabBall.Leju.Guochuang"  // 更改能力名字
-	//var name string = "DetectPosition.Leju.Guochuang" // 更改能力名字
+	var url string = "http://192.168.8.197:8080" // 更改ip和端口
+	//var name string = "DetectPosition.Galaxea.Guochuang" // 更改能力名字
+	var name string = "GrabBall.Galaxea.Guochuang" // 更改能力名字
 	abilityManager := NewAbilityManager(url, name)
 	heartBeat, err := abilityManager.StartupAbility()
 	if err != nil {
