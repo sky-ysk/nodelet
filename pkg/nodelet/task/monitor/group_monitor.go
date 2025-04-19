@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"reflect"
 	"sync"
 	"time"
+
+	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -186,7 +187,12 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 				if err != nil {
 					logs.Errorf("Etcd get group error-1:%v", err)
 				}
-				if !gmo.groupDepenSatisfy(getGroup) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
+				taskref := getGroup.Status.Belong
+				task, err := gmo.taskClient.Get(context.TODO(), taskref.Name, metav1.GetOptions{})
+				if err != nil {
+					logs.Errorf("Etcd get task error, get %v group's belong task failed.%v", getGroup.Name, err)
+				}
+				if !gmo.groupDepenSatisfy(getGroup, task) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
 					//logs.Debugf("The group ：%s execution dependency is not satisfied again, now still in Checking Queue", gr.Name)
 					//继续放在checking队列当中，checking队列会持续检查依赖，直到依赖满足后，才开始执行，重新将任务group交给group_workers去执行
 					grou, err := gmo.groupManager.GetGroupByName(getGroup.Name) // 目前打算把一些小的参数存到本地内存当中的groupManager当中，这样可以减轻访问api-server的压力
@@ -1368,45 +1374,51 @@ func (gmo *GroupMonitor) UpdateRuntimeStatus(runtimeStatus *apis.RuntimeStatus, 
 }
 
 // 同group_workers当中的方法
-func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
+func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) bool {
 	// TODO：实现依赖检查逻辑
 	// 目前只是检查Spec当中的Parents选项
+	if group.Spec.Conditions == nil {
+		return true
+	}
 	if len(group.Spec.Parents) == 0 {
 		return true
-	} else {
-		if group.Spec.Conditions == nil {
-			return true
-		}
-		for _, i := range group.Spec.Conditions.Formulas {
-			if i.LeftValue.Name == "NodeDependency" {
-				parentName := i.LeftValue.From // 这里要考虑父亲节点有两个的情况吧，还是说弄两个Formulas
-				result, err := gmo.groupClient.Get(context.TODO(), parentName, metav1.GetOptions{})
-				if err != nil {
-					logs.Errorf("Failed to get parent group:%v form etcd, err:%v", parentName, err)
-				}
-				if result.Status.Phase != apis.Successed {
-					if result.Status.Phase == apis.Migrated { // 因为有些group处于DeployCheck状态，不会被迁移走，所以如果该group的父亲Group被迁移走了，需要查父亲Group的copy_status属性，该属性存放副本是否完成
-						if result.Status.CopyStatus == "Successed" {
-							i.LeftValue.Value = "1"
-						}
-					} else {
-						i.LeftValue.Value = "0"
+	}
+	if len(group.Spec.Conditions.Formulas) == 0 {
+		return true
+	}
+	for index, i := range group.Spec.Conditions.Formulas {
+		if i.LeftValue.Name == "NodeDependency" {
+			parentGroupName := i.LeftValue.From
+			parentGroupRef := task.Status.Groups[parentGroupName]
+			parentGroup, err := gmo.groupClient.Get(context.TODO(), parentGroupRef.Name, metav1.GetOptions{})
+			if err != nil {
+				logs.Errorf("Failed to get parent group:%v form etcd, err:%v", parentGroupName, err)
+			}
+			if parentGroup.Status.Phase != apis.Successed {
+				if parentGroup.Status.Phase == apis.Migrated { // 因为有些group处于DeployCheck状态，不会被迁移走，所以如果该group的父亲Group被迁移走了，需要查父亲Group的copy_status属性，该属性存放副本是否完成
+					if parentGroup.Status.CopyStatus == "Successed" {
+						i.LeftValue.Value = "1"
 					}
 				} else {
-					i.LeftValue.Value = "1"
+					i.LeftValue.Value = "0"
 				}
-				if i.LeftValue.Value == i.RightValue.Value {
-					i.Result = apis.True
-				}
-			}
-			if i.Result != apis.True {
-				//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
-				return false
 			} else {
-				//logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+				i.LeftValue.Value = "1"
+			}
+			if i.LeftValue.Value == i.RightValue.Value {
+				i.Result = apis.True
+				logs.Infof("group NodeDependency condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
 		}
+
+		if i.Result != apis.True {
+			//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
+			return false
+		} else {
+			logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+		}
 	}
+
 	return true
 }
 
@@ -1420,28 +1432,33 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 	if len(actionSpec.Conditions.Formulas) == 0 {
 		return true
 	}
+	if len(group.Spec.Parents) == 0 {
+		return true
+	}
 	for index, i := range actionSpec.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
-			actionParentName := i.LeftValue.From
-			for aSpecName, _ := range group.Status.Actions {
-				if aSpecName == actionParentName { //目前定义，Action的父亲Action必须是成功状态.更新action的conditions
-					actionStatus := &action.Status
-					if actionStatus.Phase != apis.Successed {
-						i.LeftValue.Value = "0"
-					} else {
-						i.LeftValue.Value = "1"
-					}
-				}
+			parentActionName := i.LeftValue.From
+			parentActionRef := group.Status.Actions[parentActionName]
+			parentAction, err := gmo.actionClient.Get(context.TODO(), parentActionRef.Name, metav1.GetOptions{})
+			if err != nil {
+				logs.Errorf("Failed to get parent action:%v form etcd, err:%v", parentActionName, err)
+			}
+			if parentAction.Status.Phase != apis.Successed {
+					i.LeftValue.Value = "0"
+			} else {
+				i.LeftValue.Value = "1"
 			}
 			if i.LeftValue.Value == i.RightValue.Value {
 				i.Result = apis.True
+				// logs.Infof("action NodeDependency condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
 		}
+
 		if i.Result != apis.True {
 			logs.Tracef("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
-			// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+			// logs.Tracef("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 		}
 	}
 	return true
