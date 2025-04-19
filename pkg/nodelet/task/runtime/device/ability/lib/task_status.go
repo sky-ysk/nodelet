@@ -80,3 +80,50 @@ func GetTaskStatus(taskId string, url string) (TaskResponse, error) {
 
 	return taskResponse, nil
 }
+
+// ParseWorldPoints 专门将 payload 中的 world_points 解析为 [][]float64 类型
+func ParseWorldPoints(payload interface{}) ([][]float64, error) {
+	// 断言 payload 是一个 map[string]interface{}
+	worldPointsMap, ok := payload.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("payload 类型断言失败，不是 map[string]interface{} 类型")
+	}
+
+	// 获取 world_points 对应的值
+	worldPointsInterface, ok := worldPointsMap["world_points"]
+	if !ok {
+		return nil, fmt.Errorf("world_points 字段不存在")
+	}
+
+	// 断言 world_points 是一个 []interface{}
+	worldPointsSlice, ok := worldPointsInterface.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("world_points 类型断言失败，不是 []interface{} 类型")
+	}
+
+	var result [][]float64
+
+	// 遍历 world_points 的每一行
+	for _, rowInterface := range worldPointsSlice {
+		// 断言每一行是 []interface{} 类型
+		rowSlice, ok := rowInterface.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("world_points 中的行类型断言失败，不是 []interface{} 类型")
+		}
+
+		var floatRow []float64
+
+		// 遍历行中的每个元素，将其断言为 float64 类型
+		for _, valueInterface := range rowSlice {
+			valueFloat64, ok := valueInterface.(float64)
+			if !ok {
+				return nil, fmt.Errorf("world_points 中的元素类型断言失败，不是 float64 类型")
+			}
+			floatRow = append(floatRow, valueFloat64)
+		}
+
+		result = append(result, floatRow)
+	}
+
+	return result, nil
+}

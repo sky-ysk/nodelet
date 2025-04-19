@@ -12,6 +12,7 @@ import (
 )
 
 func PublishAbilityInst(Inst string, device *apis.Device, operation string) (apis.Output, error) {
+	a := apis.Device{}
 	// 能力操作的适配分为两种
 	parts := strings.Split(Inst, "_")
 	if parts[0] == "manage" { // 以manage开头的是 拉起 暂停 终止能力等操作
