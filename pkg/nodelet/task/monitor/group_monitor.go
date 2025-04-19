@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"reflect"
 	"sync"
 	"time"
-
-	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -56,6 +55,8 @@ type GroupMonitor struct {
 	groupTargets   map[string]cross_core.GroupInterface
 	actionTargets  map[string]cross_core.ActionInterface
 	runtimeTargets map[string]cross_core.RuntimeInterface
+	// 维护一个Map存Group的Task，这样可以避免查Group的parents-Group的时候，还得先去查Task
+	belongTasks map[string]*apis.Task
 }
 
 func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, nodeClient core.NodeInterface, groupClient core.GroupInterface, taskClient core.TaskInterface, actionClient core.ActionInterface, runtimeClient core.RuntimeInterface, dependencyManager *dependency.DependencyManager, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupMonitor {
@@ -187,10 +188,16 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 				if err != nil {
 					logs.Errorf("Etcd get group error-1:%v", err)
 				}
-				taskref := getGroup.Status.Belong
-				task, err := gmo.taskClient.Get(context.TODO(), taskref.Name, metav1.GetOptions{})
-				if err != nil {
-					logs.Errorf("Etcd get task error, get %v group's belong task failed.%v", getGroup.Name, err)
+				task, exists := gmo.belongTasks[gr.Name]
+				if exists {
+					logs.Tracef("Group:%v's belong Task:%v is already find", gr.Name, task.Name)
+				} else {
+					logs.Tracef("Group:%v's belong task has't find", gr.Name)
+					task, err = gmo.taskClient.Get(context.TODO(), gr.Status.Belong.Name, metav1.GetOptions{})
+					if err != nil {
+						logs.Errorf("Etcd get task error:%v", err)
+					}
+					gmo.belongTasks[gr.Name] = task
 				}
 				if !gmo.groupDepenSatisfy(getGroup, task) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
 					//logs.Debugf("The group ：%s execution dependency is not satisfied again, now still in Checking Queue", gr.Name)
@@ -748,6 +755,13 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 				logs.Infof("Delete group:%v", gro.Spec.Name)
 				gmo.groupManager.DeleteGroup(gro)
 				gmo.groupQueues.DeleteFromCompleted(gro.Name) //得根据groupId进行删除，不是根据groupName
+				// 删除一下BelongTask这个map的记录
+				if _, exists := gmo.belongTasks[gro.Name]; exists {
+					delete(gmo.belongTasks, gro.Name) // 2. 执行删除
+					logs.Trace("Delete group:%v in belongTasks map", gro.Spec.Name)
+				} else {
+					logs.Trace("key not exist")
+				}
 			}
 		}
 	}
@@ -774,6 +788,13 @@ func (gmo *GroupMonitor) ErrorQueueCheck(ctx context.Context) {
 				// 删除内存当中group_manager当中的group信息
 				gmo.groupQueues.DeleteFromError(gro.Name)
 				gmo.groupManager.DeleteGroup(gro) //groupManager就删除group的信息，此时group的信息就只存在于etcd当中
+				// 删除一下BelongTask这个map的记录
+				if _, exists := gmo.belongTasks[gro.Name]; exists {
+					delete(gmo.belongTasks, gro.Name) // 2. 执行删除
+					logs.Trace("Delete group:%v in belongTasks map", gro.Spec.Name)
+				} else {
+					logs.Trace("key not exist")
+				}
 			}
 			//default:
 			//case <-ctx.Done():
@@ -1418,7 +1439,6 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 			logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 		}
 	}
-
 	return true
 }
 
@@ -1444,16 +1464,14 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 				logs.Errorf("Failed to get parent action:%v form etcd, err:%v", parentActionName, err)
 			}
 			if parentAction.Status.Phase != apis.Successed {
-					i.LeftValue.Value = "0"
+				i.LeftValue.Value = "0"
 			} else {
 				i.LeftValue.Value = "1"
 			}
 			if i.LeftValue.Value == i.RightValue.Value {
 				i.Result = apis.True
-				// logs.Infof("action NodeDependency condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
 		}
-
 		if i.Result != apis.True {
 			logs.Tracef("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false

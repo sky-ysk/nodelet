@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -60,6 +61,18 @@ func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, 
 		ClusterCategory: cfg.ClusterCategory,
 	}, nil
 }
+func getHostName() string {
+	// 如果运行在Kubernetes中，可以通过Downward API获取节点名称
+	if nodeName := os.Getenv("HOST_NAME"); nodeName != "" {
+		return nodeName
+	}
+
+	// 否则获取本地主机名
+	if hostName, err := os.Hostname(); err == nil {
+		return hostName
+	}
+	return "unknown-host"
+}
 
 // 想改成每隔60秒收集一次静态信息，每隔1s收集一次动态信息
 func (n *NodeExporter) Run(ctx context.Context) error {
@@ -89,6 +102,7 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 				NodeName:        n.NodeName,
 				ClusterCategory: n.ClusterCategory,
 				Resource:        make(map[string][]apis.Item),
+				HostName:        getHostName(),
 			},
 			Status: apis.NodeStatus{
 				Usage: make(map[string][]apis.Item),
@@ -189,7 +203,6 @@ func (n *NodeExporter) UploadCache(node *apis.Node, cacheType string) {
 	}
 
 	//TODO 实现上传逻辑到API-server{  ----先放入到NodeStatus当中，然后通过client-go写入到api-server当中
-	// 方法一：Update方法更新node信息
 	//直接patch修改node的Spec和Status
 	nodePatch1, err := json.Marshal(map[string]interface{}{
 		"spec": node.Spec,
@@ -205,12 +218,6 @@ func (n *NodeExporter) UploadCache(node *apis.Node, cacheType string) {
 	if err2 != nil {
 		logs.Errorf("Patch node error-2:%v", err2)
 	}
-
-	//_, err := n.nodesClient.Update(context.TODO(), node, metav1.UpdateOptions{})
-	//if err != nil {
-	//	logs.Errorf("Failed to update Node, err:%v", err)
-	//	return
-	//}
 	// 方法二：patch方法更新node信息--目前这条路有点问题，因为此处获取不到更新完的map
 	//if cacheType == "static" {
 	//	patchNode, err := json.Marshal(map[string]interface{}{

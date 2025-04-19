@@ -48,7 +48,7 @@ func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *
 		logs.Infof("stopSignal for runtime %s already closed", runtime.Name)
 		return nil
 	}
-	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
+	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止,注意这里不发送状态，我们在Monitor部分会监听这个进程的执行，如果监听到执行失败才会发送状态
 	err := cr.stopCMD(runtime)
 	if err != nil {
 		return err
@@ -114,13 +114,16 @@ func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecN
 	if err := CMD.Start(); err != nil {
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.recorder.Event(runtime, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s start failed", runtime.Name))
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 	if isInit {
 		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.recorder.Event(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to init", runtime.Name))
 	} else {
 		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.recorder.Event(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name))
 	}
 	cr.processManager.AddProcess(runtime.Name, CMD)
 	cr.stopSignals[runtime.Name] = make(chan struct{})
@@ -133,13 +136,14 @@ func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecN
 		case <-cr.stopSignals[runtime.Name]: // 如果接收到停止信号
 			logs.Info("command killed externally by stopCMD")
 			cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.recorder.Event(runtime, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Runtime Name:\t %s start to close", runtime.Name)) // 发送事件：Runtime收到终止信号进行关闭
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Receive killed command:\t %s is Stopped", runtime.Name)
 		default:
 			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
-			// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
 			cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.recorder.Event(runtime, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Runtime Name:\t %s execution failure", runtime.Name)) // 发送事件，任务执行失败进行关闭
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
@@ -152,20 +156,16 @@ func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecN
 	cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 
 	// TODO: 使用进程启动CMD, 异步操作
-	// TODO: 返回进程对应的ProcessID
 	// TODO: 多个Command拼接---ysk  action包含多个command拼接指？如果一个cmd比较复杂（例如：python predict.py 10 100  data.json）
 	//我们如何区分其中的参数和路径（因为执行需要predict.py  data.json的路径，（可以采取固定下载到的数据的路径，采取相对路径的方式？））
 	// TODO：注入环境变量---ysk  暂时未确定环境变量的例子
-	// TODO: 重定向stdout和stdin, 每个进程都有标准输出，任务监控相关组件需要重定向该输入输出--ysk  目前暂时以文件形式输出
 	// TODO: 处理Action的Input和Output---ysk  output的结构后续可能需要调整，目前暂时以文件.txt的输出形式
-	// 检查依赖requirements是否满足本地的环境
 	return nil
 }
 
 // 停止某个CMD对应的进程
 // TODO：保存现场
 func (cr *CommandRuntime) stopCMD(runtime *apis.Runtime) error {
-	//nowTime := apis.Time{time.Now()}
 	CMD, exists := cr.processManager.GetProcess(runtime.Name)
 	if !exists {
 		logs.Errorf("Failed to find task:\t ", runtime.Name)
@@ -177,13 +177,12 @@ func (cr *CommandRuntime) stopCMD(runtime *apis.Runtime) error {
 			logs.Errorf("Failed to kill task:\t ", runtime.Name)
 			return fmt.Errorf("failed to stop task '%s': %w", runtime.Name, err)
 		}
-		//cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Killed, nowTime, nowTime)
+		// 这里不用进行事件的发送，在Monitor监控部分会进行
 		fmt.Printf("Task '%s' with PID %d has been stopped.\n", runtime.Name, CMD.Process.Pid)
 	} else {
 		logs.Infof("Task '%s' is already stopped.", runtime.Name)
 		return fmt.Errorf("task '%s' process is nil", runtime.Name)
 	}
-	//cr.processManager.RemoveProcess(taskName)  //这条语句不用了，直接在monitorCMD方法当中会执行
 	return nil
 
 }
@@ -212,18 +211,6 @@ func (cr *CommandRuntime) notifyRuntimeEndPhase(groupName string, actionSpeName,
 	}
 	cr.eventBus.Publish(event)
 }
-
-//func (cr *CommandRuntime) notifyRuntimeMigratePhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
-//	event := events.RuntimeEndPhaseEvent1{
-//		GroupName:    groupName,
-//		ActionIndex:  actionIndex,
-//		RuntimeIndex: runtimeIndex,
-//		Phase:        phase,
-//		FinishAt:     finishTime,
-//		LastTime:     lastTime,
-//	}
-//	cr.eventBus.Publish(event)
-//}
 
 // 获取任务的执行状态（正在运行or运行失败）---该方法暂时没有用到-先放着
 func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
