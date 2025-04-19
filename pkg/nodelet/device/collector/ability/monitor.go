@@ -33,7 +33,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 	//	return err
 	//}
 	//logs.Infof("[DEVICE EXPORTER] ETCD has %d Devices", len(deviceList.Items))
-	deviceList := []apis.Device
+	device := apis.Device{}
 	// 并发同步控制
 	var wg sync.WaitGroup
 	// 错误处理通道
