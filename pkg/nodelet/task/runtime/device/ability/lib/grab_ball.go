@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 // GrabBallResponse 定义了预期的响应体结构
@@ -15,6 +19,46 @@ type GrabBallResponse struct {
 
 type WorldPoints struct {
 	WorldPoints [][]float64 `json:"world_points"`
+}
+
+func GetWorldPoints(params []apis.Value) [][]float64 {
+	for _, param := range params {
+		if param.Name == "worldPoints" {
+			result, err := parseCustomFormat(param.Value)
+			if err != nil {
+				logs.Error("Parse world points failed: %v", err.Error())
+				return nil
+			}
+			return result
+		}
+	}
+	return nil
+}
+
+// 如果你的 param.Value 是其他格式的字符串（例如自定义格式），可以使用下面的解析方法
+func parseCustomFormat(value string) ([][]float64, error) {
+	var result [][]float64
+	// 假设字符串格式是 "1.1,2.2;3.3,4.4" 这样的形式
+	parts := strings.Split(value, ";")
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		point := make([]float64, 0)
+		coords := strings.Split(part, ",")
+		for _, coord := range coords {
+			if coord == "" {
+				continue
+			}
+			f, err := strconv.ParseFloat(coord, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse coordinate %s: %v", coord, err)
+			}
+			point = append(point, f)
+		}
+		result = append(result, point)
+	}
+	return result, nil
 }
 
 // PublishGrabBallInst 向指定的 API 发送抓取小球的任务请求

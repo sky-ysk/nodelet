@@ -961,7 +961,7 @@ type Ability struct {
 	Services   map[string]AbilityService `json:"services,omitempty" yaml:"services"`
 	InstanceID *string                   `json:"instance_id,omitempty" yaml:"instance_id"`
 	State      *AbilityState             `json:"state,omitempty" yaml:"state"`
-	Status     *string                   `json:"status,omitempty" yaml:"status"`
+	Status     AbilityStatus             `json:"status,omitempty" yaml:"status"`
 }
 
 // AbilityService 描述一个能力的具体业务（技能）
@@ -975,12 +975,13 @@ type AbilityService struct {
 
 // TODO: 增加具体的值限制
 type AbilityState int
+type AbilityStatus string
 
 const (
-	AbilityRunning        AbilityState = 1
-	AbilityReadyStartUp   AbilityState = 2
-	AbilityReadyTerminate AbilityState = 3
-	AbilityTerminated     AbilityState = 4
+	AbilityRunning        AbilityStatus = "Running"
+	AbilityReadyStartUp   AbilityStatus = "ReadyStartUp"
+	AbilityReadyTerminate AbilityStatus = "ReadyTerminate"
+	AbilityTerminated     AbilityStatus = "Terminated"
 )
 
 type DeviceStatus struct {

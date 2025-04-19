@@ -3,9 +3,11 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // TaskResponse 定义了任务响应的结构
@@ -81,8 +83,8 @@ func GetTaskStatus(taskId string, url string) (TaskResponse, error) {
 	return taskResponse, nil
 }
 
-// ParseWorldPoints 专门将 payload 中的 world_points 解析为 [][]float64 类型
-func ParseWorldPoints(payload interface{}) ([][]float64, error) {
+// parseWorldPoints 专门将 payload 中的 world_points 解析为 [][]float64 类型
+func parseWorldPoints(payload interface{}) ([][]float64, error) {
 	// 断言 payload 是一个 map[string]interface{}
 	worldPointsMap, ok := payload.(map[string]interface{})
 	if !ok {
@@ -126,4 +128,55 @@ func ParseWorldPoints(payload interface{}) ([][]float64, error) {
 	}
 
 	return result, nil
+}
+
+// worldPointsToString 将worldPoints转换为string
+func worldPointsToString(worldPoints [][]float64) string {
+	var builder strings.Builder
+	for i, row := range worldPoints {
+		// 将一行中的元素转换为字符串，并用逗号分隔
+		var rowStrings []string
+		for _, value := range row {
+			rowStrings = append(rowStrings, fmt.Sprintf("%f", value))
+		}
+		builder.WriteString(strings.Join(rowStrings, ","))
+
+		// 如果不是最后一行，添加分号
+		if i < len(worldPoints)-1 {
+			builder.WriteString(";")
+		}
+	}
+
+	return builder.String()
+}
+
+// ParsePayLoad 将payload进行解析
+func ParsePayLoad(inst string, payload interface{}) ([]apis.Value, error) {
+	switch inst {
+	case "DetectPosition":
+		// 使用对应的函数进行解析
+		worldPoints, err := parseWorldPoints(payload)
+		if err != nil {
+			logs.Errorf("[DEVICE RUNTIME] parse world points fail: %s", err.Error())
+			return []apis.Value{}, err
+		}
+		// 转换为字符串
+		str := worldPointsToString(worldPoints)
+		// 放到Value中
+		outputs := []apis.Value{
+			{
+				ValueType: apis.ComposeType,
+				Value:     str,
+				Name:      "worldPoints",
+				Type:      apis.ConstData,
+			},
+		}
+		return outputs, nil
+
+	case "":
+
+	default:
+
+	}
+	return []apis.Value{}, nil
 }
