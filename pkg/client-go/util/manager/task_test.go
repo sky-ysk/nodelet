@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"testing"
 )
@@ -16,9 +17,9 @@ func TestCreateTask(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-	
+
 	logs.Init("main")
-	
+
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -31,7 +32,7 @@ func TestCreateTask(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-	
+
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -39,12 +40,12 @@ func TestCreateTask(t *testing.T) {
 			rs2,
 		},
 	}
-	
+
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-	
+
 	gs1 := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -52,12 +53,12 @@ func TestCreateTask(t *testing.T) {
 			as2,
 		},
 	}
-	
+
 	gs2 := apis.GroupSpec{
 		Name:    "G2",
 		Actions: []apis.ActionSpec{},
 	}
-	
+
 	ts := apis.TaskSpec{
 		Name: "T1",
 		Groups: []apis.GroupSpec{
@@ -65,13 +66,16 @@ func TestCreateTask(t *testing.T) {
 			gs2,
 		},
 	}
-	
+
 	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	
-	fmt.Println(task)
+	str, err := analyzer.SerializeToJson(task)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
 }
 
 func TestCreateTasks(t *testing.T) {
@@ -81,9 +85,9 @@ func TestCreateTasks(t *testing.T) {
 	}
 	// 构造Manager
 	m := NewManager(clientset)
-	
+
 	logs.Init("main")
-	
+
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -96,7 +100,7 @@ func TestCreateTasks(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-	
+
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -104,12 +108,12 @@ func TestCreateTasks(t *testing.T) {
 			rs2,
 		},
 	}
-	
+
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-	
+
 	gs1 := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -117,24 +121,24 @@ func TestCreateTasks(t *testing.T) {
 			as2,
 		},
 	}
-	
+
 	gs2 := apis.GroupSpec{
 		Name:    "G2",
 		Actions: []apis.ActionSpec{},
 	}
-	
+
 	ts1 := apis.TaskSpec{
 		Name: "T1",
 		Groups: []apis.GroupSpec{
 			gs1, gs2,
 		},
 	}
-	
+
 	ts2 := apis.TaskSpec{
 		Name:   "T2",
 		Groups: []apis.GroupSpec{},
 	}
-	
+
 	ws := apis.WorkflowSpec{
 		Name: "T1",
 		Tasks: []apis.TaskSpec{
@@ -142,18 +146,18 @@ func TestCreateTasks(t *testing.T) {
 			ts2,
 		},
 	}
-	
+
 	w := apis.Workflow{
 		ObjectMeta: meta.ObjectMeta{
 			Name: "W1",
 		},
 		Spec: ws,
 	}
-	
+
 	g, err := m.CreateTasks(&w, "Guochuang", u.String(), "W1.")
 	if err != nil {
 		panic(err)
 	}
-	
+
 	fmt.Println(g)
 }

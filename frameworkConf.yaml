@@ -1,9 +1,9 @@
-EtcdPort : 2379
+EtcdPort : 2376
 ApiServerAddr : "http://127.0.0.1:10000"
 #ApiServerPort : 11006
-NodeName : "EdegeNode1"
+NodeName : "CloudNode1"
 ClusterCategory : "Cloud"
-LocalClusterID : "pve2"
+#LocalClusterID : "pve2"
 #OtherCluster:
 #  cluster1:
 #    ClusterID : "broker"

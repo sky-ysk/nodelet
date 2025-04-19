@@ -57,7 +57,7 @@ func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace s
 	r.Status.CreateAt = &apis.Time{Time: time.Now()}
 
 	// 初始化状态
-	r.Status.Phase = apis.Pending
+	r.Status.Phase = apis.Unknown
 
 	// 打上Label, 当前任务属于哪个action和uuid域
 	if a != nil {
