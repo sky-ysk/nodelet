@@ -41,7 +41,7 @@ func NewCommandRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecor
 		connectionPool: pool,
 	}
 }
-func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("command runtime kill task:%s", group.Name)
 	// 如果 stopSignals[runtime.Name] 已经被关闭，直接返回
 	if cr.stopSignals[runtime.Name] == nil {
@@ -49,21 +49,21 @@ func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *
 		return nil
 	}
 	close(cr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
-	err := cr.stopCMD(group.Name, actionIndex, runtimeIndex, runtime)
+	err := cr.stopCMD(runtime)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("command runtime for runtime task:%s", runtime.Name)
 	// 执行时所需命令
 	cmd := runtime.Spec.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
 	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, false)
+	err := cr.startCMD(group.Name, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
 	if err != nil {
 		logs.Info("Receive info:\t", err)
 		return err
@@ -73,7 +73,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 
 // 可能需要区分输出output的指定位置, 后续需要改成使用cmd package里的build cmd等
 // 需要保存进程的pid，检查进程是否是正常执行完成
-func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
+func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecName string, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
 	// exec.Command可以接受的命令
 	// name表示可执行二进制的name
 	// ...args表示命令所需的参数
@@ -113,14 +113,14 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 
 	if err := CMD.Start(); err != nil {
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
-		cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 	if isInit {
-		cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
 	} else {
-		cr.notifyRuntimeStartPhase(groupName, actionIndex, runtimeIndex, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
 	cr.processManager.AddProcess(runtime.Name, CMD)
 	cr.stopSignals[runtime.Name] = make(chan struct{})
@@ -132,14 +132,14 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 		select {
 		case <-cr.stopSignals[runtime.Name]: // 如果接收到停止信号
 			logs.Info("command killed externally by stopCMD")
-			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Receive killed command:\t %s is Stopped", runtime.Name)
 		default:
 			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
 			// 修改RuntimeStatus的Phase为Failed，ActionStatus的Phase也为Failed
-			cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
@@ -149,7 +149,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
 	cr.processManager.MoveProcessToSucess(runtime.Name) //移入successProcess，同时移出process
 	// 修改RuntimeStatus的Phase为Successed，ActionStatus的Phase也为Successed
-	cr.notifyRuntimeEndPhase(groupName, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+	cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 
 	// TODO: 使用进程启动CMD, 异步操作
 	// TODO: 返回进程对应的ProcessID
@@ -164,7 +164,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionIndex, runtimeIndex i
 
 // 停止某个CMD对应的进程
 // TODO：保存现场
-func (cr *CommandRuntime) stopCMD(groupName string, actionIndex, runtimeIndex int, runtime *apis.Runtime) error {
+func (cr *CommandRuntime) stopCMD(runtime *apis.Runtime) error {
 	//nowTime := apis.Time{time.Now()}
 	CMD, exists := cr.processManager.GetProcess(runtime.Name)
 	if !exists {
@@ -189,26 +189,26 @@ func (cr *CommandRuntime) stopCMD(groupName string, actionIndex, runtimeIndex in
 }
 
 // 通过 EventBus 通知 Runtime 状态更新
-func (cr *CommandRuntime) notifyRuntimeStartPhase(groupName string, actionIndex, runtimeIndex int, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
+func (cr *CommandRuntime) notifyRuntimeStartPhase(groupName string, actionSpeName, runtimeSpecName string, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
 	event := events.RuntimeStartPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		ProcessId:    processId,
-		Phase:        phase,
-		StartAt:      startAt,
-		LastTime:     lastTime,
+		GroupName:       groupName,
+		ActionSpecName:  actionSpeName,
+		RuntimeSpecName: runtimeSpecName,
+		ProcessId:       processId,
+		Phase:           phase,
+		StartAt:         startAt,
+		LastTime:        lastTime,
 	}
 	cr.eventBus.Publish(event)
 }
-func (cr *CommandRuntime) notifyRuntimeEndPhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
+func (cr *CommandRuntime) notifyRuntimeEndPhase(groupName string, actionSpeName, runtimeSpecName string, phase apis.Phase, finishTime, lastTime apis.Time) {
 	event := events.RuntimeEndPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		Phase:        phase,
-		FinishAt:     finishTime,
-		LastTime:     lastTime,
+		GroupName:       groupName,
+		ActionSpecName:  actionSpeName,
+		RuntimeSpecName: runtimeSpecName,
+		Phase:           phase,
+		FinishAt:        finishTime,
+		LastTime:        lastTime,
 	}
 	cr.eventBus.Publish(event)
 }
@@ -251,23 +251,32 @@ func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Act
 }
 
 // 细粒度控制（grpc）：保存任务状态
-func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
 	// client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
-	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
-	// rpc调用store()
-	_, error := client.RunAppStore()
-	if error != nil {
-		logs.Errorf("任务保存状态失败: %e", error)
-	}
-	// logs.Infof("********************【模拟】成功保存了任务状态：ABCDEFG")
-	cr.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
+	var port string
+	var err error
+	if runtime.Spec.EnableFineGrainedControlPort != nil {
+		port = *runtime.Spec.EnableFineGrainedControlPort
+		client := cr.getClient(port)
+		if client == nil {
+			logs.Info("client is nil")
+		}
+		_, err = client.RunAppStore()
+		if err != nil {
+			logs.Errorf("任务保存状态失败: %e", err)
+		}
+		cr.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
 
-	return "ABCDEFG"
+		return "ABCDEFG"
+	} else {
+		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
+		return ""
+	}
 }
 
 // 细粒度控制（grpc）：恢复任务状态
-func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// 恢复任务状态，调用grpc接口通知任务恢复任务状态，任务状态存放在etcd当中（group下对应runtime下的runtimeStatus下的keyStatus属性）
 	nowTime := apis.Time{time.Now()}
 	// keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
@@ -281,51 +290,63 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//	time.Sleep(100 * time.Millisecond)
 	//}
 	// rpc调用restore()
-	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
-	_, error := client.RunAppRestore(keyStatus)
-	if error != nil {
-		logs.Errorf("任务恢复状态失败: %e", error)
+	var port string
+	var err error
+	if runtime.Spec.EnableFineGrainedControlPort != nil {
+		port = *runtime.Spec.EnableFineGrainedControlPort
+		client := cr.getClient(port)
+		if client == nil {
+			logs.Info("client is nil")
+		}
+		_, err = client.RunAppRestore(keyStatus)
+		if err != nil {
+			logs.Errorf("任务启动失败: %e", err)
+		}
+		cr.notifyRuntimeStartPhase(group.Name, actionSpecName, runtimeSpecName, "", apis.Running, nowTime, nowTime)
+		cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
+	} else {
+		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
+		err = fmt.Errorf("EnableFineGrainedControlPort not provide")
 	}
-	cr.notifyRuntimeStartPhase(group.Name, actionIndex, runtimeIndex, "", apis.Running, nowTime, nowTime)
-	cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
-
-	return error
+	return err
 }
 
 // 细粒度控制（grpc）：启动任务状态
-func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// 运行任务进程
-	go cr.Run(group, action, runtime, actionIndex, runtimeIndex) // 这里需要加协程进行启动
+	go cr.Run(group, action, runtime, actionSpecName, runtimeSpecName) // 这里需要加协程进行启动
 	// 初始化rpc客户端
 	//if cr.client == nil {
 	//	cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, runtime.Name)
 	//}
-	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
-	if client == nil {
-		logs.Info("client is nil")
+	var port string
+	var err error
+	if runtime.Spec.EnableFineGrainedControlPort != nil {
+		port = *runtime.Spec.EnableFineGrainedControlPort
+		client := cr.getClient(port)
+		if client == nil {
+			logs.Info("client is nil")
+		}
+		_, err = client.RunAppStart()
+		if err != nil {
+			logs.Errorf("任务启动失败: %e", err)
+		}
+	} else {
+		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
+		err = fmt.Errorf("EnableFineGrainedControlPort not provide")
 	}
-	// rpc调用start()
-	_, error := client.RunAppStart()
-	if error != nil {
-		logs.Errorf("任务启动失败: %e", error)
-		return error
-	}
-	//cr.recorder.Event(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStart()", runtime.Name))
-
-	//logs.Info("runtime has started =====================")
-
-	return error
+	return err
 }
 
 // 细粒度控制（grpc）：初始化任务
-func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// 1、运行任务进程
 	cmd := runtime.Spec.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
 	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
 	go func() {
-		err := cr.startCMD(group.Name, actionIndex, runtimeIndex, runtime, cmd[0], args, true)
+		err := cr.startCMD(group.Name, actionSpecName, runtimeSpecName, runtime, cmd[0], args, true)
 		if err != nil {
 			logs.Infof("Receive -1 :%v", err)
 			// TODO: 输出Action的详细信息
@@ -338,31 +359,46 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	//if cr.client == nil {
 	//	cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, "")
 	//}
-	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
-	// 3、rpc调用init()
-	_, error := client.RunAppInit()
-	if error != nil {
-		logs.Errorf("任务init失败: %e", error)
+	var port string
+	var err error
+	if runtime.Spec.EnableFineGrainedControlPort != nil {
+		port = *runtime.Spec.EnableFineGrainedControlPort
+		client := cr.getClient(port)
+		// 3、rpc调用init()
+		_, err = client.RunAppInit()
+		if err != nil {
+			logs.Errorf("任务init失败: %e", err)
+		}
+	} else {
+		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
+		err = fmt.Errorf("EnableFineGrainedControlPort not provide")
 	}
-
 	//logs.Infof("runtime has Init ====")
-	return error
+	return err
 }
 
 // 细粒度控制（grpc）：停止任务
-func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("runtime has stop====")
 
 	//---------停止
 	// rpc调用restore()
-	client := cr.getClient(runtime.Spec.EnableFineGrainedControlPort)
-	_, error := client.RunAppStop()
-	if error != nil {
-		logs.Errorf("任务关闭失败: %e", error)
+	var port string
+	var err error
+	if runtime.Spec.EnableFineGrainedControlPort != nil {
+		port = *runtime.Spec.EnableFineGrainedControlPort
+		client := cr.getClient(port)
+		_, err = client.RunAppStop()
+		if err != nil {
+			logs.Errorf("任务关闭失败: %e", err)
+		}
+	} else {
+		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
+		err = fmt.Errorf("EnableFineGrainedControlPort not provide")
 	}
 	// ------------
 	//cr.notifyRuntimeEndPhase(group.Name, actionIndex, runtimeIndex, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
-	return error
+	return err
 }
 
 // 获取或创建指定端口的Client

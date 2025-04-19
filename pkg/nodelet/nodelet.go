@@ -3,9 +3,9 @@ package nodelet
 import (
 	"context"
 	"fmt"
+	"hit.edu/framework/pkg/component-base/logs"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -39,8 +39,13 @@ type Nodelet struct {
 
 func New(ctx context.Context) (*Nodelet, error) {
 	cfg := NewConfig()
+	if cfg == nil {
+		logs.Error("config is nil")
+		return nil, fmt.Errorf("配置初始化失败")
+	}
 	stopEverything := ctx.Done()
-	clientSet, err := InitClient()
+	apiserverHost := cfg.apiserverAddr
+	clientSet, err := InitClient(apiserverHost)
 	if err != nil {
 		log.Fatalf("init client failed: %v", err)
 	}
@@ -54,12 +59,12 @@ func New(ctx context.Context) (*Nodelet, error) {
 	return nl, nil
 }
 
-func InitClient() (*clients.ClientSet, error) {
+func InitClient(apiserverHost string) (*clients.ClientSet, error) {
 	//初始化ClientSet客户端
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	c := &rest.Config{
-		Host:    GetAPIServerHost(), //http://localhost:10000   http://suda801.wangwanu.com:11006   //连接api-server
+		Host:    apiserverHost, //http://localhost:10000   http://suda801.wangwanu.com:11006   //连接api-server
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -83,12 +88,6 @@ func InitClient() (*clients.ClientSet, error) {
 		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
 	}
 	return clientSet, nil
-}
-func GetAPIServerHost() string {
-	if host := os.Getenv("API_SERVER_HOST"); host != "" {
-		return host
-	}
-	return "http://localhost:10000"
 }
 
 func (nl *Nodelet) Run(ctx context.Context) {

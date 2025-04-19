@@ -16,6 +16,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/types"
+	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"time"
 )
 
@@ -28,24 +29,35 @@ type GroupHandler struct {
 
 	groupQueues *group.GroupQueues
 	// client -go
-	groupClient core.GroupInterface
+	groupClient   core.GroupInterface
+	actionClient  core.ActionInterface
+	runtimeClient core.RuntimeInterface
 	//
 	// eventRecorder 记录事件
 	recorder    recorder.EventRecorder
 	eventClient core.EventInterface
 
 	stopCh chan struct{}
+	// 跨域
+	groupTarget   map[string]cross_core.GroupInterface
+	actionTarget  map[string]cross_core.ActionInterface
+	runtimeTarget map[string]cross_core.RuntimeInterface
 }
 
-func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, recorder recorder.EventRecorder, eventClient core.EventInterface) *GroupHandler {
+func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, actionClient core.ActionInterface, runtimeClient core.RuntimeInterface, recorder recorder.EventRecorder, eventClient core.EventInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupHandler {
 	return &GroupHandler{
-		groupManager: groupManager,
-		groupWorkers: groupWorkers,
-		groupQueues:  groupQueues,
-		groupClient:  groupClient,
-		recorder:     recorder,
-		eventClient:  eventClient,
-		stopCh:       make(chan struct{}),
+		groupManager:  groupManager,
+		groupWorkers:  groupWorkers,
+		groupQueues:   groupQueues,
+		groupClient:   groupClient,
+		actionClient:  actionClient,
+		runtimeClient: runtimeClient,
+		recorder:      recorder,
+		eventClient:   eventClient,
+		stopCh:        make(chan struct{}),
+		groupTarget:   groupTarget,
+		actionTarget:  actionTarget,
+		runtimeTarget: runtimeTarget,
 	}
 }
 
@@ -115,8 +127,9 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	//  2、没有可以执行的资源
 	//  ......
 	// TODO 这里有一个问题：就是如果节点上部署不了这个group，那么久会导致一直Handler一直接收这个group，解决方法：检查后立即放入
-	_, err := gh.groupManager.GetGroupByID(gr.Status.GroupID) // 使用groupID查，因为groupID是唯一分配的
-	if err == nil {                                           //err等于nil说明在group_manager当中能找到group信息
+	//_, err := gh.groupManager.GetGroupByID(gr.Status.GroupID) // 使用groupID查，因为groupID是唯一分配的;也可以使用GroupName来查，因为GroupName也是唯一分配的
+	_, err := gh.groupManager.GetGroupByName(gr.Name)
+	if err == nil { //err等于nil说明在group_manager当中能找到group信息
 		// 1、说明group已经存
 		logs.Infof("Group:%s is already put into Deployer", gr.Spec.Name)
 		return
@@ -158,8 +171,33 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 		// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本
 		for i := 0; i < int(copiesInDomain); i++ {
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
-			groupCopyName := "Reason-Copy"                                        // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
-			groupCopy := controller.NewGroupInfoCopy(gr, true, groupCopyName, "") // 第二个参数为true，表示的是提前写入etcd
+			//groupCopyName := "Reason-Copy"                                               // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
+			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
+			// 遍历action和Runtime，依次创建
+			for _, actionReference := range gr.Spec.Actions {
+				action, err := gh.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+				if err != nil {
+					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
+				}
+				actionCopy := controller.NewActionInfoCopy(action)
+				_, err = gh.actionClient.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
+				if err != nil {
+					logs.Errorf("Create copy action %s in local failed: %v", actionReference.Name, err)
+				}
+				logs.Infof("Create actionCopy:%v", actionCopy.Name)
+				for _, runtimeReference := range action.Spec.Runtimes {
+					runtime, err := gh.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+					if err != nil {
+						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
+					}
+					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, false)
+					_, err = gh.runtimeClient.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
+					if err != nil {
+						logs.Errorf("Create copy runtime %s in local failed: %v", runtimeReference.Name, err)
+					}
+					logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
+				}
+			}
 			// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
 			logs.Infof("group:%v===================", groupCopy.Name)
 			_, err = gh.groupClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
@@ -180,19 +218,65 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			if err != nil {
 				logs.Errorf("Patch group error:%v", err)
 			}
-			logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
+			logs.Infof("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
 		}
 	}
 	if copiesInOtherDomain > 0 { // 说明有副本需要部署在其他域---后续可能要添加要求：部署在其他哪个域
 		for i := 0; i < int(copiesInOtherDomain); i++ {
 			// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息--我已经生成好副本group了，调度器直接把这个group放到别的域即可
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
-			groupCopyName := "Reason-Copy"                                        // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
-			groupCopy := controller.NewGroupInfoCopy(gr, true, groupCopyName, "") // 第二个参数为true，表示的是提前写入etcd
+			//groupCopyName := "Reason-Copy" // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
+			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
+			// 遍历action和Runtime，依次创建
+			for _, actionReference := range gr.Spec.Actions {
+				action, err := gh.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{}) // 从本域获得Action
+				if err != nil {
+					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
+				}
+				actionCopy := controller.NewActionInfoCopy(action)
+				actionTarget := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+				_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
+				if err != nil {
+					logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
+				}
+				logs.Infof("Create actionCopy:%v", actionCopy.Name)
+				for _, runtimeReference := range action.Spec.Runtimes {
+					runtime, err := gh.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+					if err != nil {
+						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
+					}
+					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
+					runtimeTarget := gh.runtimeTarget["broker"]                 //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+					_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
+					if err != nil {
+						logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
+					}
+					logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
+				}
+			}
+			// 暂时做成，往跨域的etcd里写入数据
+			groupTarget := gh.groupTarget["broker"] // -=-=-=-=- TODO：这里还得加逻辑，就是有这个域的连接，才能填入这个key
+			_, err = groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+			if err != nil {
+				logs.Errorf("Create cross-domain group error:%v", err)
+			}
+			// 将跨域的连接写入到源任务的copyInfo当中
+			patchGroup, err := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"copy_info": map[string]string{groupCopy.Name: "broker"},
+				},
+			})
+			if err != nil {
+				logs.Errorf("Json Marshal failed, err:%v", err)
+			}
+			_, err = gh.groupClient.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+			if err != nil {
+				logs.Errorf("Patch group error:%v", err)
+			}
 
 			// TODO 这里需要监听调度器调度完成的事件，然后将副本信息填入到源group的copyInfo当中，先开启监听再发送事件给调度器
-			go gh.CheckEventForSchedulerResult(gr, groupCopyName)
-			gh.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
+			//go gh.CheckEventForSchedulerResult(gr, groupCopyName)
+			//gh.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
 		}
 		// TODO 这里得让调度器那边发送一个事件给我，我在这监听
 	}
@@ -269,7 +353,7 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 				logs.Infof("资源被添加: ", event.Object)
 				newEvent := event.Object.(*apis.Event)
 				if newEvent.InvolvedObject.Name == copyGroupName && newEvent.EventTime.Time.After(nowtime) { //前者晚于后者返回true
-					message := newEvent.Message
+					message := newEvent.Message // Message当中，调度器告诉我们，迁移到哪个域了
 					// 将跨域的连接写入到源的copyInfo当中
 					patchGroup, err := json.Marshal(map[string]interface{}{
 						"spec": map[string]interface{}{
@@ -291,48 +375,3 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 		}
 	}
 }
-
-//// 安全获取副本配置的通用方法
-//func getReplicaConfig(gr *apis.Group) (domainReplicas, otherDomainReplicas int, err error) {
-//	// 使用反射校验类型
-//	replicasValue := reflect.ValueOf(gr.Spec.Replicas)
-//	if replicasValue.Kind() != reflect.Slice && replicasValue.Kind() != reflect.Array {
-//		logs.Error("Invalid replicas type",
-//			"expected", "slice/array",
-//			"actual", replicasValue.Kind().String(),
-//			"object", fmt.Sprintf("%+v", gr))
-//		return 0, 0, fmt.Errorf("replicas must be slice type")
-//	}
-//
-//	// 检查长度是否满足需求
-//	if replicasValue.Len() < 2 {
-//		logs.Error("Insufficient replicas configuration",
-//			"minimum_required", 2,
-//			"actual_length", replicasValue.Len(),
-//			"object", fmt.Sprintf("%+v", gr))
-//		return 0, 0, fmt.Errorf("replicas length must >= 2")
-//	}
-//
-//	// 类型安全转换（假设是int类型）
-//	if v, ok := replicasValue.Index(0).Interface().(int); ok {
-//		domainReplicas = v
-//	} else {
-//		logs.Error("Invalid replicas element type",
-//			"index", 0,
-//			"expected", "int",
-//			"actual", fmt.Sprintf("%T", replicasValue.Index(0).Interface()))
-//		return 0, 0, fmt.Errorf("replicas element type error")
-//	}
-//
-//	if v, ok := replicasValue.Index(1).Interface().(int); ok {
-//		otherDomainReplicas = v
-//	} else {
-//		logs.Error("Invalid replicas element type",
-//			"index", 1,
-//			"expected", "int",
-//			"actual", fmt.Sprintf("%T", replicasValue.Index(1).Interface()))
-//		return 0, 0, fmt.Errorf("replicas element type error")
-//	}
-//
-//	return domainReplicas, otherDomainReplicas, nil
-//}

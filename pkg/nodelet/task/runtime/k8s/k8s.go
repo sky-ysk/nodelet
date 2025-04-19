@@ -49,13 +49,13 @@ func NewK8sRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecorder,
 	k8sMonitor.Start()
 	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, recorder: recorder, monitor: k8sMonitor}
 }
-func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("k8s runtime kill task: %s", group.Name)
 	return nil
 }
 
 // 粗粒度管理的启动方法
-func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("k8s runtime for task: %s", group.Name)
 	//先执行共同的操作,再各自调用代码
 	k.monitor.SetState(group, action, runtime, actionIndex, runtimeIndex)
@@ -86,7 +86,7 @@ func (k *K8sRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, 
 
 	return "", nil
 }
-func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
 	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
 	// rpc调用store()
@@ -97,7 +97,7 @@ func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *
 	k.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
 	return "aass"
 }
-func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	keyStatus := ""
 	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
 	_, error := client.RunAppRestore(keyStatus)
@@ -107,7 +107,7 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 	k.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
 	return error
 }
-func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	k.monitor.SetState(group, action, runtime, actionIndex, runtimeIndex)
 	switch runtime.Type {
 	case apis.ByDeployment:
@@ -130,7 +130,7 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 	}
 	return error
 }
-func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	k.monitor.SetState(group, action, runtime, actionIndex, runtimeIndex)
 	switch runtime.Type {
 	case apis.ByDeployment:
@@ -152,7 +152,7 @@ func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime
 	}
 	return error
 }
-func (k *K8sRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (k *K8sRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	client := k.getClient(runtime.EnableFineGrainedControlService, runtime.EnableFineGrainedControlPort)
 	_, error := client.RunAppStop()
 	if error != nil {

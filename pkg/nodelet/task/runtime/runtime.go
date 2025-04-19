@@ -20,14 +20,14 @@ import (
 )
 
 type Runtime interface {
-	Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
-	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
+	Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
+	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
 	CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error)
-	StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string
-	RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
-	StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
-	InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
-	StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error
+	StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string
+	RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
+	StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
+	InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
+	StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
 }
 
 type RuntimeManager struct {
@@ -98,32 +98,32 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 	return runtime
 }
 
-func (rm *RuntimeManager) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
-	return rm.GetRuntime(runtime.Type).Run(group, action, runtime, actionIndex, runtimeIndex)
+func (rm *RuntimeManager) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return rm.GetRuntime(runtime.Spec.Type).Run(group, action, runtime, actionSpecName, runtimeSpecName)
 }
-func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	if rm == nil {
 		logs.Error("runtime manager is nil")
 		return fmt.Errorf("RuntimeManager is not initialized")
 	}
-	return rm.GetRuntime(runtime.Type).Kill(group, action, runtime, actionIndex, runtimeIndex)
+	return rm.GetRuntime(runtime.Spec.Type).Kill(group, action, runtime, actionSpecName, runtimeSpecName)
 }
 func (rm *RuntimeManager) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 	//TODO
 	return "", nil
 }
-func (rm *RuntimeManager) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
-	return rm.GetRuntime(runtime.Type).StoreData(group, action, runtime, actionIndex, runtimeIndex)
+func (rm *RuntimeManager) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
+	return rm.GetRuntime(runtime.Spec.Type).StoreData(group, action, runtime, actionSpecName, runtimeSpecName)
 }
-func (rm *RuntimeManager) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	return rm.GetRuntime(runtime.Type).RestoreData(group, action, runtime, actionIndex, runtimeIndex)
+func (rm *RuntimeManager) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return rm.GetRuntime(runtime.Spec.Type).RestoreData(group, action, runtime, actionSpecName, runtimeSpecName)
 }
-func (rm *RuntimeManager) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	return rm.GetRuntime(runtime.Type).StartRuntime(group, action, runtime, actionIndex, runtimeIndex)
+func (rm *RuntimeManager) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return rm.GetRuntime(runtime.Spec.Type).StartRuntime(group, action, runtime, actionSpecName, runtimeSpecName)
 }
-func (rm *RuntimeManager) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	return rm.GetRuntime(runtime.Type).InitRuntime(group, action, runtime, actionIndex, runtimeIndex)
+func (rm *RuntimeManager) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return rm.GetRuntime(runtime.Spec.Type).InitRuntime(group, action, runtime, actionSpecName, runtimeSpecName)
 }
-func (rm *RuntimeManager) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
-	return rm.GetRuntime(runtime.Type).StopRuntime(group, action, runtime, actionIndex, runtimeIndex)
+func (rm *RuntimeManager) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return rm.GetRuntime(runtime.Spec.Type).StopRuntime(group, action, runtime, actionSpecName, runtimeSpecName)
 }

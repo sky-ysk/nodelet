@@ -1,68 +1,34 @@
 package runtime
 
 import (
-	"context"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
 	"sync"
 )
 
 type RuntimesHandler struct {
-	clients   map[string]core.RuntimeInterface
 	clientSet *clients.ClientSet
+	manager   *manager.Manager
 	mu        sync.Mutex
-}
-
-type CurrentRuntimesHandler struct {
-	client core.RuntimeInterface
 }
 
 var _ Handler = &RuntimesHandler{}
 
-//func NewRuntimesHandler(clientSet *clients.ClientSet) *RuntimesHandler {
-//	c := clientSet.Core().Runtimes("test") // apis.NamespaceAll
-//	return &RuntimesHandler{
-//		client: c,
-//	}
-//}
-
 // NewRuntimesHandler 创建一个 RuntimesHandler
 func NewRuntimesHandler(clientSet *clients.ClientSet) *RuntimesHandler {
 	return &RuntimesHandler{
-		clients:   make(map[string]core.RuntimeInterface),
+		manager:   manager.NewManager(clientSet),
 		clientSet: clientSet,
 	}
 }
 
-// GetClient 根据 namespace 获取 client，如果不存在则创建
-func (h *RuntimesHandler) GetClient(namespace string) *CurrentRuntimesHandler {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// 如果已经存在，直接返回
-	if c, exists := h.clients[namespace]; exists {
-		return &CurrentRuntimesHandler{
-			client: c,
-		}
-	}
-
-	// 否则创建新的 client
-	newClient := h.clientSet.Core().Runtimes(namespace)
-	h.clients[namespace] = newClient
-	return &CurrentRuntimesHandler{
-		client: newClient,
-	}
-}
-
 func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restful.Response) {
-	c := &CurrentRuntimesHandler{}
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
@@ -72,13 +38,11 @@ func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restfu
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
 
-	results, err := c.client.List(context.TODO(), metav1.ListOptions{})
+	results, err := h.manager.GetRuntimes(namespace)
 	if err != nil {
-		logs.Errorf("Get Runtimes failed: %v", err)
+		logs.Errorf("Get runtimes failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")

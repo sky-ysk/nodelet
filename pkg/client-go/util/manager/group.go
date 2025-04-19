@@ -2,9 +2,12 @@ package manager
 
 import (
 	"context"
+	"fmt"
+	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"strings"
 	"time"
 )
 
@@ -13,8 +16,8 @@ func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, pref
 	groups := []*apis.Group{}
 	for _, as := range g.Spec.Groups {
 		// 默认情况下，创建Groups不填充Actions
-		//a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
-		a, err := m.CreateGroup(as, g, namespace, uuid, prefix)
+		a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
+		//a, err := m.CreateGroup(as, g, namespace, uuid, prefix)
 		if err != nil {
 			return nil, err
 		}
@@ -90,8 +93,11 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 
 // 填充Group的Actions
 func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
-	prefix := g.Spec.Name + "."
-	
+	// 根据当前Group的Name来获取Prefix
+	// Prefix固定为g.Name - uuid的部分
+	suffix := "-" + g.Labels["uuid"]
+	prefix := strings.TrimSuffix(g.Name, suffix) + "."
+
 	// 根据Spec创建Runtimes
 	actions, err := m.CreateActions(g, g.Namespace, g.Labels["uuid"], prefix)
 	if err != nil {
@@ -109,7 +115,7 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 			UID:             apis.UID(r.UID),
 		}
 	}
-	
+
 	// 写入Client-Go中, 返回实际的Runtime
 	c := m.GetGroupClient(g.Namespace)
 	
@@ -118,7 +124,7 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 		logs.Errorf("Failed to fill group: %v", err)
 	}
 	logs.Debugf("Created fill: %v", fg)
-	
+
 	return fg, nil // TODO: 应当返回实际的fa
 }
 
@@ -220,4 +226,59 @@ func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
 	} else {
 		return g, nil
 	}
+}
+
+func (m *Manager) UpdateGroup(namespace string, name string, a *apis.Group) (*apis.Group, error) {
+	c := m.GetGroupClient(namespace)
+
+	// 检查group是否存在
+	_, err := m.GetGroup(name, namespace)
+	if err != nil {
+		logs.Errorf("Get group %s error: %v , group not exist !", name, err)
+		return nil, err
+	}
+
+	// 存在更新group
+	updatedGroup, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
+	if updateErr != nil {
+		logs.Errorf("Update group %s error: %v", name, updateErr)
+		return nil, updateErr
+	}
+	return updatedGroup, nil
+
+}
+
+func (m *Manager) PatchGroup(name string, namespace string, patchGroup string) (*apis.Group, error) {
+	c := m.GetGroupClient(namespace)
+
+	// 检查group是否存在
+	_, err := m.GetGroup(name, namespace)
+	if err != nil {
+		logs.Errorf("Get group %s error: %v , group not exist !", name, err)
+		return nil, err
+	}
+
+	// 部分更新group
+	patchedGroup, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchGroup), metav1.PatchOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Patch group %s error: %v", name, err)
+	}
+	return patchedGroup, nil
+}
+
+func (m *Manager) DeleteGroup(name string, namespace string) error {
+	c := m.GetGroupClient(namespace)
+
+	// 检查group是否存在
+	_, err := m.GetGroup(name, namespace)
+	if err != nil {
+		return fmt.Errorf("get group %s error: %v , group not exist ", name, err)
+	}
+
+	// 存在，删除
+	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("delete group %s error: %v", name, err)
+	}
+	return nil
 }

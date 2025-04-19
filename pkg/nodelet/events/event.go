@@ -67,23 +67,23 @@ type ActionResourceEvent struct {
 
 // RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
 type RuntimeStartPhaseEvent1 struct {
-	GroupName    string
-	ActionIndex  int
-	RuntimeIndex int
-	ProcessId    string
-	Phase        apis.Phase
-	StartAt      apis.Time
-	LastTime     apis.Time // 可选字段，表示最后更新时间
+	GroupName       string
+	ActionSpecName  string
+	RuntimeSpecName string
+	ProcessId       string
+	Phase           apis.Phase
+	StartAt         apis.Time
+	LastTime        apis.Time // 可选字段，表示最后更新时间
 }
 
 // RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
 type RuntimeEndPhaseEvent1 struct {
-	GroupName    string
-	ActionIndex  int
-	RuntimeIndex int
-	Phase        apis.Phase
-	FinishAt     apis.Time
-	LastTime     apis.Time // 可选字段，表示最后更新时间
+	GroupName       string
+	ActionSpecName  string
+	RuntimeSpecName string
+	Phase           apis.Phase
+	FinishAt        apis.Time
+	LastTime        apis.Time // 可选字段，表示最后更新时间
 }
 
 const (

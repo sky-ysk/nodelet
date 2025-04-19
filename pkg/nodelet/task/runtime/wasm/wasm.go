@@ -52,7 +52,7 @@ func ensureFile() error {
 }
 
 // 启动任务
-func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("wasm runtime Run() for task:%s", group.Name)
 	wasm_file := runtime.Image
 	if wr.wasmClient == nil {
@@ -76,7 +76,7 @@ func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis
 }
 
 // 关闭任务
-func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("wasm runtime kill task:%s", group.Name)
 	_, err := wr.wasmClient.Destory()
 	if err != nil {
@@ -129,12 +129,12 @@ func (wr WasmRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action,
 	return "", nil
 }
 
-func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 
 	return nil
 }
 
-func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("wasm runtime StartRuntime() for task:%s", group.Name)
 	wasm_file := runtime.Image
 	if wr.wasmClient == nil {
@@ -160,7 +160,7 @@ func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runti
 	return nil
 }
 
-func (wr WasmRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+func (wr WasmRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 	if wr.wasmClient == nil {
 		// 该方法应增加err返回值
 		// return fmt.Errorf(" no corresponding RPC connection : %v", runtimeIndex)
@@ -169,7 +169,7 @@ func (wr WasmRuntime) StoreData(group *apis.Group, action *apis.Action, runtime 
 	return ""
 }
 
-func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// keyStatus := ""
 	//logs.Infof("keyStatus: %s", keyStatus)
 	for {
@@ -181,7 +181,7 @@ func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtim
 	return nil
 }
 
-func (wr WasmRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (wr WasmRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("wasm runtime destory for task: wasm-test")
 	_, err := wr.wasmClient.Destory()
 	if err != nil {

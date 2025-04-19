@@ -12,11 +12,11 @@ func NewContainerRuntime() ContainerRuntime {
 	return ContainerRuntime{}
 }
 
-func (dr ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (dr ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("docker runtime for task:%s", group.Name)
 	return nil
 }
-func (dr ContainerRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) error {
+func (dr ContainerRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("docker runtime kill task:%s", group.Name)
 	return nil
 }
@@ -24,20 +24,20 @@ func (dr ContainerRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Ac
 
 	return "", nil
 }
-func (dr ContainerRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) string {
+func (dr ContainerRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 
 	return ""
 }
-func (dr ContainerRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (dr ContainerRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	return nil
 }
-func (dr ContainerRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (dr ContainerRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 
 	return nil
 }
-func (dr ContainerRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (dr ContainerRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	return nil
 }
-func (dr ContainerRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex int, runtimeIndex int) error {
+func (dr ContainerRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	return nil
 }
