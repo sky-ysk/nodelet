@@ -818,8 +818,8 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 		}
 		// ## 处理Task的Phase
 		// 遍历Task下面的Group，根据Group的状态来设置Task的Phase
-		for _, groupReference := range task.Status.Groups {
-			if groupReference.Name != groupSpec.Name { // 非当前处理的group，跳过
+		for gSpecName, _ := range task.Status.Groups {
+			if gSpecName != groupSpec.Name { // 非当前处理的group，跳过
 				continue
 			}
 			if task.Status.Phase == apis.DeployCheck { // 说明是Task中的第一个Group启动，那说明Task也是第一次启动，要标记状态为Phase（running or Failed）
@@ -1006,26 +1006,26 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	var task *apis.Task
 	var action *apis.Action
 	var runtime *apis.Runtime
-	if phase == apis.Unknown { // 这里有三种情况，①主动关闭，则为Killed  ②主动迁移关闭，为Migrated  ③副本任务的runtime，Init初始化了，但是没有迁移过来，最终源任务完成，这里要将init的副本runtime进行关闭，为Succeed状态
-		for aSpecName, actionReference := range groupStatus.Actions {
-			if aSpecName != actionSpecName { // 判断是否是当前处理的Action
-				continue // 不是的话跳过
-			}
-			action, err = gmo.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
-			if err != nil {
-				logs.Errorf("Get action error from etcd:%v", err)
-			}
-			actionStatus := &action.Status //ActionStatus
-			logs.Trace("=======================================================0")
-			for rSpecName, runtimeReference := range actionStatus.Runtimes { //RuntimeStatus
-				if rSpecName == runtimeSpecName {
-					runtime, err = gmo.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
-					if err != nil {
-						logs.Errorf("Get runtime error to etcd-11:%v", err)
-					}
+	for aSpecName, actionReference := range groupStatus.Actions { // 预先锁定action和Runtime
+		if aSpecName != actionSpecName { // 判断是否是当前处理的Action
+			continue // 不是的话跳过
+		}
+		action, err = gmo.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+		if err != nil {
+			logs.Errorf("Get action error from etcd:%v", err)
+		}
+		actionStatus := &action.Status //ActionStatus
+		logs.Trace("=======================================================0")
+		for rSpecName, runtimeReference := range actionStatus.Runtimes { //RuntimeStatus
+			if rSpecName == runtimeSpecName {
+				runtime, err = gmo.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+				if err != nil {
+					logs.Errorf("Get runtime error to etcd-11:%v", err)
 				}
 			}
 		}
+	}
+	if phase == apis.Unknown { // 这里有三种情况，①主动关闭，则为Killed  ②主动迁移关闭，为Migrated  ③副本任务的runtime，Init初始化了，但是没有迁移过来，最终源任务完成，这里要将init的副本runtime进行关闭，为Succeed状态
 		if get.Status.Phase == apis.Migrating {
 			// 判断为Migrated的情况 查group.Status.Phase，如果为Migrating则为迁移，否则为用户主动关闭任务的操作
 			gmo.handleRuntimeMigratedUpdate(get, action, runtime) //对于②情况
@@ -1106,12 +1106,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			runtimeStatus := &allRuntime.Status
 			if rSpecName == runtimeSpecName {
 				runtimeStatus.Phase = phase
+				runtime.Status.Phase = phase // 方便最终End 显示状态
 				runtimeStatus.FinishAt = &finshTime
 				runtimeStatus.LastTime = &lastTime
 				// 如果说该group有副本，并且该副本group是提前部署副本的，那么这里除了修改源runtime的状态，还得修改副本runtime的状态
 				gmo.updateCopyIngfoForRuntime(get, phase, actionSpecName, runtimeSpecName)
 				// 更新一下etcd当中的Runtime的Status
-				err := gmo.UpdateRuntimeStatus(runtimeStatus, runtime.Name)
+				err := gmo.UpdateRuntimeStatus(runtimeStatus, allRuntime.Name)
 				if err != nil {
 					logs.Errorf("Update runtime error to etcd-222:%v", err)
 				}
@@ -1136,6 +1137,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			actionStatus.FinishAt = &finshTime
 			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Failed
+			action.Status.Phase = apis.Failed // 方便最终End 显示状态
 			gmo.recorder.Event(action, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Action Name:\t %s is Failed", action.Name))
 			gmo.updateCopyIngfoForAction(groupSpec, phase, actionSpecName)
 		}
@@ -1143,6 +1145,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			actionStatus.FinishAt = &finshTime
 			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Killed
+			action.Status.Phase = apis.Killed // 方便最终End 显示状态
 			gmo.recorder.Event(action, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name))
 			gmo.updateCopyIngfoForAction(groupSpec, phase, actionSpecName)
 		}
@@ -1154,13 +1157,14 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			// 还得发送Action执行完成的事件，同时将etcd当中的Action资源状态进行修改
 			if !finalActionIsKilled && !finalActionIsFailed {
 				actionStatus.Phase = phase
+				action.Status.Phase = phase // 方便最终End 显示状态
 				gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is Successed", action.Name))
 			}
 			nowActionCompleted = true //当前Action已经完成
 			gmo.updateCopyIngfoForAction(groupSpec, phase, actionSpecName)
 		}
 		// 更新一下etcd当中的Action的Status
-		err = gmo.UpdateActionStatus(actionStatus, action.Name)
+		err = gmo.UpdateActionStatus(actionStatus, allAction.Name) //这里======================
 		if err != nil {
 			logs.Errorf("Update action status err:%v", err)
 		}
@@ -1460,15 +1464,15 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 		if i.LeftValue.Name == string(apis.NodeDependency) {
 			//正则匹配选择parents的pahse
 			// logs.Info("NodeCondition: get RuntimeName:", i.LeftValue.From)
-				for rtIndex, rt := range action.Spec.Runtimes {
-					if rt.Name == i.LeftValue.From {
-						index = rtIndex
-					}
+			for rtIndex, rt := range action.Spec.Runtimes {
+				if rt.Name == i.LeftValue.From {
+					index = rtIndex
 				}
-				if runtimeStatus.Phase == apis.Successed {
-					i.LeftValue.Value = "1"
-				} else {
-					i.LeftValue.Value = "0"
+			}
+			if runtimeStatus.Phase == apis.Successed {
+				i.LeftValue.Value = "1"
+			} else {
+				i.LeftValue.Value = "0"
 			}
 			if i.LeftValue.Value == i.RightValue.Value {
 				i.Result = apis.True
@@ -1549,6 +1553,11 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 					if i.LeftValue.Value == i.RightValue.Value {
 						i.Result = apis.True
 					}
+					//暂时没想到 ！= 如何使用，暂定判断条件相等 ==
+					// }else {
+					// 	if runtime.Conditions.Formulas[conditionIndex].LeftValue.Value != runtime.Conditions.Formulas[conditionIndex].RightValue.Value {
+					// 		runtime.Conditions.Formulas[conditionIndex].Result = true
+					// 	}
 				}
 				if i.Result != apis.True {
 					logs.Trace("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
@@ -1583,7 +1592,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 		if err != nil {
 			logs.Errorf("Patch runtime err-23:%v", err)
 		}
-		logs.Info("=================set  rtStatus.IsDependencySatisf  = true")
+		logs.Trace("=================set  rtStatus.IsDependencySatisf  = true")
 	}
 	return true
 }
