@@ -25,8 +25,9 @@ func TestStartupAbility(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	var url string = "http://192.168.8.165:8080"      // 更改ip和端口
-	var name string = "DetectPosition.Leju.Guochuang" // 更改能力名字
+	var url string = "http://192.168.8.165:8080" // 更改ip和端口
+	var name string = "GrabBall.Leju.Guochuang"  // 更改能力名字
+	//var name string = "DetectPosition.Leju.Guochuang" // 更改能力名字
 	abilityManager := NewAbilityManager(url, name)
 	heartBeat, err := abilityManager.StartupAbility()
 	if err != nil {
@@ -48,8 +49,8 @@ func TestTerminateAbility(t *testing.T) {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	var url string = "http://127.0.0.1:8123" // 更改ip和端口
-	var name string = "Mock"                 // 更改能力名字
+	var url string = "http://192.168.8.165:8080"      // 更改ip和端口
+	var name string = "DetectPosition.Leju.Guochuang" // 更改能力名字
 	abilityManager := NewAbilityManager(url, name)
 	err := abilityManager.TerminateAbility()
 	if err != nil {
