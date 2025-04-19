@@ -184,6 +184,10 @@ func GetAbilityState(url string, uuid string) (HeartBeat, error) {
 	}
 	logs.Info("get heart beats successfully\n")
 	logs.Info("try to find state by UUID\n")
+	logs.Infof("all heartbeats:")
+	for index, hearBeat := range hearBeats {
+		logs.Infof("[%d] {%v}", index, hearBeat)
+	}
 	heartBeat, err := FindHeartBeatByUUID(hearBeats, uuid)
 	if err != nil {
 		logs.Error("find state by UUID error\n")
