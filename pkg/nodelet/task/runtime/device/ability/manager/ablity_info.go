@@ -87,7 +87,7 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 	logs.Info("publish get request\n")
 	response, err := client.Get(requestForGet.Url)
 	if err != nil {
-		logs.Error("get response error: %v\n", err)
+		logs.Errorf("get response error: %v\n", err)
 		return []AbilityInstance{}, err
 	}
 	defer response.Body.Close()

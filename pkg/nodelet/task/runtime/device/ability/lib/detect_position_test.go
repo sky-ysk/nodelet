@@ -6,9 +6,10 @@ import (
 	"time"
 )
 
+// go test -run TestPublishDetectPositionInst -v
 func TestPublishDetectPositionInst(t *testing.T) {
 	logs.Init("test")
-	url1 := "/api/task/detect" // 把ip和port填写完整
+	url1 := "http://192.168.8.165:/api/task/detect" // 把ip和port填写完整
 	taskId, err := PublishDetectPositionInst(url1)
 	if err != nil {
 		logs.Errorf("PublishDetectPositionInst fail")
