@@ -1460,20 +1460,23 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 		if i.LeftValue.Name == string(apis.NodeDependency) {
 			//正则匹配选择parents的pahse
 			// logs.Info("NodeCondition: get RuntimeName:", i.LeftValue.From)
-				for rtIndex, rt := range action.Spec.Runtimes {
-					if rt.Name == i.LeftValue.From {
-						index = rtIndex
-					}
-				}
-				if runtimeStatus.Phase == apis.Successed {
-					i.LeftValue.Value = "1"
-				} else {
-					i.LeftValue.Value = "0"
+			parentRuntimeOb := action.Status.Runtimes[i.LeftValue.From]
+			parentRt, err := gmo.runtimeClient.Get(context.TODO(), parentRuntimeOb.Name, metav1.GetOptions{})
+			if err != nil {
+				logs.Errorf("Failed to get parent group:%v form etcd, err:%v", i.LeftValue.From, err)
 			}
+
+			if parentRt.Status.Phase == apis.Successed {
+				i.LeftValue.Value = "1"
+			} else {
+				i.LeftValue.Value = "0"
+			}
+
 			if i.LeftValue.Value == i.RightValue.Value {
 				i.Result = apis.True
 				logs.Info("NodeCondition success : parent RuntimeName:", i.LeftValue.From)
 			}
+
 			if i.Result != apis.True {
 				//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
 				return false
