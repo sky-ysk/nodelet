@@ -92,7 +92,7 @@ func TestValueExtract(t *testing.T) {
 	
 	engine := NewEngine(clientSet)
 	
-	name := "T1.G1-0196434c-279b-7e67-8ac6-0bf756da1c7f"
+	name := "T1-01964bf5-dc4b-786b-ac31-7b8c08e10e83"
 	namespace := "Guochuang"
 	
 	g, err := engine.manager.GetGroup(name, namespace)

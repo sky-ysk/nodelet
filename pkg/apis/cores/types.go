@@ -189,6 +189,7 @@ type NodeSpec struct {
 	
 	// 不能被调度的节点
 	Unschedulable bool `json:"unschedulable,omitempty" yaml:"unschedulable"`
+	
 	// 设备固有资源
 	Resource map[string][]Item `json:"resource,omitempty" yaml:"resource"`
 	// TODO: 节点Label
@@ -435,8 +436,9 @@ type WorkflowSpec struct {
 	Name string `json:"name,omitempty" yaml:"name"`
 	
 	// 对工作流的描述
-	Desc Description `json:"desc,omitempty" yaml:"desc"`
-
+	// +optional
+	Desc *Description `json:"desc,omitempty" yaml:"desc"`
+	
 	// 工作流下有哪些任务
 	// 目前只支持Task=>Group=>Action
 	// TODO: 更为宽松的Task关系定义
@@ -487,15 +489,17 @@ type TaskSpec struct {
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
 	
 	// Task描述
-	Desc Description `json:"desc,omitempty" yaml:"desc"`
-
+	// +optional
+	Desc *Description `json:"desc,omitempty" yaml:"desc"`
+	
 	// Task类型
-	Type ProcessType `json:"type,omitempty" yaml:"type"`
-
+	// +optional
+	Type *ProcessType `json:"type,omitempty" yaml:"type"`
+	
 	// Task条件
 	// +Optional
-	Conditions Conditions `json:"conditions,omitempty" yaml:"conditions"`
-
+	Conditions *Conditions `json:"conditions,omitempty" yaml:"conditions"`
+	
 	// 存储当前Task中的所有Group
 	// Group之间没有严格的依赖限制
 	// 可以有多个Group作为Group的入口，支持多个图形结构
@@ -507,10 +511,15 @@ type TaskSpec struct {
 type TaskStatus struct {
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
-
 	//
-	Groups map[string]GroupStatus `json:"groups,omitempty" yaml:"groups"`
-
+	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
+	
+	// Prefix
+	Prefix string `json:"prefix,omitempty" yaml:"prefix"`
+	
+	//
+	Groups map[string]ObjectReference `json:"groups,omitempty" yaml:"groups"`
+	
 	// TODO: Events定义
 	// 创建时间
 	CreateAt *Time `json:"create,omitempty" yaml:"create"`
@@ -545,23 +554,25 @@ type GroupTemplate struct {
 type GroupSpec struct {
 	// Group Name
 	Name string `json:"name,omitempty" yaml:"name"`
-
-	//
-	SchedulerName string `json:"scheduler_name,omitempty" yaml:"name"`
-
+	
+	// +Optional
+	SchedulerName *string `json:"scheduler_name,omitempty" yaml:"name"`
+	
 	// Parents Name, 一个Group可以有多个Parents
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
 	
 	// Group描述
-	Desc Description `json:"desc,omitempty" yaml:"desc"`
-
+	// +Optional
+	Desc *Description `json:"desc,omitempty" yaml:"desc"`
+	
 	// Group类型
-	Type ProcessType `json:"type,omitempty" yaml:"type"`
-
+	// +Optional
+	Type *ProcessType `json:"type,omitempty" yaml:"type"`
+	
 	// Group条件
 	// +Optional
-	Conditions Conditions `json:"conditions,omitempty" yaml:"conditions"`
-
+	Conditions *Conditions `json:"conditions,omitempty" yaml:"conditions"`
+	
 	// Group所需资源需要先遍历自己的Action
 	//   Ref类型的指针需要根据Action中的资源需求计算
 	//   TODO: 对于Condition类的节点，使用资源的预估
@@ -582,8 +593,9 @@ type GroupSpec struct {
 	SkipFilterPlugins []string `json:"skip_filter_plugins,omitempty" yaml:"skip_filter_plugins"`
 	//添加-hzy
 	Replicas []int32 `json:"replicas,omitempty" yaml:"replicas"` //group的副本数量，用户需要输入,例如：[2,0] 第一个值表示本域想部署的副本数量，第二个值表示其他域想部署的副本数量
-
-	IsCopy   bool              `json:"is_copy,omitempty" yaml:"is_copy"`     //标记当前group是否是副本
+	
+	// +Optional
+	IsCopy   *bool             `json:"is_copy,omitempty" yaml:"is_copy"`     //标记当前group是否是副本
 	CopyInfo map[string]string `json:"copy_info,omitempty" yaml:"copy_info"` //存放任务的副本信息的  key：副本的ObjectMeta.Name  value:副本在本域还是在哪个域  如果是本域为："local" ,如果是跨域，则为连接那个域的ip或者是XX（待定）
 	
 	//亲和节点，如果该字段不为空的话，那么group就必须放在这些节点上执行
@@ -599,7 +611,9 @@ type ResourceRequirement struct {
 type GroupStatus struct {
 	//
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
-
+	
+	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
+	
 	// TODO: 所属Actions的状态
 	Actions map[string]ObjectReference `json:"actions,omitempty" yaml:"actions"`
 	
@@ -650,15 +664,17 @@ type ActionSpec struct {
 	Parents []string `json:"parents,omitempty" yaml:"parents"`
 	
 	// Action描述
-	Desc Description `json:"desc,omitempty" yaml:"desc"`
-
+	// +Optional
+	Desc *Description `json:"desc,omitempty" yaml:"desc"`
+	
 	// Action类型
-	Type ProcessType `json:"type,omitempty" yaml:"type"`
-
+	// +Optional
+	Type *ProcessType `json:"type,omitempty" yaml:"type"`
+	
 	// Action条件
 	// +Optional
-	Conditions Conditions `json:"conditions,omitempty" yaml:"conditions"`
-
+	Conditions *Conditions `json:"conditions,omitempty" yaml:"conditions"`
+	
 	// 需要的执行环境
 	// 串行执行Runtime中的运行环境
 	// 如果使用Pod方式部署的任务，建议只部署一个阻塞的Runtime
@@ -733,9 +749,9 @@ type Scene struct {
 // TODO:node字段
 type ResourceSpec struct {
 	// 描述期待占用多少资源 资源的单位是什么
-	ExpectedValue     float64
-	ExpectedValueUnit ResourceUnit
-
+	ExpectedValue     *float64      `json:"expected_value,omitempty" yaml:"expected_value"`
+	ExpectedValueUnit *ResourceUnit `json:"expected_value_unit,omitempty" yaml:"expected_value_unit"`
+	
 	// 描述资源的固有属性
 	Type     *ResourceType   `json:"type,omitempty" yaml:"type"`         // 类型：网络、计算、存储
 	Name     *string         `json:"name,omitempty" yaml:"name"`         // 名称：cpu、gpu、内存、硬盘
@@ -837,16 +853,16 @@ const (
 // 设备的访问方式
 type AccessMethod struct {
 	// Type
-	Type AccessType
-
+	Type AccessType `json:"type,omitempty" yaml:"type"`
+	
 	// 访问方式对应的URL
 	//   对于Customize类型，URL对应部署脚本的地址
-	URL string
-
+	URL string `json:"url,omitempty" yaml:"url"`
+	
 	// 设备组
 	//  对于RMF类型，Group对应RMF Fleets
-	Group string
-
+	Group *string `json:"group,omitempty" yaml:"group"`
+	
 	// 设备别名
 	//   部分情况下，RMF中的设备名与系统中设备名不一致
 	//   默认情况下，Alias应该与Name相同
@@ -859,9 +875,9 @@ type Property struct {
 	// Type
 	// 缺省值为string
 	Type *ValueType `json:"type,omitempty" yaml:"type"`
-
+	
 	Value string `json:"value,omitempty" yaml:"value"`
-
+	
 	// 子属性
 	// Key: 属性名称 Value: 属性值
 	SubProperty map[string]SubProperty `json:"sub_property,omitempty" yaml:"sub_property"`
@@ -871,8 +887,8 @@ type Property struct {
 // 设备属性的子属性，如Location类型，具有子属性Location.X
 type SubProperty struct {
 	// Type
-	Type PropertyType
-
+	Type ValueType `json:"type,omitempty" yaml:"type"`
+	
 	// TODO: 格式校验
 	Value string `json:"value,omitempty" yaml:"value"`
 }
@@ -888,11 +904,11 @@ const (
 // 设备资源锁
 type Lock struct {
 	// 锁类型
-	Type LockType
-
+	Type LockType `json:"type,omitempty" yaml:"type"`
+	
 	// 调度时 ref为0时释放
-	IsLocked bool
-
+	IsLocked bool `json:"is_locked,omitempty" yaml:"is_locked"`
+	
 	// 资源引用数 部署时
 	Ref int `json:"ref,omitempty" yaml:"ref"`
 }
@@ -900,62 +916,89 @@ type Lock struct {
 // 设备事件描述
 type DeviceEvent struct {
 	// EventCode, 时间码，对应事件处理的方案
-	Code int
-
+	Code int `json:"code,omitempty" yaml:"code"`
+	
 	// 事件描述
-	Desc string
-
+	Desc string `json:"desc,omitempty" yaml:"desc"`
+	
 	// TODO: 额外参数, 设备的上下文状态
 }
 
 type DeviceSpec struct {
 	// 设备名称，每个Node上的设备，名称应该唯一
-	Name string
-
+	Name string `json:"name,omitempty" yaml:"name"`
+	
 	// 对设备的描述
-	Desc DeviceDesc
-
+	Desc *DeviceDesc `json:"desc,omitempty" yaml:"desc"`
+	
 	// 设备的关联Node，每个设备需要与一个Node相关联
-	Node string
-
+	Node *string `json:"node,omitempty" yaml:"node"`
+	
 	// 设备的访问方式
-	AccessMethod AccessMethod
-
+	AccessMethod *AccessMethod `json:"access_method,omitempty" yaml:"access_method"`
+	
 	// 父设备
-	AttachedDevice string
-
+	AttachedDevice *string `json:"attached_device,omitempty" yaml:"attached_device"`
+	
 	// 子设备
-	SubDevices []string
-
+	SubDevices []string `json:"sub_devices,omitempty" yaml:"sub_devices"`
+	
 	// 设备的期望属性
-	ExpectedProperties map[string]Property
+	// Key: 属性名 Value: 实际的参数值
+	ExpectedProperties map[string]Property `json:"expected_properties,omitempty" yaml:"expected_properties"`
+	
+	// 设备具有的能力
+	// 这里的Name是统一的Name,比如Grab、Move等
+	Abilities []string `json:"abilities,omitempty" yaml:"abilities"`
 }
 
+// Ability 描述一个能力
+type Ability struct {
+	// 这里的Name是实际的Name，包括Ability的Domain，如Grab.Leju.Guochuang
+	// 如Move.Leju.Guochuang
+	Name string `json:"name,omitempty" yaml:"name"`
+	Desc *string
+	// 一个能力对应的多个业务（技能）
+	Services   map[string]AbilityService `json:"services,omitempty" yaml:"services"`
+	InstanceID *string                   `json:"instance_id,omitempty" yaml:"instance_id"`
+	State      *AbilityState             `json:"state,omitempty" yaml:"state"`
+	Status     *string                   `json:"status,omitempty" yaml:"status"`
+}
+
+// AbilityService 描述一个能力的具体业务（技能）
+type AbilityService struct {
+	Desc      *string `json:"desc,omitempty" yaml:"desc"`
+	Ip        *string `json:"ip,omitempty" yaml:"ip"`
+	Port      *string `json:"port,omitempty" yaml:"port"`
+	Interface *string `json:"interface,omitempty" yaml:"interface"`
+	Model     *string `json:"model,omitempty" yaml:"model"`
+}
+
+//TODO: 增加具体的值限制
+type AbilityState int
+
 type DeviceStatus struct {
-	// 正在使用Device的ActionID
-	ActionID string
-
-	// 设备的实例ID
-	//  对于Ability来说，InstanceID对应Ability的InstanceID
-	//  对于RMF来说，InstanceID对应RMF的TaskID
-	InstanceID string
-
+	Abilities map[string]Ability `json:"abilities,omitempty" yaml:"abilities"`
+	
+	// 正在使用Device的Runtime
+	Runtime ObjectReference `json:"runtime,omitempty" yaml:"runtime"`
+	
 	// 设备的运行阶段
-	Phase DevicePhase
-
+	Phase DevicePhase `json:"phase,omitempty" yaml:"phase"`
+	
 	// 运行时中，设备的实际状态
 	// 当Phase与Status不一致时，机器人出现运行错误
-	Status string
-
+	Status string `json:"status,omitempty" yaml:"status"`
+	
 	// 设备的实际属性
-	Properties map[string]Property
-
+	Properties map[string]Property `json:"properties,omitempty" yaml:"properties"`
+	
 	// 设备资源锁状态
-	Lock Lock
-
+	Lock Lock `json:"lock,omitempty" yaml:"lock"`
+	
 	// 设备事件描述
-	Events []DeviceEvent
-
+	Events []DeviceEvent `json:"events,omitempty" yaml:"events"`
+	
 	// 上次成功获取设备状态的时间
 	// 如果长时间不能获取设备的状态，则认为设备离线
 	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
@@ -964,14 +1007,14 @@ type DeviceStatus struct {
 // SceneSpec 描述scene的固有属性和期待属性
 type SceneSpec struct {
 	// 每一个scene的标识
-	SceneID string
-
+	SceneID string `json:"scene_id,omitempty" yaml:"scene_id"`
+	
 	// scene的类型 是一个地点还是一个物品
-	Type SceneType
-
+	Type SceneType `json:"type,omitempty" yaml:"type"`
+	
 	// 期待属性
-	ExpectedProperty map[string]Property
-
+	ExpectedProperty map[string]Property `json:"expected_property,omitempty" yaml:"expected_property"`
+	
 	// 场景的描述（不可变属性）
 	Desc SceneDesc `json:"desc,omitempty" yaml:"desc"`
 }
@@ -995,21 +1038,21 @@ const (
 // SceneStatus 描述scene的动态属性
 type SceneStatus struct {
 	// 更新的方式和时间
-	UpdateMethod string
-	UpdateTime   Time
-
+	UpdateMethod string `json:"update_method,omitempty" yaml:"update_method"`
+	UpdateTime   Time   `json:"update_time,omitempty" yaml:"update_time"`
+	
 	// 关联的场景
-	AttachedScene string
-
+	AttachedScene string `json:"attached_scene,omitempty" yaml:"attached_scene"`
+	
 	// 关联的设备
-	AttachedDevice string
-
+	AttachedDevice string `json:"attached_device,omitempty" yaml:"attached_device"`
+	
 	// 关联的任务
-	AttachedTask string
-
+	AttachedTask string `json:"attached_task,omitempty" yaml:"attached_task"`
+	
 	// 实时属性
-	Property map[string]Property
-
+	Property map[string]Property `json:"property,omitempty" yaml:"property"`
+	
 	// 锁
 	Lock Lock `json:"lock,omitempty" yaml:"lock"`
 }
@@ -1031,8 +1074,8 @@ type Runtime struct {
 	meta.ObjectMeta
 	
 	//
-	Spec RuntimeSpec
-
+	Spec RuntimeSpec `json:"spec,omitempty" yaml:"spec"`
+	
 	//
 	Status RuntimeStatus `json:"status,omitempty" yaml:"status"`
 }
@@ -1046,6 +1089,12 @@ type RuntimeList struct {
 
 // Action所需执行环境
 type RuntimeSpec struct {
+	// 标识运行时的名称
+	Name string `json:"name,omitempty" yaml:"name"`
+	
+	//
+	Parents []string `json:"parents,omitempty" yaml:"parents"`
+	
 	// 定义Action所需资源
 	// 在Group调度完成后，Action需要被分配和保留，直到Action开始执行
 	// 动态资源分配所需字段
@@ -1080,10 +1129,7 @@ type RuntimeSpec struct {
 	// TODO: 实现一个Controller,专门监控对应的Pod的变化
 	// TODO: 使用Pod方式部署，可以同时部署Action的多个副本
 	Type RuntimeType `json:"type,omitempty" yaml:"type"`
-
-	// 标识运行时的名称
-	Name string `json:"name,omitempty" yaml:"name"`
-
+	
 	// 镜像
 	//  对于Command,Net类型，Image应当为空
 	// 	对于Binary或者Script，Image对应二进制上传的位置，部署时需要检查依赖环境
@@ -1110,20 +1156,17 @@ type RuntimeSpec struct {
 	// Runtime条件
 	// +Optional
 	Conditions *Conditions `json:"conditions,omitempty" yaml:"conditions"`
-
+	
 	// 需要的数据
 	// 输入数据
 	// 	输入数据作为参数注入到命令参数中
 	Inputs []Value `json:"inputs,omitempty" yaml:"inputs"`
-
+	
 	// 输出数据
 	//  输出数据作为参数注入到命令参数中
 	Outputs []Value `json:"outputs,omitempty" yaml:"outputs"`
-
+	
 	//Waiting                      bool     `json:"waiting" yaml:"waiting"`
-	EnableFineGrainedControl        *bool   `json:"enable_control,omitempty" yaml:"enable_control"`
-	EnableFineGrainedControlService *string `json:"enable_control_service,omitempty" yaml:"enable_control_service"`
-	EnableFineGrainedControlPort    *string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
 	EnableFineGrainedControl        *bool   `json:"enable_control,omitempty" yaml:"enable_control"`
 	EnableFineGrainedControlService *string `json:"enable_control_service,omitempty" yaml:"enable_control_service"`
 	EnableFineGrainedControlPort    *string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
@@ -1132,18 +1175,12 @@ type RuntimeSpec struct {
 	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
 	Ports       []Port            `json:"ports,omitempty" yaml:"ports"`             // 容器/服务端口
 	ServiceType *string           `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
-	ServiceType *string           `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
 	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
 	Replicas    *int32            `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
 	Pod         *Pod              `json:"pod,omitempty" yaml:"pod"`                 // 如果是Pod，则放入该参数
 	Service     *Service          `json:"service,omitempty" yaml:"service"`
 	Deployment  *Deployment       `json:"deployment,omitempty" yaml:"deployment"`
-	Replicas    *int32            `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
-	Pod         *Pod              `json:"pod,omitempty" yaml:"pod"`                 // 如果是Pod，则放入该参数
-	Service     *Service          `json:"service,omitempty" yaml:"service"`
-	Deployment  *Deployment       `json:"deployment,omitempty" yaml:"deployment"`
 	//ysk添加
-	Dependency *string       `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
 	Dependency *string       `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
 	Packages   []Requirement `json:"package,omitempty" yaml:"package"`       //解析之后的包
 }
@@ -1193,8 +1230,6 @@ type Value struct {
 
 type ActionStatus struct {
 	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
-
-	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	
 	// 生命周期
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
@@ -1232,8 +1267,8 @@ type RuntimeStatus struct {
 	Scenes map[string]ObjectReference `json:"scenes,omitempty" yaml:"scenes"`
 	// 当前任务的执行情况
 	// 任务在哪里执行,进程ID
-	NodeName  **string `json:"node_name,omitempty" yaml:"node_name"`
-	ProcessId **string `json:"process_id,omitempty" yaml:"process_id"`
+	NodeName  *string `json:"node_name,omitempty" yaml:"node_name"`
+	ProcessId *string `json:"process_id,omitempty" yaml:"process_id"`
 	
 	// 执行状态
 	Phase Phase `json:"phase,omitempty" yaml:"phase"`
@@ -1298,8 +1333,8 @@ type PodSpec struct {
 	Affinity           Affinity          `json:"affinity,omitempty" yaml:"affinity"`
 }
 type Volume struct {
-	Name         string                          `json:"name" yaml:"name"` // 存储卷名称
-	VolumeSource `json:",inline" yaml:",inline"` // 存储卷来源（如ConfigMap、Secret）
+	Name         string `json:"name" yaml:"name"` // 存储卷名称
+	VolumeSource `json:",inline" yaml:",inline"`  // 存储卷来源（如ConfigMap、Secret）
 }
 
 // VolumeSource 定义存储卷的数据来源（必须且常用的类型）
