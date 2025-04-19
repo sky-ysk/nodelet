@@ -8,7 +8,7 @@ import (
 func TestRegExpr(t *testing.T) {
 	comparor := NewRegExprComparor()
 	kind := "Task"
-	taskStr := "Task{T1}.Group{R1}.Status{phase}"
+	taskStr := "Task{T1}.Group{G1}.Status{phase}"
 	name, parts, err := comparor.Match(kind, taskStr)
 	if err == nil {
 		fmt.Println("--------------")
@@ -22,7 +22,7 @@ func TestRegExpr(t *testing.T) {
 	}
 	
 	kind = "Task"
-	taskStr = "Task{T1}.Group{R1}.Action{A1}.Status{phase}"
+	taskStr = "Task{T1}.Group{G1}.Action{A1}.Status{phase}"
 	name, parts, err = comparor.Match(kind, taskStr)
 	if err == nil {
 		fmt.Println("--------------")
@@ -36,7 +36,7 @@ func TestRegExpr(t *testing.T) {
 	}
 	
 	kind = "Group"
-	taskStr = "Group{R1}.Action{A1}.Status{phase}"
+	taskStr = "Group{G1}.Action{A1}.Status{phase}"
 	name, parts, err = comparor.Match(kind, taskStr)
 	if err == nil {
 		fmt.Println("--------------")

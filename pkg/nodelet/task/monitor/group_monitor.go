@@ -1370,6 +1370,9 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 	if len(group.Spec.Parents) == 0 {
 		return true
 	} else {
+		if group.Spec.Conditions == nil {
+			return true
+		}
 		for _, i := range group.Spec.Conditions.Formulas {
 			if i.LeftValue.Name == "NodeDependency" {
 				parentName := i.LeftValue.From // 这里要考虑父亲节点有两个的情况吧，还是说弄两个Formulas
@@ -1406,6 +1409,13 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group) bool {
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Group) bool {
 	actionSpec := &action.Spec
+	//检查conditions是否是空指针
+	if actionSpec.Conditions == nil {
+		return true
+	}
+	if len(actionSpec.Conditions.Formulas) == 0 {
+		return true
+	}
 	for index, i := range actionSpec.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
 			actionParentName := i.LeftValue.From
@@ -1437,38 +1447,21 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis.Action) bool {
 	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
 	runtimeStatus := &runtime.Status
+	if runtime.Spec.Conditions == nil {
+		return true
+	}
+	if len(runtime.Spec.Conditions.Formulas) == 0 {
+		return true
+	}
 	if runtimeStatus.IsDependencySatisf {
 		return true
 	}
 	for index, i := range runtime.Spec.Conditions.Formulas {
 		if i.LeftValue.Name == string(apis.NodeDependency) {
 			//正则匹配选择parents的pahse
-			// runtimeParentName := i.LeftValue.From
-			//Task、group、action的Name都是独一的，全部使用Name
-			// TaskName, GroupName, ActionName, RuntimeName, FieldName, TypeID, err := dependency.ParseFrom(i.LeftValue.From)
-			_, _, _, RuntimeName, _, TypeID, err := dependency.ParseFrom(i.LeftValue.From)
-
-			logs.Info("NodeCondition: get RuntimeName:", RuntimeName)
-
-			//item接收task group action rutime的spec或者status，应该也可以为空，只表示接受group等它们本身
-			// var item interface{}
-			if err != nil {
-				logs.Error("正则表达式解析From失败!  action:%v, runtime:%v", action.Spec.Name, runtime.Spec.Name)
-				return false
-			}
-			switch TypeID {
-			//0表示缺省，1表示填写了，针对task group action runtime这四项
-			case 0b0000: //全部缺省出错
-				logs.Trace("runtime %v:parse From err, all items are empty", runtime.Name)
-			case 0b0001: //只有一个runtime，说明是本action下面的runtime的完成情况
-				// action, err := gmo.actionClient.Get(context.TODO(), ActionName, metav1.GetOptions{})
-				// if err != nil {
-				// 	logs.Errorf("Failed get action:%v from etcd, err:%v", ActionName, err)
-				// }
-				//action := group.Spec.Actions[actionIndex]
-				//index := 0
+			// logs.Info("NodeCondition: get RuntimeName:", i.LeftValue.From)
 				for rtIndex, rt := range action.Spec.Runtimes {
-					if rt.Name == RuntimeName {
+					if rt.Name == i.LeftValue.From {
 						index = rtIndex
 					}
 				}
@@ -1476,36 +1469,10 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 					i.LeftValue.Value = "1"
 				} else {
 					i.LeftValue.Value = "0"
-				}
-
-			case 0b0010: //只有一个action
-
-			case 0b0011: //包含一个action和runtime
-
-			case 0b0100: //只包含一个group
-				// group, err := gmo.groupClient.Get(context.TODO(), GroupName, metav1.GetOptions{})
-				// if err != nil {
-				// 	logs.Errorf("Failed get group:%v from etcd, err:%v", GroupName, err)
-				// }
-			case 0b1111: //全部填写，从task开始获取
-
-			default:
-
 			}
-
-			// for j := range group.Status.ActionStatus[actionIndex].RuntimeStatus {
-			// 	rs := &group.Status.ActionStatus[actionIndex].RuntimeStatus[j]
-			// 	r := &group.Spec.Actions[actionIndex].Spec.Runtimes[j]
-			// 	if r.Name == runtimeParentName { //目前定义，Action的父亲Action必须是成功状态.更新action的conditions
-			// 		if rs.Phase != apis.Successed {
-			// 			i.LeftValue.Value = "0"
-			// 		} else {
-			// 			i.LeftValue.Value = "1"
-			// 		}
-			// 	}
-			// }
 			if i.LeftValue.Value == i.RightValue.Value {
 				i.Result = apis.True
+				logs.Info("NodeCondition success : parent RuntimeName:", i.LeftValue.From)
 			}
 			if i.Result != apis.True {
 				//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
@@ -1582,11 +1549,6 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 					if i.LeftValue.Value == i.RightValue.Value {
 						i.Result = apis.True
 					}
-					//暂时没想到 ！= 如何使用，暂定判断条件相等 ==
-					// }else {
-					// 	if runtime.Conditions.Formulas[conditionIndex].LeftValue.Value != runtime.Conditions.Formulas[conditionIndex].RightValue.Value {
-					// 		runtime.Conditions.Formulas[conditionIndex].Result = true
-					// 	}
 				}
 				if i.Result != apis.True {
 					logs.Trace("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
