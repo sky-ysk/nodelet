@@ -11,6 +11,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/task/controller"
@@ -29,9 +30,10 @@ type GroupHandler struct {
 
 	groupQueues *group.GroupQueues
 	// client -go
-	groupClient   core.GroupInterface
-	actionClient  core.ActionInterface
-	runtimeClient core.RuntimeInterface
+	//groupClient   core.GroupInterface
+	//actionClient  core.ActionInterface
+	//runtimeClient core.RuntimeInterface
+	clientsManager *manager.Manager
 	//
 	// eventRecorder 记录事件
 	recorder    recorder.EventRecorder
@@ -44,20 +46,21 @@ type GroupHandler struct {
 	runtimeTarget map[string]cross_core.RuntimeInterface
 }
 
-func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, groupClient core.GroupInterface, actionClient core.ActionInterface, runtimeClient core.RuntimeInterface, recorder recorder.EventRecorder, eventClient core.EventInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupHandler {
+func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, clientsManager *manager.Manager, recorder recorder.EventRecorder, eventClient core.EventInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupHandler {
 	return &GroupHandler{
-		groupManager:  groupManager,
-		groupWorkers:  groupWorkers,
-		groupQueues:   groupQueues,
-		groupClient:   groupClient,
-		actionClient:  actionClient,
-		runtimeClient: runtimeClient,
-		recorder:      recorder,
-		eventClient:   eventClient,
-		stopCh:        make(chan struct{}),
-		groupTarget:   groupTarget,
-		actionTarget:  actionTarget,
-		runtimeTarget: runtimeTarget,
+		groupManager: groupManager,
+		groupWorkers: groupWorkers,
+		groupQueues:  groupQueues,
+		//groupClient:   groupClient,
+		//actionClient:  actionClient,
+		//runtimeClient: runtimeClient,
+		clientsManager: clientsManager,
+		recorder:       recorder,
+		eventClient:    eventClient,
+		stopCh:         make(chan struct{}),
+		groupTarget:    groupTarget,
+		actionTarget:   actionTarget,
+		runtimeTarget:  runtimeTarget,
 	}
 }
 
@@ -174,24 +177,26 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			//groupCopyName := "Reason-Copy"                                               // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
 			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
 			// 遍历action和Runtime，依次创建
-			for _, actionReference := range gr.Spec.Actions {
-				action, err := gh.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+			for _, actionReference := range gr.Status.Actions {
+				actionClient := gh.clientsManager.GetActionClient(actionReference.Namespace)
+				action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
 				if err != nil {
 					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 				}
 				actionCopy := controller.NewActionInfoCopy(action)
-				_, err = gh.actionClient.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
+				_, err = actionClient.Client.Create(context.TODO(), actionCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Action副本，所以说副本的namespace和源任务相同，直接用源action的namespace
 				if err != nil {
 					logs.Errorf("Create copy action %s in local failed: %v", actionReference.Name, err)
 				}
 				logs.Infof("Create actionCopy:%v", actionCopy.Name)
-				for _, runtimeReference := range action.Spec.Runtimes {
-					runtime, err := gh.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+				for _, runtimeReference := range action.Status.Runtimes {
+					runtimeClient := gh.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
+					runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
 					if err != nil {
 						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 					}
 					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, false)
-					_, err = gh.runtimeClient.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
+					_, err = runtimeClient.Client.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Runtime副本，所以说副本的namespace和源任务相同，直接用源runtime的namespace
 					if err != nil {
 						logs.Errorf("Create copy runtime %s in local failed: %v", runtimeReference.Name, err)
 					}
@@ -200,7 +205,8 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			}
 			// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
 			logs.Infof("group:%v===================", groupCopy.Name)
-			_, err = gh.groupClient.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+			groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
+			_, err = groupClient.Client.Create(context.TODO(), groupCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Group副本，所以说副本的namespace和源任务相同，直接用源group的namespace
 			if err != nil {
 				logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
 			}
@@ -214,7 +220,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			if err != nil {
 				logs.Errorf("Json Marshal failed, err:%v", err)
 			}
-			patchResult, err := gh.groupClient.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+			patchResult, err := groupClient.Client.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 			if err != nil {
 				logs.Errorf("Patch group error:%v", err)
 			}
@@ -228,20 +234,22 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			//groupCopyName := "Reason-Copy" // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
 			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
 			// 遍历action和Runtime，依次创建
-			for _, actionReference := range gr.Spec.Actions {
-				action, err := gh.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{}) // 从本域获得Action
+			for _, actionReference := range gr.Status.Actions {
+				actionClient := gh.clientsManager.GetActionClient(actionReference.Namespace)
+				action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{}) // 从本域获得Action
 				if err != nil {
 					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 				}
 				actionCopy := controller.NewActionInfoCopy(action)
-				actionTarget := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+				actionTarget := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID   TODO 目前跨域还没有适配指定namespace创建
 				_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
 				if err != nil {
 					logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
 				}
 				logs.Infof("Create actionCopy:%v", actionCopy.Name)
-				for _, runtimeReference := range action.Spec.Runtimes {
-					runtime, err := gh.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+				for _, runtimeReference := range action.Status.Runtimes {
+					runtimeClient := gh.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
+					runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
 					if err != nil {
 						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 					}
@@ -269,7 +277,8 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			if err != nil {
 				logs.Errorf("Json Marshal failed, err:%v", err)
 			}
-			_, err = gh.groupClient.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+			groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
+			_, err = groupClient.Client.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 			if err != nil {
 				logs.Errorf("Patch group error:%v", err)
 			}
@@ -363,7 +372,8 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 					if err != nil {
 						logs.Errorf("Json Marshal failed, err:%v", err)
 					}
-					_, err = gh.groupClient.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+					groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
+					_, err = groupClient.Client.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 					if err != nil {
 						logs.Errorf("Patch group error:%v", err)
 					}

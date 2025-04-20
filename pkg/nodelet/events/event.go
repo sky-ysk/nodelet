@@ -68,6 +68,7 @@ type ActionResourceEvent struct {
 // RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
 type RuntimeStartPhaseEvent1 struct {
 	GroupName       string
+	GroupNamespace  string
 	ActionSpecName  string
 	RuntimeSpecName string
 	ProcessId       string
@@ -79,6 +80,7 @@ type RuntimeStartPhaseEvent1 struct {
 // RuntimeStatusUpdateEvent 用于表示Runtime状态更新的事件
 type RuntimeEndPhaseEvent1 struct {
 	GroupName       string
+	GroupNamespace  string
 	ActionSpecName  string
 	RuntimeSpecName string
 	Phase           apis.Phase

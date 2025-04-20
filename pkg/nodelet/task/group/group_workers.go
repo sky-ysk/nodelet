@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"hit.edu/framework/pkg/apimachinery/types"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"sync"
 	"time"
 
@@ -58,30 +58,32 @@ type groupWorkers struct {
 	//以队列的形式管理监控group，实时反馈给aip-server各个group的状态
 	queueManager *GroupQueues
 
-	//group-client
-	groupClient core.GroupInterface
-	//task-client
-	taskClient core.TaskInterface
-	//action-Client
-	actionClient core.ActionInterface
-	// runtime-Client
-	runtimeClient core.RuntimeInterface
+	////group-client
+	//groupClient core.GroupInterface
+	////task-client
+	//taskClient core.TaskInterface
+	////action-Client
+	//actionClient core.ActionInterface
+	//// runtime-Client
+	//runtimeClient core.RuntimeInterface
 
+	clientsManager *manager.Manager
 	// 管理运行所需的Runtime
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
 }
 
-func NewGroupWorkers(groupManager Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, groupclient core.GroupInterface, taskclient core.TaskInterface, actionClient core.ActionInterface, runtimeClient core.RuntimeInterface) GroupWorkers {
+func NewGroupWorkers(groupManager Manager, groupQueues *GroupQueues, runtimeManager *runtime.RuntimeManager, clientsManager *manager.Manager) GroupWorkers {
 	//TODO:
 	return &groupWorkers{
 		runtimeManager: runtimeManager,
 		groupManager:   groupManager,
 		queueManager:   groupQueues,
-		groupClient:    groupclient,
-		taskClient:     taskclient,
-		actionClient:   actionClient,
-		runtimeClient:  runtimeClient,
+		//groupClient:    groupclient,
+		//taskClient:     taskclient,
+		//actionClient:   actionClient,
+		//runtimeClient:  runtimeClient,
+		clientsManager: clientsManager,
 		groupUpdates:   make(map[string]chan *UpdateGroupOptions),
 	}
 }
@@ -142,7 +144,8 @@ func (g *groupWorkers) startGroup(gr *apis.Group) {
 	//   数据依赖，任务执行所需数据是否准备好
 	//   条件依赖，任务执行是否满足条件
 	// 首先先将任务放入到checking队列当中  ---也就是对应的
-	group, err := g.groupClient.Get(context.TODO(), gr.Name, metav1.GetOptions{}) //因为该startGroup方法当中涉及到参数的更新，所以先从etcd中获取一下
+	groupClient := g.clientsManager.GetGroupClient(gr.Namespace)
+	group, err := groupClient.Client.Get(context.TODO(), gr.Name, metav1.GetOptions{}) //因为该startGroup方法当中涉及到参数的更新，所以先从etcd中获取一下
 	if err != nil {
 		logs.Errorf("Get group err:%v", err)
 	}
@@ -166,13 +169,15 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 		logs.Error("RuntimeManager is nil")
 	}
 	for _, actionReference := range group.Status.Actions {
-		action, err := g.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+		actionClient := g.clientsManager.GetActionClient(actionReference.Namespace)
+		action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
 		if err != nil {
 			logs.Errorf("Get action err:%v", err)
 		}
 		actionStatus := &action.Status
 		for _, runtimeReference := range actionStatus.Runtimes {
-			runtime, err := g.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+			runtimeClient := g.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
+			runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
 			if err != nil {
 				logs.Errorf("Get runtime err:%v", err)
 			}
@@ -206,13 +211,15 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 			"phase": apis.DeployCheck,
 		},
 	})
-	_, err = gw.groupClient.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroup1, metav1.PatchOptions{})
+	groupClient := gw.clientsManager.GetGroupClient(gr.Namespace)
+	_, err = groupClient.Client.Patch(context.TODO(), gr.Name, types.StrategicMergePatchType, patchGroup1, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("Patch group error222:%v", err)
 	}
 	// GroupStatus当中的Actions，需要修改下面的（ActionStatus的Phase以及RuntimeStatus的Phase）
 	for _, actionReference := range groupStatus.Actions { //Actions
-		action, err := gw.actionClient.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+		actionClient := gw.clientsManager.GetActionClient(actionReference.Namespace)
+		action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
 		if err != nil {
 			logs.Errorf("Get action err:%v", err)
 		}
@@ -228,13 +235,14 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 				"phase": actionStatus.Phase,
 			},
 		})
-		_, err = gw.actionClient.Patch(context.TODO(), action.Name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
+		_, err = actionClient.Client.Patch(context.TODO(), action.Name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
 		if err != nil {
 			logs.Errorf("Patch action err-88:%v", err)
 		}
 		//groupSpec.Actions[i].Status.LastTime = times //隐藏
 		for _, runtimeReference := range actionStatus.Runtimes { // RuntimeStatus
-			runtime, err := gw.runtimeClient.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+			runtimeClient := gw.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
+			runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
 			if err != nil {
 				logs.Errorf("Get runtime err:%v", err)
 			}
@@ -251,7 +259,7 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 					"phase": runtimeStatus.Phase,
 				},
 			})
-			_, err = gw.runtimeClient.Patch(context.TODO(), runtime.Name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
+			_, err = runtimeClient.Client.Patch(context.TODO(), runtime.Name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
 			if err != nil {
 				logs.Errorf("Patch runtime err-88:%v", err)
 			}
@@ -275,7 +283,8 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 	if !gr.Spec.IsCopy {
 		taskName := gr.Status.Belong.Name // 查找该group所属的Task
 		// client-go 查看task-list
-		task1, err1 := gw.taskClient.Get(context.TODO(), taskName, metav1.GetOptions{})
+		taskClient := gw.clientsManager.GetTaskClient(gr.Status.Belong.Namespace)
+		task1, err1 := taskClient.Client.Get(context.TODO(), taskName, metav1.GetOptions{})
 		if err1 != nil {
 			logs.Errorf("Etcd has group:%v, but not has task:%v, get task err:%v,", gr.Name, taskName, err1)
 			return
@@ -293,7 +302,7 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 			if err != nil {
 				logs.Errorf("Json Marshal failed, err:%v", err)
 			}
-			_, err = gw.taskClient.Patch(context.TODO(), task1.Name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
+			_, err = taskClient.Client.Patch(context.TODO(), task1.Name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
 			if err != nil {
 				logs.Errorf("Patch group error:%v", err)
 			}

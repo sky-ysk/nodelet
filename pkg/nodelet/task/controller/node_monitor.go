@@ -6,7 +6,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/util/wait"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/cache"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
@@ -28,7 +27,8 @@ const (
 )
 
 type NodeMonitor struct {
-	nodeClient    core.NodeInterface
+	//nodeClient    core.NodeInterface
+	//clientsManager *manager.Manager
 	recorder      recorder.EventRecorder
 	nodeIndexer   cache.Indexer    //// 本地缓存，提供关于资源的快速查询（索引查询）。 informer会调用Indexer的Add、update、delete方法来实现资源的同步于更新
 	nodeInformer  cache.Controller //// cache.Controller 是 k8s中用于控制器模式的核心组件，它封装了资源的监听和事件处理机制，通常用于协调控制循环。，作用：监听资源变化、缓存资源、触发处理逻辑
@@ -37,7 +37,7 @@ type NodeMonitor struct {
 	lastEventTime time.Time // 记录节点最后事件时间
 }
 
-func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface, recorder recorder.EventRecorder, nodeName string) *NodeMonitor {
+func NewNodeMonitor(clientSet *clients.ClientSet, recorder recorder.EventRecorder, nodeName string) *NodeMonitor {
 	//创建资源的List Watcher
 	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "test", fields.Everything())
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
@@ -88,7 +88,7 @@ func NewNodeMonitor(clientSet *clients.ClientSet, nodeClient core.NodeInterface,
 	nodeIndexer, nodeInformer := cache.NewInformerWithOptions(nodeOptions)
 
 	return &NodeMonitor{
-		nodeClient:   nodeClient,
+		//nodeClient:   nodeClient,
 		recorder:     recorder,
 		nodeIndexer:  nodeIndexer,
 		nodeInformer: nodeInformer,

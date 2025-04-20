@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"sync"
 	"time"
 
@@ -28,10 +29,8 @@ type Exporter interface {
 }
 
 type TaskExporter struct {
-	// TODO: 增加Client-Go配置  --这块有点不太清楚,应该是为了方便将任务状态存到etcd当中
-	nodesClient core.NodeInterface
-	gropsClient core.GroupInterface
-	tasksClient core.TaskInterface
+	// TODO: 增加Client-Go配置
+	clientsManager *manager.Manager
 	// TODO: 增加Event Broadcaster Recorder
 	eventBroadcaster recorder.EventBroadcaster
 
@@ -70,13 +69,15 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	actionTargetMap := cfg.actionTargetMap
 	runtimeTargetMap := cfg.runtimeTargetMap
 	// Client-Go配置
-	nodeClient := clientset.Core().Nodes("test")
-	taskClient := clientset.Core().Tasks("test")
-	groupClient := clientset.Core().Groups("test")
+	//nodeClient := clientset.Core().Nodes("test")
+	//taskClient := clientset.Core().Tasks("test")
+	//groupClient := clientset.Core().Groups("test")
 	eventClient := clientset.Core().Events("test")
-	actionClient := clientset.Core().Actions("test")
-	deviceClient := clientset.Core().Devices("test")
-	runtimeClient := clientset.Core().Runtimes("test")
+	//actionClient := clientset.Core().Actions("test")
+	//deviceClient := clientset.Core().Devices("test")
+	//runtimeClient := clientset.Core().Runtimes("test")
+
+	clientsManager := manager.NewManager(clientset)
 	//事件总线--只使用与Runtime运行时传输状态的
 	eb := eventbus.NewEventBus()
 	// 全局事件组件的配置
@@ -92,7 +93,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, recorder, deviceClient, actionClient, groupClient)
+	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
@@ -100,24 +101,25 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
-	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager, groupClient, taskClient, actionClient, runtimeClient)
+	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager, clientsManager)
 	// 当前Taskexporter所在节点的NodeName
 	nodeName := cfg.NodeName
 
 	taskExporter := &TaskExporter{
 		// Monitor配置
-		nodesClient:         nodeClient,
-		tasksClient:         taskClient,
-		gropsClient:         groupClient,
+		//nodesClient:         nodeClient,
+		//tasksClient:         taskClient,
+		//gropsClient:         groupClient,
+		clientsManager:      clientsManager,
 		eventBroadcaster:    eventBroadcaster,
 		conditionEngine:     conditionEngine,
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, nodeClient, groupClient, taskClient, actionClient, runtimeClient, depenManager, groupTargetMap, actionTargetMap, runtimeTargetMap),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, groupClient, actionClient, runtimeClient, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
-		migrationController: controller.NewMigrationController(clientset, groupClient, actionClient, runtimeClient, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
-		nodeMonitor:         controller.NewNodeMonitor(clientset, nodeClient, recorder, nodeName),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		migrationController: controller.NewMigrationController(clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
+		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
 	}
@@ -168,7 +170,8 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 			return
 		default:
 			//读取 etcd当中的group列表
-			groupList, err := te.gropsClient.List(context.TODO(), metav1.ListOptions{})
+			groupsClient := te.clientsManager.GetGroupClient("test")
+			groupList, err := groupsClient.Client.List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				logs.Errorf("List task err:%v", err)
 			}
