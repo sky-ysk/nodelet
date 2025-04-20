@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -28,12 +27,18 @@ func (m *Manager) CreateRuntimes(a *apis.Action, namespace string, uuid string, 
 func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace string, uuid string, prefix string) (*apis.Runtime, error) {
 	// 临时创建一个Runtime对象
 	r := apis.Runtime{}
+
 	// 构造名称
 	if a != nil {
 		r.Name = prefix + rs.Name + "-" + uuid
+		// 有父亲节点，则需要继承Prefix
+		prefix = prefix + rs.Name + "."
 	} else {
 		r.Name = rs.Name + "-" + uuid
+		// 没有父亲节点，则需要本地构造prefix
+		prefix = rs.Name + "."
 	}
+
 	// 构造Namespace
 	if namespace == "" {
 		r.Namespace = apis.NamespaceDefault
@@ -78,31 +83,37 @@ func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace s
 	fr, err := c.Client.Create(context.TODO(), &r, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create runtime: %v", err)
+		return nil, err
 	}
 	logs.Debugf("Created runtime: %v", fr)
 
 	//
-	return fr, nil // 返回fr
+	return fr, nil
 }
 
 func (m *Manager) GetRuntime(name string, namespace string) (*apis.Runtime, error) {
 	c := m.GetRuntimeClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get runtime: %v", err)
 		return nil, err
-	} else {
-		return a, nil
 	}
+
+	//
+	logs.Debugf("Get runtime: %v", a)
+	return a, nil
 }
 
 func (m *Manager) GetRuntimes(namespace string) (*apis.RuntimeList, error) {
 	c := m.GetRuntimeClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get runtime: %v", err)
 		return nil, err
-	} else {
-		return g, nil
 	}
+
+	logs.Debugf("Get runtimes success.")
+	return g, nil
 }
 
 func (m *Manager) UpdateRuntime(namespace string, name string, a *apis.Runtime) (*apis.Runtime, error) {
@@ -121,6 +132,8 @@ func (m *Manager) UpdateRuntime(namespace string, name string, a *apis.Runtime) 
 		logs.Errorf("Update runtime %s error: %v", name, updateErr)
 		return nil, updateErr
 	}
+
+	logs.Debugf("Update runtime: %v", updatedRuntime)
 	return updatedRuntime, nil
 
 }
@@ -138,8 +151,11 @@ func (m *Manager) PatchRuntime(name string, namespace string, patchRuntime strin
 	// 部分更新runtime
 	patchedRuntime, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchRuntime), metav1.PatchOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("patch runtime %s error: %v", name, err)
+		logs.Errorf("patch runtime %s error: %v", name, err)
+		return nil, err
 	}
+
+	logs.Debugf("Patch runtime: %v", patchedRuntime)
 	return patchedRuntime, nil
 }
 
@@ -149,13 +165,17 @@ func (m *Manager) DeleteRuntime(name string, namespace string) error {
 	// 检查runtime是否存在
 	_, err := m.GetRuntime(name, namespace)
 	if err != nil {
-		return fmt.Errorf("get runtime %s error: %v , runtime not exist ", name, err)
+		logs.Errorf("get runtime %s error: %v , runtime not exist ", name, err)
+		return err
 	}
 
 	// 存在，删除
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("delete runtime %s error: %v", name, err)
+		logs.Errorf("delete runtime %s error: %v", name, err)
+		return err
 	}
+
+	logs.Debugf("Delete runtime: %v", name)
 	return nil
 }

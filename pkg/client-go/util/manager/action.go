@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -20,13 +19,13 @@ func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, pr
 		}
 		actions = append(actions, a)
 	}
-
 	return actions, nil
 }
 
 func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string) (*apis.Action, error) {
 	// 临时创建一个Action对象
 	a := apis.Action{}
+
 	// 构造名称
 	if g != nil {
 		a.Name = prefix + as.Name + "-" + uuid
@@ -93,15 +92,18 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 			UID:             apis.UID(r.UID),
 		}
 	}
-	// 写入Client-Go中, 返回实际的Runtime
+
+	// 写入Client-Go中, 返回实际的Action
 	c := m.GetActionClient(a.Namespace)
 
 	fa, err := c.Client.Create(context.TODO(), &a, metav1.CreateOptions{})
 	if err != nil {
-		logs.Errorf("Failed to create runtime: %v", err)
+		logs.Errorf("Failed to create action: %v", err)
+		return nil, err
 	}
-	logs.Debugf("Created runtime: %v", fa)
 
+	//
+	logs.Debugf("Created action: %v", fa)
 	return fa, nil
 }
 
@@ -109,20 +111,26 @@ func (m *Manager) GetAction(name string, namespace string) (*apis.Action, error)
 	c := m.GetActionClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get action: %v", err)
 		return nil, err
-	} else {
-		return a, nil
 	}
+
+	//
+	logs.Debugf("Get action: %v", a)
+	return a, nil
 }
 
 func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
 	c := m.GetActionClient(namespace)
 	a, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get actions: %v", err)
 		return nil, err
-	} else {
-		return a, nil
 	}
+
+	//
+	logs.Debugf("Get actions success.")
+	return a, nil
 }
 
 func (m *Manager) UpdateAction(namespace string, name string, a *apis.Action) (*apis.Action, error) {
@@ -141,6 +149,9 @@ func (m *Manager) UpdateAction(namespace string, name string, a *apis.Action) (*
 		logs.Errorf("Update action %s error: %v", name, updateErr)
 		return nil, updateErr
 	}
+
+	//
+	logs.Debugf("Update action: %v", updatedAction)
 	return updatedAction, nil
 
 }
@@ -158,8 +169,12 @@ func (m *Manager) PatchAction(name string, namespace string, patchAction string)
 	// 部分更新action
 	patchedAction, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchAction), metav1.PatchOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("Patch action %s error: %v", name, err)
+		logs.Errorf("patch action %s error: %v", name, err)
+		return nil, err
 	}
+
+	//
+	logs.Debugf("patched action : %v ", patchedAction)
 	return patchedAction, nil
 }
 
@@ -169,13 +184,18 @@ func (m *Manager) DeleteAction(name string, namespace string) error {
 	// 检查action是否存在
 	_, err := m.GetAction(name, namespace)
 	if err != nil {
-		return fmt.Errorf("get action %s error: %v , action not exist ", name, err)
+		logs.Errorf("get action %s error: %v , action not exist ", name, err)
+		return err
 	}
 
 	// 存在，删除
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("delete action %s error: %v", name, err)
+		logs.Errorf("delete action %s error: %v", name, err)
+		return err
 	}
+
+	//
+	logs.Debugf("Delete action %v ", err)
 	return nil
 }

@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -91,36 +90,41 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 			UID:             apis.UID(r.UID),
 		}
 	}
-	// 写入Client-Go中, 返回实际的Runtime
+	// 写入Client-Go中, 返回实际的Task
 	c := m.GetTaskClient(t.Namespace)
 
 	ft, err := c.Client.Create(context.TODO(), &t, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)
+		return nil, err
 	}
-	logs.Debugf("Created task: %v", ft)
 
-	return ft, nil // 应当返回实际的ft
+	logs.Debugf("Created task: %v", ft)
+	return ft, nil
 }
 
 func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
 	c := m.GetTaskClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get task: %v", err)
 		return nil, err
-	} else {
-		return a, nil
 	}
+
+	logs.Debugf("Get task: %v", a)
+	return a, nil
 }
 
 func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
 	c := m.GetTaskClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get tasks: %v", err)
 		return nil, err
-	} else {
-		return g, nil
 	}
+
+	logs.Debugf("Get tasks success.")
+	return g, nil
 }
 
 func (m *Manager) UpdateTask(namespace string, name string, a *apis.Task) (*apis.Task, error) {
@@ -139,6 +143,8 @@ func (m *Manager) UpdateTask(namespace string, name string, a *apis.Task) (*apis
 		logs.Errorf("Update task %s error: %v", name, updateErr)
 		return nil, updateErr
 	}
+
+	logs.Debugf("Update task: %v", updatedTask)
 	return updatedTask, nil
 
 }
@@ -156,8 +162,11 @@ func (m *Manager) PatchTask(name string, namespace string, patchTask string) (*a
 	// 部分更新task
 	patchedTask, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchTask), metav1.PatchOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("patch task %s error: %v", name, err)
+		logs.Errorf("patch task %s error: %v", name, err)
+		return nil, err
 	}
+
+	logs.Debugf("Patch task: %v", patchedTask)
 	return patchedTask, nil
 }
 
@@ -167,13 +176,17 @@ func (m *Manager) DeleteTask(name string, namespace string) error {
 	// 检查task是否存在
 	_, err := m.GetTask(name, namespace)
 	if err != nil {
-		return fmt.Errorf("get task %s error: %v , task not exist ", name, err)
+		logs.Errorf("get task %s error: %v , task not exist ", name, err)
+		return err
 	}
 
 	// 存在，删除
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("delete task %s error: %v", name, err)
+		logs.Errorf("delete task %s error: %v", name, err)
+		return err
 	}
+
+	logs.Debugf("Delete task: %v", name)
 	return nil
 }
