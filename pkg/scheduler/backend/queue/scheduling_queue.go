@@ -74,7 +74,7 @@ func NewPriorityQueue() *PriorityQueue {
 		readyQ:          newReadyQueue(),
 		pendingQueue:    *newPendingQueue(),
 		lock:            sync.RWMutex{},
-		conditionEngine: utils.NewDefaultConditionEngine(),
+		conditionEngine: utils.NewConditionEngine(),
 		valueEngine:     value.NewEngine(cs),
 	}
 }
