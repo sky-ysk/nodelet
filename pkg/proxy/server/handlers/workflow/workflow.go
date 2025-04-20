@@ -198,7 +198,7 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 	}
 
 	// 更新workflow
-	updatedWorkflow, updateErr := h.manager.UpdateWorkflow(namespace, name, ew)
+	updatedWorkflow, updateErr := h.manager.UpdateWorkflow(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update workflow %s error: %v", name, updateErr)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -352,7 +352,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Doc("Get a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the workflow").DataType("string")).
 		Operation("Get workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil),
@@ -362,7 +362,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		To(h.CreateWorkflow).
 		Doc("Create a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the workflow").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Create workflow").
 		Returns(200, "OK", apis.Workflow{}).
@@ -374,7 +374,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Doc("Update a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the workflow").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Update workflow").
 		Returns(200, "OK", apis.Workflow{}).
@@ -386,7 +386,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Doc("Patch a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the workflow").DataType("string")).
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow field").DataType("string")).
 		Operation("Patch workflow").
 		Returns(200, "OK", apis.Workflow{}).
@@ -398,7 +398,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Doc("Delete a workflow with name").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the workflow").DataType("string")).
-		Param(ws.QueryParameter("Namespace", "The namespace of the task").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the workflow").DataType("string")).
 		Operation("Delete workflow").
 		Returns(200, "OK", apis.Workflow{}).
 		Returns(400, "Not Found", nil))

@@ -207,7 +207,7 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 	//}
 
 	// 更新action
-	updatedAction, updateErr := h.manager.UpdateAction(namespace, name, ew)
+	updatedAction, updateErr := h.manager.UpdateAction(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update action %s error: %v", name, updateErr)
 		err := response.WriteError(http.StatusInternalServerError, err)

@@ -127,7 +127,7 @@ func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
 	return g, nil
 }
 
-func (m *Manager) UpdateTask(namespace string, name string, a *apis.Task) (*apis.Task, error) {
+func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis.Task, error) {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在

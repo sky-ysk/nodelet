@@ -207,7 +207,7 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 	}
 
 	// 更新group
-	updatedGroup, updateErr := h.manager.UpdateGroup(namespace, name, ew)
+	updatedGroup, updateErr := h.manager.UpdateGroup(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update group %s error: %v", name, updateErr)
 		err := response.WriteError(http.StatusInternalServerError, err)
