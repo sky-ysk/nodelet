@@ -182,10 +182,18 @@ func (m *Manager) DeleteAction(name string, namespace string) error {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
-	_, err := m.GetAction(name, namespace)
+	action, err := m.GetAction(name, namespace)
 	if err != nil {
 		logs.Errorf("get action %s error: %v , action not exist ", name, err)
 		return err
+	}
+
+	// 删除action里面的所有group
+	for _, v := range action.Status.Runtimes {
+		err := m.DeleteRuntime(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 存在，删除

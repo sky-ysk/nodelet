@@ -145,10 +145,18 @@ func (m *Manager) DeleteWorkflow(name string, namespace string) error {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
-	_, err := m.GetWorkflow(name, namespace)
+	workflow, err := m.GetWorkflow(name, namespace)
 	if err != nil {
 		logs.Errorf("get workflow %s error: %v , workflow not exist ", name, err)
 		return err
+	}
+
+	// 删除workflow里面的所有task
+	for _, v := range workflow.Status.Tasks {
+		err := m.DeleteTask(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 存在，删除
