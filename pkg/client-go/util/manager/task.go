@@ -174,10 +174,18 @@ func (m *Manager) DeleteTask(name string, namespace string) error {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
-	_, err := m.GetTask(name, namespace)
+	task, err := m.GetTask(name, namespace)
 	if err != nil {
 		logs.Errorf("get task %s error: %v , task not exist ", name, err)
 		return err
+	}
+
+	// 删除task里面的所有group
+	for _, v := range task.Status.Groups {
+		err := m.DeleteGroup(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 存在，删除
