@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -10,17 +11,18 @@ import (
 	"time"
 )
 
-// 根据TaskSpec创建Groups
+// 根据GroupSpec创建Action
 func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, prefix string) ([]*apis.Group, error) {
-	var groups []*apis.Group
+	groups := []*apis.Group{}
 	for _, as := range g.Spec.Groups {
 		// 默认情况下，创建Groups不填充Actions
-		// a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
+		//a, err := m.CreateGroupWithoutActions(as, g, namespace, uuid, prefix)
 		a, err := m.CreateGroup(as, g, namespace, uuid, prefix)
 		if err != nil {
 			return nil, err
 		}
-		groups = append(groups, a)
+		// TODO: 返回的应该是已经创建的Runtime
+		groups = append(groups, a) // a替换成实际的fa
 	}
 
 	return groups, nil
@@ -59,12 +61,12 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	g.Status = apis.GroupStatus{}
 
 	// 记录Create时间
-	g.Status.CreateAt = &apis.Time{Time: time.Now()}
+	g.Status.CreateAt = &apis.Time{time.Now()}
 
 	// 初始化状态
-	g.Status.Phase = apis.Pending
+	g.Status.Phase = apis.Unknown
 
-	// 打上Label, 当前任务属于哪个task和uuid域
+	// 打上Label, 当前任务属于哪个Group和uuid域
 	if t != nil {
 		g.Status.Belong = &apis.ObjectReference{
 			Name:            t.Name,
@@ -83,11 +85,10 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	fg, err := c.Client.Create(context.TODO(), &g, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
-		return nil, err
 	}
+	logs.Debugf("Created group: %v", fg)
 
-	logs.Infof("Created group: %v", fg)
-	return fg, nil
+	return fg, nil // TODO: 应当返回实际的fa
 }
 
 // 填充Group的Actions
@@ -97,7 +98,7 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 	suffix := "-" + g.Labels["uuid"]
 	prefix := strings.TrimSuffix(g.Name, suffix) + "."
 
-	// 根据Spec创建Actions
+	// 根据Spec创建Runtimes
 	actions, err := m.CreateActions(g, g.Namespace, g.Labels["uuid"], prefix)
 	if err != nil {
 		return nil, err
@@ -115,17 +116,16 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 		}
 	}
 
-	// 写入Client-Go中, 返回实际的 Group
+	// 写入Client-Go中, 返回实际的Runtime
 	c := m.GetGroupClient(g.Namespace)
 
 	fg, err := c.Client.Update(context.TODO(), g, metav1.UpdateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to fill group: %v", err)
-		return nil, err
 	}
+	logs.Debugf("Created fill: %v", fg)
 
-	logs.Infof("Created fill: %v", fg)
-	return fg, nil
+	return fg, nil // TODO: 应当返回实际的fa
 }
 
 // 创建完整的Group
@@ -164,7 +164,7 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	g.Status.CreateAt = &apis.Time{time.Now()}
 
 	// 初始化状态
-	g.Status.Phase = apis.Pending
+	g.Status.Phase = apis.Unknown
 	g.Status.Actions = map[string]apis.ObjectReference{}
 
 	// 打上Label, 当前任务属于哪个Group和uuid域
@@ -180,7 +180,7 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	}
 	g.Labels["uuid"] = uuid
 
-	// 根据Spec创建Actions
+	// 根据Spec创建Runtimes
 	actions, err := m.CreateActions(&g, namespace, uuid, prefix)
 	if err != nil {
 		return nil, err
@@ -202,35 +202,30 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	fg, err := c.Client.Create(context.TODO(), &g, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create group: %v", err)
-		return nil, err
 	}
-
 	logs.Debugf("Created group: %v", fg)
-	return fg, nil
+
+	return fg, nil // TODO: 应当返回实际的fa
 }
 
 func (m *Manager) GetGroup(name string, namespace string) (*apis.Group, error) {
 	c := m.GetGroupClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Failed to get group: %v", err)
 		return nil, err
+	} else {
+		return a, nil
 	}
-
-	logs.Debugf("Get group: %v", a)
-	return a, nil
 }
 
 func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
 	c := m.GetGroupClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Failed to get groups: %v", err)
 		return nil, err
+	} else {
+		return g, nil
 	}
-
-	logs.Debugf("Get groups success")
-	return g, nil
 }
 
 func (m *Manager) UpdateGroup(namespace string, name string, a *apis.Group) (*apis.Group, error) {
@@ -249,8 +244,6 @@ func (m *Manager) UpdateGroup(namespace string, name string, a *apis.Group) (*ap
 		logs.Errorf("Update group %s error: %v", name, updateErr)
 		return nil, updateErr
 	}
-
-	logs.Debugf("Update group: %v", updatedGroup)
 	return updatedGroup, nil
 
 }
@@ -268,11 +261,8 @@ func (m *Manager) PatchGroup(name string, namespace string, patchGroup string) (
 	// 部分更新group
 	patchedGroup, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchGroup), metav1.PatchOptions{})
 	if err != nil {
-		logs.Errorf("Patch group %s error: %v", name, err)
-		return nil, err
+		return nil, fmt.Errorf("Patch group %s error: %v", name, err)
 	}
-
-	logs.Debugf("Patch group: %v", patchedGroup)
 	return patchedGroup, nil
 }
 
@@ -282,17 +272,13 @@ func (m *Manager) DeleteGroup(name string, namespace string) error {
 	// 检查group是否存在
 	_, err := m.GetGroup(name, namespace)
 	if err != nil {
-		logs.Errorf("get group %s error: %v , group not exist ", name, err)
-		return err
+		return fmt.Errorf("get group %s error: %v , group not exist ", name, err)
 	}
 
 	// 存在，删除
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
-		logs.Errorf("delete group %s error: %v", name, err)
-		return err
+		return fmt.Errorf("delete group %s error: %v", name, err)
 	}
-
-	logs.Debugf("delete group: %v", name)
 	return nil
 }

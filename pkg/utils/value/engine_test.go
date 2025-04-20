@@ -84,6 +84,8 @@ func TestCreateTask(t *testing.T) {
 	
 }
 
+//测试发现问题是status里面的reference信息必须填完整才能从Task Group Action Runtime中获取到信息，否则找不到
+//但是在创建Task的时候并没有填充这些Status的信息
 func TestValueExtract(t *testing.T) {
 	clientSet, err := CreateClientSet()
 	if err != nil {
@@ -92,7 +94,7 @@ func TestValueExtract(t *testing.T) {
 	
 	engine := NewEngine(clientSet)
 	
-	name := "T1-01964bf5-dc4b-786b-ac31-7b8c08e10e83"
+	name := "T1.G1-01964c83-f450-78d3-b547-47f0ef9b6c39"
 	namespace := "Guochuang"
 	
 	g, err := engine.manager.GetGroup(name, namespace)
@@ -100,28 +102,28 @@ func TestValueExtract(t *testing.T) {
 		panic(err)
 	}
 	
+	// value := apis.Value{
+	// 	Name:      "Test",
+	// 	Type:      apis.LocalData,
+	// 	From:      "Group{G1}.Action{A1}.Status{phase}",
+	// 	ValueType: apis.StringType,
+	// }
+	
+	// v, err := engine.ExtractLocalValue(&value, *g)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println("-----------")
+	// fmt.Println(v)
+	
 	value := apis.Value{
-		Name:      "Test",
-		Type:      apis.LocalData,
-		From:      "Group{G1}.Action{A1}.Status{phase}",
-		ValueType: apis.StringType,
-	}
-	
-	v, err := engine.ExtractLocalValue(&value, *g)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("-----------")
-	fmt.Println(v)
-	
-	value = apis.Value{
 		Name:      "Test",
 		Type:      apis.LocalData,
 		From:      "Group{G1}.Status{phase}",
 		ValueType: apis.StringType,
 	}
 	
-	v, err = engine.ExtractLocalValue(&value, *g)
+	v, err := engine.ExtractLocalValue(&value, *g)
 	if err != nil {
 		panic(err)
 	}
@@ -213,6 +215,7 @@ func TestGetDeviceImage(t *testing.T) {
 	engine := NewEngine(clientSet)
 	
 	namespace := "Guochuang"
+	// from := "Device{Robot}.Ability{Move}.Service{Start}"
 	from := "Device{Robot}.Ability{Move}.Service{Start}"
 	
 	v, err := engine.ExtractDeviceValue(from, namespace)

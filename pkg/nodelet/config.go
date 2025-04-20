@@ -142,7 +142,7 @@ func BuildTargetMap(config *FrameworkConfig) (map[string]cross_core.GroupInterfa
 	actionTargetMap := make(map[string]cross_core.ActionInterface)
 	runtimeTargetMap := make(map[string]cross_core.RuntimeInterface)
 	// 参数校验
-	if config == nil {
+	if config == nil || len(config.OtherCluster) == 0 {
 		return groupTargetMap, actionTargetMap, runtimeTargetMap, nil
 	}
 	// 获取本地集群ID（环境变量优先）

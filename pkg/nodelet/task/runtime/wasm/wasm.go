@@ -54,7 +54,7 @@ func ensureFile() error {
 // 启动任务
 func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("wasm runtime Run() for task:%s", group.Name)
-	wasm_file := runtime.Image
+	wasm_file := runtime.Spec.Image
 	if wr.wasmClient == nil {
 		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, "wasm-test-demo")
 	}
@@ -136,7 +136,7 @@ func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtim
 
 func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("wasm runtime StartRuntime() for task:%s", group.Name)
-	wasm_file := runtime.Image
+	wasm_file := runtime.Spec.Image
 	if wr.wasmClient == nil {
 		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, "wasm-test-demo")
 	}

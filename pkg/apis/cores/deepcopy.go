@@ -7,6 +7,7 @@ package apis
 import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 )
+
 func (in *Time) DeepCopyInto(out *Time) {
 	*out = *in
 }
@@ -265,16 +266,6 @@ func (in *ActionStatus) DeepCopyInto(out *ActionStatus) {
 		in, out := &in.LastTime, &out.LastTime
 		*out = new(Time)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.Waiting != nil {
-		in, out := &in.Waiting, &out.Waiting
-		*out = new(bool)
-		**out = **in
-	}
-	if in.CopyStatus != nil {
-		in, out := &in.CopyStatus, &out.CopyStatus
-		*out = new(string)
-		**out = **in
 	}
 }
 
@@ -1032,11 +1023,6 @@ func (in *GroupSpec) DeepCopyInto(out *GroupSpec) {
 		*out = make([]int32, len(*in))
 		copy(*out, *in)
 	}
-	if in.IsCopy != nil {
-		in, out := &in.IsCopy, &out.IsCopy
-		*out = new(bool)
-		**out = **in
-	}
 	if in.CopyInfo != nil {
 		in, out := &in.CopyInfo, &out.CopyInfo
 		*out = make(map[string]string, len(*in))
@@ -1100,16 +1086,6 @@ func (in *GroupStatus) DeepCopyInto(out *GroupStatus) {
 		in, out := &in.LastTime, &out.LastTime
 		*out = new(Time)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.CheckDependencyCount != nil {
-		in, out := &in.CheckDependencyCount, &out.CheckDependencyCount
-		*out = new(int32)
-		**out = **in
-	}
-	if in.CopyStatus != nil {
-		in, out := &in.CopyStatus, &out.CopyStatus
-		*out = new(string)
-		**out = **in
 	}
 }
 
@@ -2125,11 +2101,6 @@ func (in *RuntimeSpec) DeepCopyInto(out *RuntimeSpec) {
 		*out = make([]Value, len(*in))
 		copy(*out, *in)
 	}
-	if in.EnableFineGrainedControl != nil {
-		in, out := &in.EnableFineGrainedControl, &out.EnableFineGrainedControl
-		*out = new(bool)
-		**out = **in
-	}
 	if in.EnableFineGrainedControlService != nil {
 		in, out := &in.EnableFineGrainedControlService, &out.EnableFineGrainedControlService
 		*out = new(string)
@@ -2139,55 +2110,6 @@ func (in *RuntimeSpec) DeepCopyInto(out *RuntimeSpec) {
 		in, out := &in.EnableFineGrainedControlPort, &out.EnableFineGrainedControlPort
 		*out = new(string)
 		**out = **in
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Selector != nil {
-		in, out := &in.Selector, &out.Selector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Ports != nil {
-		in, out := &in.Ports, &out.Ports
-		*out = make([]Port, len(*in))
-		copy(*out, *in)
-	}
-	if in.ServiceType != nil {
-		in, out := &in.ServiceType, &out.ServiceType
-		*out = new(string)
-		**out = **in
-	}
-	if in.TargetPorts != nil {
-		in, out := &in.TargetPorts, &out.TargetPorts
-		*out = make([]int, len(*in))
-		copy(*out, *in)
-	}
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
-		*out = new(int32)
-		**out = **in
-	}
-	if in.Pod != nil {
-		in, out := &in.Pod, &out.Pod
-		*out = new(Pod)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Service != nil {
-		in, out := &in.Service, &out.Service
-		*out = new(Service)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Deployment != nil {
-		in, out := &in.Deployment, &out.Deployment
-		*out = new(Deployment)
-		(*in).DeepCopyInto(*out)
 	}
 	if in.Dependency != nil {
 		in, out := &in.Dependency, &out.Dependency
@@ -2283,46 +2205,6 @@ func (in *RuntimeStatus) DeepCopyInto(out *RuntimeStatus) {
 		in, out := &in.LastTime, &out.LastTime
 		*out = new(Time)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.Waiting != nil {
-		in, out := &in.Waiting, &out.Waiting
-		*out = new(bool)
-		**out = **in
-	}
-	if in.Initing != nil {
-		in, out := &in.Initing, &out.Initing
-		*out = new(bool)
-		**out = **in
-	}
-	if in.Starting != nil {
-		in, out := &in.Starting, &out.Starting
-		*out = new(bool)
-		**out = **in
-	}
-	if in.KeyStatus != nil {
-		in, out := &in.KeyStatus, &out.KeyStatus
-		*out = new(string)
-		**out = **in
-	}
-	if in.CopyStatus != nil {
-		in, out := &in.CopyStatus, &out.CopyStatus
-		*out = new(string)
-		**out = **in
-	}
-	if in.IsDependencySatisf != nil {
-		in, out := &in.IsDependencySatisf, &out.IsDependencySatisf
-		*out = new(bool)
-		**out = **in
-	}
-	if in.IsParsed != nil {
-		in, out := &in.IsParsed, &out.IsParsed
-		*out = new(bool)
-		**out = **in
-	}
-	if in.DepenPreparing != nil {
-		in, out := &in.DepenPreparing, &out.DepenPreparing
-		*out = new(bool)
-		**out = **in
 	}
 }
 

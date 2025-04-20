@@ -60,7 +60,7 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 	a.Status.CreateAt = &apis.Time{time.Now()}
 
 	// 初始化状态
-	a.Status.Phase = apis.Pending
+	a.Status.Phase = apis.Unknown
 	a.Status.Runtimes = map[string]apis.ObjectReference{}
 
 	// 打上Label, 当前任务属于哪个Group和uuid域

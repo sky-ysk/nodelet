@@ -69,6 +69,7 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 		return value, nil
 	case apis.DeviceData:
 		// 对Device进行寻址
+		// result, err := e.ExtractDeviceValue(value.From, value.Namespace)
 		return value, nil
 	case apis.ResultsData:
 		return value, nil
@@ -81,8 +82,6 @@ func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, erro
 	kind := "Device"
 	
 	_, parts, err := e.comparor.Match(kind, from)
-	fmt.Println(kind, from)
-	fmt.Println(parts)
 	if err != nil {
 		return "", errors.New("Unsupported kind " + kind)
 	}
@@ -285,6 +284,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 	switch name {
 	case "GroupExpr":
 		// Group{}位置
+		fmt.Println("GroupExpr")
 		target := parts[1]
 		from := parts[2]
 		fromKey := parts[3]
@@ -306,18 +306,25 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 		}
 	case "GroupActionExpr":
 		// Group{}位置
+		fmt.Println("GroupActionExpr")
 		targetGroup := parts[1]
 		targetAction := parts[2]
 		from := parts[3]
 		fromKey := parts[4]
+		fmt.Println(targetAction, from, fromKey)
+		fmt.Println(targetGroup, group.Spec.Name)
 		if targetGroup == group.Spec.Name {
 			// 寻址的是当前的Group
 			a, ok := group.Status.Actions[targetAction]
+			fmt.Println("okkkk", ok)
 			if ok {
+				fmt.Println("ok")
 				return a.Name, string(ActionType), from, fromKey, nil
 			}
 		} else {
 			// 寻址的是当前Task下的Group的Action
+			fmt.Println("else")
+			// 根据Belong查找Task
 			task, err := e.manager.GetTask(group.Status.Belong.Name, group.Status.Belong.Namespace)
 			if err == nil {
 				gn, ok := task.Status.Groups[targetGroup]
@@ -333,6 +340,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 			}
 		}
 	case "GroupAbsoluteExpr":
+		fmt.Println("GroupAbsoluteExpr")
 		// 只允许Group为最高层时使用
 		if group.Status.Belong == nil {
 			uuid := group.Labels["uuid"]
@@ -344,10 +352,12 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 		}
 
 	case "TaskGroupExpr":
+		fmt.Println("TaskGroupExpr")
 		// TODO:
 		return "", string(UnknownType), "", "", errors.New(string("Unsupported group " + name))
 	}
 
+	fmt.Println("end", name)
 	return "", string(UnknownType), "", "", errors.New(string("Unsupported group " + name))
 }
 
@@ -575,7 +585,6 @@ func (e *Engine) ExtractDeviceService(robot string, namespace string, target str
 		s, ok := a.Services[subTarget]
 		if ok {
 			r := fmt.Sprintf("%s:%s/%s", *s.Ip, *s.Port, *s.Interface)
-			fmt.Println("success??", r)
 			return r, nil
 		}
 	} else {

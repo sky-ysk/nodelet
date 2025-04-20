@@ -16,19 +16,19 @@ func NewConditionEngine() *ConditionEngine {
 
 func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis.ResultType, error) {
 	
-	//if len(conditions.Formulas) == 0 {
-	//	return apis.True, nil
-	//}
-	//
-	//for _, formula := range conditions.Formulas {
-	//	checkRes, err := engine.checkFormula(formula)
-	//	if err != nil {
-	//		return apis.False, err
-	//	}
-	//	if checkRes != apis.True {
-	//		return checkRes, nil
-	//	}
-	//}
+	if len(conditions.Formulas) == 0 {
+		return apis.True, nil
+	}
+	
+	for _, formula := range conditions.Formulas {
+		checkRes, err := engine.checkFormula(formula)
+		if err != nil {
+			return apis.False, err
+		}
+		if checkRes != apis.True {
+			return checkRes, nil
+		}
+	}
 	return apis.True, nil
 }
 
@@ -60,26 +60,13 @@ func (engine *ConditionEngine) extractValue(value apis.Value) (bool, string) {
 	switch value.Type {
 	case apis.ConstData:
 		return true, value.Value
-	
-	//Task{task1}.Group{group1}.Action{action1}.Output{completed}
-	//
-	//Succeed Group状态
-	//目前做一些特殊逻辑，只去捞Action里面的东西
+
 	case apis.LocalData:
-		//re := regexp.MustCompile(`Action\{([^}]+)}`)
-		
-		// 查找子匹配
-		//match := re.FindStringSubmatch(value.Value)
-		//if len(match) < 2 {
-		//	logs.Error("no action found ", value.Value)
-		//	return false, "" // 没有找到匹配项
-		//}
-		////
-		//actionName := match[1]
+		return true, value.Value
 		////TODO 从client里面拿结果 校验
+		
 	default:
 		logs.Fatal("unsupported value type ", value.ValueType)
 		return false, ""
 	}
-	return false, ""
 }

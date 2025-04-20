@@ -595,7 +595,7 @@ type GroupSpec struct {
 	Replicas []int32 `json:"replicas,omitempty" yaml:"replicas"` //group的副本数量，用户需要输入,例如：[2,0] 第一个值表示本域想部署的副本数量，第二个值表示其他域想部署的副本数量
 
 	// +Optional
-	IsCopy   *bool             `json:"is_copy,omitempty" yaml:"is_copy"`     //标记当前group是否是副本
+	IsCopy   bool              `json:"is_copy,omitempty" yaml:"is_copy"`     //标记当前group是否是副本
 	CopyInfo map[string]string `json:"copy_info,omitempty" yaml:"copy_info"` //存放任务的副本信息的  key：副本的ObjectMeta.Name  value:副本在本域还是在哪个域  如果是本域为："local" ,如果是跨域，则为连接那个域的ip或者是XX（待定）
 
 	//亲和节点，如果该字段不为空的话，那么group就必须放在这些节点上执行
@@ -631,8 +631,8 @@ type GroupStatus struct {
 	// 最新获取状态的时间
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
 	//添加-hzy
-	CheckDependencyCount *int32  `json:"check_dependency_count,omitempty" yaml:"check_dependency_count"`
-	CopyStatus           *string `json:"copy_status,omitempty" yaml:"copy_status"` //如果是源任务，这个参数可以标记其副本任务的执行状态    如果是副本任务，这个参数可以标记其是预部署还是说直接切换
+	CheckDependencyCount int32  `json:"check_dependency_count,omitempty" yaml:"check_dependency_count"`
+	CopyStatus           string `json:"copy_status,omitempty" yaml:"copy_status"` //如果是源任务，这个参数可以标记其副本任务的执行状态    如果是副本任务，这个参数可以标记其是预部署还是说直接切换
 }
 
 // ---------- Action
@@ -1176,19 +1176,10 @@ type RuntimeSpec struct {
 	Outputs []Value `json:"outputs,omitempty" yaml:"outputs"`
 
 	//Waiting                      bool     `json:"waiting" yaml:"waiting"`
-	EnableFineGrainedControl        *bool   `json:"enable_control,omitempty" yaml:"enable_control"`
+	EnableFineGrainedControl        bool    `json:"enable_control,omitempty" yaml:"enable_control"`
 	EnableFineGrainedControlService *string `json:"enable_control_service,omitempty" yaml:"enable_control_service"`
 	EnableFineGrainedControlPort    *string `json:"enable_control_port,omitempty" yaml:"enable_control_port"`
-	//-hzy暂时添加
-	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`           // 用于模板的 labels 配置
-	Selector    map[string]string `json:"selector,omitempty" yaml:"selector"`       // Deployment/Service 选择器
-	Ports       []Port            `json:"ports,omitempty" yaml:"ports"`             // 容器/服务端口
-	ServiceType *string           `json:"serviceType,omitempty" yaml:"serviceType"` // 服务类型，例如 ClusterIP
-	TargetPorts []int             `json:"targetPorts,omitempty" yaml:"targetPorts"` // 目标端口映射
-	Replicas    *int32            `json:"replicas,omitempty" yaml:"replicas"`       // 用于 Deployment 副本数量
-	Pod         *Pod              `json:"pod,omitempty" yaml:"pod"`                 // 如果是Pod，则放入该参数
-	Service     *Service          `json:"service,omitempty" yaml:"service"`
-	Deployment  *Deployment       `json:"deployment,omitempty" yaml:"deployment"`
+
 	//ysk添加
 	Dependency *string       `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
 	Packages   []Requirement `json:"package,omitempty" yaml:"package"`       //解析之后的包
@@ -1257,8 +1248,8 @@ type ActionStatus struct {
 	// 最新获取状态的时间
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数-hzy
-	Waiting    *bool   `json:"waiting,omitempty" yaml:"waiting"`
-	CopyStatus *string `json:"copy_status,omitempty" yaml:"copy_status"`
+	Waiting    bool   `json:"waiting,omitempty" yaml:"waiting"`
+	CopyStatus string `json:"copy_status,omitempty" yaml:"copy_status"`
 }
 
 type RuntimeStatus struct {
@@ -1291,14 +1282,13 @@ type RuntimeStatus struct {
 	// 最新获取状态的时间
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数0hzy
-	Waiting            *bool   `json:"waiting,omitempty" yaml:"waiting"`
-	Initing            *bool   `json:"initing,omitempty" yaml:"initing"`
-	Starting           *bool   `json:"starting,omitempty" yaml:"starting"`
-	KeyStatus          *string `json:"key_status,omitempty" yaml:"key_status"`
-	CopyStatus         *string `json:"copy_status,omitempty" yaml:"copy_status"`
-	IsDependencySatisf *bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
-	IsParsed           *bool   `json:"isparsed,omitempty" yaml:"isparsed"`             //是否已经被解析过
-	DepenPreparing     *bool   `json:"sepenPreparing,omitempty" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
+	Waiting            bool   `json:"waiting,omitempty" yaml:"waiting"`
+	Initing            bool   `json:"initing,omitempty" yaml:"initing"`
+	KeyStatus          string `json:"key_status,omitempty" yaml:"key_status"`
+	CopyStatus         string `json:"copy_status,omitempty" yaml:"copy_status"`
+	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
+	IsParsed           bool   `json:"isparsed,omitempty" yaml:"isparsed"`             //是否已经被解析过
+	DepenPreparing     bool   `json:"sepenPreparing,omitempty" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
 }
 
 // 任务的输出结果

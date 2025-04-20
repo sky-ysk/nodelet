@@ -291,9 +291,9 @@ func (m *Monitor) SetState(group *apis.Group, action *apis.Action, runtime *apis
 		actionIndex:  actionIndex,
 		runtimeIndex: runtimeIndex,
 	}
-	switch runtime.Type {
+	switch runtime.Spec.Type {
 	case apis.ByDeployment:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByDeployment, runtime.Deployment.Namespace, runtime.Deployment.Name), state)
+		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByDeployment, runtime.Spec.Deployment.Namespace, runtime.Deployment.Name), state)
 		if loaded {
 			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByDeployment, runtime.Deployment.Namespace, runtime.Deployment.Name))
 		}
