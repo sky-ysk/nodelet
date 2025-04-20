@@ -222,8 +222,7 @@ func (mc *MigrationController) handleDeleteEvent(key string) error {
 func (mc *MigrationController) triggerGroupMigration(groupNamespace, groupName string, event *apis.Event) error {
 
 	logs.Info("-----------------------认为触发迁移-------------------------")
-	groupClient := mc.clientsManager.GetGroupClient(groupNamespace)
-	group, err := groupClient.Client.Get(context.TODO(), groupName, metav1.GetOptions{})
+	group, err := mc.clientsManager.GetGroup(groupName, groupNamespace)
 	if err != nil {
 		logs.Errorf("Get group %s failed: %v", groupName, err)
 	}
@@ -373,8 +372,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				}
 			} else {
 				// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
-				groupClient := mc.clientsManager.GetGroupClient(group.Namespace)
-				_, err = groupClient.Client.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+				_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
 				if err != nil {
 					logs.Errorf("Patch group error-6:%v", err)
 				}
@@ -445,8 +443,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
 				// 遍历action和Runtime，依次创建
 				for _, actionReference := range group.Status.Actions {
-					actionClient := mc.clientsManager.GetActionClient(actionReference.Namespace)
-					action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{}) // 从本域获得Action
+					action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
 					if err != nil {
 						logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 					}
@@ -458,8 +455,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					}
 					logs.Infof("Create actionCopy:%v", actionCopy.Name)
 					for _, runtimeReference := range action.Status.Runtimes {
-						runtimeClient := mc.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
-						runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+						runtime, err := mc.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 						if err != nil {
 							logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 						}
@@ -484,8 +480,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				if err != nil {
 					logs.Errorf("Json Marshal failed, err:%v", err)
 				}
-				groupClient := mc.clientsManager.GetGroupClient(group.Namespace)
-				patchResult, err := groupClient.Client.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+				patchResult, err := mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
 				if err != nil {
 					logs.Errorf("Patch group error:%v", err)
 				}
@@ -495,8 +490,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				groupCopy := NewGroupInfoCopy(group, false, "") //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
 				// 遍历action和Runtime，依次创建
 				for _, actionReference := range group.Status.Actions {
-					actionClient := mc.clientsManager.GetActionClient(actionReference.Namespace)
-					action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{}) // 从本域获得Action
+					action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
 					if err != nil {
 						logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 					}
@@ -508,8 +502,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					}
 					logs.Infof("Create actionCopy:%v", actionCopy.Name)
 					for _, runtimeReference := range action.Status.Runtimes {
-						runtimeClient := mc.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
-						runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+						runtime, err := mc.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 						if err != nil {
 							logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 						}
@@ -537,8 +530,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	if err != nil {
 		logs.Errorf("Json Marshal failed, err:%v", err)
 	}
-	groupClient := mc.clientsManager.GetGroupClient(group.Namespace)
-	patchResult, err := groupClient.Client.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	patchResult, err := mc.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
 	if err != nil {
 		logs.Errorf("Patch group error-2:%v", err)
 	}
@@ -546,8 +538,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	// 获取任务group中需要迁移的runtime的当前的执行状态，并将该状态写入到副本group上的runtimeStatus中的keyStatus，并关闭源group中Running的runtime   注意对于DeployCheck的任务，就不采用这种读取状态并写入的方式
 	// 注意：如果说Runtime本身没有细粒度控制的话，就不用再保存任务状态以及写入到副本任务上去
 	for _, actionReference := range group.Status.Actions {
-		actionClient := mc.clientsManager.GetActionClient(actionReference.Namespace)
-		action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+		action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
 		if err != nil {
 			logs.Errorf("Get action error-121:%v", err)
 		}
@@ -557,8 +548,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		}
 		if actionStatus.Phase == apis.Running {
 			for _, runtimeReference := range actionStatus.Runtimes {
-				runtimeClient := mc.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
-				runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+				runtime, err := mc.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 				runtimeStatus := &runtime.Status
 				if runtimeStatus.Phase == apis.Successed {
 					continue
@@ -598,7 +588,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 								if err != nil {
 									logs.Errorf("Json Marshal failed, err:%v", err)
 								}
-								_, err = runtimeClient.Client.Patch(context.TODO(), runtime.Name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
+								_, err = mc.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
 								if err != nil {
 									logs.Errorf("Patch group error-5:%v", err)
 								}

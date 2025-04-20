@@ -178,24 +178,24 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
 			// 遍历action和Runtime，依次创建
 			for _, actionReference := range gr.Status.Actions {
-				actionClient := gh.clientsManager.GetActionClient(actionReference.Namespace)
-				action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{})
+				action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
 				if err != nil {
 					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 				}
 				actionCopy := controller.NewActionInfoCopy(action)
+				actionClient := gh.clientsManager.GetActionClient(actionCopy.Namespace)
 				_, err = actionClient.Client.Create(context.TODO(), actionCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Action副本，所以说副本的namespace和源任务相同，直接用源action的namespace
 				if err != nil {
 					logs.Errorf("Create copy action %s in local failed: %v", actionReference.Name, err)
 				}
 				logs.Infof("Create actionCopy:%v", actionCopy.Name)
 				for _, runtimeReference := range action.Status.Runtimes {
-					runtimeClient := gh.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
-					runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+					runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 					if err != nil {
 						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 					}
 					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, false)
+					runtimeClient := gh.clientsManager.GetRuntimeClient(runtimeCopy.Namespace)
 					_, err = runtimeClient.Client.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Runtime副本，所以说副本的namespace和源任务相同，直接用源runtime的namespace
 					if err != nil {
 						logs.Errorf("Create copy runtime %s in local failed: %v", runtimeReference.Name, err)
@@ -235,8 +235,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
 			// 遍历action和Runtime，依次创建
 			for _, actionReference := range gr.Status.Actions {
-				actionClient := gh.clientsManager.GetActionClient(actionReference.Namespace)
-				action, err := actionClient.Client.Get(context.TODO(), actionReference.Name, metav1.GetOptions{}) // 从本域获得Action
+				action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
 				if err != nil {
 					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 				}
@@ -248,8 +247,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				}
 				logs.Infof("Create actionCopy:%v", actionCopy.Name)
 				for _, runtimeReference := range action.Status.Runtimes {
-					runtimeClient := gh.clientsManager.GetRuntimeClient(runtimeReference.Namespace)
-					runtime, err := runtimeClient.Client.Get(context.TODO(), runtimeReference.Name, metav1.GetOptions{})
+					runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 					if err != nil {
 						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 					}
@@ -277,8 +275,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			if err != nil {
 				logs.Errorf("Json Marshal failed, err:%v", err)
 			}
-			groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
-			_, err = groupClient.Client.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+			_, err = gh.clientsManager.PatchGroup(gr.Name, gr.Namespace, patchGroup)
 			if err != nil {
 				logs.Errorf("Patch group error:%v", err)
 			}
@@ -372,8 +369,7 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 					if err != nil {
 						logs.Errorf("Json Marshal failed, err:%v", err)
 					}
-					groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
-					_, err = groupClient.Client.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+					_, err = gh.clientsManager.PatchGroup(gr.Name, gr.Namespace, patchGroup)
 					if err != nil {
 						logs.Errorf("Patch group error:%v", err)
 					}

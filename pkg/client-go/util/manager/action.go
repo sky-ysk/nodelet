@@ -156,7 +156,7 @@ func (m *Manager) UpdateAction(namespace string, name string, a *apis.Action) (*
 
 }
 
-func (m *Manager) PatchAction(name string, namespace string, patchAction string) (*apis.Action, error) {
+func (m *Manager) PatchAction(name string, namespace string, patchAction []byte) (*apis.Action, error) {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
@@ -167,7 +167,7 @@ func (m *Manager) PatchAction(name string, namespace string, patchAction string)
 	}
 
 	// 部分更新action
-	patchedAction, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchAction), metav1.PatchOptions{})
+	patchedAction, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch action %s error: %v", name, err)
 		return nil, err

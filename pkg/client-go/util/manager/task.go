@@ -149,7 +149,7 @@ func (m *Manager) UpdateTask(namespace string, name string, a *apis.Task) (*apis
 
 }
 
-func (m *Manager) PatchTask(name string, namespace string, patchTask string) (*apis.Task, error) {
+func (m *Manager) PatchTask(name string, namespace string, patchTask []byte) (*apis.Task, error) {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
@@ -160,7 +160,7 @@ func (m *Manager) PatchTask(name string, namespace string, patchTask string) (*a
 	}
 
 	// 部分更新task
-	patchedTask, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchTask), metav1.PatchOptions{})
+	patchedTask, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch task %s error: %v", name, err)
 		return nil, err

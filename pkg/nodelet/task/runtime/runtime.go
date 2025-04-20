@@ -83,7 +83,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			//runtime = device.NewDeviceRuntime(rm.deviceClient, rm.actionClient, rm.eventbus)
+			//runtime = device.NewDeviceRuntime(rm.clientsManager, rm.eventbus)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

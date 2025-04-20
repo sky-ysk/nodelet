@@ -255,7 +255,7 @@ func (m *Manager) UpdateGroup(namespace string, name string, a *apis.Group) (*ap
 
 }
 
-func (m *Manager) PatchGroup(name string, namespace string, patchGroup string) (*apis.Group, error) {
+func (m *Manager) PatchGroup(name string, namespace string, patchGroup []byte) (*apis.Group, error) {
 	c := m.GetGroupClient(namespace)
 
 	// 检查group是否存在
@@ -266,7 +266,7 @@ func (m *Manager) PatchGroup(name string, namespace string, patchGroup string) (
 	}
 
 	// 部分更新group
-	patchedGroup, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchGroup), metav1.PatchOptions{})
+	patchedGroup, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("Patch group %s error: %v", name, err)
 		return nil, err
