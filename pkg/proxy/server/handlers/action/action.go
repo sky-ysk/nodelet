@@ -195,16 +195,16 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 	}
 
 	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Action{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Action{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 更新action
 	updatedAction, updateErr := h.manager.UpdateAction(namespace, name, ew)

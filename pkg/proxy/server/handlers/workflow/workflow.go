@@ -250,7 +250,7 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 	}
 
 	// 删除workflow
-	err := h.manager.DeleteWorkflow(namespace, name)
+	err := h.manager.DeleteWorkflow(name, namespace)
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)

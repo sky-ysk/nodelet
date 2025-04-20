@@ -259,7 +259,7 @@ func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.R
 	}
 
 	// 删除group
-	err := h.manager.DeleteGroup(namespace, name)
+	err := h.manager.DeleteGroup(name, namespace)
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)
