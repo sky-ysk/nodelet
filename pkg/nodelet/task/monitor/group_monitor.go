@@ -78,6 +78,7 @@ func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues,
 		groupTargets:   groupTarget,
 		actionTargets:  actionTarget,
 		runtimeTargets: runtimeTarget,
+		belongTasks:    make(map[string]*apis.Task),
 	}
 }
 
@@ -1073,7 +1074,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	}
 	// 如果当前Group不是副本Group，需要修改其所属的Task的信息
 	if !isCopyGroup {
-		task, err = gmo.clientsManager.GetTask(taskName, get.Status.Belong.Name)
+		task, err = gmo.clientsManager.GetTask(taskName, get.Status.Belong.Namespace)
 		if err != nil {
 			logs.Errorf("Get task error from etcd-22:%v", err)
 		}
