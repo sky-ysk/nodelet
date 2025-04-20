@@ -171,17 +171,30 @@ func (m *Manager) DeleteWorkflow(name string, namespace string) error {
 }
 
 func (m *Manager) DeleteWorkflows(namespace string) error {
-	c := m.GetWorkflowClient(namespace)
+	// c := m.GetWorkflowClient(namespace)
 
-	str := "Spec.Name=" + namespace
-	lstOpts := metav1.ListOptions{
-		FieldSelector: str,
-	}
+	// 不知道怎么调用，示例只给了用Name
+	//str := "NameSpace=" + namespace
+	//lstOpts := metav1.ListOptions{
+	//	FieldSelector: str,
+	//}
+	//
+	//err := c.Client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	//if err != nil {
+	//	logs.Errorf("Delete workflows failed: %v", err)
+	//	return err
+	//}
 
-	err := c.Client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	// 获取 workflows
+	list, err := m.GetWorkflows(namespace)
 	if err != nil {
-		logs.Errorf("Delete workflows failed: %v", err)
 		return err
+	}
+	for _, v := range list.Items {
+		err := m.DeleteWorkflow(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	logs.Debugf("Delete workflows in %s success.", namespace)
