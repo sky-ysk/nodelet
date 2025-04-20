@@ -10,6 +10,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 type EventHandler struct {
 	clients   map[string]core.EventInterface
 	clientSet *clients.ClientSet
+	manager   *manager.Manager
 	mu        sync.Mutex
 }
 
@@ -38,6 +40,7 @@ var _ Handler = &EventHandler{}
 // NewEventHandler 创建一个 EventHandler
 func NewEventHandler(clientSet *clients.ClientSet) *EventHandler {
 	return &EventHandler{
+		manager:   manager.NewManager(clientSet),
 		clients:   make(map[string]core.EventInterface),
 		clientSet: clientSet,
 	}
@@ -65,7 +68,7 @@ func (h *EventHandler) GetClient(namespace string) *CurrentEventHandler {
 
 func (h *EventHandler) GetEvent(request *restful.Request, response *restful.Response) {
 	// 尝试从url中获取参数
-	c := &CurrentEventHandler{}
+	//c := &CurrentEventHandler{}
 	name := request.QueryParameter(EVENT_NAME)
 	if name == "" {
 		// url中没有获取到name参数，尝试从请求体中获取
@@ -92,11 +95,14 @@ func (h *EventHandler) GetEvent(request *restful.Request, response *restful.Resp
 			return
 		}
 		return
-	} else {
-		c = h.GetClient(namespace)
 	}
+	//else {
+	//	c = h.GetClient(namespace)
+	//}
 
-	result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
+	// 筛选跟Name对应有关Object的所有事件
+	result, err := h.manager.GetEvents(name, namespace)
+	//result, err := c.client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Get event %s error: %v , event not exist! ", name, err)
 		err := response.WriteError(http.StatusNotFound, err)
@@ -107,18 +113,18 @@ func (h *EventHandler) GetEvent(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
+	//if result.Name == name {
+	err = response.WriteEntity(result)
+	if err != nil {
+		err := response.WriteError(http.StatusOK, err)
 		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
+			logs.Errorf("failed to return a status code")
 			return
 		}
-		logs.Debugf("Get event")
+		return
 	}
+	logs.Debugf("Get event")
+	//}
 }
 
 func (h *EventHandler) CreateEvent(request *restful.Request, response *restful.Response) {
