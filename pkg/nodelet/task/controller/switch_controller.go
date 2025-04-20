@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
@@ -36,7 +37,8 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	//actionClient  core.ActionInterface
 	//runtimeClient core.RuntimeInterface
 	clientsManager *manager.Manager
-
+	// 增加获取所有Namespace下的group的client-go
+	allGroupsClient core.GroupInterface
 	// Event 相关组件
 	eventIndexer  cache.Indexer    // 这个参数就是cache.Controller当中的Indexer缓存
 	eventInformer cache.Controller // cache.Controller当中包含了cache.Index ,这里我们将cache.Controller中的Indexer拎出来，是为了更好地编写代码而已，其实不要这个Indexer也是OK的，因为cache.Controller当中也是含有Indexer的
@@ -71,16 +73,17 @@ func NewMigrationController(clientSet *clients.ClientSet, clientsManager *manage
 		//groupClient:    groupClient,
 		//actionClient:   actionClient,
 		//runtimeClient:  runtimeClient,
-		clientsManager: clientsManager,
-		queue:          queue,
-		runtimeManager: runtimeManager,
-		groupQueues:    groupQueues,
-		startTime:      nowTime,
-		recorder:       recorder,
-		groupTargets:   groupTarget,
-		actionTargets:  ActionTarget,
-		runtimeTargets: runtimeTarget,
-		groupManager:   groupManager,
+		clientsManager:  clientsManager,
+		allGroupsClient: clientSet.Core().Groups(metav1.NamespaceAll),
+		queue:           queue,
+		runtimeManager:  runtimeManager,
+		groupQueues:     groupQueues,
+		startTime:       nowTime,
+		recorder:        recorder,
+		groupTargets:    groupTarget,
+		actionTargets:   ActionTarget,
+		runtimeTargets:  runtimeTarget,
+		groupManager:    groupManager,
 	}
 	eventOptions := cache.InformerOptions{
 		ListerWatcher: eventListWatcher,
@@ -239,8 +242,8 @@ func (c *MigrationController) triggerNodeMigration(nodeName string, event *apis.
 	// 标记节点为迁移状态，这样就不要调度到本节点---这个好像没有必要？
 	// 通过索引获取关联的Groups
 	//groups, err := c.groupIndexer.ByIndex("ByNode", nodeName)
-	groupClient := c.clientsManager.GetGroupClient("test")
-	groupList, err := groupClient.Client.List(context.TODO(), metav1.ListOptions{})
+	//groupClient := c.clientsManager.GetGroupClient("test")
+	groupList, err := c.allGroupsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("List groups failed: %v", err)
 	}

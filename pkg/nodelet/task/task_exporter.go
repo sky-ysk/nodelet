@@ -31,6 +31,8 @@ type Exporter interface {
 type TaskExporter struct {
 	// TODO: 增加Client-Go配置
 	clientsManager *manager.Manager
+	// 增加获取所有Namespace下的group的client-go
+	allGroupsClient core.GroupInterface
 	// TODO: 增加Event Broadcaster Recorder
 	eventBroadcaster recorder.EventBroadcaster
 
@@ -76,7 +78,6 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	//actionClient := clientset.Core().Actions("test")
 	//deviceClient := clientset.Core().Devices("test")
 	//runtimeClient := clientset.Core().Runtimes("test")
-
 	clientsManager := manager.NewManager(clientset)
 	//事件总线--只使用与Runtime运行时传输状态的
 	eb := eventbus.NewEventBus()
@@ -110,6 +111,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		//nodesClient:         nodeClient,
 		//tasksClient:         taskClient,
 		//gropsClient:         groupClient,
+		allGroupsClient:     clientset.Core().Groups(metav1.NamespaceAll),
 		clientsManager:      clientsManager,
 		eventBroadcaster:    eventBroadcaster,
 		conditionEngine:     conditionEngine,
@@ -170,8 +172,8 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 			return
 		default:
 			//读取 etcd当中的group列表
-			groupsClient := te.clientsManager.GetGroupClient("test")
-			groupList, err := groupsClient.Client.List(context.TODO(), metav1.ListOptions{})
+			//groupsClient := te.clientsManager.GetGroupClient("test")
+			groupList, err := te.allGroupsClient.List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				logs.Errorf("List task err:%v", err)
 			}
