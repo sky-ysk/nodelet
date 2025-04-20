@@ -63,7 +63,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
 	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group.Name, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
+	err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
 	if err != nil {
 		logs.Info("Receive info:\t", err)
 		return err
@@ -73,7 +73,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 
 // 可能需要区分输出output的指定位置, 后续需要改成使用cmd package里的build cmd等
 // 需要保存进程的pid，检查进程是否是正常执行完成
-func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecName string, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
+func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeName, runtimeSpecName string, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
 	// exec.Command可以接受的命令
 	// name表示可执行二进制的name
 	// ...args表示命令所需的参数
@@ -113,16 +113,16 @@ func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecN
 
 	if err := CMD.Start(); err != nil {
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
-		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		cr.recorder.Event(runtime, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s start failed", runtime.Name))
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 	if isInit {
-		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
 		cr.recorder.Event(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to init", runtime.Name))
 	} else {
-		cr.notifyRuntimeStartPhase(groupName, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 		cr.recorder.Event(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name))
 	}
 	cr.processManager.AddProcess(runtime.Name, CMD)
@@ -135,14 +135,14 @@ func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecN
 		select {
 		case <-cr.stopSignals[runtime.Name]: // 如果接收到停止信号
 			logs.Info("command killed externally by stopCMD")
-			cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.notifyRuntimeEndPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
 			cr.recorder.Event(runtime, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Runtime Name:\t %s start to close", runtime.Name)) // 发送事件：Runtime收到终止信号进行关闭
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Receive killed command:\t %s is Stopped", runtime.Name)
 		default:
 			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
-			cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.notifyRuntimeEndPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 			cr.recorder.Event(runtime, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Runtime Name:\t %s execution failure", runtime.Name)) // 发送事件，任务执行失败进行关闭
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
@@ -153,7 +153,7 @@ func (cr *CommandRuntime) startCMD(groupName string, actionSpeName, runtimeSpecN
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
 	cr.processManager.MoveProcessToSucess(runtime.Name) //移入successProcess，同时移出process
 	// 修改RuntimeStatus的Phase为Successed，ActionStatus的Phase也为Successed
-	cr.notifyRuntimeEndPhase(groupName, actionSpeName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+	cr.notifyRuntimeEndPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
 
 	// TODO: 使用进程启动CMD, 异步操作
 	// TODO: 多个Command拼接---ysk  action包含多个command拼接指？如果一个cmd比较复杂（例如：python predict.py 10 100  data.json）
@@ -188,9 +188,10 @@ func (cr *CommandRuntime) stopCMD(runtime *apis.Runtime) error {
 }
 
 // 通过 EventBus 通知 Runtime 状态更新
-func (cr *CommandRuntime) notifyRuntimeStartPhase(groupName string, actionSpeName, runtimeSpecName string, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
+func (cr *CommandRuntime) notifyRuntimeStartPhase(groupName, groupNamespace string, actionSpeName, runtimeSpecName string, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
 	event := events.RuntimeStartPhaseEvent1{
 		GroupName:       groupName,
+		GroupNamespace:  groupNamespace,
 		ActionSpecName:  actionSpeName,
 		RuntimeSpecName: runtimeSpecName,
 		ProcessId:       processId,
@@ -200,9 +201,10 @@ func (cr *CommandRuntime) notifyRuntimeStartPhase(groupName string, actionSpeNam
 	}
 	cr.eventBus.Publish(event)
 }
-func (cr *CommandRuntime) notifyRuntimeEndPhase(groupName string, actionSpeName, runtimeSpecName string, phase apis.Phase, finishTime, lastTime apis.Time) {
+func (cr *CommandRuntime) notifyRuntimeEndPhase(groupName, groupNamespace string, actionSpeName, runtimeSpecName string, phase apis.Phase, finishTime, lastTime apis.Time) {
 	event := events.RuntimeEndPhaseEvent1{
 		GroupName:       groupName,
+		GroupNamespace:  groupNamespace,
 		ActionSpecName:  actionSpeName,
 		RuntimeSpecName: runtimeSpecName,
 		Phase:           phase,
@@ -289,7 +291,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 		if err != nil {
 			logs.Errorf("任务启动失败: %e", err)
 		}
-		cr.notifyRuntimeStartPhase(group.Name, actionSpecName, runtimeSpecName, "", apis.Running, nowTime, nowTime)
+		cr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Running, nowTime, nowTime)
 		cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
 	} else {
 		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
@@ -333,7 +335,7 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
 	go func() {
-		err := cr.startCMD(group.Name, actionSpecName, runtimeSpecName, runtime, cmd[0], args, true)
+		err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, true)
 		if err != nil {
 			logs.Infof("Receive -1 :%v", err)
 			// TODO: 输出Action的详细信息

@@ -2,7 +2,7 @@ package runtime
 
 import (
 	"fmt"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 	"sync"
@@ -28,25 +28,27 @@ type Runtime interface {
 }
 
 type RuntimeManager struct {
-	runtimes     map[apis.RuntimeType]Runtime
-	eventbus     *eventbus.EventBus
-	recorder     recorder.EventRecorder
-	deviceClient core.DeviceInterface
-	actionClient core.ActionInterface
-	groupClient  core.GroupInterface
-	mu           sync.Mutex
-	pool         *pool.ConnectionPool
+	runtimes map[apis.RuntimeType]Runtime
+	eventbus *eventbus.EventBus
+	recorder recorder.EventRecorder
+	//deviceClient core.DeviceInterface
+	//actionClient core.ActionInterface
+	//groupClient  core.GroupInterface
+	clientsManager *manager.Manager
+	mu             sync.Mutex
+	pool           *pool.ConnectionPool
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, deviceClient core.DeviceInterface, actionClient core.ActionInterface, groupClient core.GroupInterface) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager) *RuntimeManager {
 	return &RuntimeManager{
-		runtimes:     make(map[apis.RuntimeType]Runtime),
-		eventbus:     bus,
-		recorder:     recorder,
-		deviceClient: deviceClient,
-		actionClient: actionClient,
-		groupClient:  groupClient,
-		pool:         pool.NewConnectionPool(),
+		runtimes: make(map[apis.RuntimeType]Runtime),
+		eventbus: bus,
+		recorder: recorder,
+		//deviceClient: deviceClient,
+		//actionClient: actionClient,
+		//groupClient:  groupClient,
+		clientsManager: clientsManager,
+		pool:           pool.NewConnectionPool(),
 	}
 }
 
