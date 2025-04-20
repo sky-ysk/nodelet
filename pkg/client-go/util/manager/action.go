@@ -133,7 +133,7 @@ func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
 	return a, nil
 }
 
-func (m *Manager) UpdateAction(namespace string, name string, a *apis.Action) (*apis.Action, error) {
+func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*apis.Action, error) {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在

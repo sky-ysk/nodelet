@@ -208,7 +208,7 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 	}
 
 	// 更新runtime
-	updatedRuntime, updateErr := h.manager.UpdateRuntime(namespace, name, ew)
+	updatedRuntime, updateErr := h.manager.UpdateRuntime(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update runtime %s error: %v", name, updateErr)
 		err := response.WriteError(http.StatusInternalServerError, err)

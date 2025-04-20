@@ -293,7 +293,7 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 	}
 
 	// 更新task
-	updatedTask, updateErr := h.manager.UpdateTask(namespace, name, ew)
+	updatedTask, updateErr := h.manager.UpdateTask(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update task %s error: %v", name, updateErr)
 		err := response.WriteError(http.StatusInternalServerError, err)

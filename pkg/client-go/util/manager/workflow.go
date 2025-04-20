@@ -98,7 +98,7 @@ func (m *Manager) GetWorkflows(namespace string) (*apis.WorkflowList, error) {
 	return g, nil
 }
 
-func (m *Manager) UpdateWorkflow(namespace string, name string, a *apis.Workflow) (*apis.Workflow, error) {
+func (m *Manager) UpdateWorkflow(name string, namespace string, a *apis.Workflow) (*apis.Workflow, error) {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在

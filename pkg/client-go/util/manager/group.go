@@ -233,7 +233,7 @@ func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
 	return g, nil
 }
 
-func (m *Manager) UpdateGroup(namespace string, name string, a *apis.Group) (*apis.Group, error) {
+func (m *Manager) UpdateGroup(name string, namespace string, a *apis.Group) (*apis.Group, error) {
 	c := m.GetGroupClient(namespace)
 
 	// 检查group是否存在
