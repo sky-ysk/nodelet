@@ -184,10 +184,10 @@ func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.Queue
 			logs.Infof("parent group is succeess %s, Phase : %s, dont need child", par, parentValue.Value)
 			return apis.False, nil
 		} else if parentValue.Value == string(apis.Failed) {
-			logs.Infof("parent group is succeess %s, Phase : %s, need child", par, parentValue.Value)
+			logs.Infof("parent group is fail %s, Phase : %s, need child", par, parentValue.Value)
 			return apis.True, nil
 		} else {
-			logs.Infof("parent group is notready, Phase : %s,  n", par)
+			logs.Infof("parent group  %s is notready, Phase : %s,  n", par, parentValue)
 			return apis.NotReady, nil
 		}
 
