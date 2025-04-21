@@ -1454,16 +1454,22 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Group) bool {
 	actionSpec := &action.Spec
-	//检查conditions是否是空指针
+	//检查conditions是否是空指针%
+	logs.Infof("now check action %s", actionSpec.Name)
 	if actionSpec.Conditions == nil {
+		logs.Infof("now check action %s, condition nil", actionSpec.Name)
 		return true
 	}
 	if len(actionSpec.Conditions.Formulas) == 0 {
+		logs.Infof("now check action %s, formulas 0", actionSpec.Name)
 		return true
 	}
-	if len(group.Spec.Parents) == 0 {
+	if len(action.Spec.Parents) == 0 {
+		logs.Infof("now check action %s, no parents", actionSpec.Name)
 		return true
 	}
+	logs.Infof("now check action %s .... ", actionSpec.Name)
+
 	for index, i := range actionSpec.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
 			parentActionName := i.LeftValue.From
@@ -1482,10 +1488,10 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 			}
 		}
 		if i.Result != apis.True {
-			logs.Tracef("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
+			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
-			// logs.Tracef("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+			logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 		}
 	}
 	return true
