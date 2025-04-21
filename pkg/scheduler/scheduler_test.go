@@ -329,6 +329,21 @@ func TestClearEtcd(t *testing.T) {
 			return
 		}
 	}
+
+	//删node
+	rc := cs.Core().Runtimes(apis.NamespaceTest)
+	runtimes, err := rc.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+	for _, t := range runtimes.Items {
+		logs.Infof("delete task %s ", t.Name)
+		err := rc.Delete(ctx, t.Name, metav1.DeleteOptions{})
+		if err != nil {
+			logs.Error(err)
+			return
+		}
+	}
 }
 
 func createClientSet() (*clients.ClientSet, error) {

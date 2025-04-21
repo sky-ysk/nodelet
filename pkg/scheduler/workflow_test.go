@@ -343,7 +343,7 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.197"
-	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Port = "" // 填写这个端口
+	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Port = "56663" // 填写这个端口
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.197"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Port = "47701"
@@ -683,6 +683,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			Runtimes: []apis.RuntimeSpec{
 				runtime3.Spec,
 			},
+			Parents: []string{"A1"},
 			Conditions: &apis.Conditions{
 				Formulas: []apis.ConditionFormula{
 					{
@@ -724,6 +725,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			Runtimes: []apis.RuntimeSpec{
 				runtime4.Spec,
 			},
+			Parents: []string{"A2"},
 			Conditions: &apis.Conditions{
 				Formulas: []apis.ConditionFormula{
 					{

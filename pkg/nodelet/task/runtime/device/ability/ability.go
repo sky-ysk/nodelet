@@ -35,11 +35,14 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 				if param.Type == apis.ConstData {
 					worldPoints = lib.GetWorldPoints(param)
 				} else if param.Type == apis.LocalData {
+					logs.Infof("[DEVICE RUNTIME] WorldPoints param is %v", param)
+					logs.Infof("[DEVICE RUNTIME] WorldPoints param is %v", action)
 					worldPointValue, err := engine.ExtractLocalValue(&param, *action)
 					if err != nil {
 						logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail, %s ", err.Error())
 						return "", err
 					}
+					logs.Infof("[DEVICE RUNTIME] WorldPoints param is %v", worldPointValue)
 					worldPoints = lib.GetWorldPoints(*worldPointValue)
 				}
 			}

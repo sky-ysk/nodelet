@@ -1442,7 +1442,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 		}
 
 		if i.Result != apis.True {
-			//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
+			logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
 			return false
 		} else {
 			logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
