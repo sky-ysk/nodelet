@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -248,9 +249,45 @@ func TestSendToProxy(t *testing.T) {
 	orange, err := os.ReadFile("orange.json")
 	client := &http.Client{}
 
-	url := "http://192.168.8.176:8899/framework/v1/task?Name=T1&&Namesapce=test"
+	url := "http://192.168.8.176:8899/framework/v1/task?Name=Scene1Task&&Namesapce=test"
 	logs.Info(url)
 	req, err := http.NewRequest("POST", url, strings.NewReader(string(orange)))
+	if err != nil {
+		logs.Fatal(err)
+	}
+	//Content-Type很重要，下文解释
+	//req.Header.Set("Content-Type", "application/x-www")
+	req.Header.Set("Content-Type", "application/json")
+	//req.Header.Set("Content-Type", "multipart/form-data")
+
+	rep, err := client.Do(req)
+	if err != nil {
+		logs.Fatal(err.Error())
+	}
+	data, err := io.ReadAll(rep.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logs.Error(err)
+		}
+	}(rep.Body)
+	if err != nil {
+		logs.Fatal(err)
+	}
+	logs.Infof("resp is : %s", string(data))
+}
+
+// go test -run TestSendScene1ToProxy -v
+func TestSendScene1ToProxy(t *testing.T) {
+	logs.Init("testModule")
+	task := createOrangeTask()
+	client := &http.Client{}
+
+	taskBytes, err := json.Marshal(task)
+
+	url := "http://192.168.8.176:8899/framework/v1/task?Name=T1&&Namesapce=test"
+	logs.Info(url)
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(taskBytes)))
 	if err != nil {
 		logs.Fatal(err)
 	}

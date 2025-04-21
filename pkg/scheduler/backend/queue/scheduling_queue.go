@@ -147,9 +147,10 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 			removeGroupss = append(removeGroupss, v)
 			p.moveToActiveQ(ctx, v)
 			p.readyQ.cond.Signal()
-			msg := fmt.Sprintf("group %s is ready , move to active queue", k)
-			fmt.Println(msg)
-			logs.Info(msg)
+			logs.Infof("group %s is ready , move to active queue", k)
+		} else if readyRes == apis.False {
+			removeGroupss = append(removeGroupss, v)
+			logs.Infof("group %s condition is false, group will be removed", k)
 		}
 	}
 	for _, group := range removeGroupss {
