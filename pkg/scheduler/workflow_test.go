@@ -500,7 +500,7 @@ func TestCreateWorkFlow(t *testing.T) {
 					},
 				},
 			},
-			Image: "Device{Detector2}.Ability{Detect}.Skill{DetectPosition}",
+			Image: "Device{Detector2}.Ability{Detect}.Service{DetectPosition}",
 			Outputs: []apis.Value{
 				{
 					Name:      "worldPoints",
@@ -554,7 +554,7 @@ func TestCreateWorkFlow(t *testing.T) {
 					},
 				},
 			},
-			Image: "Device{deviceGalaxea}.Ability{Grab}.Skill{GrabBall}",
+			Image: "Device{deviceGalaxea}.Ability{Grab}.Service{GrabBall}",
 			Inputs: []apis.Value{
 				apis.Value{
 					Name: "worldPoints",
@@ -603,7 +603,7 @@ func TestCreateWorkFlow(t *testing.T) {
 					},
 				},
 			},
-			Image: "Device{deviceLeju}.Ability{Grab}.Skill{GrabBall}",
+			Image: "Device{deviceLeju}.Ability{Grab}.Service{GrabBall}",
 			Inputs: []apis.Value{
 				apis.Value{
 					Name: "worldPoints",
