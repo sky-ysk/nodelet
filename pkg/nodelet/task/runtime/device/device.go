@@ -81,7 +81,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 	if executor.Spec.AccessMethod.Type == apis.AccessByAbility {
 		logs.Infof("[DEVICE RUNTIME] Try to Publish Ability Inst")
 		var taskId string
-		taskId, err = ability.PublishAbilityInst(ds, executor, params, dr.engine, runtime)
+		taskId, err = ability.PublishAbilityInst(ds, executor, params, dr.engine, runtime, action)
 		if err != nil { // 如果发布任务失败
 			logs.Errorf("[DEVICE RUNTIME] Publish Ability Inst error: %s", err.Error())
 			go dr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})

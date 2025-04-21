@@ -9,7 +9,8 @@ import (
 )
 
 // PublishAbilityInst 根据传入的指令来发布对应的指令
-func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, engine *value.Engine, runtime *apis.Runtime,
+	action *apis.Action) (string, error) {
 	// 构造URL
 	ability := GetAbilityByService(device, inst)
 	ip := device.Status.Abilities[ability].Services[inst].Ip
@@ -34,7 +35,7 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 				if param.Type == apis.ConstData {
 					worldPoints = lib.GetWorldPoints(param)
 				} else if param.Type == apis.LocalData {
-					worldPointValue, err := engine.ExtractLocalValue(&param, *runtime)
+					worldPointValue, err := engine.ExtractLocalValue(&param, *action)
 					if err != nil {
 						logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail, %s ", err.Error())
 						return "", err
