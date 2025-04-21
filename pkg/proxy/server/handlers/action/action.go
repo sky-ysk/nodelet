@@ -329,7 +329,7 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 		}
 	}
 
-	patchedAction, err := h.manager.PatchAction(namespace, name, patchAction)
+	patchedAction, err := h.manager.PatchAction(namespace, name, []byte(patchAction))
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)

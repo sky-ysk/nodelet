@@ -328,7 +328,7 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 		}
 	}
 
-	patchedGroup, err := h.manager.PatchGroup(namespace, name, patchGroup)
+	patchedGroup, err := h.manager.PatchGroup(namespace, name, []byte(patchGroup))
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)

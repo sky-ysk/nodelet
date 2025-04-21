@@ -328,7 +328,7 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 		}
 	}
 
-	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, patchRuntime)
+	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, []byte(patchRuntime))
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)
