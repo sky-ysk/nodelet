@@ -1007,11 +1007,11 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	logs.Info("Handling runtime end status update")
 	groupName := event.GroupName
 	get, err := gmo.clientsManager.GetGroup(groupName, event.GroupNamespace)
+	if err != nil {
+		logs.Errorf("Failed get group:%v from etcd, space %s, err:%v", groupName, event.GroupNamespace, err)
+	}
 	groupSpec := &get.Spec
 	groupStatus := &get.Status
-	if err != nil {
-		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
-	}
 	actionSpecName := event.ActionSpecName
 	runtimeSpecName := event.RuntimeSpecName
 	phase := event.Phase //当前phase可能为Succeed、Failed、Unknown（Failed、Migrated）
