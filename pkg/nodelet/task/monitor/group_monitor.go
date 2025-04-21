@@ -1455,20 +1455,20 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Group) bool {
 	actionSpec := &action.Spec
 	//检查conditions是否是空指针%
-	logs.Infof("now check action %s", actionSpec.Name)
+	//logs.Infof("now check action %s", actionSpec.Name)
 	if actionSpec.Conditions == nil {
-		logs.Infof("now check action %s, condition nil", actionSpec.Name)
+		//logs.Infof("now check action %s, condition nil", actionSpec.Name)
 		return true
 	}
 	if len(actionSpec.Conditions.Formulas) == 0 {
-		logs.Infof("now check action %s, formulas 0", actionSpec.Name)
+		//logs.Infof("now check action %s, formulas 0", actionSpec.Name)
 		return true
 	}
 	if len(action.Spec.Parents) == 0 {
-		logs.Infof("now check action %s, no parents", actionSpec.Name)
+		//logs.Infof("now check action %s, no parents", actionSpec.Name)
 		return true
 	}
-	logs.Infof("now check action %s .... ", actionSpec.Name)
+	//logs.Infof("now check action %s .... ", actionSpec.Name)
 
 	for index, i := range actionSpec.Conditions.Formulas {
 		if i.LeftValue.Name == "NodeDependency" {
@@ -1488,10 +1488,10 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 			}
 		}
 		if i.Result != apis.True {
-			logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
+			//logs.Infof("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
 			return false
 		} else {
-			logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
+			//logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 		}
 	}
 	return true
@@ -2071,6 +2071,9 @@ func (gmo *GroupMonitor) handleTaskSucceedUpdate(gro *apis.Group) {
 func (gmo *GroupMonitor) updateCopyIngfoForRuntime(group *apis.Group, phase apis.Phase, actionSpecName, runtimeSpecName string) {
 	logs.Trace("=======================================================1")
 	logs.Trace("#########runtime#############groupSpec.Replicas:%v,groupSpec.Replicas[0] > 0:%v,groupSpec.Replicas[1] > 0:%v", group.Spec.Replicas, group.Spec.Replicas[0] > 0, group.Spec.Replicas[1] > 0)
+	if group.Spec.CopyInfo == nil || len(group.Spec.CopyInfo) == 0 {
+		return
+	}
 	for key, value := range group.Spec.CopyInfo {
 		if group.Spec.CopyInfo[key] != "local" { // 副本任务信息存在另一个域当中，为跨域存储
 			// TODO 使用跨域组件连接另一个域，修改group信息--暂时这么修改

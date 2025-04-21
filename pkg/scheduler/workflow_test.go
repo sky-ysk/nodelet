@@ -766,7 +766,8 @@ func TestCreateWorkFlow(t *testing.T) {
 			Actions: []apis.ActionSpec{
 				action1.Spec, action3.Spec,
 			},
-			Parents: []string{"G2"},
+			Parents:  []string{"G2"},
+			Replicas: []int32{0, 0},
 		},
 	}
 
@@ -787,6 +788,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			Actions: []apis.ActionSpec{
 				action2.Spec, action4.Spec,
 			},
+			Replicas: []int32{0, 0},
 			//Parents: []string{
 			//	"G1",
 			//},
