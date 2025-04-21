@@ -1,7 +1,6 @@
 package device
 
 import (
-	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -28,49 +27,61 @@ func NewDeviceRuntime(eventBus *eventbus.EventBus, clientManager *manager.Manage
 	}
 }
 
-func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 
+	// 获取runtime
+	runtime, err := dr.clientManager.GetRuntime(r.Name, r.Namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] get runtime error: %s", err.Error())
+		return err
+	}
 	// 获取Devices和executor
 	logs.Infof("[DEVICE RUNTIME] Try to Obtain All Devices")
 	deviceMap := make(map[string]*apis.Device)
 	deviceSpecList := runtime.Spec.Devices
 	var executor *apis.Device
-	for name, obj := range runtime.Status.Devices {
-		device, err := dr.clientManager.GetDevice(name, obj.Namespace)
-		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] Get Device %s error: %v", obj.Name, err)
-			return err
+
+	for _, obj := range runtime.Spec.Devices {
+		if ep, ok := obj.ExpectedProperties["name"]; ok {
+			name := ep.Value
+			device, err := dr.clientManager.GetDevice(name, r.Namespace)
+			if err != nil {
+				logs.Errorf("[DEVICE RUNTIME] Get Device %s error: %v", obj.Name, err)
+				return err
+			}
+			logs.Infof("[DEVICE RUNTIME] Get Device %s successfully", obj.Name)
+			deviceMap[obj.Name] = device
+		} else {
+			logs.Warnf("[DEVICE RUNTIME] Device %s not exist", obj.Name)
+			return nil
 		}
-		logs.Infof("[DEVICE RUNTIME] Get Device %s successfully", obj.Name)
-		deviceMap[name] = device
-		if device.Status.Label == "executor" {
-			executor = device
-		}
-	}
-	// 进行一次检查 判断executor是否存在
-	if executor == nil {
-		logs.Error("[DEVICE RUNTIME] No executor")
-		return fmt.Errorf("[DEVICE RUNTIME] No executor")
+
 	}
 
 	// 检查Device
 	if err := utils.CheckDevices(deviceMap, deviceSpecList); err != nil {
 		logs.Errorf("[DEVICE RUNTIME] Check Devices failed: %s", err.Error())
 	}
-
+	//TODO 改runtime的map
 	// 构造参数
-	inst, err := dr.engine.ExtractDeviceValue(runtime.Spec.Devices, runtime.Spec.Image, executor.Namespace)
+	dn, _, ds, err := dr.engine.ExtractDeviceImage(runtime.Spec.Image)
 	if err != nil {
 		logs.Errorf("[DEVICE RUNTIME] Extract Device Value error: %s", err.Error())
 		return err
 	}
+
+	executor = deviceMap[dn]
+	if executor == nil {
+		logs.Errorf("[DEVICE RUNTIME] Device %s not exist", dn)
+		return err
+	}
+
 	params := runtime.Spec.Inputs
 	// executor 发布指令
 	if executor.Spec.AccessMethod.Type == apis.AccessByAbility {
-
 		logs.Infof("[DEVICE RUNTIME] Try to Publish Ability Inst")
 		var taskId string
-		taskId, err = ability.PublishAbilityInst(inst, executor, params)
+		taskId, err = ability.PublishAbilityInst(ds, executor, params, dr.engine, runtime)
 		if err != nil { // 如果发布任务失败
 			logs.Errorf("[DEVICE RUNTIME] Publish Ability Inst error: %s", err.Error())
 			go dr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
@@ -85,7 +96,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *ap
 		err = utils.UpdateDeviceRunning(deviceMap, dr.clientManager)
 
 		// 监听任务执行状况
-		err = dr.monitorDeviceAbility(group.Namespace, taskId, executor, inst, runtime, group.Name, action.Spec.Name, dr.clientManager, deviceMap)
+		err = dr.monitorDeviceAbility(group.Namespace, taskId, executor, ds, runtime, group.Name, action.Spec.Name, dr.clientManager, deviceMap)
 		if err != nil {
 			logs.Errorf("[DEVICE RUNTIME] Monitor Ability error: %s", err.Error())
 			return err
@@ -298,13 +309,16 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			logs.Errorf("[DEVICE RUNTIME] Task[%s] is Error", taskId)
 			// 1.处理runtime
 			go dr.notifyRuntimeEndPhase(groupNamespace, groupName, actionName, runtime.Spec.Name, apis.Failed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
+			var outputs []apis.Value
 
 		case lib.Finished: // 处于完成状态
 			logs.Infof("[DEVICE RUNTIME] Task[%s] is Finished", taskId)
 			// 1.处理runtime
 			// 解析payload
 			var outputs []apis.Value
-			outputs, err = lib.ParsePayLoad(inst, resp.Payload)
+			if resp.Payload != nil {
+				outputs, err = lib.ParsePayLoad(inst, resp.Payload)
+			}
 			if err != nil {
 				logs.Errorf("[DEVICE RUNTIME] Parse Task[%s] Payload failed", taskId)
 			}

@@ -30,7 +30,7 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec) er
 				if ability, ok := device.Status.Abilities[abilityName]; ok {
 					if ability.Status != apis.AbilityRunning { // 做一些处理
 						logs.Warnf("[DEVICE RUNTIME] Device[%s] is not running]", name)
-						if ability.Status == apis.AbilityReadyStartUp {
+						if ability.Status == apis.AbilityReadyStartUp { // TODO deviceExporter 拉起能力
 							logs.Warnf("[DEVICE RUNTIME] Device[%s] is ready STARTUP", name)
 						}
 
