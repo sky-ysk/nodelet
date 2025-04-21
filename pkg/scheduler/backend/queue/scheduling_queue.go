@@ -163,6 +163,7 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 
 // TODO 这个方法目前不完善，只检查了父母节点的依赖
 func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
+	//检查父节点完成情况
 	for _, par := range gInfo.Group.Spec.Parents {
 		fromStr := fmt.Sprintf("Group{%s}.Status{phase}", par)
 		valueTmp := apis.Value{
@@ -177,11 +178,21 @@ func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.Queue
 			return apis.False, err
 		}
 
-		if parentValue.Value != string(apis.Successed) {
-			logs.Infof("parent group is not ready %s, Phase : %s", par, parentValue.Value)
+		//TODO 特判逻辑 后续移出
+
+		if parentValue.Value == string(apis.Successed) {
+			logs.Infof("parent group is succeess %s, Phase : %s, dont need child", par, parentValue.Value)
+			return apis.False, nil
+		} else if parentValue.Value == string(apis.Failed) {
+			logs.Infof("parent group is succeess %s, Phase : %s, need child", par, parentValue.Value)
+			return apis.True, nil
+		} else {
+			logs.Infof("parent group is notready, Phase : %s,  n", par)
 			return apis.NotReady, nil
 		}
+
 	}
+
 	return apis.True, nil
 	//return p.conditionEngine.CheckConditions(gInfo.Group.Spec.Conditions)
 }
