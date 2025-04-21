@@ -120,7 +120,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupWorkers:        workers,
 		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, groupTargetMap, actionTargetMap, runtimeTargetMap),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
-		migrationController: controller.NewMigrationController(clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
+		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
@@ -153,7 +153,7 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 		te.ReceiveGroupInfo(ctx) // 持续从etcd当中读取group
 	}()
 
-	//go te.migrationController.Run(5, ctx.Done())
+	go te.migrationController.Run(5, ctx.Done())
 	//go te.nodeMonitor.Run(2, ctx.Done())
 	<-ctx.Done()
 	wg.Wait()

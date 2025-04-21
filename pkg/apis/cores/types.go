@@ -1198,7 +1198,7 @@ const (
 // 值类型，表示数据使用
 type Value struct {
 	NameSpace string `json:"namespace,omitempty" yaml:"namespace"`
-	
+
 	// 类型
 	Type DataType `json:"type,omitempty" yaml:"type"`
 

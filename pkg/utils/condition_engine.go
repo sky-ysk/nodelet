@@ -3,8 +3,8 @@ package utils
 import (
 	"errors"
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/utils/value"
 )
 
@@ -20,11 +20,11 @@ func NewConditionEngine(clientSet *clients.ClientSet) *ConditionEngine {
 }
 
 func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis.ResultType, error) {
-	
+
 	if len(conditions.Formulas) == 0 {
 		return apis.True, nil
 	}
-	
+
 	for _, formula := range conditions.Formulas {
 		checkRes, err := engine.checkFormula(formula)
 		if err != nil {
@@ -38,7 +38,7 @@ func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions) (apis
 }
 
 func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis.ResultType, error) {
-	
+
 	rightReady, rightVal := engine.extractValue(formula.LeftValue)
 	leftReady, leftVal := engine.extractValue(formula.RightValue)
 	if !leftReady || !rightReady {
@@ -61,7 +61,7 @@ func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula) (apis
 
 // TODO 解析具体的值，返回bool表示值是否就绪，string表示值
 func (ce *ConditionEngine) extractValue(value apis.Value) (bool, string) {
-	
+
 	switch value.Type {
 	case apis.ConstData:
 		return true, value.Value
