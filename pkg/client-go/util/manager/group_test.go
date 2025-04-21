@@ -243,3 +243,270 @@ func TestGetGroups(t *testing.T) {
 		}
 	}
 }
+
+func TestGetGroup(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	gs := apis.GroupSpec{
+		Name: "G1",
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	g, err := m.CreateGroup(gs, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println(g)
+
+	group, err := m.GetGroup(g.Name, g.Namespace)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(group)
+
+}
+
+func TestUpdateGroup(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	desc := &apis.Description{
+		Docs: "group before update",
+	}
+
+	gs := apis.GroupSpec{
+		Name: "G1",
+		Desc: desc,
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	g, err := m.CreateGroup(gs, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+
+	str, err := analyzer.SerializeToJson(&g)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
+
+	desc1 := &apis.Description{
+		Docs: "group after update",
+	}
+
+	g.Spec.Desc = desc1
+
+	patched, err := m.UpdateGroup(g.Name, g.Namespace, g)
+	if err != nil {
+		panic(err)
+	} else {
+		str, err := analyzer.SerializeToJson(&patched)
+		if err != nil {
+			return
+		}
+		fmt.Println(str)
+	}
+}
+
+func TestPatchGroup(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	desc := &apis.Description{
+		Docs: "group before patch",
+	}
+
+	gs := apis.GroupSpec{
+		Name: "G1",
+		Desc: desc,
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	g, err := m.CreateGroup(gs, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+
+	str, err := analyzer.SerializeToJson(&g)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
+
+	patchData := "{\n  \"spec\": {\n      \"desc\": {\n          \"docs\": \"group after patch\"\n      }\n  }\n\n}"
+
+	patched, err := m.PatchGroup(g.Name, g.Namespace, patchData)
+	if err != nil {
+		panic(err)
+	} else {
+		str, err := analyzer.SerializeToJson(&patched)
+		if err != nil {
+			return
+		}
+		fmt.Println(str)
+	}
+}
+
+func TestDeleteGroup(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	gs := apis.GroupSpec{
+		Name: "G1",
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	g, err := m.CreateGroup(gs, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+
+	err = m.DeleteGroup(g.Name, g.Namespace)
+	if err != nil {
+		panic(err)
+	} else {
+		fmt.Println("Delete group success")
+	}
+}

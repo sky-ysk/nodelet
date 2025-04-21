@@ -71,11 +71,8 @@ func TestCreateTask(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	str, err := analyzer.SerializeToJson(task)
-	if err != nil {
-		return
-	}
-	fmt.Println(str)
+
+	fmt.Println(task)
 }
 
 func TestCreateTasks(t *testing.T) {
@@ -160,4 +157,352 @@ func TestCreateTasks(t *testing.T) {
 	}
 
 	fmt.Println(g)
+}
+
+func TestGetTasks(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	a, err := m.GetTasks("Guochuang")
+	if err != nil {
+		panic(err)
+	} else {
+		str, err := analyzer.SerializeToJson(a)
+		if err != nil {
+			return
+		}
+		fmt.Println(str)
+	}
+}
+
+func TestGetTask(t *testing.T) {
+
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	gs1 := apis.GroupSpec{
+		Name: "G1",
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	gs2 := apis.GroupSpec{
+		Name:    "G2",
+		Actions: []apis.ActionSpec{},
+	}
+
+	ts := apis.TaskSpec{
+		Name: "T1",
+		Groups: []apis.GroupSpec{
+			gs1,
+			gs2,
+		},
+	}
+
+	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(task)
+
+	a1, err := m.GetTask(task.Name, "Guochuang")
+	if err != nil {
+		panic(err)
+	} else {
+		str, err := analyzer.SerializeToJson(&a1)
+		if err != nil {
+			return
+		}
+		fmt.Println(str)
+	}
+}
+
+func TestDeleteTask(t *testing.T) {
+
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	gs1 := apis.GroupSpec{
+		Name: "G1",
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	gs2 := apis.GroupSpec{
+		Name:    "G2",
+		Actions: []apis.ActionSpec{},
+	}
+
+	ts := apis.TaskSpec{
+		Name: "T1",
+		Groups: []apis.GroupSpec{
+			gs1,
+			gs2,
+		},
+	}
+
+	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(task)
+
+	err = m.DeleteTask(task.Name, "Guochuang")
+	if err != nil {
+		panic(err)
+	} else {
+		fmt.Println("Delete action success")
+	}
+}
+
+func TestUpdateTask(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	gs1 := apis.GroupSpec{
+		Name: "G1",
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	gs2 := apis.GroupSpec{
+		Name:    "G2",
+		Actions: []apis.ActionSpec{},
+	}
+
+	desc := &apis.Description{
+		Docs: "test before update",
+	}
+
+	ts := apis.TaskSpec{
+		Name: "T1",
+		Desc: desc,
+		Groups: []apis.GroupSpec{
+			gs1,
+			gs2,
+		},
+	}
+
+	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+	str, err := analyzer.SerializeToJson(&task)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
+
+	desc1 := &apis.Description{
+		Docs: "test after update",
+	}
+	task.Spec.Desc = desc1
+
+	patched, err := m.UpdateTask(task.Name, task.Namespace, task)
+	if err != nil {
+		panic(err)
+	} else {
+		str, err := analyzer.SerializeToJson(&patched)
+		if err != nil {
+			return
+		}
+		fmt.Println(str)
+	}
+}
+
+func TestPatchTask(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := NewManager(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	rs2 := apis.RuntimeSpec{
+		Name:  "R2",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+			rs2,
+		},
+	}
+
+	as2 := apis.ActionSpec{
+		Name:     "A2",
+		Runtimes: []apis.RuntimeSpec{},
+	}
+
+	gs1 := apis.GroupSpec{
+		Name: "G1",
+		Actions: []apis.ActionSpec{
+			as1,
+			as2,
+		},
+	}
+
+	gs2 := apis.GroupSpec{
+		Name:    "G2",
+		Actions: []apis.ActionSpec{},
+	}
+
+	desc := &apis.Description{
+		Docs: "test before patch",
+	}
+
+	ts := apis.TaskSpec{
+		Name: "T1",
+		Desc: desc,
+		Groups: []apis.GroupSpec{
+			gs1,
+			gs2,
+		},
+	}
+
+	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+	str, err := analyzer.SerializeToJson(&task)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
+
+	// 把抬手改成放下
+	patchData := "{\n  \"spec\": {\n      \"desc\": {\n          \"docs\": \"test after patch\"\n      }\n  }\n\n}"
+
+	patched, err := m.PatchTask(task.Name, task.Namespace, patchData)
+	if err != nil {
+		panic(err)
+	} else {
+		str, err := analyzer.SerializeToJson(&patched)
+		if err != nil {
+			return
+		}
+		fmt.Println(str)
+	}
 }

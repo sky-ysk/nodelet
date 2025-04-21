@@ -228,7 +228,7 @@ func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
 	}
 }
 
-func (m *Manager) UpdateGroup(namespace string, name string, a *apis.Group) (*apis.Group, error) {
+func (m *Manager) UpdateGroup(name string, namespace string, a *apis.Group) (*apis.Group, error) {
 	c := m.GetGroupClient(namespace)
 
 	// 检查group是否存在
@@ -270,9 +270,17 @@ func (m *Manager) DeleteGroup(name string, namespace string) error {
 	c := m.GetGroupClient(namespace)
 
 	// 检查group是否存在
-	_, err := m.GetGroup(name, namespace)
+	group, err := m.GetGroup(name, namespace)
 	if err != nil {
 		return fmt.Errorf("get group %s error: %v , group not exist ", name, err)
+	}
+
+	// 删除group里面的所有action
+	for _, v := range group.Status.Actions {
+		err := m.DeleteAction(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 存在，删除
