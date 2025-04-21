@@ -7,7 +7,6 @@ package apis
 import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 )
-
 func (in *Time) DeepCopyInto(out *Time) {
 	*out = *in
 }
@@ -35,11 +34,6 @@ func (in *Ability) DeepCopyInto(out *Ability) {
 	if in.State != nil {
 		in, out := &in.State, &out.State
 		*out = new(AbilityState)
-		**out = **in
-	}
-	if in.Status != nil {
-		in, out := &in.Status, &out.Status
-		*out = new(string)
 		**out = **in
 	}
 }
