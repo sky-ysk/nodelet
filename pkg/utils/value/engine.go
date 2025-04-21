@@ -78,9 +78,9 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 	}
 }
 
-func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, error) {
+func (e *Engine) ExtractDeviceValue(devices []apis.DeviceSpec, from string, namespace string) (string, error) {
 	kind := "Device"
-	
+
 	_, parts, err := e.comparor.Match(kind, from)
 	if err != nil {
 		return "", errors.New("Unsupported kind " + kind)
@@ -88,11 +88,22 @@ func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, erro
 	switch kind {
 	case "Device":
 		name := parts[1]
+		realName := ""
+		for _, device := range devices {
+			if device.Name == name {
+				if ep, ok := device.ExpectedProperties["name"]; ok {
+					realName = ep.Value
+				}
+			}
+		}
+		if realName == "" {
+			return "", fmt.Errorf("[ENGINE] can not find Device[%s]'s real name", name)
+		}
 		namespace := namespace
 		ability := parts[2]
 		service := parts[3]
 		fmt.Println(name, namespace, ability, service)
-		s, err := e.ExtractDeviceService(name, namespace, ability, service)
+		s, err := e.ExtractDeviceService(realName, namespace, ability, service)
 		if err == nil {
 			fmt.Println("success", s)
 			return s, nil

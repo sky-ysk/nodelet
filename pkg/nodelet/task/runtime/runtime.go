@@ -5,6 +5,8 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device"
+	"hit.edu/framework/pkg/utils/value"
 	"sync"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -37,9 +39,11 @@ type RuntimeManager struct {
 	clientsManager *manager.Manager
 	mu             sync.Mutex
 	pool           *pool.ConnectionPool
+	engine         *value.Engine
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, engine *value.Engine) *RuntimeManager {
+
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
@@ -48,6 +52,7 @@ func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, 
 		//actionClient: actionClient,
 		//groupClient:  groupClient,
 		clientsManager: clientsManager,
+		engine:         engine,
 		pool:           pool.NewConnectionPool(),
 	}
 }
@@ -83,7 +88,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			//runtime = device.NewDeviceRuntime(rm.deviceClient, rm.actionClient, rm.eventbus)
+			runtime = device.NewDeviceRuntime(rm.eventbus, rm.clientsManager, rm.engine)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

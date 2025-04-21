@@ -37,13 +37,13 @@ const (
 func GetTaskStatus(taskId string, url string) (TaskResponse, error) {
 	// 构建完整的 API URL
 	apiURL := fmt.Sprintf("%s/api/task/%s/status", url, taskId)
-
+	logs.Infof("[DEVICE RUNTIME] APIURL: %s", apiURL)
 	// 创建一个 GET 请求
 	logs.Infof("Create Get Request...")
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		logs.Errorf("Create Get Request fail: %v", err)
-		return TaskResponse{}, fmt.Errorf("Create Get Request fail: %v", err)
+		return TaskResponse{}, fmt.Errorf("[DEVICE RUNTIME] create Get Request fail: %v", err)
 	}
 	logs.Infof("Create Get Request Successfully")
 
@@ -56,7 +56,7 @@ func GetTaskStatus(taskId string, url string) (TaskResponse, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		logs.Errorf("Publish Request fail: %v", err)
-		return TaskResponse{}, fmt.Errorf("Publish Request fail: %v", err)
+		return TaskResponse{}, fmt.Errorf("[DEVICE RUNTIME] Publish Request fail: %v", err)
 	}
 	logs.Infof("Publish Request successfully")
 	defer resp.Body.Close()
