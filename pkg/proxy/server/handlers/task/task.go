@@ -365,7 +365,7 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 		}
 	}
 
-	patchedTask, err := h.manager.PatchTask(namespace, name, patchTask)
+	patchedTask, err := h.manager.PatchTask(namespace, name, []byte(patchTask))
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)
