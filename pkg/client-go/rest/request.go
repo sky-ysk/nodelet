@@ -452,9 +452,8 @@ func (r Request) finalURLTemplate() url.URL {
 func (r *Request) URL() *url.URL {
 	p := r.pathPrefix
 	//todo: 这里可以使用命名空间作为url的一部分,可以设置namespace 与 resource
-	p = path.Join(p, "namespaces/")
 	if r.namespaceSet && len(r.namespace) > 0 {
-		p = path.Join(p, r.namespace)
+		p = path.Join(p, "namespaces/", r.namespace)
 	}
 	if len(r.resource) != 0 {
 		p = path.Join(p, strings.ToLower(r.resource))

@@ -138,7 +138,7 @@ func (m *Manager) UpdateRuntime(name string, namespace string, a *apis.Runtime) 
 
 }
 
-func (m *Manager) PatchRuntime(name string, namespace string, patchRuntime string) (*apis.Runtime, error) {
+func (m *Manager) PatchRuntime(name string, namespace string, patchRuntime []byte) (*apis.Runtime, error) {
 	c := m.GetRuntimeClient(namespace)
 
 	// 检查runtime是否存在
@@ -149,7 +149,7 @@ func (m *Manager) PatchRuntime(name string, namespace string, patchRuntime strin
 	}
 
 	// 部分更新runtime
-	patchedRuntime, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchRuntime), metav1.PatchOptions{})
+	patchedRuntime, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch runtime %s error: %v", name, err)
 		return nil, err

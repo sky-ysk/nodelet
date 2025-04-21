@@ -133,7 +133,7 @@ func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
 	return a, nil
 }
 
-func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*apis.Action, error) {
+func (m *Manager) UpdateAction(namespace string, name string, a *apis.Action) (*apis.Action, error) {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
@@ -156,7 +156,7 @@ func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*
 
 }
 
-func (m *Manager) PatchAction(name string, namespace string, patchAction string) (*apis.Action, error) {
+func (m *Manager) PatchAction(name string, namespace string, patchAction []byte) (*apis.Action, error) {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
@@ -167,7 +167,7 @@ func (m *Manager) PatchAction(name string, namespace string, patchAction string)
 	}
 
 	// 部分更新action
-	patchedAction, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchAction), metav1.PatchOptions{})
+	patchedAction, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch action %s error: %v", name, err)
 		return nil, err
@@ -182,18 +182,10 @@ func (m *Manager) DeleteAction(name string, namespace string) error {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
-	action, err := m.GetAction(name, namespace)
+	_, err := m.GetAction(name, namespace)
 	if err != nil {
 		logs.Errorf("get action %s error: %v , action not exist ", name, err)
 		return err
-	}
-
-	// 删除action里面的所有group
-	for _, v := range action.Status.Runtimes {
-		err := m.DeleteRuntime(v.Name, v.Namespace)
-		if err != nil {
-			return err
-		}
 	}
 
 	// 存在，删除
