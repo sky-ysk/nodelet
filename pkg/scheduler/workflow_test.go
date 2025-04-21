@@ -90,7 +90,123 @@ func createOrangeTask() apis.Task {
 
 // 新的场景一的task
 func createSceneOneTask() apis.Task {
-	task := apis.Task{}
+
+	kuavoDetectRuntime := apis.RuntimeSpec{
+		Name: "KuavoDetectRuntime",
+	}
+
+	kuavoDetectAction := apis.ActionSpec{
+		Name: "KuavoDetectAction",
+		Runtimes: []apis.RuntimeSpec{
+			kuavoDetectRuntime,
+		},
+	}
+
+	kuavoDetectGroup := apis.GroupSpec{
+		Name: "KuavoDetectGroup",
+		Actions: []apis.ActionSpec{
+			kuavoDetectAction,
+		},
+	}
+
+	kuavoGrabRuntime := apis.RuntimeSpec{
+		Name: "KuavoGrabRuntime",
+	}
+
+	kuavoGrabAction := apis.ActionSpec{
+		Name: "KuavoGrabAction",
+		Runtimes: []apis.RuntimeSpec{
+			kuavoGrabRuntime,
+		},
+	}
+
+	kuavoGrabGroup := apis.GroupSpec{
+		Name: "kuavoGrabGroup",
+		Actions: []apis.ActionSpec{
+			kuavoGrabAction,
+		},
+		Parents: []string{"KuavoDetectGroup"},
+		Conditions: &apis.Conditions{
+			Formulas: []apis.ConditionFormula{
+				{},
+			},
+		},
+	}
+
+	galaxeaDetectRuntime := apis.RuntimeSpec{
+		Name: "GalaxeaDetectRuntime",
+	}
+
+	galaxeaDetectAction := apis.ActionSpec{
+		Name: "GalaxeaDetectAction",
+		Runtimes: []apis.RuntimeSpec{
+			galaxeaDetectRuntime,
+		},
+	}
+
+	galaxeaDetectGroup := apis.GroupSpec{
+		Name: "GalaxeaDetectGroup",
+		Actions: []apis.ActionSpec{
+			galaxeaDetectAction,
+		},
+		Parents: []string{"KuavoDetectGroup"},
+	}
+
+	galaxeaGrabRuntime := apis.RuntimeSpec{
+		Name: "GalaxeaGrabRuntime",
+	}
+
+	galaxeaGrabAction := apis.ActionSpec{
+		Name: "GalaxeaGrabAction",
+		Runtimes: []apis.RuntimeSpec{
+			galaxeaGrabRuntime,
+		},
+	}
+
+	galaxeaGrabGroup := apis.GroupSpec{
+		Name: "GalaxeaGrabGroup",
+		Actions: []apis.ActionSpec{
+			galaxeaGrabAction,
+		},
+		Parents: []string{"GalaxeaDetectGroup"},
+		Conditions: &apis.Conditions{
+			Formulas: []apis.ConditionFormula{
+				{},
+			},
+		},
+	}
+
+	task := apis.Task{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "Scene1Task",
+			Namespace: apis.NamespaceTest,
+		},
+		Spec: apis.TaskSpec{
+			Name: "ConditionTask",
+			Groups: []apis.GroupSpec{
+				kuavoDetectGroup,
+				kuavoGrabGroup,
+				galaxeaDetectGroup,
+				galaxeaGrabGroup,
+			},
+		},
+		Status: apis.TaskStatus{
+			Groups: map[string]apis.ObjectReference{
+				"ConditionGroup1": {
+					Kind: "Group",
+					Name: "ConditionGroup1",
+				},
+				"ConditionGroup2": {
+					Kind: "Group",
+					Name: "ConditionGroup2",
+				},
+			},
+		},
+	}
 	return task
 }
 
