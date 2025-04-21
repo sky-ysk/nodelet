@@ -186,37 +186,3 @@ func ParsePayLoad(inst string, payload interface{}) ([]apis.Value, error) {
 	}
 	return []apis.Value{}, nil
 }
-
-// ParsePayLoadError 将payload进行解析
-func ParsePayLoadError(inst string, message string) ([]apis.Value, error) {
-	switch inst {
-	case "DetectPosition":
-		// 使用对应的函数进行解析
-		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] parse world points fail: %s", err.Error())
-			return []apis.Value{}, err
-		}
-		// 转换为字符串
-		// 放到Value中
-		outputs := []apis.Value{
-			{
-				ValueType: apis.ComposeType,
-				Name:      "worldPoints",
-				Type:      apis.ConstData,
-			},
-			{
-				Value:     "false",
-				Name:      "success",
-				Type:      apis.LocalData,
-				ValueType: apis.BoolType,
-			},
-		}
-		return outputs, nil
-
-	case "GrabBall":
-
-	default:
-
-	}
-	return []apis.Value{}, nil
-}

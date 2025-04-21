@@ -21,7 +21,7 @@ type WorldPoints struct {
 	WorldPoints [][]float64 `json:"world_points"`
 }
 
-func GetWorldPoints(params apis.Value) [][]float64 {
+func GetWorldPoints(param apis.Value) [][]float64 {
 
 	if param.Name == "worldPoints" {
 		result, err := parseCustomFormat(param.Value)
