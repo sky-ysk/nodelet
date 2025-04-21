@@ -8,6 +8,21 @@ import (
 	"hit.edu/framework/pkg/utils/value"
 )
 
+type AbilityStrategy interface {
+	Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error)
+}
+type AbilityContext struct {
+	strategy AbilityStrategy
+}
+
+func (ac *AbilityContext) SetStrategy(strategy AbilityStrategy) {
+	ac.strategy = strategy
+}
+
+func (ac *AbilityContext) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+	return ac.strategy.Execute(url, params, engine, runtime)
+}
+
 // PublishAbilityInst 根据传入的指令来发布对应的指令
 func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, engine *value.Engine, runtime *apis.Runtime,
 	action *apis.Action) (string, error) {
@@ -18,81 +33,24 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 	api := device.Status.Abilities[ability].Services[inst].Interface
 	url := fmt.Sprintf("http://%s:%s%s", *ip, *port, *api)
 
+	var strategy AbilityStrategy
 	switch inst {
 	case "DetectPosition":
-		taskId, err := lib.PublishDetectPositionInst(url)
-		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] PublishDetectPosition fail")
-			return "", err
-		}
-		logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
-		return taskId, nil
+		strategy = &lib.DetectPositionStrategy{}
 	case "GrabBall":
-		// 获取参数
-		var worldPoints [][]float64
-		for _, param := range params {
-			if param.Name == "worldPoints" {
-				if param.Type == apis.ConstData {
-					worldPoints = lib.GetWorldPoints(param)
-				} else if param.Type == apis.LocalData {
-					logs.Infof("[DEVICE RUNTIME] WorldPoints param is %v", param)
-					logs.Infof("[DEVICE RUNTIME] WorldPoints param is %v", action)
-					worldPointValue, err := engine.ExtractLocalValue(&param, *action)
-					if err != nil {
-						logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail, %s ", err.Error())
-						return "", err
-					}
-					logs.Infof("[DEVICE RUNTIME] WorldPoints param is %v", worldPointValue)
-					worldPoints = lib.GetWorldPoints(*worldPointValue)
-				}
-			}
-		}
-
-		taskId, err := lib.PublishGrabBallInst(worldPoints, url)
-		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] PublishGrabBallInst fail")
-			return "", err
-		}
-		logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
-		return taskId, nil
+		strategy = &lib.GrabBallStrategy{}
 	case "Download":
-		var user_id string
-		var model_id string
-		var path string
-		var filename string
-		for _, param := range params {
-			if param.Name == "user_id" {
-				if param.Type == apis.ConstData {
-					user_id = param.Value
-				}
-			} else if param.Name == "model_id" {
-				if param.Type == apis.ConstData {
-					model_id = param.Value
-				}
-			} else if param.Name == "path" {
-				if param.Type == apis.ConstData {
-					path = param.Value
-				}
-			} else if param.Name == "filename" {
-				if param.Type == apis.ConstData {
-					filename = param.Value
-				}
-			}
-		}
-		taskId, err := lib.PublishDownloadModelInst(user_id, model_id, path, filename, url)
-		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] PublishDownloadInst fail")
-			return "", err
-		}
-		logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
-		return taskId, nil
-
+		strategy = &lib.DownloadModelStrategy{}
 	case "":
 	default:
 		logs.Errorf("[DEVICE RUNTIME] Unknown Ability")
 		return "", fmt.Errorf("unknow ability")
 	}
-	return "", nil
+
+	context := &AbilityContext{}
+	context.SetStrategy(strategy)
+	return context.Execute(url, params, engine, runtime)
+
 }
 
 // GetAbilityByService 通过service得到相应的能力名称

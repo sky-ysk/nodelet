@@ -3,9 +3,24 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"net/http"
 )
+
+type DetectPositionStrategy struct{}
+
+func (dps *DetectPositionStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+	taskId, err := PublishDetectPositionInst(url)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] PublishDetectPosition fail")
+		return "", err
+	}
+	logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
+	return taskId, nil
+}
 
 // DetectPositionResponse 定义了预期的响应体结构
 type DetectPositionResponse struct {
