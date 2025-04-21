@@ -515,6 +515,9 @@ func CreateWorkFlow(m *manager.Manager) {
 			Actions: []apis.ActionSpec{
 				action2.Spec, action4.Spec,
 			},
+			Parents: []string{
+				"G1",
+			},
 		},
 	}
 
