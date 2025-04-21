@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hit.edu/framework/pkg/component-base/logs"
 	"reflect"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -117,7 +118,8 @@ func (e *Engine) ExtractDeviceImage(from string) (string, string, string, error)
 
 	_, parts, err := e.comparor.Match(kind, from)
 	if err != nil {
-		return "", "", "", errors.New("Unsupported kind " + kind)
+		logs.Error(err.Error())
+		return "", "", "", err
 	}
 	switch kind {
 	case "Device":

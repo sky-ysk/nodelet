@@ -279,6 +279,7 @@ func TestSendToProxy(t *testing.T) {
 	logs.Infof("resp is : %s", string(data))
 }
 
+// go test -run TestCreateWorkFlow -v
 func TestCreateWorkFlow(t *testing.T) {
 	cs, err := utils.CreateClientSetWithTimeOut(2000)
 	if err != nil {
@@ -407,10 +408,10 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "" // 填写这个端口
+	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "55989" // 填写这个端口
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = ""
+	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "46165"
 	_, err = m.CreateDevice(deviceLeju, "test")
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
@@ -723,6 +724,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			Actions: []apis.ActionSpec{
 				action1.Spec, action3.Spec,
 			},
+			Parents: []string{"G2"},
 		},
 	}
 
@@ -743,9 +745,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			Actions: []apis.ActionSpec{
 				action2.Spec, action4.Spec,
 			},
-			Parents: []string{
-				"G1",
-			},
+			//Parents: []string{
+			//	"G1",
+			//},
 		},
 	}
 
