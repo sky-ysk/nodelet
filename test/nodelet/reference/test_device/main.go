@@ -330,7 +330,7 @@ func CreateWorkFlow(m *manager.Manager) {
 				apis.Value{
 					Name: "worldPoints",
 					Type: apis.LocalData,
-					From: "Action{A1}.Runtime{R1}.Ouptuts{world_points}", // TODO
+					From: "Action{A1}.Runtime{R1}.Ouptuts{worldPoints}", // TODO
 				},
 			},
 		},
@@ -379,7 +379,7 @@ func CreateWorkFlow(m *manager.Manager) {
 				apis.Value{
 					Name: "worldPoints",
 					Type: apis.LocalData,
-					From: "Action{A2}.Runtime{R1}.Ouptuts{worldPoints}", // TODO
+					From: "Action{A2}.Runtime{R2}.Ouptuts{worldPoints}", // TODO
 				},
 			},
 		},
