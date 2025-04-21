@@ -136,6 +136,7 @@ func (e *Engine) ExtractDeviceImage(from string) (string, string, string, error)
 
 func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	kind := reflect.TypeOf(o).Name()
+	logs.Infof("kind %s, value %v", kind, value)
 	typeName, parts, err := e.comparor.Match(kind, value.From)
 	if err != nil {
 		return nil, errors.New("Unsupported kind " + kind)
