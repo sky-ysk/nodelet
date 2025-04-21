@@ -559,7 +559,7 @@ func TestCreateWorkFlow(t *testing.T) {
 				apis.Value{
 					Name: "worldPoints",
 					Type: apis.LocalData,
-					From: "Action{A1}.Runtime{R1}.Ouptuts{worldPoints}", // TODO
+					From: "Action{A1}.Runtime{R1}.Outputs{worldPoints}", // TODO
 				},
 			},
 		},
@@ -608,7 +608,7 @@ func TestCreateWorkFlow(t *testing.T) {
 				apis.Value{
 					Name: "worldPoints",
 					Type: apis.LocalData,
-					From: "Action{A2}.Runtime{R2}.Ouptuts{worldPoints}", // TODO
+					From: "Action{A2}.Runtime{R2}.Outputs{worldPoints}", // TODO
 				},
 			},
 		},
@@ -683,6 +683,26 @@ func TestCreateWorkFlow(t *testing.T) {
 			Runtimes: []apis.RuntimeSpec{
 				runtime3.Spec,
 			},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						LeftValue: apis.Value{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      "A1",
+						},
+						RightValue: apis.Value{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "A1",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -703,6 +723,26 @@ func TestCreateWorkFlow(t *testing.T) {
 			Name: "A4",
 			Runtimes: []apis.RuntimeSpec{
 				runtime4.Spec,
+			},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						LeftValue: apis.Value{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      "A2",
+						},
+						RightValue: apis.Value{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "A2",
+						},
+					},
+				},
 			},
 		},
 	}

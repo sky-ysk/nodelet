@@ -152,7 +152,9 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		r := (o).(apis.Runtime)
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromRuntime(typeName, parts, &r)
+		logs.Infof(" name %s, kindType %s, from %s %s", name, kindType, from, fromKey)
 		if err != nil {
+			logs.Error(err.Error())
 			return nil, err
 		}
 	case "Action":
