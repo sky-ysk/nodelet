@@ -21,17 +21,17 @@ type WorldPoints struct {
 	WorldPoints [][]float64 `json:"world_points"`
 }
 
-func GetWorldPoints(params []apis.Value) [][]float64 {
-	for _, param := range params {
-		if param.Name == "worldPoints" {
-			result, err := parseCustomFormat(param.Value)
-			if err != nil {
-				logs.Error("Parse world points failed: %v", err.Error())
-				return nil
-			}
-			return result
+func GetWorldPoints(params apis.Value) [][]float64 {
+
+	if param.Name == "worldPoints" {
+		result, err := parseCustomFormat(param.Value)
+		if err != nil {
+			logs.Error("Parse world points failed: %v", err.Error())
+			return nil
 		}
+		return result
 	}
+
 	return nil
 }
 

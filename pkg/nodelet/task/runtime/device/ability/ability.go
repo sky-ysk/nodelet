@@ -5,10 +5,11 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/lib"
+	"hit.edu/framework/pkg/utils/value"
 )
 
 // PublishAbilityInst 根据传入的指令来发布对应的指令
-func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value) (string, error) {
+func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
 	// 构造URL
 	ability := GetAbilityByService(device, inst)
 	ip := device.Status.Abilities[ability].Services[inst].Ip
@@ -27,7 +28,22 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value) (
 		return taskId, nil
 	case "GrabBall":
 		// 获取参数
-		worldPoints := lib.GetWorldPoints(params)
+		var worldPoints [][]float64
+		for _, param := range params {
+			if param.Name == "worldPoints" {
+				if param.Type == apis.ConstData {
+					worldPoints = lib.GetWorldPoints(param)
+				} else if param.Type == apis.LocalData {
+					worldPointValue, err := engine.ExtractLocalValue(&param, runtime)
+					if err != nil {
+						logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail")
+						return "", err
+					}
+					worldPoints = lib.GetWorldPoints(*worldPointValue)
+				}
+			}
+		}
+
 		taskId, err := lib.PublishGrabBallInst(worldPoints, url)
 		if err != nil {
 			logs.Errorf("[DEVICE RUNTIME] PublishGrabBallInst fail")

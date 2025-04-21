@@ -112,6 +112,25 @@ func (e *Engine) ExtractDeviceValue(devices []apis.DeviceSpec, from string, name
 	return "", errors.New("Unsupported kind " + kind)
 }
 
+func (e *Engine) ExtractDeviceImage(from string) (string, string, string, error) {
+	kind := "Device"
+
+	_, parts, err := e.comparor.Match(kind, from)
+	if err != nil {
+		return "", "", "", errors.New("Unsupported kind " + kind)
+	}
+	switch kind {
+	case "Device":
+		name := parts[1]
+
+		ability := parts[2]
+		service := parts[3]
+		return name, ability, service, nil
+
+	}
+	return "", "", "", errors.New("Unsupported kind " + kind)
+}
+
 func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	kind := reflect.TypeOf(o).Name()
 	typeName, parts, err := e.comparor.Match(kind, value.From)

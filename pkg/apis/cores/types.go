@@ -983,6 +983,7 @@ const (
 	AbilityReadyTerminate AbilityStatus = "ReadyTerminate"
 	AbilityTerminated     AbilityStatus = "Terminated"
 	AbilityInit           AbilityStatus = "Init"
+	AbilityError          AbilityStatus = "Error"
 )
 
 type DeviceStatus struct {
