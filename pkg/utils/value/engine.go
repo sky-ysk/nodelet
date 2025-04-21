@@ -117,6 +117,7 @@ func (e *Engine) ExtractDeviceImage(from string) (string, string, string, error)
 	kind := "Device"
 
 	_, parts, err := e.comparor.Match(kind, from)
+	logs.Info(from)
 	if err != nil {
 		logs.Error(err.Error())
 		return "", "", "", err
