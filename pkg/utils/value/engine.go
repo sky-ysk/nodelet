@@ -42,7 +42,7 @@ const (
 // Device对应的正则表达式
 
 // 解析Value的值
-func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error) {
+func (e *Engine) GetValue(value *apis.Value) (*apis.Value, error) {
 	// 判断数据类型
 	switch value.Type {
 	case apis.ConstData:
@@ -69,7 +69,12 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 		return value, nil
 	case apis.DeviceData:
 		// 对Device进行寻址
-		// result, err := e.ExtractDeviceValue(value.From, value.Namespace)
+		result, err := e.ExtractDeviceValue(value.From, value.NameSpace)
+		if err != nil {
+			return nil, err
+		}
+		value.Value = result
+		value.ValueType = apis.StringType
 		return value, nil
 	case apis.ResultsData:
 		return value, nil
@@ -80,7 +85,7 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 
 func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, error) {
 	kind := "Device"
-	
+
 	_, parts, err := e.comparor.Match(kind, from)
 	if err != nil {
 		return "", errors.New("Unsupported kind " + kind)
@@ -94,7 +99,7 @@ func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, erro
 		fmt.Println(name, namespace, ability, service)
 		s, err := e.ExtractDeviceService(name, namespace, ability, service)
 		if err == nil {
-			fmt.Println("success", s)
+			// fmt.Println("success", s)
 			return s, nil
 		}
 	}
@@ -569,18 +574,16 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 // TODO: 解析Device字段
 func (e *Engine) ExtractDeviceService(robot string, namespace string, target string, subTarget string) (string, error) {
 	// 暂时直接使用客户端，后续改为使用manager
-	fmt.Println("before")
 	client := e.manager.ClientSet.Core().Devices(namespace)
 	d, err := client.Get(context.TODO(), robot, metav1.GetOptions{})
-	fmt.Println("get device:", d)
+	// logs.Info("get device:", d)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("after")
 
 	// 直接访问对应的能力
 	a, ok := d.Status.Abilities[target]
-	fmt.Println("get a:", a)
+	// logs.Info("get a:", a)
 	if ok {
 		s, ok := a.Services[subTarget]
 		if ok {
@@ -588,7 +591,6 @@ func (e *Engine) ExtractDeviceService(robot string, namespace string, target str
 			return r, nil
 		}
 	} else {
-		fmt.Println("errrrrrrrrrrr")
 	}
 
 	return "", errors.New(string("Unsupported Target " + target))
