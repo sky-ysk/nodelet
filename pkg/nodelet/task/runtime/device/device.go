@@ -28,8 +28,14 @@ func NewDeviceRuntime(eventBus *eventbus.EventBus, clientManager *manager.Manage
 	}
 }
 
-func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 
+	// 获取runtime
+	runtime, err := dr.clientManager.GetRuntime(r.Name, r.Namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] get runtime error: %s", err.Error())
+		return err
+	}
 	// 获取Devices和executor
 	logs.Infof("[DEVICE RUNTIME] Try to Obtain All Devices")
 	deviceMap := make(map[string]*apis.Device)

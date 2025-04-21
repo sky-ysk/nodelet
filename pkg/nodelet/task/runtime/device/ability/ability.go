@@ -14,7 +14,7 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value) (
 	ip := device.Status.Abilities[ability].Services[inst].Ip
 	port := device.Status.Abilities[ability].Services[inst].Port
 	api := device.Status.Abilities[ability].Services[inst].Interface
-	url := fmt.Sprintf("http://%s:%d%s", *ip, port, *api)
+	url := fmt.Sprintf("http://%s:%s%s", *ip, *port, *api)
 
 	switch inst {
 	case "DetectPosition":
