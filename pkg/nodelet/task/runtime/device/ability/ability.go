@@ -55,6 +55,38 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 		}
 		logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
 		return taskId, nil
+	case "Download":
+		var user_id string
+		var model_id string
+		var path string
+		var filename string
+		for _, param := range params {
+			if param.Name == "user_id" {
+				if param.Type == apis.ConstData {
+					user_id = param.Value
+				}
+			} else if param.Name == "model_id" {
+				if param.Type == apis.ConstData {
+					model_id = param.Value
+				}
+			} else if param.Name == "path" {
+				if param.Type == apis.ConstData {
+					path = param.Value
+				}
+			} else if param.Name == "filename" {
+				if param.Type == apis.ConstData {
+					filename = param.Value
+				}
+			}
+		}
+		taskId, err := lib.PublishDownloadModelInst(user_id, model_id, path, filename, url)
+		if err != nil {
+			logs.Errorf("[DEVICE RUNTIME] PublishDownloadInst fail")
+			return "", err
+		}
+		logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
+		return taskId, nil
+
 	case "":
 	default:
 		logs.Errorf("[DEVICE RUNTIME] Unknown Ability")

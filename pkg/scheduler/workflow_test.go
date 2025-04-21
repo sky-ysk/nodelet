@@ -384,6 +384,11 @@ func TestCreateWorkFlow(t *testing.T) {
 							Interface: new(string),
 							Port:      new(string),
 						},
+						"Download": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
 					},
 					Status: apis.AbilityRunning,
 				},
@@ -408,10 +413,13 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "55989" // 填写这个端口
+	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "49421" // 填写这个端口
+	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
+	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Ip = "192.168.8.165"
+	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Port = "49421" // 填写这个端口
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "46165"
+	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "34771"
 	_, err = m.CreateDevice(deviceLeju, "test")
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
@@ -487,6 +495,26 @@ func TestCreateWorkFlow(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R2",
 			Type: apis.ByDevice,
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						LeftValue: apis.Value{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      "R5",
+						},
+						RightValue: apis.Value{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "R5",
+						},
+					},
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Detector2",
@@ -623,6 +651,81 @@ func TestCreateWorkFlow(t *testing.T) {
 		},
 	}
 
+	// 乐聚检测
+	runtime5 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R5",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R5",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Detector2",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceLeju",
+						},
+					},
+					Abilities: []string{
+						"Detect",
+					},
+				},
+			},
+			Image: "Device{Detector2}.Ability{Detect}.Service{Download}",
+			Inputs: []apis.Value{
+				{
+					Name:      "user_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "1",
+				},
+				{
+					Name:      "model_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "2",
+				},
+				{
+					Name:      "path",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "",
+				},
+				{
+					Name:      "filename",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "ball.onnx",
+				},
+			},
+			Outputs: []apis.Value{
+				{
+					Name:      "Success",
+					Type:      apis.LocalData,
+					ValueType: apis.BoolType,
+				},
+			},
+		},
+		Status: apis.RuntimeStatus{
+			Devices: map[string]apis.ObjectReference{
+				"deviceLeju": apis.ObjectReference{
+					Name:      "deviceLeju",
+					Namespace: "test",
+					Kind:      "Device",
+				},
+			},
+		},
+	}
+
 	// 星海图检测
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -660,7 +763,7 @@ func TestCreateWorkFlow(t *testing.T) {
 		Spec: apis.ActionSpec{
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
-				runtime2.Spec,
+				runtime5.Spec, runtime2.Spec,
 			},
 		},
 	}
