@@ -2169,6 +2169,9 @@ func (gmo *GroupMonitor) updateCopyIngfoForRuntime(group *apis.Group, phase apis
 // 源任务的Action已完成，修改副本Group的Action的状态，这样副本Action就不用实际去执行，维护这个状态即可
 func (gmo *GroupMonitor) updateCopyIngfoForAction(group *apis.Group, phase apis.Phase, actionSpecName string) {
 	logs.Trace("Start#########action#############groupSpec.Replicas:%v,groupSpec.Replicas > 0:%v", group.Spec.Replicas[0], group.Spec.Replicas[0] > 0)
+	if group.Spec.CopyInfo == nil || len(group.Spec.CopyInfo) == 0 {
+		return
+	}
 	for key, value := range group.Spec.CopyInfo {
 		if group.Spec.CopyInfo[key] != "local" { // 任务信息存在别的域当中
 			// TODO 使用跨域组件连接另一个域，修改group信息--暂时修改成这样
