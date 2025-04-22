@@ -85,7 +85,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 		taskId, err = ability.PublishAbilityInst(ds, executor, params, dr.engine, runtime, action)
 		if err != nil { // 如果发布任务失败
 			logs.Errorf("[DEVICE RUNTIME] Publish Ability Inst error: %s", err.Error())
-			go dr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			dr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 			return err
 		}
 
@@ -311,7 +311,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			logs.Errorf("err msg  : %s  ", resp.Message)
 			logs.Errorf("[DEVICE RUNTIME] Task[%s] is Error", taskId)
 			// 1.处理runtime
-			go dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Failed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
+			dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Failed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
 
 		case lib.Finished: // 处于完成状态
 			logs.Infof("[DEVICE RUNTIME] Task[%s] is Finished", taskId)
@@ -322,7 +322,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 				outputs, err = lib.ParsePayLoad(inst, resp.Payload)
 			}
 			if err != nil {
-				logs.Errorf("[DEVICE RUNTIME] Parse Task[%s] Payload failed", taskId)
+				logs.Errorf("[DEVICE RUNTIME] Parse Task[%s] Payload failed, err:%s", taskId, err.Error())
 			}
 			// TODO etcd更新runtime的信息
 			patchRuntime, err := json.Marshal(map[string]interface{}{
@@ -332,10 +332,10 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			})
 			_, err = clientManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
 			if err != nil {
-				logs.Errorf("[DEVICE RUNTIME] Patch Task[%s] Runtime[%s] failed", taskId, runtime.Name)
+				logs.Errorf("[DEVICE RUNTIME] Patch Task[%s] Runtime[%s] failed, err:%s", taskId, runtime.Name, err.Error())
 				return err
 			}
-			go dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Successed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
+			dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Successed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
 			// 2.处理device
 			err = utils.UpdateDeviceFinished(deviceMap, dr.clientManager)
 			if err != nil {

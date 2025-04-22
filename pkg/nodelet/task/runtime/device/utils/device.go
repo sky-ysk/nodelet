@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/util/manager"
@@ -67,12 +68,12 @@ func UpdateDeviceRunning(deviceMap map[string]*apis.Device, clientManager *manag
 	return nil
 }
 
-// UpdateDeviceFinished 用于在发布任务指令成功后(但是还不知道业务执行情况)时 更新device的状态
+// UpdateDeviceFinished 用于在已经获得任务的执行状态 更新device的状态
 func UpdateDeviceFinished(deviceMap map[string]*apis.Device, clientManager *manager.Manager) error {
 
 	for name, device := range deviceMap {
 
-		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[RUNNING]", name)
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
 		device.Status.Lock.Ref -= 1
 		if device.Status.Lock.Ref == 0 {
 			device.Status.Lock.IsLocked = false
@@ -81,13 +82,20 @@ func UpdateDeviceFinished(deviceMap map[string]*apis.Device, clientManager *mana
 		device.Status.Phase = apis.DeviceIdle
 		// 设置更新时间
 		device.Status.LastTime = apis.Time{Time: time.Now()}
-		_, err := clientManager.UpdateDevice(device.Namespace, device.Name, device)
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"lock":      device.Status.Lock,
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
 
+		_, err = clientManager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
 		if err != nil {
-			logs.Errorf("update device [%s]  failed[stage running], %s", device.Name, err)
+			logs.Errorf("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED], err:%s", device.Name, err)
 			return err
 		}
-		logs.Infof("update device [%s] successfully[stage running]\n", device.Name)
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] successfully stage [FINISHED]\n", device.Name)
 	}
 
 	return nil
