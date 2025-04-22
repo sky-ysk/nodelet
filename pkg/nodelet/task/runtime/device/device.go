@@ -314,6 +314,11 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			logs.Errorf("[DEVICE RUNTIME] Task[%s] is Error", taskId)
 			// 1.处理runtime
 			dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Failed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
+			err = utils.UpdateDeviceError(deviceMap, dr.clientManager)
+			if err != nil {
+				logs.Errorf("[DEVICE RUNTIME] Update Device Error failed, %s", err.Error())
+				return err
+			}
 			return errors.New(resp.Message)
 		case lib.Finished: // 处于完成状态
 			logs.Infof("[DEVICE RUNTIME] Task[%s] is Finished", taskId)
