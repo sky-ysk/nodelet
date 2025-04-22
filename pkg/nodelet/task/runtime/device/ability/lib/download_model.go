@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"net/http"
 )
@@ -16,13 +18,48 @@ type DownloadParam struct {
 	Filename string `json:"filename"`
 }
 
-// PublishGrabBallInst 向指定的 API 发送抓取小球的任务请求
-func PublishDownloadModelInst(user_id string, model_id string, path string, filename string, url string) (string, error) {
+type DownloadModelStrategy struct{}
+
+func (dms *DownloadModelStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+	var userId string
+	var modelId string
+	var path string
+	var filename string
+	for _, param := range params {
+		if param.Name == "user_id" {
+			if param.Type == apis.ConstData {
+				userId = param.Value
+			}
+		} else if param.Name == "model_id" {
+			if param.Type == apis.ConstData {
+				modelId = param.Value
+			}
+		} else if param.Name == "path" {
+			if param.Type == apis.ConstData {
+				path = param.Value
+			}
+		} else if param.Name == "filename" {
+			if param.Type == apis.ConstData {
+				filename = param.Value
+			}
+		}
+	}
+	taskId, err := PublishDownloadModelInst(userId, modelId, path, filename, url)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] PublishDownloadInst fail")
+		return "", err
+	}
+	logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
+	return taskId, nil
+}
+
+// PublishDownloadModelInst 发送下载模型的任务请求
+func PublishDownloadModelInst(userId string, modelId string, path string, filename string, url string) (string, error) {
 	// 构建请求体
 	logs.Infof("download url %s", url)
 	requestBody := DownloadParam{
-		UserId:   user_id,
-		ModelId:  model_id,
+		UserId:   userId,
+		ModelId:  modelId,
 		Path:     path,
 		Filename: filename,
 	}
@@ -64,7 +101,7 @@ func PublishDownloadModelInst(user_id string, model_id string, path string, file
 		return "", fmt.Errorf("读取响应体失败: %v", err)
 	}
 
-	var taskResponse GrabBallResponse
+	var taskResponse AbilityInstResponse
 	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
 		return "", fmt.Errorf("解析响应体失败: %v", err)
 	}

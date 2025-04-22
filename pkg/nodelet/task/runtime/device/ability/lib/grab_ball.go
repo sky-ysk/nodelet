@@ -6,15 +6,39 @@ import (
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-// GrabBallResponse 定义了预期的响应体结构
-type GrabBallResponse struct {
-	TaskId string `json:"taskId"`
+type GrabBallStrategy struct{}
+
+func (gbs *GrabBallStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+	var worldPoints [][]float64
+	for _, param := range params {
+		if param.Name == "worldPoints" {
+			if param.Type == apis.ConstData {
+				worldPoints = GetWorldPoints(param)
+			} else if param.Type == apis.LocalData {
+				worldPointValue, err := engine.ExtractLocalValue(&param, runtime)
+				if err != nil {
+					logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail")
+					return "", err
+				}
+				worldPoints = GetWorldPoints(*worldPointValue)
+			}
+		}
+	}
+
+	taskId, err := PublishGrabBallInst(worldPoints, url)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] PublishGrabBallInst fail")
+		return "", err
+	}
+	logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
+	return taskId, nil
 }
 
 type WorldPoints struct {
@@ -102,7 +126,7 @@ func PublishGrabBallInst(worldPoints [][]float64, url string) (string, error) {
 		return "", fmt.Errorf("读取响应体失败: %v", err)
 	}
 
-	var taskResponse GrabBallResponse
+	var taskResponse AbilityInstResponse
 	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
 		return "", fmt.Errorf("解析响应体失败: %v", err)
 	}
