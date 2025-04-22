@@ -122,25 +122,25 @@ func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string,
 // PreByUrlParseStrategy 是PredictByUrl接口的解析策略
 type PreByUrlParseStrategy struct{}
 
-func (pbups *PreByUrlParseStrategy) Execute(payload interface{}) ([]apis.Value, error) {
-
-	// 放到Value中
-	outputs := []apis.Value{
-		{
-			ValueType: apis.ComposeType,
-			Value:     str,
-			Name:      "worldPoints",
-			Type:      apis.ConstData,
-		},
-		{
-			Value:     "true",
-			Name:      "success",
-			Type:      apis.LocalData,
-			ValueType: apis.BoolType,
-		},
-	}
-	return outputs, nil
-}
+//func (pbups *PreByUrlParseStrategy) Execute(payload interface{}) ([]apis.Value, error) {
+//
+//	// 放到Value中
+//	outputs := []apis.Value{
+//		{
+//			ValueType: apis.ComposeType,
+//			Value:     str,
+//			Name:      "worldPoints",
+//			Type:      apis.ConstData,
+//		},
+//		{
+//			Value:     "true",
+//			Name:      "success",
+//			Type:      apis.LocalData,
+//			ValueType: apis.BoolType,
+//		},
+//	}
+//	return outputs, nil
+//}
 
 // parsePrediction 用于从payload中解析预测结果
 func parsePrediction(data interface{}) (int, error) {
