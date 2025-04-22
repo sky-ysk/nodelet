@@ -325,7 +325,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			}
 			runtime.Spec.Outputs = outputs
 			// TODO etcd更新runtime的信息
-			_, err = clientManager.UpdateRuntime(runtime.Namespace, runtime.Name, runtime)
+			_, err = clientManager.UpdateRuntime(runtime.Name, runtime.Namespace, runtime)
 			if err != nil {
 				return err
 			}
