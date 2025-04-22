@@ -41,8 +41,11 @@ const (
 // Status对应的正则表达式
 // Device对应的正则表达式
 
-// 解析Value的值
-func (e *Engine) GetValue(value *apis.Value) (*apis.Value, error) {
+// 解析Value的值, o为传入的对象，可能为Workflow、Task、Group、Action或Runtime
+// 解析的Value为condition里面的左右值、或者是input、output（这俩是Value类型的变量）
+// 解析的结果仍然是一个Value类型的变量，其Value.Value为值的string表达，其Value.ValueType为预定义好的类型（例如bool，string等）
+// 解析完Value之后，需要判断类型是否符合需求，然后再转换Value.Value为所需类型使用
+func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	// 判断数据类型
 	switch value.Type {
 	case apis.ConstData:
@@ -66,7 +69,11 @@ func (e *Engine) GetValue(value *apis.Value) (*apis.Value, error) {
 		//  Workflow{W1}.Task{T1}
 
 		// 缺省值，默认访问本地
-		return value, nil
+		resultValue, err := e.ExtractLocalValue(value, o)
+		if err != nil {
+			return nil, err
+		}
+		return resultValue, nil
 	case apis.DeviceData:
 		// 对Device进行寻址
 		result, err := e.ExtractDeviceValue(value.From, value.NameSpace)
