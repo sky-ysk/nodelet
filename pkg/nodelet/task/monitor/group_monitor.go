@@ -1461,7 +1461,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 	if len(actionSpec.Conditions.Formulas) == 0 {
 		return true
 	}
-	if len(group.Spec.Parents) == 0 {
+	if len(action.Spec.Parents) == 0 {
 		return true
 	}
 	for index, i := range actionSpec.Conditions.Formulas {

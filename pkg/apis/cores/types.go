@@ -2,8 +2,9 @@
 package apis
 
 import (
-	"hit.edu/framework/pkg/apis/meta"
 	"time"
+
+	"hit.edu/framework/pkg/apis/meta"
 )
 
 const (
@@ -394,8 +395,9 @@ const (
 // 输出结果为Bool类型的值
 // TODO: Value格式检查和调整，比如存在空格的情况
 type ConditionFormula struct {
-	LeftValue  Value `json:"left_value,omitempty" yaml:"left_value"`
-	RightValue Value `json:"right_value,omitempty" yaml:"right_value"`
+	ConditionType conditionType `json:"condition_type,omitempty" yaml:"condition_type"`
+	LeftValue     Value         `json:"left_value,omitempty" yaml:"left_value"`
+	RightValue    Value         `json:"right_value,omitempty" yaml:"right_value"`
 	// == 或 !=
 	Signal SignalType `json:"signal,omitempty" yaml:"signal"`
 	// 在条件串中的期望结果
@@ -1198,7 +1200,7 @@ const (
 // 值类型，表示数据使用
 type Value struct {
 	NameSpace string `json:"namespace,omitempty" yaml:"namespace"`
-	
+
 	// 类型
 	Type DataType `json:"type,omitempty" yaml:"type"`
 

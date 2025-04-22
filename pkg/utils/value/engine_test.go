@@ -117,6 +117,7 @@ func TestValueExtract(t *testing.T) {
 	// fmt.Println(v)
 	
 	value := apis.Value{
+		NameSpace: "Guochuang",
 		Name:      "Test",
 		Type:      apis.LocalData,
 		From:      "Group{G1}.Status{phase}",
@@ -215,7 +216,7 @@ func TestGetDeviceImage(t *testing.T) {
 	engine := NewEngine(clientSet)
 	
 	namespace := "Guochuang"
-	// from := "Device{Robot}.Ability{Move}.Service{Start}"
+
 	from := "Device{Robot}.Ability{Move}.Service{Start}"
 	
 	v, err := engine.ExtractDeviceValue(from, namespace)
