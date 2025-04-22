@@ -150,25 +150,21 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	// 3、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
 	var copiesInDomain, copiesInOtherDomain int32 = 0, 0
 	// 安全处理逻辑
-	if gr != nil {
-		// 情况1：用户未传参时 Replicas == nil
-		if gr.Spec.Replicas == nil {
-			logs.Info("Replicas未配置，使用默认值[0,0]")
-		} else if len(gr.Spec.Replicas) < 2 {
-			logs.Warn("Replicas长度不足，使用前N个值并用0补全",
-				"输入值", gr.Spec.Replicas,
-				"有效长度", len(gr.Spec.Replicas))
-			// 安全取值（避免越界）
-			if len(gr.Spec.Replicas) >= 1 {
-				copiesInDomain = gr.Spec.Replicas[0]
-			}
-			// 第二个值保持默认0
-		} else { // 情况3：正常情况
+	// 情况1：用户未传参时 Replicas == nil
+	if gr.Spec.Replicas == nil {
+		logs.Info("Replicas未配置，使用默认值[0,0]")
+	} else if len(gr.Spec.Replicas) < 2 {
+		logs.Warn("Replicas长度不足，使用前N个值并用0补全",
+			"输入值", gr.Spec.Replicas,
+			"有效长度", len(gr.Spec.Replicas))
+		// 安全取值（避免越界）
+		if len(gr.Spec.Replicas) >= 1 {
 			copiesInDomain = gr.Spec.Replicas[0]
-			copiesInOtherDomain = gr.Spec.Replicas[1]
 		}
-	} else {
-		logs.Error("Group或Spec对象为空，使用默认值[0,0]")
+		// 第二个值保持默认0
+	} else { // 情况3：正常情况
+		copiesInDomain = gr.Spec.Replicas[0]
+		copiesInOtherDomain = gr.Spec.Replicas[1]
 	}
 	if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的
 		// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本

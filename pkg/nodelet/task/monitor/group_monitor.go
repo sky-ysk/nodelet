@@ -1131,11 +1131,12 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	logs.Info("Handling runtime end status update")
 	groupName := event.GroupName
 	get, err := gmo.clientsManager.GetGroup(groupName, event.GroupNamespace)
-	groupSpec := &get.Spec
-	groupStatus := &get.Status
 	if err != nil {
 		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
 	}
+	groupSpec := &get.Spec
+	groupStatus := &get.Status
+
 	actionSpecName := event.ActionSpecName
 	runtimeSpecName := event.RuntimeSpecName
 	phase := event.Phase //当前phase可能为Succeed、Failed、Unknown（Failed、Migrated）
@@ -1410,10 +1411,10 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 }
 func (gmo *GroupMonitor) UpdateGroup(group *apis.Group, groupStatus *apis.GroupStatus, groupName string) error {
 	// 修改Group的update改为Patch
-	groupPatch1, err := json.Marshal(map[string]interface{}{
+	groupSpecPatch, err := json.Marshal(map[string]interface{}{
 		"spec": &group.Spec,
 	})
-	groupPatch2, err2 := json.Marshal(map[string]interface{}{
+	groupStatusPatch, err2 := json.Marshal(map[string]interface{}{
 		"status": groupStatus,
 	})
 	if err != nil {
@@ -1425,12 +1426,12 @@ func (gmo *GroupMonitor) UpdateGroup(group *apis.Group, groupStatus *apis.GroupS
 		return fmt.Errorf("Marshal groupStatus failed, err:%v", err)
 	}
 
-	_, err = gmo.clientsManager.PatchGroup(groupName, group.Namespace, groupPatch1)
-	_, err2 = gmo.clientsManager.PatchGroup(groupName, group.Namespace, groupPatch2)
+	_, err = gmo.clientsManager.PatchGroup(groupName, group.Namespace, groupSpecPatch)
 	if err != nil {
 		logs.Errorf("Patch group failed-111,err:%v", err)
 		return fmt.Errorf("Patch groupSpec failed, err:%v", err)
 	}
+	_, err2 = gmo.clientsManager.PatchGroup(groupName, group.Namespace, groupStatusPatch)
 	if err2 != nil {
 		logs.Errorf("Patch group failed-222,err:%v", err)
 		return fmt.Errorf("Patch groupStatus failed, err:%v", err)
@@ -1439,26 +1440,18 @@ func (gmo *GroupMonitor) UpdateGroup(group *apis.Group, groupStatus *apis.GroupS
 }
 func (gmo *GroupMonitor) UpdateTask(task *apis.Task, taskStatus *apis.TaskStatus, taskName string) error {
 	// 修改Task的update改为Patch
-	taskPatch1, err := json.Marshal(map[string]interface{}{
+	taskSpecPatch, err := json.Marshal(map[string]interface{}{
 		"spec": &task.Spec,
 	})
-	taskPatch2, err2 := json.Marshal(map[string]interface{}{
+	taskStatusPatch, err2 := json.Marshal(map[string]interface{}{
 		"status": taskStatus,
 	})
-	if err != nil {
-		logs.Errorf("Marshal taskSpec failed,err:%v", err)
-		return fmt.Errorf("Marshal taskSpec failed, err:%v", err)
-	}
-	if err2 != nil {
-		logs.Errorf("Marshal taskStatus failed,err:%v", err)
-		return fmt.Errorf("Marshal taskStatus failed, err:%v", err)
-	}
-	_, err = gmo.clientsManager.PatchTask(taskName, task.Namespace, taskPatch1)
-	_, err2 = gmo.clientsManager.PatchTask(taskName, task.Namespace, taskPatch2)
+	_, err = gmo.clientsManager.PatchTask(taskName, task.Namespace, taskSpecPatch)
 	if err != nil {
 		logs.Errorf("Patch task failed-333,err:%v", err)
 		return fmt.Errorf("Patch taskSpec failed, err:%v", err)
 	}
+	_, err2 = gmo.clientsManager.PatchTask(taskName, task.Namespace, taskStatusPatch)
 	if err2 != nil {
 		logs.Errorf("Patch task failed-444,err:%v", err)
 		return fmt.Errorf("Patch taskStatus failed, err:%v", err)
@@ -1466,14 +1459,14 @@ func (gmo *GroupMonitor) UpdateTask(task *apis.Task, taskStatus *apis.TaskStatus
 	return nil
 }
 func (gmo *GroupMonitor) updateTaskStatus(taskNamespace string, taskStatus *apis.TaskStatus, taskName string) error {
-	taskPatch2, err := json.Marshal(map[string]interface{}{
+	taskStatusPatch, err := json.Marshal(map[string]interface{}{
 		"status": taskStatus,
 	})
 	if err != nil {
 		logs.Errorf("Marshal task filed,err:%v", err)
 		return fmt.Errorf("Marshal taskStatus failed, err:%v", err)
 	}
-	_, err2 := gmo.clientsManager.PatchTask(taskName, taskNamespace, taskPatch2)
+	_, err2 := gmo.clientsManager.PatchTask(taskName, taskNamespace, taskStatusPatch)
 	if err2 != nil {
 		logs.Errorf("Patch task failed-444,err:%v", err)
 		return fmt.Errorf("Patch taskStatus failed, err:%v", err)
@@ -1481,14 +1474,14 @@ func (gmo *GroupMonitor) updateTaskStatus(taskNamespace string, taskStatus *apis
 	return nil
 }
 func (gmo *GroupMonitor) UpdateGroupStatus(groupNamespace string, groupStatus *apis.GroupStatus, groupName string) error {
-	groupPatch2, err := json.Marshal(map[string]interface{}{
+	groupStatusPatch, err := json.Marshal(map[string]interface{}{
 		"status": groupStatus,
 	})
 	if err != nil {
 		logs.Errorf("Marshal group filed,err:%v", err)
 		return fmt.Errorf("Marshal groupStatus filed, err:%v", err)
 	}
-	_, err2 := gmo.clientsManager.PatchGroup(groupName, groupNamespace, groupPatch2)
+	_, err2 := gmo.clientsManager.PatchGroup(groupName, groupNamespace, groupStatusPatch)
 	if err2 != nil {
 		logs.Errorf("Patch group failed-555,err:%v", err)
 		return fmt.Errorf("Patch groupStatus filed, err:%v", err)
@@ -1496,14 +1489,14 @@ func (gmo *GroupMonitor) UpdateGroupStatus(groupNamespace string, groupStatus *a
 	return nil
 }
 func (gmo *GroupMonitor) UpdateActionStatus(actionNamespace string, actionStatus *apis.ActionStatus, actionName string) error {
-	actionPatch1, err := json.Marshal(map[string]interface{}{
+	actionStatusPatch, err := json.Marshal(map[string]interface{}{
 		"status": actionStatus,
 	})
 	if err != nil {
 		logs.Errorf("Marshal action filed,err:%v", err)
 		return fmt.Errorf("Marshal action filed, err:%v", err)
 	}
-	_, err = gmo.clientsManager.PatchAction(actionName, actionNamespace, actionPatch1)
+	_, err = gmo.clientsManager.PatchAction(actionName, actionNamespace, actionStatusPatch)
 	if err != nil {
 		logs.Errorf("Patch action failed-666,err:%v", err)
 		return fmt.Errorf("Patch action failed, err:%v", err)
@@ -1511,7 +1504,7 @@ func (gmo *GroupMonitor) UpdateActionStatus(actionNamespace string, actionStatus
 	return nil
 }
 func (gmo *GroupMonitor) UpdateRuntimeStatus(runtimeNamespace string, runtimeStatus *apis.RuntimeStatus, runtimeName string) error {
-	runtimePatch1, err := json.Marshal(map[string]interface{}{
+	runtimeStatusPatch, err := json.Marshal(map[string]interface{}{
 		"status": runtimeStatus,
 	})
 	if err != nil {
@@ -1519,7 +1512,7 @@ func (gmo *GroupMonitor) UpdateRuntimeStatus(runtimeNamespace string, runtimeSta
 		return fmt.Errorf("Marshal runtime filed, err:%v", err)
 	}
 
-	_, err = gmo.clientsManager.PatchRuntime(runtimeName, runtimeNamespace, runtimePatch1)
+	_, err = gmo.clientsManager.PatchRuntime(runtimeName, runtimeNamespace, runtimeStatusPatch)
 	if err != nil {
 		logs.Errorf("Patch runtime failed-111,err:%v", err)
 		return fmt.Errorf("Patch runtime failed-111,err:%v", err)

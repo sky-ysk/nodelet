@@ -355,7 +355,25 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	// 2、迁移
 	logs.Infof("Group:%v migration start", group.Name) //此处作为迁移的开始
 	var groupCopyName string
-	if group.Spec.Replicas[0]+group.Spec.Replicas[1] > 0 { // 提前部署了副本，那么就是修改副本的状态，让副本真正启动（Init->Running）
+	var copiesInDomain, copiesInOtherDomain int32 = 0, 0
+	// 安全处理逻辑
+	// 情况1：用户未传参时 Replicas == nil
+	if group.Spec.Replicas == nil {
+		logs.Info("Replicas未配置，使用默认值[0,0]")
+	} else if len(group.Spec.Replicas) < 2 {
+		logs.Warn("Replicas长度不足，使用前N个值并用0补全",
+			"输入值", group.Spec.Replicas,
+			"有效长度", len(group.Spec.Replicas))
+		// 安全取值（避免越界）
+		if len(group.Spec.Replicas) >= 1 {
+			copiesInDomain = group.Spec.Replicas[0]
+		}
+		// 第二个值保持默认0
+	} else { // 情况3：正常情况
+		copiesInDomain = group.Spec.Replicas[0]
+		copiesInOtherDomain = group.Spec.Replicas[1]
+	}
+	if copiesInDomain+copiesInOtherDomain > 0 { // 提前部署了副本，那么就是修改副本的状态，让副本真正启动（Init->Running）
 		// 说明当前group已经提前往etcd里写入了副本group，那么此处就不用再写入了，只需要将原先写的副本group信息当中的groupCopy.Status.CopyStatus 改为"Starting"即可-采用patch
 		patchGroup, err := json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
