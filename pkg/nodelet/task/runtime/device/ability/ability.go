@@ -81,7 +81,7 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 		}
 		taskId, err := lib.PublishDownloadModelInst(user_id, model_id, path, filename, url)
 		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] PublishDownloadInst fail")
+			logs.Errorf("[DEVICE RUNTIME] PublishDownloadInst fail, %s", err.Error())
 			return "", err
 		}
 		logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
