@@ -1,15 +1,5 @@
 package entity
 
-import (
-	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-)
-
 // Deployment 定义
 //type Deployment struct {
 //	Namespace          string                      // Deployment 所在命名空间
@@ -40,6 +30,7 @@ import (
 //	}
 //}
 
+/*
 func GetDeploymentFromParam1(customDeployment *apis.Deployment) *appsv1.Deployment {
 	spec := convertDeploymentSpec(&customDeployment.Spec)
 	labels := customDeployment.Labels
@@ -152,6 +143,7 @@ func convertIntOrString(input apis.IntOrString) intstr.IntOrString {
 		return intstr.FromInt(0)
 	}
 }
+*/
 
 //// CreateDeploymentTemplate 使用 Deployment 对象信息生成 Kubernetes Deployment 资源
 //func (d *Deployment) CreateDeploymentTemplate() appsv1.Deployment {

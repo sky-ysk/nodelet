@@ -23,11 +23,11 @@ const (
 )
 
 type ResourceState struct {
-	group        *apis.Group
-	action       *apis.Action
-	runtime      *apis.Runtime
-	actionIndex  int
-	runtimeIndex int
+	group           *apis.Group
+	action          *apis.Action
+	runtime         *apis.Runtime
+	actionSpecName  string
+	runtimeSpecName string
 }
 
 //	type DeploymentMonitor struct {
@@ -138,9 +138,9 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		if shouldNotify {
 			phase := convertDeploymentStatus(currentDeploy, currentStatus, eventType)
 			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
-				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
 			} else if phase == apis.Running {
-				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
 			}
 			logs.Infof("[Deployment]=============发送状态：%v 给事件处理模块===========", phase)
 		}
@@ -197,9 +197,9 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 				phase = apis.Killed // 或根据实际状态处理
 			}
 			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
-				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
 			} else {
-				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
 			}
 			logs.Infof("[Pod]=============发送状态：%v 给事件处理模块===========", phase)
 		}
@@ -230,7 +230,7 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 
 		rs := value.(ResourceState)
 		if eventType == "ADDED" {
-			m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", apis.Running, nowTime, nowTime)
+			m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", apis.Running, nowTime, nowTime)
 		}
 		// 状态判定逻辑
 		currentStatus := getServiceStatus(currentService)
@@ -253,9 +253,9 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		if shouldNotify {
 			phase := convertServiceStatus(currentService, currentStatus, eventType)
 			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
-				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
 			} else {
-				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
 			}
 			logs.Infof("[Service]=============发送状态：%v 给事件处理模块===========", phase)
 		}
@@ -282,30 +282,28 @@ func (m *Monitor) RegisterHook(hook func(eventType string, obj interface{})) {
 }
 
 // 保存资源的信息
-func (m *Monitor) SetState(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) {
+func (m *Monitor) SetState(group *apis.Group, resourceName, resourceNamespace string, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) {
 	var state ResourceState
 	state = ResourceState{
-		group:        group,
-		action:       action,
-		runtime:      runtime,
-		actionIndex:  actionIndex,
-		runtimeIndex: runtimeIndex,
+		group:           group,
+		actionSpecName:  actionSpecName,
+		runtimeSpecName: runtimeSpecName,
 	}
 	switch runtime.Spec.Type {
 	case apis.ByDeployment:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByDeployment, runtime.Spec.Deployment.Namespace, runtime.Deployment.Name), state)
+		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByDeployment, resourceNamespace, resourceName), state)
 		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByDeployment, runtime.Deployment.Namespace, runtime.Deployment.Name))
+			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByDeployment, resourceNamespace, resourceName))
 		}
 	case apis.ByPod:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByPod, runtime.Pod.Namespace, runtime.Pod.Name), state)
+		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByPod, resourceNamespace, resourceName), state)
 		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByPod, runtime.Pod.Namespace, runtime.Pod.Name))
+			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByPod, resourceNamespace, resourceName))
 		}
 	case apis.ByService:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByService, runtime.Service.Namespace, runtime.Service.Name), state)
+		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByService, resourceNamespace, resourceName), state)
 		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByService, runtime.Service.Namespace, runtime.Service.Name))
+			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByService, resourceNamespace, resourceName))
 		}
 	}
 }
@@ -316,26 +314,28 @@ func (m *Monitor) Stop() {
 }
 
 // 通过 EventBus 通知 Runtime 状态更新
-func (m *Monitor) notifyRuntimeStartPhase(groupName string, actionIndex, runtimeIndex int, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
+func (m *Monitor) notifyRuntimeStartPhase(groupName, groupNamespace string, actionSpecName, runtimeSpecName string, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
 	event := events.RuntimeStartPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		ProcessId:    processId,
-		Phase:        phase,
-		StartAt:      startAt,
-		LastTime:     lastTime,
+		GroupName:       groupName,
+		GroupNamespace:  groupNamespace,
+		ActionSpecName:  actionSpecName,
+		RuntimeSpecName: runtimeSpecName,
+		ProcessId:       processId,
+		Phase:           phase,
+		StartAt:         startAt,
+		LastTime:        lastTime,
 	}
 	m.eventBus.Publish(event)
 }
-func (m *Monitor) notifyRuntimeEndPhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
+func (m *Monitor) notifyRuntimeEndPhase(groupName, groupNamespace string, actionSpecName, runtimeSpecName string, phase apis.Phase, finishTime, lastTime apis.Time) {
 	event := events.RuntimeEndPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		Phase:        phase,
-		FinishAt:     finishTime,
-		LastTime:     lastTime,
+		GroupName:       groupName,
+		GroupNamespace:  groupNamespace,
+		ActionSpecName:  actionSpecName,
+		RuntimeSpecName: runtimeSpecName,
+		Phase:           phase,
+		FinishAt:        finishTime,
+		LastTime:        lastTime,
 	}
 	m.eventBus.Publish(event)
 }
