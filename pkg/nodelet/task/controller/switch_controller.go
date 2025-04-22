@@ -131,15 +131,15 @@ func (mc *MigrationController) eventWatcher() {
 				//}
 				if event.EventTime.Time.Before(mc.startTime) ||
 					(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
-					return // 跳过历史事件/非本节点事件/非迁移触发事件
+					continue // 跳过历史事件/非本节点事件/非迁移触发事件
 				}
 				if event.InvolvedObject.Kind == "Node" && event.InvolvedObject.Name != mc.nodeName { //我们希望处理对Group的Migration和Node的Migration，如果是Node的Migration，需要保证和节点的名字一致
-					return
+					continue
 				}
 				if event.InvolvedObject.Kind == "Group" {
 					_, err := mc.groupManager.GetGroupByName(event.InvolvedObject.Name)
 					if err != nil { // 说明该节点上没这个任务，那就不用触发迁移
-						return
+						continue
 					}
 				}
 				logs.Info("++++++++++++++++++++++Events--------事件为迁移事件")
