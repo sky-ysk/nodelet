@@ -300,7 +300,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 		time.Sleep(2 * time.Second)
 		resp, err := lib.GetTaskStatus(taskId, url)
 		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] Get Task[%s] Status failed", taskId)
+			logs.Errorf("[DEVICE RUNTIME] Get Task[%s] Status failed, url %s, err : %s", taskId, url, err.Error())
 			return err
 		}
 		switch resp.State {
