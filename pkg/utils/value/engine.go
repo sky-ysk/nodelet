@@ -192,7 +192,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 	case "Runtime":
 		v, err := e.ExtractRuntimeValue(name, namespace, from, fromKey, value)
 		logs.Infof("runtime value %v", v)
-		if err != nil {
+		if err == nil {
 			return v, nil
 		}
 	case "Action":
@@ -575,6 +575,7 @@ func (e *Engine) ExtractActionValue(action string, namespace string, target stri
 
 // 目前只支持解析Status的State和Outputs
 func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target string, subTarget string, value *apis.Value) (*apis.Value, error) {
+	logs.Infof("runtime %s, namespace %s, target %s, subtarget %s", runtime, namespace, target, subTarget)
 	r, err := e.manager.GetRuntime(runtime, namespace)
 	if err != nil {
 		return nil, err

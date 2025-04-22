@@ -327,9 +327,13 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 				logs.Errorf("[DEVICE RUNTIME] Parse Task[%s] Payload failed, err:%s", taskId, err.Error())
 			}
 			// TODO etcd更新runtime的信息
+			outputMap := make(map[string]apis.Value)
+			for _, output := range outputs {
+				outputMap[output.Name] = output
+			}
 			patchRuntime, err := json.Marshal(map[string]interface{}{
-				"spec": map[string]interface{}{
-					"outputs": outputs,
+				"status": map[string]interface{}{
+					"outputs": outputMap,
 				},
 			})
 			_, err = clientManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
