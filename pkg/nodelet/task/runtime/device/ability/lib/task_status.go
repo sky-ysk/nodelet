@@ -115,6 +115,8 @@ func ParsePayLoad(inst string, payload interface{}) ([]apis.Value, error) {
 
 	case "GrabBall":
 
+	case "PredictByUrl":
+
 	default:
 
 	}

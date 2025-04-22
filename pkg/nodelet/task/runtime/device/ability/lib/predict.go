@@ -12,6 +12,9 @@ import (
 	"strconv"
 )
 
+/* -----------------------------------------发布指令部分---------------------------------------------- */
+
+// PredictByUrlReq PublishPredictByUrlInst的参数
 type PredictByUrlReq struct {
 	Url        string `json:"url"`
 	Position   string `json:"position"`
@@ -59,6 +62,7 @@ func (pbus *PreByUrlStrategy) Execute(url string, params []apis.Value, engine *v
 	return taskId, nil
 }
 
+// PublishPredictByUrlInst 使用PublishPredictByUrl接口进行预测
 func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string, imageType string, url string) (string, error) {
 
 	// 构建请求体
@@ -111,4 +115,52 @@ func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string,
 
 	// 返回任务 ID
 	return taskResponse.TaskId, nil
+}
+
+/* -----------------------------------------解析指令部分---------------------------------------------- */
+
+// PreByUrlParseStrategy 是PredictByUrl接口的解析策略
+type PreByUrlParseStrategy struct{}
+
+func (pbups *PreByUrlParseStrategy) Execute(payload interface{}) ([]apis.Value, error) {
+
+	// 放到Value中
+	outputs := []apis.Value{
+		{
+			ValueType: apis.ComposeType,
+			Value:     str,
+			Name:      "worldPoints",
+			Type:      apis.ConstData,
+		},
+		{
+			Value:     "true",
+			Name:      "success",
+			Type:      apis.LocalData,
+			ValueType: apis.BoolType,
+		},
+	}
+	return outputs, nil
+}
+
+// parsePrediction 用于从payload中解析预测结果
+func parsePrediction(data interface{}) (int, error) {
+	// 将 payload 转换为 map[string]interface{}
+	payload, ok := data.(map[string]interface{})
+	if !ok {
+		return 0, fmt.Errorf("[DEVICE RUNTIME] payload parse fail")
+	}
+
+	// 获取 prediction 的值
+	prediction, ok := payload["prediction"]
+	if !ok {
+		return 0, fmt.Errorf("[DEVICE RUNTIME] prediction is not exist")
+	}
+
+	// 将 prediction 转换为整数
+	predictionInt, ok := prediction.(float64) // json 解码时整数可能会被解析为 float64
+	if !ok {
+		return 0, fmt.Errorf("prediction 转换为整数失败")
+	}
+
+	return int(predictionInt), nil
 }

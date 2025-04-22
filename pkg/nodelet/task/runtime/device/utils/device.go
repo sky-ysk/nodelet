@@ -56,13 +56,18 @@ func UpdateDeviceRunning(deviceMap map[string]*apis.Device, clientManager *manag
 		device.Status.Phase = apis.DeviceRunning
 		// 设置更新时间
 		device.Status.LastTime = apis.Time{Time: time.Now()}
-		_, err := clientManager.UpdateDevice(device.Namespace, device.Name, device)
-
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
+		_, err = clientManager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
 		if err != nil {
-			logs.Errorf("update device [%s]  failed[stage running], %s", device.Name, err)
+			logs.Errorf("[DEVICE RUNTIME] Update Device[%s] Failed stage [RUNNING], err:%s", device.Name, err.Error())
 			return err
 		}
-		logs.Infof("update device [%s] successfully[stage running]\n", device.Name)
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] Successfully stage [RUNNING]\n", device.Name)
 	}
 
 	return nil
