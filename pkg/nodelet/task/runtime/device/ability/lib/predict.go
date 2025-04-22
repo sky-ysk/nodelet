@@ -4,225 +4,111 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/utils/value"
 	"io"
-	"mime/multipart"
 	"net/http"
-	"os"
+	"strconv"
 )
 
-type PredictSuccessRes struct {
-	Prediction int `json:"prediction"`
-}
-
-type PredictFailRes struct {
-	Error string `json:"error"`
-}
 type PredictByUrlReq struct {
 	Url        string `json:"url"`
 	Position   string `json:"position"`
 	Type       string `json:"type"`
 	Compressed bool   `json:"compressed"`
 }
+type PreByUrlStrategy struct{}
 
-func PublishPredictInst(imagePath, url string) (PredictSuccessRes, error) {
+func (pbus *PreByUrlStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+	// 需要用到的参数
+	var cameraUrl string
+	var position string
+	var imageType string
+	var compressed bool
 
-	// 打开文件
-	file, err := os.Open(imagePath)
-	if err != nil {
-		logs.Errorf("Open file error: %v\n", err)
-		return PredictSuccessRes{}, err
-	}
-	defer file.Close()
-
-	// 创建缓冲区
-	var buffer bytes.Buffer
-	writer := multipart.NewWriter(&buffer)
-
-	// 添加文件到请求
-	part, err := writer.CreateFormFile("image", imagePath)
-	if err != nil {
-		logs.Errorf("Create form file error: %v\n", err)
-		return PredictSuccessRes{}, err
-	}
-	_, err = io.Copy(part, file)
-	if err != nil {
-		fmt.Printf("Copy file error: %v\n", err)
-		return PredictSuccessRes{}, err
-	}
-
-	// 关闭 writer，确保数据写入缓冲区
-	err = writer.Close()
-	if err != nil {
-		fmt.Printf("Close writer error: %v\n", err)
-		return PredictSuccessRes{}, err
-	}
-	// 创建 POST 请求
-	req, err := http.NewRequest("POST", url, &buffer)
-	if err != nil {
-		fmt.Printf("Create request error: %v\n", err)
-		return PredictSuccessRes{}, err
-	}
-
-	// 设置请求头
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	// 发送请求
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("Send request error: %v\n", err)
-		return PredictSuccessRes{}, err
-	}
-	defer resp.Body.Close()
-
-	// 读取响应
-	respData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Read response error: %v\n", err)
-		return PredictSuccessRes{}, err
-	}
-
-	if resp.StatusCode == http.StatusOK {
-		var successRes PredictSuccessRes
-		err = json.Unmarshal(respData, &successRes)
-		if err != nil {
-			return PredictSuccessRes{}, err
+	for _, param := range params {
+		if param.Name == "url" { //TODO 更改解析方式
+			if param.Type == apis.ConstData {
+				cameraUrl = param.Value
+			}
+		} else if param.Name == "position" {
+			if param.Type == apis.ConstData {
+				position = param.Value
+			}
+		} else if param.Name == "type" {
+			if param.Type == apis.ConstData {
+				imageType = param.Value
+			}
+		} else if param.Name == "compressed" {
+			if param.Type == apis.ConstData {
+				var err error
+				compressed, err = strconv.ParseBool(param.Value)
+				if err != nil {
+					logs.Errorf("[DEVICE RUNTIME] parse param[compressed] error:%v", err.Error())
+				}
+			}
 		}
-		return successRes, err
-
-	} else {
-		var failRes PredictFailRes
-		err = json.Unmarshal(respData, &failRes)
-		if err != nil {
-			return PredictSuccessRes{}, err
-		}
-		logs.Info("predict success")
-		//logs.Errorf("predict failed, the reason is %v", failRes.Error)
-		return PredictSuccessRes{}, err
 	}
+	taskId, err := PublishPredictByUrlInst(compressed, cameraUrl, position, imageType, url)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] PublishPredictByUrlInst fail")
+		return "", err
+	}
+	logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
+	return taskId, nil
 }
 
-//
-//func main() {
-//	// Image file path to test with
-//	imagePath := "test_image.jpg" // Replace with your image path
-//
-//	// API endpoint URL
-//	url := "http://localhost:8080/predict" // Adjust port if needed
-//
-//	// Create buffer for multipart form data
-//	var body bytes.Buffer
-//	writer := multipart.NewWriter(&body)
-//
-//	// Open image file
-//	file, err := os.Open(imagePath)
-//	if err != nil {
-//		log.Fatalf("Failed to open image: %v", err)
-//	}
-//	defer file.Close()
-//
-//	// Create form file field
-//	part, err := writer.CreateFormFile("image", filepath.Base(imagePath))
-//	if err != nil {
-//		log.Fatalf("Failed to create form file: %v", err)
-//	}
-//
-//	// Copy image content to form
-//	_, err = io.Copy(part, file)
-//	if err != nil {
-//		log.Fatalf("Failed to copy image content: %v", err)
-//	}
-//
-//	// Close writer to finalize multipart form
-//	err = writer.Close()
-//	if err != nil {
-//		log.Fatalf("Failed to close writer: %v", err)
-//	}
-//
-//	// Create HTTP request
-//	req, err := http.NewRequest("POST", url, &body)
-//	if err != nil {
-//		log.Fatalf("Failed to create request: %v", err)
-//	}
-//
-//	// Set content type with boundary
-//
-//	// Send request
-//	client := &http.Client{}
-//	resp, err := client.Do(req)
-//	if err != nil {
-//		log.Fatalf("Failed to send request: %v", err)
-//	}
-//	defer resp.Body.Close()
-//
-//	// Read response
-//	respBody, err := io.ReadAll(resp.Body)
-//	if err != nil {
-//		log.Fatalf("Failed to read response: %v", err)
-//	}
-//
-//	// Print results
-//	log.Printf("Status: %d", resp.StatusCode)
-//	log.Printf("Response: %s", string(respBody))
-//}
+func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string, imageType string, url string) (string, error) {
 
-func PublishPredictByUrlInst(compressed bool, cameraUrl string, position string, imageType string, url string) (PredictSuccessRes, error) {
-
-	// 序列化 predictByUrl 为 JSON
-	predictByUrl := PredictByUrlReq{
+	// 构建请求体
+	requestBody := PredictByUrlReq{
 		Url:        cameraUrl,
 		Position:   position,
 		Type:       imageType,
 		Compressed: compressed,
 	}
-	jsonData, err := json.Marshal(predictByUrl)
+
+	// 将请求体编码为 JSON
+	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		logs.Errorf("JSON 序列化错误: %v\n", err)
-		return PredictSuccessRes{}, err
+		return "", fmt.Errorf("无法编码任务数据: %v", err)
 	}
-	logs.Infof("the json data is %s", string(jsonData))
-	// 创建 POST 请求
+
+	// 创建一个 POST 请求
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		logs.Errorf("创建请求错误: %v\n", err)
-		return PredictSuccessRes{}, err
+		return "", fmt.Errorf("创建请求失败: %v", err)
 	}
 
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
 
-	// 发送请求
+	// 发起 HTTP 请求
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		logs.Errorf("发送请求错误: %v\n", err)
-		return PredictSuccessRes{}, err
+		return "", fmt.Errorf("发起请求失败: %v", err)
 	}
 	defer resp.Body.Close()
-	// 读取响应
-	respData, err := io.ReadAll(resp.Body)
+
+	// 检查状态码
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("请求失败，状态码: %d，响应体: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// 读取并解析响应体
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("Read response error: %v\n", err)
-		return PredictSuccessRes{}, err
+		return "", fmt.Errorf("读取响应体失败: %v", err)
 	}
 
-	if resp.StatusCode == http.StatusOK {
-		var successRes PredictSuccessRes
-		err = json.Unmarshal(respData, &successRes)
-		if err != nil {
-			return PredictSuccessRes{}, err
-		}
-		return successRes, err
-
-	} else {
-		var failRes PredictFailRes
-		err = json.Unmarshal(respData, &failRes)
-		if err != nil {
-			return PredictSuccessRes{}, err
-		}
-		logs.Info("predict success")
-		//logs.Errorf("predict failed, the reason is %v", failRes.Error)
-		return PredictSuccessRes{}, err
+	var taskResponse AbilityInstResponse
+	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
+		return "", fmt.Errorf("解析响应体失败: %v", err)
 	}
+
+	// 返回任务 ID
+	return taskResponse.TaskId, nil
 }

@@ -7,7 +7,6 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/utils/value"
-	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
 )
@@ -54,7 +53,7 @@ func (dms *DownloadModelStrategy) Execute(url string, params []apis.Value, engin
 	return taskId, nil
 }
 
-// PublishDownloadModelInst 向指定的 API 发送抓取小球的任务请求
+// PublishDownloadModelInst 发送下载模型的任务请求
 func PublishDownloadModelInst(userId string, modelId string, path string, filename string, url string) (string, error) {
 	// 构建请求体
 	logs.Infof("download url %s", url)
@@ -102,7 +101,7 @@ func PublishDownloadModelInst(userId string, modelId string, path string, filena
 		return "", fmt.Errorf("读取响应体失败: %v", err)
 	}
 
-	var taskResponse GrabBallResponse
+	var taskResponse AbilityInstResponse
 	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
 		return "", fmt.Errorf("解析响应体失败: %v", err)
 	}

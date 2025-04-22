@@ -1,6 +1,7 @@
 package device
 
 import (
+	"encoding/json"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -323,10 +324,15 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			if err != nil {
 				logs.Errorf("[DEVICE RUNTIME] Parse Task[%s] Payload failed", taskId)
 			}
-			runtime.Spec.Outputs = outputs
 			// TODO etcd更新runtime的信息
-			_, err = clientManager.UpdateRuntime(runtime.Name, runtime.Namespace, runtime)
+			patchRuntime, err := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"outputs": outputs,
+				},
+			})
+			_, err = clientManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
 			if err != nil {
+				logs.Errorf("[DEVICE RUNTIME] Patch Task[%s] Runtime[%s] failed", taskId, runtime.Name)
 				return err
 			}
 			go dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Successed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})

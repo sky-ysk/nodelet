@@ -41,11 +41,6 @@ func (gbs *GrabBallStrategy) Execute(url string, params []apis.Value, engine *va
 	return taskId, nil
 }
 
-// GrabBallResponse 定义了预期的响应体结构
-type GrabBallResponse struct {
-	TaskId string `json:"taskId"`
-}
-
 type WorldPoints struct {
 	WorldPoints [][]float64 `json:"world_points"`
 }
@@ -131,7 +126,7 @@ func PublishGrabBallInst(worldPoints [][]float64, url string) (string, error) {
 		return "", fmt.Errorf("读取响应体失败: %v", err)
 	}
 
-	var taskResponse GrabBallResponse
+	var taskResponse AbilityInstResponse
 	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
 		return "", fmt.Errorf("解析响应体失败: %v", err)
 	}

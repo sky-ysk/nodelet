@@ -8,8 +8,12 @@ import (
 	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"net/http"
+	"strings"
 )
 
+/* -----------------------------------------发布指令部分---------------------------------------------- */
+
+// DetectPositionStrategy 策略
 type DetectPositionStrategy struct{}
 
 func (dps *DetectPositionStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
@@ -65,4 +69,102 @@ func PublishDetectPositionInst(url string) (string, error) {
 
 	// 返回任务 ID
 	return taskResponse.TaskId, nil
+}
+
+/* -----------------------------------------指令解析部分---------------------------------------------- */
+
+type DetectPositionParseStrategy struct{}
+
+func (dpps *DetectPositionParseStrategy) Execute(payload interface{}) ([]apis.Value, error) {
+	// 使用对应的函数进行解析
+	worldPoints, err := parseWorldPoints(payload)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] parse world points fail: %s", err.Error())
+		return []apis.Value{}, err
+	}
+	// 转换为字符串
+	str := worldPointsToString(worldPoints)
+	// 放到Value中
+	outputs := []apis.Value{
+		{
+			ValueType: apis.ComposeType,
+			Value:     str,
+			Name:      "worldPoints",
+			Type:      apis.ConstData,
+		},
+		{
+			Value:     "true",
+			Name:      "success",
+			Type:      apis.LocalData,
+			ValueType: apis.BoolType,
+		},
+	}
+	return outputs, nil
+}
+
+// parseWorldPoints 专门将 payload 中的 world_points 解析为 [][]float64 类型
+func parseWorldPoints(payload interface{}) ([][]float64, error) {
+	// 断言 payload 是一个 map[string]interface{}
+	worldPointsMap, ok := payload.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("payload 类型断言失败，不是 map[string]interface{} 类型")
+	}
+
+	// 获取 world_points 对应的值
+	worldPointsInterface, ok := worldPointsMap["world_points"]
+	if !ok {
+		return nil, fmt.Errorf("world_points 字段不存在")
+	}
+
+	// 断言 world_points 是一个 []interface{}
+	worldPointsSlice, ok := worldPointsInterface.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("world_points 类型断言失败，不是 []interface{} 类型")
+	}
+
+	var result [][]float64
+
+	// 遍历 world_points 的每一行
+	for _, rowInterface := range worldPointsSlice {
+		// 断言每一行是 []interface{} 类型
+		rowSlice, ok := rowInterface.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("world_points 中的行类型断言失败，不是 []interface{} 类型")
+		}
+
+		var floatRow []float64
+
+		// 遍历行中的每个元素，将其断言为 float64 类型
+		for _, valueInterface := range rowSlice {
+			valueFloat64, ok := valueInterface.(float64)
+			if !ok {
+				return nil, fmt.Errorf("world_points 中的元素类型断言失败，不是 float64 类型")
+			}
+			floatRow = append(floatRow, valueFloat64)
+		}
+
+		result = append(result, floatRow)
+	}
+
+	return result, nil
+}
+
+// worldPointsToString 将worldPoints转换为string
+func worldPointsToString(worldPoints [][]float64) string {
+	var builder strings.Builder
+	for i, row := range worldPoints {
+		// 将一行中的元素转换为字符串，并用逗号分隔
+		var rowStrings []string
+		for _, value := range row {
+			rowStrings = append(rowStrings, fmt.Sprintf("%f", value))
+		}
+		builder.WriteString(strings.Join(rowStrings, ","))
+
+		// 如果不是最后一行，添加分号
+		if i < len(worldPoints)-1 {
+			builder.WriteString(";")
+		}
+	}
+
+	return builder.String()
 }

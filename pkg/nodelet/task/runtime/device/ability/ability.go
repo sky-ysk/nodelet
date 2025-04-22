@@ -24,8 +24,7 @@ func (ac *AbilityContext) Execute(url string, params []apis.Value, engine *value
 }
 
 // PublishAbilityInst 根据传入的指令来发布对应的指令
-func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, engine *value.Engine, runtime *apis.Runtime,
-	action *apis.Action) (string, error) {
+func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
 	// 构造URL
 	ability := GetAbilityByService(device, inst)
 	ip := device.Status.Abilities[ability].Services[inst].Ip
@@ -41,7 +40,8 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 		strategy = &lib.GrabBallStrategy{}
 	case "Download":
 		strategy = &lib.DownloadModelStrategy{}
-	case "":
+	case "PredictByUrl":
+		strategy = &lib.PreByUrlStrategy{}
 	default:
 		logs.Errorf("[DEVICE RUNTIME] Unknown Ability")
 		return "", fmt.Errorf("unknow ability")
