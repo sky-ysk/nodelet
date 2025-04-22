@@ -474,6 +474,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
 				// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
 				groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
+				groupCopyName = groupCopy.Name
 				// 遍历action和Runtime，依次创建
 				for _, actionReference := range group.Status.Actions {
 					action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
@@ -597,49 +598,22 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						//}
 						// 将获取到的任务关键装填数据写入到本域或者跨域的etcd上的副本group当中
 						// 遍历copyInfo，
-						for key, value := range group.Spec.CopyInfo {
-							groupCopyName = key
+						for _, value := range group.Spec.CopyInfo {
+							patchRuntime, err := json.Marshal(map[string]interface{}{
+								"status": map[string]interface{}{
+									"key_status": data,
+								},
+							})
 							if value != "local" {
-								groupTarget := mc.groupTargets[value]
-								actionTarget := mc.actionTargets[value]
 								runtimeTarget := mc.runtimeTargets[value]
-								groupCopy, err := groupTarget.Get(context.TODO(), groupCopyName, metav1.GetOptions{})
+								// 为跨域迁移--根据GroupName一直找到副本runtime，修改其key_status,这里可以直接根据源Runtime的Name，知道副本任务的Name
+								// 进行patch
+								_, err = runtimeTarget.Patch(context.TODO(), runtime.Name+"-copy", types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
 								if err != nil {
-									logs.Errorf("Get group copy %s failed: %v", groupCopyName, err)
+									logs.Errorf("Patch runtime %s failed: %v", runtimeReference.Name+"-copy", err)
 								}
-								// 为跨域迁移--根据GroupName一直找到副本runtime，修改其key_status
-								for _, copyActionReference := range groupCopy.Status.Actions {
-									if copyActionReference.Name == actionReference.Name {
-										copyAction, err := actionTarget.Get(context.TODO(), copyActionReference.Name, metav1.GetOptions{})
-										if err != nil {
-											logs.Errorf("Get action copy %s failed: %v", copyActionReference.Name, err)
-										}
-										for _, copyRuntimeReference := range copyAction.Status.Runtimes {
-											if copyRuntimeReference.Name == runtimeReference.Name {
-												// 进行patch
-												patchRuntime, err := json.Marshal(map[string]interface{}{
-													"status": map[string]interface{}{
-														"key_status": data,
-													},
-												})
-												_, err = runtimeTarget.Patch(context.TODO(), copyRuntimeReference.Name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
-												if err != nil {
-													logs.Errorf("Patch runtime %s failed: %v", copyRuntimeReference.Name, err)
-												}
-											}
-										}
-									}
-								}
-							} else { // 本域迁移
-								patchRuntime, err := json.Marshal(map[string]interface{}{
-									"status": map[string]interface{}{
-										"key_status": data,
-									},
-								})
-								if err != nil {
-									logs.Errorf("Json Marshal failed, err:%v", err)
-								}
-								_, err = mc.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+							} else { // 本域迁移 根据GroupName一直找到副本runtime，修改其key_status，这里可以直接根据源Runtime的Name，知道副本任务的Name
+								_, err = mc.clientsManager.PatchRuntime(runtime.Name+"-copy", runtime.Namespace, patchRuntime)
 								if err != nil {
 									logs.Errorf("Patch group error-5:%v", err)
 								}

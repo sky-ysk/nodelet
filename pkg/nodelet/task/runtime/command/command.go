@@ -274,8 +274,15 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	if err != nil {
 		logs.Errorf("Failed to get runtime '%s': %v", runtime.Name, err)
 	}
-	keyStatus := etcdRuntime.Status.KeyStatus
-	//logs.Infof("keyStatus: %s", keyStatus)
+	var keyStatus string
+	for keyStatus == "" {
+		etcdRuntime, err = cr.clientsManager.GetRuntime(runtime.Name, runtime.Namespace)
+		if err != nil {
+			logs.Errorf("Failed to get runtime '%s': %v", runtime.Name, err)
+		}
+		keyStatus = etcdRuntime.Status.KeyStatus
+	}
+	logs.Infof("keyStatus: %s", keyStatus)
 
 	//for {
 	//	if cr.client != nil {
