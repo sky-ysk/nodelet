@@ -343,10 +343,10 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.197"
-	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Port = "56663" // 填写这个端口
+	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Port = "55823" // 填写这个端口
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.197"
-	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Port = "48823"
+	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Port = "37427"
 
 	_, err = m.CreateDevice(deviceGalaxea, "test")
 	if err != nil {
