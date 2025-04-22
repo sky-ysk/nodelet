@@ -64,7 +64,7 @@ func GetTaskStatus(taskId string, url string) (TaskResponse, error) {
 	// 检查状态码
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return TaskResponse{}, fmt.Errorf("Request fail, code: %d，response: %s", resp.StatusCode, string(bodyBytes))
+		return TaskResponse{}, fmt.Errorf("request fail, code: %d，response: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// 读取并解析响应体
@@ -73,6 +73,8 @@ func GetTaskStatus(taskId string, url string) (TaskResponse, error) {
 		logs.Errorf(":Read Response fail %v", err)
 		return TaskResponse{}, fmt.Errorf(":Read Response fail %v", err)
 	}
+
+	logs.Infof("task status resp body is %s", string(bodyBytes))
 
 	var taskResponse TaskResponse
 	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {

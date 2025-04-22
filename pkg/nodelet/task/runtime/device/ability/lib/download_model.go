@@ -7,6 +7,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/utils/value"
+	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
 )
@@ -56,6 +57,7 @@ func (dms *DownloadModelStrategy) Execute(url string, params []apis.Value, engin
 // PublishDownloadModelInst 向指定的 API 发送抓取小球的任务请求
 func PublishDownloadModelInst(userId string, modelId string, path string, filename string, url string) (string, error) {
 	// 构建请求体
+	logs.Infof("download url %s", url)
 	requestBody := DownloadParam{
 		UserId:   userId,
 		ModelId:  modelId,
@@ -63,10 +65,12 @@ func PublishDownloadModelInst(userId string, modelId string, path string, filena
 		Filename: filename,
 	}
 	// 将请求体编码为 JSON
+	logs.Infof("req body is %v", requestBody)
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("无法编码任务数据: %v", err)
 	}
+	logs.Infof("download req body %s", string(jsonData))
 
 	// 创建一个 POST 请求
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
@@ -88,6 +92,7 @@ func PublishDownloadModelInst(userId string, modelId string, path string, filena
 	// 检查状态码
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
+		logs.Errorf("download not ok %s", string(bodyBytes))
 		return "", fmt.Errorf("请求失败，状态码: %d，响应体: %s", resp.StatusCode, string(bodyBytes))
 	}
 
