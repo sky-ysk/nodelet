@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 	"os"
 	"os/exec"
@@ -27,11 +28,12 @@ type CommandRuntime struct {
 	recorder       recorder.EventRecorder
 	connectionPool *pool.ConnectionPool
 	//client      *grpc_client.RuntimeClient
-	stopSignals map[string]chan struct{} // 用于标记进程是否被外部停止
-	mu          sync.Mutex               // 保护clients和stopSignals
+	stopSignals    map[string]chan struct{} // 用于标记进程是否被外部停止
+	clientsManager *manager.Manager
+	mu             sync.Mutex // 保护clients和stopSignals
 }
 
-func NewCommandRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecorder, pool *pool.ConnectionPool) *CommandRuntime {
+func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, recorder recorder.EventRecorder, pool *pool.ConnectionPool) *CommandRuntime {
 	pm := process.NewProcessManager()
 	return &CommandRuntime{
 		processManager: pm,
@@ -39,6 +41,7 @@ func NewCommandRuntime(eventBus *eventbus.EventBus, recorder recorder.EventRecor
 		recorder:       recorder,
 		stopSignals:    make(map[string]chan struct{}),
 		connectionPool: pool,
+		clientsManager: clientsManager,
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -244,20 +247,19 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
 	// client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
 	var port string
-	var err error
 	if runtime.Spec.EnableFineGrainedControlPort != nil {
 		port = *runtime.Spec.EnableFineGrainedControlPort
 		client := cr.getClient(port)
 		if client == nil {
 			logs.Info("client is nil")
 		}
-		_, err = client.RunAppStore()
+		index, err := client.RunAppStore()
 		if err != nil {
 			logs.Errorf("任务保存状态失败: %e", err)
 		}
 		cr.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
 
-		return "ABCDEFG"
+		return strconv.FormatInt(index, 10)
 	} else {
 		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
 		return ""
@@ -268,8 +270,11 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	// 恢复任务状态，调用grpc接口通知任务恢复任务状态，任务状态存放在etcd当中（group下对应runtime下的runtimeStatus下的keyStatus属性）
 	nowTime := apis.Time{time.Now()}
-	// keyStatus := action.Status.RuntimeStatus[runtimeIndex].KeyStatus
-	keyStatus := ""
+	etcdRuntime, err := cr.clientsManager.GetRuntime(runtime.Name, runtime.Namespace)
+	if err != nil {
+		logs.Errorf("Failed to get runtime '%s': %v", runtime.Name, err)
+	}
+	keyStatus := etcdRuntime.Status.KeyStatus
 	//logs.Infof("keyStatus: %s", keyStatus)
 
 	//for {
@@ -280,7 +285,6 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//}
 	// rpc调用restore()
 	var port string
-	var err error
 	if runtime.Spec.EnableFineGrainedControlPort != nil {
 		port = *runtime.Spec.EnableFineGrainedControlPort
 		client := cr.getClient(port)

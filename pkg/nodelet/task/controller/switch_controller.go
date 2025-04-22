@@ -600,17 +600,35 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						for key, value := range group.Spec.CopyInfo {
 							groupCopyName = key
 							if value != "local" {
-								// 为跨域迁移--暂时修改--暂时使用update
-								groupTarget := mc.groupTargets[value] //-=-=
-								patchGroup, err := json.Marshal(map[string]interface{}{
-									"status": map[string]interface{}{
-										"copy_status": "Starting",
-									},
-								})
-								//copyGroup.Status.CopyStatus = "Starting"
-								_, err = groupTarget.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+								groupTarget := mc.groupTargets[value]
+								actionTarget := mc.actionTargets[value]
+								runtimeTarget := mc.runtimeTargets[value]
+								groupCopy, err := groupTarget.Get(context.TODO(), groupCopyName, metav1.GetOptions{})
 								if err != nil {
-									logs.Errorf("Patch group %s cross domain failed: %v", groupCopyName, err)
+									logs.Errorf("Get group copy %s failed: %v", groupCopyName, err)
+								}
+								// 为跨域迁移--根据GroupName一直找到副本runtime，修改其key_status
+								for _, copyActionReference := range groupCopy.Status.Actions {
+									if copyActionReference.Name == actionReference.Name {
+										copyAction, err := actionTarget.Get(context.TODO(), copyActionReference.Name, metav1.GetOptions{})
+										if err != nil {
+											logs.Errorf("Get action copy %s failed: %v", copyActionReference.Name, err)
+										}
+										for _, copyRuntimeReference := range copyAction.Status.Runtimes {
+											if copyRuntimeReference.Name == runtimeReference.Name {
+												// 进行patch
+												patchRuntime, err := json.Marshal(map[string]interface{}{
+													"status": map[string]interface{}{
+														"key_status": data,
+													},
+												})
+												_, err = runtimeTarget.Patch(context.TODO(), copyRuntimeReference.Name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
+												if err != nil {
+													logs.Errorf("Patch runtime %s failed: %v", copyRuntimeReference.Name, err)
+												}
+											}
+										}
+									}
 								}
 							} else { // 本域迁移
 								patchRuntime, err := json.Marshal(map[string]interface{}{
@@ -627,12 +645,8 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 								}
 							}
 						}
-
-						//logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[i].RuntimeStatus[j].KeyStatus)
 						// 关闭源任务当中的runtime
 						logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-						//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
-						//time.Sleep(1 * time.Second)
 					}
 					err = mc.runtimeManager.Kill(group, action, runtime, action.Spec.Name, runtime.Spec.Name) //最后都需要将runtime进程关闭
 					if err != nil {
