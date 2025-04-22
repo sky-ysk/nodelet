@@ -15,14 +15,15 @@ import (
 
 type GrabBallStrategy struct{}
 
-func (gbs *GrabBallStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+func (gbs *GrabBallStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
 	var worldPoints [][]float64
 	for _, param := range params {
+		logs.Infof("[DEVICE RUNTIME] param is %v, name %s, type%s", param, param.Name, param.Type)
 		if param.Name == "worldPoints" {
 			if param.Type == apis.ConstData {
 				worldPoints = GetWorldPoints(param)
 			} else if param.Type == apis.LocalData {
-				worldPointValue, err := engine.ExtractLocalValue(&param, *runtime)
+				worldPointValue, err := engine.ExtractLocalValue(&param, *action)
 				if err != nil {
 					logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail")
 					return "", err

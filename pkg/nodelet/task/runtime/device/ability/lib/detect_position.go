@@ -16,7 +16,7 @@ import (
 // DetectPositionStrategy 策略
 type DetectPositionStrategy struct{}
 
-func (dps *DetectPositionStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+func (dps *DetectPositionStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
 	taskId, err := PublishDetectPositionInst(url)
 	if err != nil {
 		logs.Errorf("[DEVICE RUNTIME] PublishDetectPosition fail")

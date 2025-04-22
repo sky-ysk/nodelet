@@ -20,7 +20,7 @@ type DownloadParam struct {
 
 type DownloadModelStrategy struct{}
 
-func (dms *DownloadModelStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+func (dms *DownloadModelStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
 	var userId string
 	var modelId string
 	var path string

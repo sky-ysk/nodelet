@@ -23,7 +23,7 @@ type PredictByUrlReq struct {
 }
 type PreByUrlStrategy struct{}
 
-func (pbus *PreByUrlStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
+func (pbus *PreByUrlStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
 	// 需要用到的参数
 	var cameraUrl string
 	var position string

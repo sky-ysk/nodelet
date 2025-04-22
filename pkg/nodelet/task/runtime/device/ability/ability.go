@@ -9,7 +9,7 @@ import (
 )
 
 type AbilityStrategy interface {
-	Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error)
+	Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error)
 }
 type AbilityContext struct {
 	strategy AbilityStrategy
@@ -19,8 +19,8 @@ func (ac *AbilityContext) SetStrategy(strategy AbilityStrategy) {
 	ac.strategy = strategy
 }
 
-func (ac *AbilityContext) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime) (string, error) {
-	return ac.strategy.Execute(url, params, engine, runtime)
+func (ac *AbilityContext) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
+	return ac.strategy.Execute(url, params, engine, runtime, action)
 }
 
 // PublishAbilityInst 根据传入的指令来发布对应的指令
@@ -49,7 +49,7 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 
 	context := &AbilityContext{}
 	context.SetStrategy(strategy)
-	return context.Execute(url, params, engine, runtime)
+	return context.Execute(url, params, engine, runtime, action)
 
 }
 
