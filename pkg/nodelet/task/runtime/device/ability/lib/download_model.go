@@ -27,12 +27,12 @@ func PublishDownloadModelInst(user_id string, model_id string, path string, file
 		Filename: filename,
 	}
 	// 将请求体编码为 JSON
-	logs.Infof("req body is %v", requestBody)
+	//logs.Infof("req body is %v", requestBody)
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("无法编码任务数据: %v", err)
 	}
-	logs.Infof("download req body %s", string(jsonData))
+	//logs.Infof("download req body %s", string(jsonData))
 
 	// 创建一个 POST 请求
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
