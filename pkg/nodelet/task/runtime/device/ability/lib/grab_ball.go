@@ -22,7 +22,7 @@ func (gbs *GrabBallStrategy) Execute(url string, params []apis.Value, engine *va
 			if param.Type == apis.ConstData {
 				worldPoints = GetWorldPoints(param)
 			} else if param.Type == apis.LocalData {
-				worldPointValue, err := engine.ExtractLocalValue(&param, runtime)
+				worldPointValue, err := engine.ExtractLocalValue(&param, *runtime)
 				if err != nil {
 					logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail")
 					return "", err
