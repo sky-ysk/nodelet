@@ -413,10 +413,10 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "48513" // 填写这个端口
+	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "35439" // 填写这个端口
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Port = "48513" // 填写这个端口
+	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Port = "35439" // 填写这个端口
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "37767"
