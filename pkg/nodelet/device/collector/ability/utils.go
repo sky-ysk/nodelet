@@ -275,15 +275,15 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 	}
-	logs.Info("publish get request\n")
+	logs.Info("[DEVICE EXPORTER--ABILITY MONITOR] Publish Get All CR Request")
 	response, err := client.Get(requestForGet.Url)
 	if err != nil {
-		logs.Error("get response error: %v\n", err)
+		logs.Errorf("[DEVICE EXPORTER--ABILITY MONITOR] Get Response error: %v", err)
 		return []AbilityInstance{}, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		logs.Error("response code is %v\n", response.StatusCode)
+		logs.Errorf("[DEVICE EXPORTER--ABILITY MONITOR] Response Code is %v", response.StatusCode)
 		return []AbilityInstance{}, errors.New(response.Status)
 	}
 	responseBody, err := io.ReadAll(response.Body)
@@ -293,10 +293,10 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 	var abilityInstances []AbilityInstance
 	err = json.Unmarshal(responseBody, &abilityInstances)
 	if err != nil {
-		logs.Error("unmarshal response error: %v\n", err)
+		logs.Errorf("[DEVICE EXPORTER--ABILITY MONITOR] Unmarshal Response error: %v", err)
 		return []AbilityInstance{}, err
 	}
-	logs.Info("unmarshal response successfully\n")
+	logs.Info("[DEVICE EXPORTER--ABILITY MONITOR] Unmarshal Response Successfully\n")
 	return abilityInstances, nil
 }
 
@@ -309,37 +309,6 @@ func FindIdByAbilityName(abilityName string, abilityInstances []AbilityInstance)
 			return abilityInstance.Id, nil
 		}
 	}
-	logs.Errorf("[DEVICE EXPORTER] Can Not Find %s", abilityName)
+	logs.Errorf("[DEVICE EXPORTER--ABILITY MONITOR] Can Not Find %s", abilityName)
 	return "", errors.New(abilityName + " is not found")
-}
-
-func GetAbilityExeStatus(uuid string, url string) (AdjustStatus, error) {
-	requestForGet := NewGetRequest(fmt.Sprintf("%s/ability/%s/adjust-status", url, uuid))
-	// 创建HTTP client
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-	logs.Info("publish get request\n")
-	response, err := client.Get(requestForGet.Url)
-	if err != nil {
-		logs.Error("get response error: %v\n", err)
-		return AdjustStatus{}, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		logs.Error("response code is %v\n", response.StatusCode)
-		return AdjustStatus{}, errors.New(response.Status)
-	}
-	responseBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		return AdjustStatus{}, err
-	}
-	var adjustStatus AdjustStatus
-	err = json.Unmarshal(responseBody, &adjustStatus)
-	if err != nil {
-		logs.Error("unmarshal response error: %v\n", err)
-		return AdjustStatus{}, err
-	}
-	logs.Info("unmarshal response successfully\n")
-	return adjustStatus, nil
 }

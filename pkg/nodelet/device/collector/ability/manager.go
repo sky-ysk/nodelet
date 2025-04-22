@@ -32,15 +32,15 @@ func (am *ManagerOfAbility) BindUUID() error {
 	// 首先获取所有的ability信息
 	instances, err := GetAbilityInstances(am.Url)
 	if err != nil {
-		logs.Errorf("[DEVICE EXPORTER] get ability instances fail")
-		return fmt.Errorf("[DEVICE EXPORTER] get ability instances fail")
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Get Ability Instances Fail")
+		return fmt.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Get Ability Instances Fail")
 	}
 
 	// 通过AbilityName找到所有对应的uuid
 	var id string
 	id, err = FindIdByAbilityName(am.Name, instances)
 	if err != nil {
-		logs.Errorf("[DEVICE EXPORTER] Find UUId By AbilityName fail")
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Find UUId By AbilityName fail")
 		return err
 	}
 	// 填写相应字段
@@ -56,7 +56,7 @@ func (am *ManagerOfAbility) GetUUID() (string, error) {
 func (am *ManagerOfAbility) GetHeartBeat() (HeartBeat, error) {
 	heartBeat, err := GetAbilityState(am.Url, am.UUid)
 	if err != nil {
-		logs.Errorf("[DEVICE EXPORTER] get heartbeat fail")
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Get Heartbeat Fail")
 		return HeartBeat{}, err
 	}
 	return heartBeat, nil
@@ -64,10 +64,10 @@ func (am *ManagerOfAbility) GetHeartBeat() (HeartBeat, error) {
 
 func (am *ManagerOfAbility) IsOnline() (bool, error) {
 	// 获取全部的心跳包
-	logs.Infof("[DEVICE EXPORTER] Try to get heart beat......\n")
+	logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Try to get heart beat......")
 	hearBeats, err := GetAbilityHeartBeat(am.Url)
 	if err != nil {
-		logs.Error("[DEVICE EXPORTER] Get heart beats error\n")
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Get HeartBeats Error, err:%v", err)
 		return false, err
 	}
 
@@ -88,24 +88,23 @@ func (am *ManagerOfAbility) StartupAbility() (HeartBeat, error) {
 	// 获取能力的uuid
 	id, err := am.GetUUID()
 	if err != nil {
-		logs.Info("can not get uuid\n")
+		logs.Info("[DEVICE EXPORTER-ABILITY MONITOR] Can Not Get uuid\n")
 		return HeartBeat{}, err
 	}
-	logs.Info("find ability's uuid\n")
+	logs.Info("[DEVICE EXPORTER-ABILITY MONITOR] Find Ability's uuid\n")
 	// 获取能力的taskId
 	taskId, err := PostLifeCycleRequest(id, Start, am.Url)
 	if err != nil {
-		logs.Info("can not post lifecycle request and obtain taskId\n")
+		logs.Info("[DEVICE EXPORTER-ABILITY MONITOR] can not post lifecycle request and obtain taskId\n")
 		return HeartBeat{}, err
 	}
 	am.TaskId = taskId
-	fmt.Println("taskId is ", taskId)
 	for {
-		time.Sleep(5000 * time.Millisecond)
+		time.Sleep(9000 * time.Millisecond)
 		var state AbilityState
 		var heartBeat HeartBeat
-		logs.Infof("getting ability state\n")
-		logs.Infof("uuid is%v", am.UUid)
+		logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] getting ability state\n")
+		logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] uuid is%v", am.UUid)
 		heartBeat, err = GetAbilityState(am.Url, am.UUid)
 		state = heartBeat.State
 		if err != nil {
@@ -115,26 +114,25 @@ func (am *ManagerOfAbility) StartupAbility() (HeartBeat, error) {
 		switch state {
 		case Standby: // 进入standby状态说明启动成功，可以connect了
 			am.State = state
-			logs.Info("the ability state is standby, publish connect command...\n")
+			logs.Info("[DEVICE EXPORTER-ABILITY MONITOR] the ability state is standby, publish connect command...\n")
 			taskId, err = PostLifeCycleRequest(id, Connect, am.Url)
 			if err != nil {
-				logs.Info("can not post lifecycle request and obtain taskId\n")
+				logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] can not post lifecycle request and obtain taskId, err:%s", err.Error())
 				return HeartBeat{}, err
 			}
-			logs.Info("successfully post lifecycle request and obtain taskId\n")
+			logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] successfully post lifecycle request and obtain taskId\n")
 
 		case Running: // 进入running状态说明程序正在运行了
-			logs.Info("the ability state is running, startup ability successfully\n")
+			logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] the ability state is running, startup ability successfully\n")
 			am.State = state
 			return heartBeat, nil
 		case Error: // 进入error状态说明程序进入错误
-			logs.Info("the ability state is error, startup ability fail\n")
+			logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] the ability state is error, startup ability fail\n")
 			am.State = state
-			return HeartBeat{}, fmt.Errorf("ability is in error state")
+			return HeartBeat{}, fmt.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] ability is in error state")
 		default:
-			logs.Infof("the ability state is %v", state)
+			logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] the ability state is %v", state)
 			am.State = state
-
 		}
 	}
 
