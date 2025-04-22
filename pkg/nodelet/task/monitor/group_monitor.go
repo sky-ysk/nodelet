@@ -1279,6 +1279,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	runtimeStatusPhase := runtime.Status.Phase
 	if !isCopyGroup {
 		taskPhase := task.Status.Phase
+		logs.Infof("Runtime END: runtimename:%s, actionname %s", runtime.Spec.Name, action.Spec.Name)
 		logs.Infof("Runtime END: taskStatus:%v, groupStatus:%v, actionStatus:%v, runtimeStatus:%v", taskPhase, GroupStatusPhase, actionStatusPhase, runtimeStatusPhase)
 	} else {
 		logs.Infof("Runtime END: groupStatus:%v, actionStatus:%v, runtimeStatus:%v", GroupStatusPhase, actionStatusPhase, runtimeStatusPhase)

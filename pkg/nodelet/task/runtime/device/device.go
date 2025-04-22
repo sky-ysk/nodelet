@@ -2,6 +2,7 @@ package device
 
 import (
 	"encoding/json"
+	"errors"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -66,6 +67,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 	//TODO 改runtime的map
 	// 构造参数
 	dn, _, ds, err := dr.engine.ExtractDeviceImage(runtime.Spec.Image)
+	logs.Infof("ds is %s, image %s", ds, runtime.Spec.Image)
 	if err != nil {
 		logs.Errorf("[DEVICE RUNTIME] Extract Device Value error: %s", err.Error())
 		return err
@@ -312,7 +314,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			logs.Errorf("[DEVICE RUNTIME] Task[%s] is Error", taskId)
 			// 1.处理runtime
 			dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Failed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
-
+			return errors.New(resp.Message)
 		case lib.Finished: // 处于完成状态
 			logs.Infof("[DEVICE RUNTIME] Task[%s] is Finished", taskId)
 			// 1.处理runtime
@@ -342,6 +344,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 				logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 				return err
 			}
+			return nil
 		}
 	}
 
