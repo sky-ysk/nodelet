@@ -419,7 +419,7 @@ func TestCreateWorkFlow(t *testing.T) {
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Port = "35439" // 填写这个端口
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "37767"
+	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "52899"
 	_, err = m.CreateDevice(deviceLeju, "test")
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
