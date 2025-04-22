@@ -159,7 +159,7 @@ func parsePrediction(data interface{}) (int, error) {
 	// 将 prediction 转换为整数
 	predictionInt, ok := prediction.(float64) // json 解码时整数可能会被解析为 float64
 	if !ok {
-		return 0, fmt.Errorf("prediction 转换为整数失败")
+		return 0, fmt.Errorf("[DEVICE RUNTIME] Prediction ")
 	}
 
 	return int(predictionInt), nil

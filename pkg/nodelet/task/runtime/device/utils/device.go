@@ -105,3 +105,36 @@ func UpdateDeviceFinished(deviceMap map[string]*apis.Device, clientManager *mana
 
 	return nil
 }
+
+// UpdateDeviceError 用于在已经获得任务的执行状态 更新device的状态
+func UpdateDeviceError(deviceMap map[string]*apis.Device, clientManager *manager.Manager) error {
+
+	for name, device := range deviceMap {
+
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[ERROR]", name)
+		device.Status.Lock.Ref -= 1
+		if device.Status.Lock.Ref == 0 {
+			device.Status.Lock.IsLocked = false
+		}
+		// 将phase更改为running
+		device.Status.Phase = apis.DeviceIdle
+		// 设置更新时间
+		device.Status.LastTime = apis.Time{Time: time.Now()}
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"lock":      device.Status.Lock,
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
+
+		_, err = clientManager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE RUNTIME] Update Device[%s] stage[ERROR], err:%s", device.Name, err)
+			return err
+		}
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] successfully stage [ERROR]\n", device.Name)
+	}
+
+	return nil
+}
