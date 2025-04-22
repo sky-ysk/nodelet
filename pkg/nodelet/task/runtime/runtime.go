@@ -77,7 +77,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			//runtime = wasm.NewWasmRuntime()
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.eventbus, rm.recorder, rm.pool)
+			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime()

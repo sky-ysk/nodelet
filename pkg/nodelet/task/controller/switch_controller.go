@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hit.edu/framework/pkg/apimachinery/watch"
+	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
@@ -13,13 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/util/wait"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/tools/cache"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
@@ -37,15 +37,16 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	//actionClient  core.ActionInterface
 	//runtimeClient core.RuntimeInterface
 	clientsManager *manager.Manager
+	nodeName       string
 	// 增加获取所有Namespace下的group的client-go
 	allGroupsClient core.GroupInterface
-	// Event 相关组件
-	eventIndexer  cache.Indexer    // 这个参数就是cache.Controller当中的Indexer缓存
-	eventInformer cache.Controller // cache.Controller当中包含了cache.Index ,这里我们将cache.Controller中的Indexer拎出来，是为了更好地编写代码而已，其实不要这个Indexer也是OK的，因为cache.Controller当中也是含有Indexer的
-
+	//// Event 相关组件
+	//eventIndexer  cache.Indexer    // 这个参数就是cache.Controller当中的Indexer缓存
+	//eventInformer cache.Controller // cache.Controller当中包含了cache.Index ,这里我们将cache.Controller中的Indexer拎出来，是为了更好地编写代码而已，其实不要这个Indexer也是OK的，因为cache.Controller当中也是含有Indexer的
+	eventClient core.EventInterface
 	// 工作队列
-	queue workqueue.TypedRateLimitingInterface[string]
-
+	//queue workqueue.TypedRateLimitingInterface[string]
+	queue workqueue.TypedRateLimitingInterface[*apis.Event]
 	// 运行时依赖组件
 	runtimeManager *runtime.RuntimeManager
 
@@ -62,17 +63,16 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	groupManager group.Manager
 }
 
-func NewMigrationController(clientSet *clients.ClientSet, clientsManager *manager.Manager, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string, groupTarget map[string]cross_core.GroupInterface, ActionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface, groupManager group.Manager) *MigrationController {
+func NewMigrationController(eventClient core.EventInterface, clientSet *clients.ClientSet, clientsManager *manager.Manager, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string, groupTarget map[string]cross_core.GroupInterface, ActionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface, groupManager group.Manager) *MigrationController {
 	nowTime := time.Now()
 	//创建资源的List Watcher
-	eventListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "events", "test", fields.Everything())
-	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
-
+	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*apis.Event]())
 	// 先创建控制器实例
 	ctrl := &MigrationController{
 		//groupClient:    groupClient,
 		//actionClient:   actionClient,
 		//runtimeClient:  runtimeClient,
+		eventClient:     eventClient,
 		clientsManager:  clientsManager,
 		allGroupsClient: clientSet.Core().Groups(metav1.NamespaceAll),
 		queue:           queue,
@@ -84,24 +84,40 @@ func NewMigrationController(clientSet *clients.ClientSet, clientsManager *manage
 		actionTargets:   ActionTarget,
 		runtimeTargets:  runtimeTarget,
 		groupManager:    groupManager,
+		nodeName:        nodeName,
 	}
-	eventOptions := cache.InformerOptions{
-		ListerWatcher: eventListWatcher,
-		ObjectType:    &apis.Event{},
-		Handler: cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				// 这里遇到一个问题，就是如果说etcd里有了事件，这时候你开启nodelet，会读取这个事件，虽然不是AddFunc触发的？TODO 之后看怎么解决
-				//if event, ok := obj.(*apis.Event); ok {
-				//	if time.Now().After(event.EventTime.Time) { // 该事件是etcd当中之前发生的事件，注意如果事件的时间和当前时间相同，则返回false，逻辑正确
-				//		return
-				//	}
-				//	if event.InvolvedObject.Name == node.NodeName && event.Reason == events.TriggerMigration {
-				//		key, _ := cache.MetaNamespaceKeyFunc(obj)
-				//		queue.Add(key)
-				//	}
-				//}
+	return ctrl
+}
+func (mc *MigrationController) eventWatcher() {
+	// 筛选出 type是 EventTypeMigration 的事件
+	// fieldSelector := fmt.Sprintf("type=%v", apis.EventTypeMigration)
+	// 设置长超时时间
+	var timeout int64 = 3600
+	watchOptions := meta.ListOptions{
+		TimeoutSeconds: &timeout,
+		// FieldSelector:  fieldSelector,
+	}
+
+	watcher, err := mc.eventClient.Watch(context.TODO(), watchOptions)
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Stop() // 确保 watcher 被停止
+	watchChan := watcher.ResultChan()
+
+	for {
+		select {
+		case event, ok := <-watchChan:
+			if !ok {
+				logs.Infof("watchChan closed")
+				return
+			}
+			// 打印事件类型和对象的相关信息
+			logs.Infof("接收到事件类型: %v\n", event.Type)
+			switch event.Type {
+			case watch.Added:
 				// 类型断言放在最外层，避免重复断言
-				event, ok := obj.(*apis.Event)
+				event, ok := event.Object.(*apis.Event)
 				//logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, ctrl.startTime)
 				if !ok {
 					return
@@ -113,33 +129,32 @@ func NewMigrationController(clientSet *clients.ClientSet, clientsManager *manage
 				//	(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
 				//	return // 跳过历史事件/非本节点事件/非迁移触发事件
 				//}
-				if event.EventTime.Time.Before(ctrl.startTime) ||
+				if event.EventTime.Time.Before(mc.startTime) ||
 					(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
-					return // 跳过历史事件/非本节点事件/非迁移触发事件
+					continue // 跳过历史事件/非本节点事件/非迁移触发事件
 				}
-				if event.InvolvedObject.Kind == "Node" && event.InvolvedObject.Name != nodeName { //我们希望处理对Group的Migration和Node的Migration，如果是Node的Migration，需要保证和节点的名字一致
-					return
+				if event.InvolvedObject.Kind == "Node" && event.InvolvedObject.Name != mc.nodeName { //我们希望处理对Group的Migration和Node的Migration，如果是Node的Migration，需要保证和节点的名字一致
+					continue
 				}
 				if event.InvolvedObject.Kind == "Group" {
-					_, err := groupManager.GetGroupByName(event.InvolvedObject.Name)
+					_, err := mc.groupManager.GetGroupByName(event.InvolvedObject.Name)
 					if err != nil { // 说明该节点上没这个任务，那就不用触发迁移
-						return
+						continue
 					}
 				}
 				logs.Info("++++++++++++++++++++++Events--------事件为迁移事件")
-				// 所有条件满足时入队
+				// mc.handleEventEvent(event)
+				// // 所有条件满足时入队
 				logs.Infof("switch controller: event informer AddFunc(): %v", event.Name)
-				key, _ := cache.MetaNamespaceKeyFunc(obj)
-				queue.Add(key)
-			},
-		},
-		ResyncPeriod: 0,
-		Indexers:     cache.Indexers{},
+				// key, _ := cache.MetaNamespaceKeyFunc(obj)
+				mc.queue.Add(event)
+			case watch.Modified:
+			case watch.Deleted:
+			case watch.Error:
+			default:
+			}
+		}
 	}
-	eventIndexer, eventInformer := cache.NewInformerWithOptions(eventOptions)
-	ctrl.eventIndexer = eventIndexer
-	ctrl.eventInformer = eventInformer
-	return ctrl
 }
 
 // Run方法
@@ -151,16 +166,17 @@ func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 
 	go func() {
 		defer wg.Done()
-		mc.eventInformer.Run(stopCh)
+		mc.eventWatcher()
+		//mc.eventInformer.Run(stopCh)
 	}()
 
-	//缓存同步仅指初始的列表操作完成，后续的更新是由Informer的Watch机制自动处理的，不需要手动同步。因此，在控制器启动时只需要等待一次初始同步即可，之后Informer会自动维护缓存的更新，不需要循环检查。
-	// 等待缓存同步 启动后第一次将全量数据加载到本地缓存中
-	if !cache.WaitForCacheSync(stopCh, mc.eventInformer.HasSynced) { //WaitForCacheSync:是否同步完成，返回false的话报错
-		logs.Errorf("Timed out waiting for caches to sync")
-		return
-	}
-	logs.Trace("缓存同步完成=======================")
+	////缓存同步仅指初始的列表操作完成，后续的更新是由Informer的Watch机制自动处理的，不需要手动同步。因此，在控制器启动时只需要等待一次初始同步即可，之后Informer会自动维护缓存的更新，不需要循环检查。
+	//// 等待缓存同步 启动后第一次将全量数据加载到本地缓存中
+	//if !cache.WaitForCacheSync(stopCh, mc.eventInformer.HasSynced) { //WaitForCacheSync:是否同步完成，返回false的话报错
+	//	logs.Errorf("Timed out waiting for caches to sync")
+	//	return
+	//}
+	//logs.Trace("缓存同步完成=======================")
 	wg.Add(workers)
 	for i := 0; i < workers; i++ {
 		go func() {
@@ -193,16 +209,16 @@ func (mc *MigrationController) runWorker() {
 }
 
 // 处理Event事件
-func (c *MigrationController) handleEventEvent(key string) error {
-	obj, exists, err := c.eventIndexer.GetByKey(key)
-	if err != nil {
-		return fmt.Errorf("error fetching object with key %s from store: %v", key, err)
-	}
-	// 情况1：Evnet已删除
-	if !exists {
-		return c.handleDeleteEvent(key)
-	}
-	event := obj.(*apis.Event)
+func (c *MigrationController) handleEventEvent(event *apis.Event) error {
+	//obj, exists, err := c.eventIndexer.GetByKey(key)
+	//if err != nil {
+	//	return fmt.Errorf("error fetching object with key %s from store: %v", key, err)
+	//}
+	//// 情况1：Evnet已删除
+	//if !exists {
+	//	return c.handleDeleteEvent(key)
+	//}
+	//event := obj.(*apis.Event)
 	// 1、节点资源不足触发的迁移
 	if event.InvolvedObject.Kind == "Node" {
 		nodeName := event.InvolvedObject.Name          // TODO 目前还只适配了节点资源不足触发的迁移
@@ -220,8 +236,7 @@ func (mc *MigrationController) handleDeleteEvent(key string) error {
 
 // 触发Group迁移，带重试机制
 func (mc *MigrationController) triggerGroupMigration(groupNamespace, groupName string, event *apis.Event) error {
-
-	logs.Info("-----------------------认为触发迁移-------------------------")
+	logs.Info("-----------------------人为触发迁移-------------------------")
 	group, err := mc.clientsManager.GetGroup(groupName, groupNamespace)
 	if err != nil {
 		logs.Errorf("Get group %s failed: %v", groupName, err)
@@ -340,7 +355,25 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	// 2、迁移
 	logs.Infof("Group:%v migration start", group.Name) //此处作为迁移的开始
 	var groupCopyName string
-	if group.Spec.Replicas[0]+group.Spec.Replicas[1] > 0 { // 提前部署了副本，那么就是修改副本的状态，让副本真正启动（Init->Running）
+	var copiesInDomain, copiesInOtherDomain int32 = 0, 0
+	// 安全处理逻辑
+	// 情况1：用户未传参时 Replicas == nil
+	if group.Spec.Replicas == nil {
+		logs.Info("Replicas未配置，使用默认值[0,0]")
+	} else if len(group.Spec.Replicas) < 2 {
+		logs.Warn("Replicas长度不足，使用前N个值并用0补全",
+			"输入值", group.Spec.Replicas,
+			"有效长度", len(group.Spec.Replicas))
+		// 安全取值（避免越界）
+		if len(group.Spec.Replicas) >= 1 {
+			copiesInDomain = group.Spec.Replicas[0]
+		}
+		// 第二个值保持默认0
+	} else { // 情况3：正常情况
+		copiesInDomain = group.Spec.Replicas[0]
+		copiesInOtherDomain = group.Spec.Replicas[1]
+	}
+	if copiesInDomain+copiesInOtherDomain > 0 { // 提前部署了副本，那么就是修改副本的状态，让副本真正启动（Init->Running）
 		// 说明当前group已经提前往etcd里写入了副本group，那么此处就不用再写入了，只需要将原先写的副本group信息当中的groupCopy.Status.CopyStatus 改为"Starting"即可-采用patch
 		patchGroup, err := json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
@@ -441,6 +474,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
 				// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
 				groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
+				groupCopyName = groupCopy.Name
 				// 遍历action和Runtime，依次创建
 				for _, actionReference := range group.Status.Actions {
 					action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
@@ -564,42 +598,29 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						//}
 						// 将获取到的任务关键装填数据写入到本域或者跨域的etcd上的副本group当中
 						// 遍历copyInfo，
-						for key, value := range group.Spec.CopyInfo {
-							groupCopyName = key
+						for _, value := range group.Spec.CopyInfo {
+							patchRuntime, err := json.Marshal(map[string]interface{}{
+								"status": map[string]interface{}{
+									"key_status": data,
+								},
+							})
 							if value != "local" {
-								// 为跨域迁移--暂时修改--暂时使用update
-								groupTarget := mc.groupTargets[value] //-=-=
-								patchGroup, err := json.Marshal(map[string]interface{}{
-									"status": map[string]interface{}{
-										"copy_status": "Starting",
-									},
-								})
-								//copyGroup.Status.CopyStatus = "Starting"
-								_, err = groupTarget.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+								runtimeTarget := mc.runtimeTargets[value]
+								// 为跨域迁移--根据GroupName一直找到副本runtime，修改其key_status,这里可以直接根据源Runtime的Name，知道副本任务的Name
+								// 进行patch
+								_, err = runtimeTarget.Patch(context.TODO(), runtime.Name+"-copy", types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
 								if err != nil {
-									logs.Errorf("Patch group %s cross domain failed: %v", groupCopyName, err)
+									logs.Errorf("Patch runtime %s failed: %v", runtimeReference.Name+"-copy", err)
 								}
-							} else { // 本域迁移
-								patchRuntime, err := json.Marshal(map[string]interface{}{
-									"status": map[string]interface{}{
-										"key_status": data,
-									},
-								})
-								if err != nil {
-									logs.Errorf("Json Marshal failed, err:%v", err)
-								}
-								_, err = mc.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+							} else { // 本域迁移 根据GroupName一直找到副本runtime，修改其key_status，这里可以直接根据源Runtime的Name，知道副本任务的Name
+								_, err = mc.clientsManager.PatchRuntime(runtime.Name+"-copy", runtime.Namespace, patchRuntime)
 								if err != nil {
 									logs.Errorf("Patch group error-5:%v", err)
 								}
 							}
 						}
-
-						//logs.Infof("*******副本任务runtimeStatus.keyStatus:%v", patchResult.Status.ActionStatus[i].RuntimeStatus[j].KeyStatus)
 						// 关闭源任务当中的runtime
 						logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-						//err = sw.runtimeManager.StopRuntime(g, action, runtime, i, j)
-						//time.Sleep(1 * time.Second)
 					}
 					err = mc.runtimeManager.Kill(group, action, runtime, action.Spec.Name, runtime.Spec.Name) //最后都需要将runtime进程关闭
 					if err != nil {
@@ -706,7 +727,7 @@ func NewActionInfoCopy(a *apis.Action) *apis.Action {
 		objRef.Name += "-copy"
 		actionCopy.Status.Runtimes[rSpecName] = objRef
 	}
-	return nil
+	return actionCopy
 }
 func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 	logs.Info("=====================NewRuntimeInfoCopy=======================================")
@@ -790,7 +811,7 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 		//}
 	}
 
-	return nil
+	return runtimeCopy
 }
 
 func StringPtr(s string) *string {

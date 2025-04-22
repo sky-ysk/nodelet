@@ -24,11 +24,11 @@ func ParseK8sResourcesFromFile(filePath string, nodeName string) ([]runtime.Obje
 		return nil, fmt.Errorf("file read error: %v", err)
 	}
 
-	return ParseK8sResources(content, nodeName)
+	return parseK8sResources(content, nodeName)
 }
 
 // 核心解析逻辑
-func ParseK8sResources(yamlContent []byte, nodeName string) ([]runtime.Object, error) {
+func parseK8sResources(yamlContent []byte, nodeName string) ([]runtime.Object, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(yamlContent), 4096)
 	var objects []runtime.Object
 

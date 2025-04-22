@@ -1,17 +1,13 @@
 package entity
 
-import (
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/yaml"
-)
-
 // const (
 //
 //	TaskExporterName  = "task-exporter-sidecar"
 //	TaskExporterImage = "task-exporter-image:latest" //后期换成镜像仓库所在地址
 //
 // )
+
+/*
 func GetPodFromYAML(yamlContent []byte, nodeName string) (*corev1.Pod, error) {
 	pod := &corev1.Pod{}
 	if err := yaml.Unmarshal(yamlContent, pod); err != nil {
@@ -24,6 +20,7 @@ func GetPodFromYAML(yamlContent []byte, nodeName string) (*corev1.Pod, error) {
 	pod.Labels[monitor.CreateorLabel] = nodeName
 	return pod, nil
 }
+*/
 
 //type Pod struct {
 //	Namespace          string                      //Pod所在名称空间

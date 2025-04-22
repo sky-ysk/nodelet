@@ -164,7 +164,7 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	g.Status.CreateAt = &apis.Time{time.Now()}
 
 	// 初始化状态
-	g.Status.Phase = apis.Pending
+	g.Status.Phase = apis.Unknown
 	g.Status.Actions = map[string]apis.ObjectReference{}
 
 	// 打上Label, 当前任务属于哪个Group和uuid域
