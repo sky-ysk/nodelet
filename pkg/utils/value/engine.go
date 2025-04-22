@@ -161,6 +161,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		r := (o).(apis.Action)
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromAction(typeName, parts, &r)
+		logs.Infof(" name %s, kindType %s, from %s %s", name, kindType, from, fromKey)
 		if err != nil {
 			return nil, err
 		}
@@ -190,6 +191,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 	switch kindType {
 	case "Runtime":
 		v, err := e.ExtractRuntimeValue(name, namespace, from, fromKey, value)
+		logs.Infof("runtime value %v", v)
 		if err != nil {
 			return v, nil
 		}
