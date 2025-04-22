@@ -60,7 +60,10 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 		var model_id string
 		var path string
 		var filename string
+		logs.Infof("params len is %d", len(params))
+		logs.Infof("params is %v", params)
 		for _, param := range params {
+			logs.Infof("param name %s", param.Name)
 			if param.Name == "user_id" {
 				if param.Type == apis.ConstData {
 					user_id = param.Value
@@ -79,6 +82,10 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 				}
 			}
 		}
+		logs.Infof("userid is %s", user_id)
+		logs.Infof("modelid is %s", model_id)
+		logs.Infof("path is %s", path)
+		logs.Infof("filename is %s", filename)
 		taskId, err := lib.PublishDownloadModelInst(user_id, model_id, path, filename, url)
 		if err != nil {
 			logs.Errorf("[DEVICE RUNTIME] PublishDownloadInst fail, %s", err.Error())

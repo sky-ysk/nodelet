@@ -306,6 +306,8 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 		case lib.Running: // 处于running状态
 			logs.Infof("[DEVICE RUNTIME] Task[%s] is Running", taskId)
 		case lib.Error: // 处于错误状态
+			logs.Errorf("[DEVICE RUNTIME] Task[%s] error %v", taskId, resp)
+			logs.Errorf("err msg  : %s  ", resp.Message)
 			logs.Errorf("[DEVICE RUNTIME] Task[%s] is Error", taskId)
 			// 1.处理runtime
 			go dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Failed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})

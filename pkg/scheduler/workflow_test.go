@@ -346,7 +346,7 @@ func TestCreateWorkFlow(t *testing.T) {
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Port = "56663" // 填写这个端口
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.197"
-	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Port = "47701"
+	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Port = "48823"
 
 	_, err = m.CreateDevice(deviceGalaxea, "test")
 	if err != nil {
@@ -413,13 +413,13 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "49421" // 填写这个端口
+	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "55299" // 填写这个端口
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Port = "49421" // 填写这个端口
+	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Port = "55299" // 填写这个端口
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "34771"
+	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "43083"
 	_, err = m.CreateDevice(deviceLeju, "test")
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
