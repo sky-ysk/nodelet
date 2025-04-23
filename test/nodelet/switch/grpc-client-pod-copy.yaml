@@ -33,6 +33,6 @@ spec:
   - protocol: TCP
     port: 50052         # Service 对外端口
     targetPort: 50052   # 指向 Pod 容器端口
-    nodePort: 30052   # 供外部访问的端口 (可选, 也可让K8s自动分配)
+    nodePort: 30053   # 供外部访问的端口 (可选, 也可让K8s自动分配)
   type: NodePort
 
