@@ -6,6 +6,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
+	"strconv"
 	"sync"
 )
 
@@ -232,7 +233,8 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 								errChan <- err
 								return
 							}
-							_, err = am.StartupAbility()
+							var hb HeartBeat
+							hb, err = am.StartupAbility()
 							if err != nil {
 								logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup failed, err:%s", device.Name, ability.Name, err.Error())
 								errChan <- err
@@ -240,6 +242,11 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 							}
 							logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup Success!", device.Name, ability.Name)
 							ability.Status = apis.AbilityRunning
+							for sn, service := range ability.Services {
+								port := strconv.Itoa(hb.AbilityPort)
+								service.Port = &port
+								ability.Services[sn] = service
+							}
 							device.Status.Abilities[name] = ability
 						}
 					}
