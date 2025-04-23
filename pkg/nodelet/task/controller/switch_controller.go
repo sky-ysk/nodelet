@@ -10,6 +10,7 @@ import (
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -754,6 +755,9 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 	}
 	if runtimeCopy.Spec.Type == apis.ByPod {
 		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，
+		yamlFilePath := r.Spec.Inputs[0].From
+		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)       //yaml文件名加上-copy后缀
+		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型
 		// 2、接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
 		// 3、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名
 		if isCrossDomain {
@@ -761,13 +765,13 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 		}
 
 		// 4、接着修改runtime.Spec.EnableFineGrainedControlService
-		parts := strings.Split(*runtimeCopy.Spec.EnableFineGrainedControlService, ".")
-		if len(parts) >= 2 { // 至少包含 service.namespace.svc...
-			// 从yaml当中读取新修改后的serviceName
-			parts[0] = "new-service-name"
-			joinedStr := strings.Join(parts, ".")
-			runtimeCopy.Spec.EnableFineGrainedControlService = &joinedStr // 替换服务名（此处直接使用 newServiceName，也可动态替换如 oldServiceName+"-copy"）
-		}
+		//parts := strings.Split(*runtimeCopy.Spec.EnableFineGrainedControlService, ".")
+		//if len(parts) >= 2 { // 至少包含 service.namespace.svc...
+		//	// 从yaml当中读取新修改后的serviceName
+		//	parts[0] = "new-service-name"
+		//	joinedStr := strings.Join(parts, ".")
+		//	runtimeCopy.Spec.EnableFineGrainedControlService = &joinedStr // 替换服务名（此处直接使用 newServiceName，也可动态替换如 oldServiceName+"-copy"）
+		//}
 
 		//
 		//for j := range action.Status.RuntimeStatus {
@@ -816,4 +820,21 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 
 func StringPtr(s string) *string {
 	return &s
+}
+
+// 在文件名中插入 "-copy" 后缀（保持路径结构不变）
+func AddCopySuffixToFilePath(originalPath string) string {
+	// 分离目录和文件名
+	dir := filepath.Dir(originalPath)
+	base := filepath.Base(originalPath)
+
+	// 分离文件名和扩展名
+	ext := filepath.Ext(base)             // 获取扩展名（如 `.yaml`）
+	name := strings.TrimSuffix(base, ext) // 去除扩展名的纯文件名（如 `grpc-client-pod`）
+
+	// 构建新文件名
+	newBase := name + "-copy" + ext
+
+	// 组合新路径
+	return filepath.Join(dir, newBase)
 }

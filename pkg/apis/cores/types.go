@@ -1282,6 +1282,7 @@ type RuntimeStatus struct {
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
 	//增加一个参数0hzy
 	Waiting            bool   `json:"waiting,omitempty" yaml:"waiting"`
+	Starting           bool   `json:"starting,omitempty" yaml:"starting"`
 	Initing            bool   `json:"initing,omitempty" yaml:"initing"`
 	KeyStatus          string `json:"key_status,omitempty" yaml:"key_status"`
 	CopyStatus         string `json:"copy_status,omitempty" yaml:"copy_status"`

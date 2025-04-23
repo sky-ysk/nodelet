@@ -23,6 +23,13 @@ import (
 	"time"
 )
 
+// 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
+// if strings.Contains(group.ObjectMeta.Name, "G1") {
+// host = "CloudNode1"
+// }
+// if strings.Contains(group.ObjectMeta.Name, "copy") {
+// host = "CloudNode2"
+// }
 var scheme = runtime.NewScheme()
 
 const NodeName = "CloudNode1"
@@ -194,6 +201,7 @@ func postEventForMigrate(client core.EventInterface) {
 	recorder.Event(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", node.Name))
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
+
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	apis.AddToScheme(scheme)
 	logs.Info(scheme)

@@ -5,6 +5,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/labels"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/tools/cache"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
@@ -19,7 +20,6 @@ import (
 
 const (
 	CreateorLabel = "app.kubernetes.io/created-by"
-	SystemName    = "deploy-system"
 )
 
 type ResourceState struct {
@@ -37,21 +37,25 @@ type Monitor struct {
 	clientset kubernetes.Interface
 	eventBus  *eventbus.EventBus
 	stopChan  chan struct{}
+	nodeName  string
 	//stateMap   sync.Map // 保存资源状态的并发安全存储
-	eventHooks []func(eventType string, obj interface{})
-	infoMap    sync.Map
+	eventHooks     []func(eventType string, obj interface{})
+	infoMap        sync.Map
+	clientsManager *manager.Manager
 }
 
-func NewMonitor(clientset kubernetes.Interface, eventBus *eventbus.EventBus) *Monitor {
+func NewMonitor(clientset kubernetes.Interface, eventBus *eventbus.EventBus, nodeName string, clientsManager *manager.Manager) *Monitor {
 	return &Monitor{
-		clientset: clientset,
-		stopChan:  make(chan struct{}),
-		eventBus:  eventBus,
+		clientset:      clientset,
+		stopChan:       make(chan struct{}),
+		eventBus:       eventBus,
+		nodeName:       nodeName,
+		clientsManager: clientsManager,
 	}
 }
 func (m *Monitor) Start() {
 	labelSelector := labels.SelectorFromSet(labels.Set{
-		CreateorLabel: SystemName,
+		CreateorLabel: m.nodeName,
 	})
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		m.clientset, 10*time.Minute, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
@@ -137,7 +141,17 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		}
 		if shouldNotify {
 			phase := convertDeploymentStatus(currentDeploy, currentStatus, eventType)
-			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
+			// 这里要去判断一下，这个Deployment是被迁移关闭的还是说是被主动关闭的,首先获取GroupName--，去etcd当中查状态，然后判断如果Group的Phase为Migrating，就将phase改为apis.Unkonw，交给handleRuntimeEndUpdate去处理
+			groupName := rs.group.Name
+			groupNamespace := rs.group.Namespace
+			get, err := m.clientsManager.GetGroup(groupName, groupNamespace)
+			if err != nil {
+				logs.Errorf("Get group %s failed: %v", groupName, err)
+			}
+			if eventType == "DELETED" && get.Status.Phase == apis.Migrating {
+				phase = apis.Unknown
+			}
+			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed || phase == apis.Unknown {
 				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
 			} else if phase == apis.Running {
 				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
@@ -159,7 +173,6 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 			currentPod = oldObj.(*corev1.Pod) // 删除时从oldObj获取
 			previousPod = nil
 		}
-
 		// 获取关联状态
 		if currentPod == nil {
 			return
@@ -192,13 +205,31 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		}
 		if shouldNotify {
 			phase := convertPodPhase(targetPhase)
+			// 这里要去判断一下，这个Pod是被迁移关闭的还是说是被主动关闭的,首先获取GroupName，然后去etcd当中查状态，然后判断如果Group的Phase为Migrating，就将phase改为apis.Unkonw，交给handleRuntimeEndUpdate去处理
+			groupName := rs.group.Name
+			groupNamespace := rs.group.Namespace
+			get, err := m.clientsManager.GetGroup(groupName, groupNamespace)
+			if err != nil {
+				logs.Errorf("Get group %s failed: %v", groupName, err)
+			}
+			logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&get.Status.Phase:%v", get.Status.Phase)
+			if get.Status.Phase == apis.Migrating { // 目前发现一个现象，就是在关闭pod的时候，会短暂的出现一个Failed的状态，为了规避这个状态
+				phase = apis.Unknown //设置为迁移状态--最好是让他设置一次即可
+			}
 			// 特殊处理删除事件
 			if eventType == "DELETED" {
-				phase = apis.Killed // 或根据实际状态处理
+				if get.Status.Phase == apis.Migrated || get.Status.Phase == apis.Successed || get.Status.Phase == apis.Migrating || get.Status.Phase == apis.Failed { // 得排除迁移的时候，A设备对任务的关闭，还得排除，pod任务正常执行完成或执行失败，进入终止状态了该不是人为的情况
+					return
+				} else if get.Status.Phase == apis.DeployCheck || get.Status.Phase == apis.Running {
+					phase = apis.Killed // 该状态为人为关闭状态
+				}
 			}
-			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
+			if phase == apis.Failed && (get.Status.Phase == apis.Migrating || get.Status.Phase == apis.Migrated) {
+				return
+			}
+			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed || phase == apis.Unknown {
 				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
-			} else {
+			} else { //启动
 				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
 			}
 			logs.Infof("[Pod]=============发送状态：%v 给事件处理模块===========", phase)
@@ -390,6 +421,7 @@ func isDeploymentTimeout(d *appsv1.Deployment) bool {
 
 // Pod Phase 转换逻辑
 func convertPodPhase(phase corev1.PodPhase) apis.Phase {
+	logs.Infof("================================================k8s-Phase:%v", phase)
 	switch phase {
 	case corev1.PodPending:
 		return apis.Running

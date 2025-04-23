@@ -40,7 +40,7 @@ func main() {
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
-	// group
+	// group1 - Client
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
 	group1_1Replicas := []int32{1, 0}
 
@@ -51,35 +51,35 @@ func main() {
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := true
-	runtime1_1_1_1FineGrainedControlPort := "5123"
+	runtime1_1_1_1FineGrainedControlPort := "30052"
+	runtime1_1_1_1FineGrainedControlService := "172.110.0.103"
 
-	// 程序依赖（requirements.txt）
-	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "ProgramDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "ProgramDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
-
-	runtime1_1_1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			ProgramDependencyConditionFormula,
+	runtime1_1_1_1Input := []apis.Value{
+		apis.Value{
+			From: "/home/public/goprojects/reference/test/nodelet/switch/grpc-client-pod.yaml",
 		},
 	}
 
+	// group2 -Server
+	group1_2Name := "G2" // 第一个Task下的第一个GroupName
+	group1_2Replicas := []int32{0, 0}
+
+	// action
+	action1_2_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+
+	// runtime
+	runtime1_2_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	// runtime是否细粒度控制
+	runtime1_2_1_1FineGrainedControl := true
+	runtime1_2_1_1FineGrainedControlPort := "30051"
+	runtime1_2_1_1FineGrainedControlService := "172.110.0.103"
+
+	runtime1_2_1_1Input := []apis.Value{
+		apis.Value{
+			From: "/home/public/goprojects/reference/test/nodelet/switch/grpc-server-pod.yaml",
+		},
+	}
+	// Client-A机器
 	gs1 := apis.GroupSpec{
 		ResourceRequirements: []apis.ResourceRequirement{
 			apis.ResourceRequirement{
@@ -101,15 +101,53 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                         runtime1_1_1_1Name,
-						Type:                         apis.ByCommand,
-						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s
-						Parents:                      make([]string, 0),                                                // 加入Parents
-						Conditions:                   &runtime1_1_1_1Condition,
-						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
-						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
+						Name:                            runtime1_1_1_1Name,
+						Type:                            apis.ByPod,
+						Command:                         []string{},
+						Args:                            []string{},        //20s
+						Parents:                         make([]string, 0), // 加入Parents
+						EnvVar:                          []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+						Inputs:                          runtime1_1_1_1Input,
+						EnableFineGrainedControl:        runtime1_1_1_1FineGrainedControl,
+						EnableFineGrainedControlService: &runtime1_1_1_1FineGrainedControlService,
+						EnableFineGrainedControlPort:    &runtime1_1_1_1FineGrainedControlPort,
+					},
+				},
+			},
+		},
+	}
+	// Server -B 机器
+	gs2 := apis.GroupSpec{
+		ResourceRequirements: []apis.ResourceRequirement{
+			apis.ResourceRequirement{
+				Name:       "CPU",
+				Lowbound:   "2",
+				Upperbound: "4",
+			},
+			apis.ResourceRequirement{
+				Name:       "RAM",
+				Lowbound:   "2",
+				Upperbound: "4",
+			},
+		},
+		Replicas: group1_2Replicas,
+		Name:     group1_2Name,
+		Parents:  make([]string, 0),
+		Actions: []apis.ActionSpec{
+			apis.ActionSpec{
+				Name: action1_2_1Name,
+				Runtimes: []apis.RuntimeSpec{
+					apis.RuntimeSpec{
+						Name:                            runtime1_2_1_1Name,
+						Type:                            apis.ByPod,
+						Command:                         []string{},
+						Args:                            []string{},        //20s
+						Parents:                         make([]string, 0), // 加入Parents
+						EnvVar:                          []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+						Inputs:                          runtime1_2_1_1Input,
+						EnableFineGrainedControl:        runtime1_2_1_1FineGrainedControl,
+						EnableFineGrainedControlService: &runtime1_2_1_1FineGrainedControlService,
+						EnableFineGrainedControlPort:    &runtime1_2_1_1FineGrainedControlPort,
 					},
 				},
 			},
@@ -119,7 +157,7 @@ func main() {
 	ts := apis.TaskSpec{
 		Name: task1Name,
 		Groups: []apis.GroupSpec{
-			gs1,
+			gs1, gs2,
 		},
 	}
 	// 生成UUID
