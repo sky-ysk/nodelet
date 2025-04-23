@@ -2,6 +2,13 @@ package nodelet
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
+
 	"gopkg.in/yaml.v3"
 	run "hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -13,12 +20,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task"
 	"hit.edu/framework/test/etcd_sync/active/clients"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
-	"net/http"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"time"
 )
 
 type Config struct {
@@ -40,7 +41,7 @@ func IsRunningInPod() bool {
 	//return !os.IsNotExist(err)
 }
 
-func NewConfig() *Config {
+func NewConfig(configPath string) *Config {
 	var config *FrameworkConfig
 	var err error
 
@@ -60,13 +61,17 @@ func NewConfig() *Config {
 		//	}
 		//}
 	} else { // 为二进制环境,从本地读取配置文件
-		fileName := "frameworkConf.yaml"
-		// 获取当前文件绝对路径
-		_, currentFilePath, _, _ := runtime.Caller(0)
-		// 计算项目根目录路径
-		projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
-		// 构建配置文件的绝对路径
-		configPath := filepath.Join(projectRoot, fileName)
+		// logs.Info("framework-conf ", configPath)
+		//没有指定配置文件位置，则去默认位置加载
+		if configPath == "" {
+			fileName := "frameworkConf.yaml"
+			// 获取当前文件绝对路径
+			_, currentFilePath, _, _ := runtime.Caller(0)
+			// 计算项目根目录路径
+			projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
+			// 构建配置文件的绝对路径
+			configPath = filepath.Join(projectRoot, fileName)
+		}
 		// 验证路径有效性
 		if _, err := os.Stat(configPath); os.IsNotExist(err) {
 			logs.Errorf("配置文件不存在于：%s", configPath)

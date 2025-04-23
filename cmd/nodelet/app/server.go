@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+
 	"github.com/spf13/cobra"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/component-base/version"
@@ -14,11 +15,12 @@ const NodeletName = "nodelet"
 
 func NewNodeletCommand() *cobra.Command {
 
+	var configPath *string
 	cmd := &cobra.Command{
 		Use:  "nodelet",
 		Long: `节点资源管理`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCommand(cmd)
+			return runCommand(cmd, configPath)
 		},
 		Args: func(cmd *cobra.Command, args []string) error {
 			for _, arg := range args {
@@ -30,10 +32,11 @@ func NewNodeletCommand() *cobra.Command {
 		},
 	}
 
+	configPath = cmd.Flags().String("framework-conf", "", "初始化配置文件路径")
 	return cmd
 }
 
-func runCommand(cmd *cobra.Command) error {
+func runCommand(cmd *cobra.Command, configPath *string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -41,8 +44,10 @@ func runCommand(cmd *cobra.Command) error {
 		<-stopCh
 		cancel()
 	}()
+	logs.Init(NodeletName)
+	logs.Info(cmd.Flags())
 
-	nl, err := Setup(ctx)
+	nl, err := Setup(ctx, *configPath)
 	if err != nil {
 		return err
 	}
@@ -50,7 +55,6 @@ func runCommand(cmd *cobra.Command) error {
 }
 
 func Run(ctx context.Context, nl *nodelet.Nodelet) error {
-	logs.Init(NodeletName)
 	logs.Info("Starting Resourcelet\t", "version\t", version.Get())
 
 	nl.Run(ctx)
@@ -58,7 +62,7 @@ func Run(ctx context.Context, nl *nodelet.Nodelet) error {
 	return fmt.Errorf("")
 }
 
-func Setup(ctx context.Context) (*nodelet.Nodelet, error) {
-	nl, err := nodelet.New(ctx)
+func Setup(ctx context.Context, configPath string) (*nodelet.Nodelet, error) {
+	nl, err := nodelet.New(ctx, configPath)
 	return nl, err
 }
