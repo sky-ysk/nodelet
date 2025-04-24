@@ -271,19 +271,19 @@ func TestClearEtcd(t *testing.T) {
 	}
 
 	//删devices
-	deviceClient := cs.Core().Devices("test")
-	devices, err := deviceClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return
-	}
-	for _, d := range devices.Items {
-		logs.Infof("delete act %s ", d.Name)
-		err := deviceClient.Delete(ctx, d.Spec.Name, metav1.DeleteOptions{})
-		if err != nil {
-			logs.Error(err)
-			return
-		}
-	}
+	//deviceClient := cs.Core().Devices("test")
+	//devices, err := deviceClient.List(ctx, metav1.ListOptions{})
+	//if err != nil {
+	//	return
+	//}
+	//for _, d := range devices.Items {
+	//	logs.Infof("delete act %s ", d.Name)
+	//	err := deviceClient.Delete(ctx, d.Spec.Name, metav1.DeleteOptions{})
+	//	if err != nil {
+	//		logs.Error(err)
+	//		return
+	//	}
+	//}
 
 	//删events
 	eventClient := cs.Core().Events(apis.NamespaceTest)

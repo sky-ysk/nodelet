@@ -161,7 +161,7 @@ func (dm *DependencyManager) UpdateEnvPackages() error {
 	for envname := range dm.allEnv {
 		installed, err := dm.GetInstalledPackages(envname)
 		if err != nil {
-			logs.Info("Error retrieving installed packages: %v", err)
+			logs.Tracef("Error retrieving installed packages: %v", err)
 			return fmt.Errorf("UpdateEnvPackages err!")
 		}
 		dm.envsPackage[envname] = installed

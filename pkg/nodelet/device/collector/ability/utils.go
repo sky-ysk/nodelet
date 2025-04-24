@@ -296,7 +296,7 @@ func GetAbilityInstances(url string) ([]AbilityInstance, error) {
 		logs.Errorf("[DEVICE EXPORTER--ABILITY MONITOR] Unmarshal Response error: %v", err)
 		return []AbilityInstance{}, err
 	}
-	logs.Info("[DEVICE EXPORTER--ABILITY MONITOR] Unmarshal Response Successfully\n")
+	logs.Tracef("[DEVICE EXPORTER--ABILITY MONITOR] Unmarshal Response Successfully\n")
 	return abilityInstances, nil
 }
 

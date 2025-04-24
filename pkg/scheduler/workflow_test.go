@@ -318,6 +318,11 @@ func TestDevice(t *testing.T) {
 							Interface: new(string),
 							Port:      new(string),
 						},
+						"Download": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
 					},
 					Status: apis.AbilityReadyStartUp,
 				},
@@ -342,6 +347,8 @@ func TestDevice(t *testing.T) {
 	}
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.197"
+	*deviceGalaxea.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
+	*deviceGalaxea.Status.Abilities["Detect"].Services["Download"].Ip = "192.168.8.197"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.197"
 
@@ -581,6 +588,26 @@ func TestCreateWorkFlow(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R1",
 			Type: apis.ByDevice,
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						LeftValue: apis.Value{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      "R6",
+						},
+						RightValue: apis.Value{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "R6",
+						},
+					},
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Detector1",
@@ -866,6 +893,81 @@ func TestCreateWorkFlow(t *testing.T) {
 		},
 	}
 
+	//星海图下载
+	runtime6 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R6",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R6",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Detector1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceGalaxea",
+						},
+					},
+					Abilities: []string{
+						"Detect",
+					},
+				},
+			},
+			Image: "Device{Detector1}.Ability{Detect}.Service{Download}",
+			Inputs: []apis.Value{
+				{
+					Name:      "user_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "1",
+				},
+				{
+					Name:      "model_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "2",
+				},
+				{
+					Name:      "path",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "",
+				},
+				{
+					Name:      "filename",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "ball.onnx",
+				},
+			},
+			Outputs: []apis.Value{
+				{
+					Name:      "Success",
+					Type:      apis.LocalData,
+					ValueType: apis.BoolType,
+				},
+			},
+		},
+		Status: apis.RuntimeStatus{
+			Devices: map[string]apis.ObjectReference{
+				"deviceGalaxea": apis.ObjectReference{
+					Name:      "deviceGalaxea",
+					Namespace: "test",
+					Kind:      "Device",
+				},
+			},
+		},
+	}
+
 	// 星海图检测
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -886,6 +988,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			Name: "A1",
 			Runtimes: []apis.RuntimeSpec{
 				runtime1.Spec,
+				runtime6.Spec,
 			},
 		},
 	}
