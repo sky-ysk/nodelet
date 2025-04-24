@@ -38,7 +38,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 		return err
 	}
 	// 获取Devices和executor
-	logs.Infof("[DEVICE RUNTIME] Try to Obtain All Devices")
+	logs.Tracef("[DEVICE RUNTIME] Try to Obtain All Devices")
 	deviceMap := make(map[string]*apis.Device)
 	deviceSpecList := runtime.Spec.Devices
 	var executor *apis.Device
@@ -51,7 +51,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 				logs.Errorf("[DEVICE RUNTIME] Get Device %s error: %v", obj.Name, err)
 				return err
 			}
-			logs.Infof("[DEVICE RUNTIME] Get Device %s successfully", obj.Name)
+			logs.Tracef("[DEVICE RUNTIME] Get Device %s successfully", obj.Name)
 			deviceMap[obj.Name] = device
 		} else {
 			logs.Warnf("[DEVICE RUNTIME] Device %s not exist", obj.Name)

@@ -71,7 +71,7 @@ func (n *DeviceExporter) Run() error {
 
 	// 加入关于Ability的信息收集
 	deviceMonitorTicker := time.NewTicker(time.Second * 20)
-	abilityMonitorTicker := time.NewTicker(time.Second * 10)
+	abilityMonitorTicker := time.NewTicker(time.Second * 20)
 	defer deviceMonitorTicker.Stop()
 	for {
 		select {

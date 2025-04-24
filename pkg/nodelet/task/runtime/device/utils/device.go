@@ -12,29 +12,29 @@ import (
 func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m *manager.Manager) error {
 	// 遍历device
 	for name, device := range deviceMap {
-		logs.Infof("[DEVICE RUNTIME] Check Device[%s] ", name)
+		logs.Tracef("[DEVICE RUNTIME] Check Device[%s] ", name)
 		// 检查device的GroupID phase
 		if device.Status.Phase != apis.DeviceIdle {
 			logs.Errorf("[DEVICE RUNTIME] Device[%s] is not IDLE", name)
 			return fmt.Errorf("error! Device[%s] is not IDLE", name)
 		}
-		logs.Infof("[DEVICE RUNTIME] Check Device[%s] Phase is NORMAL", device.Name)
+		logs.Tracef("[DEVICE RUNTIME] Check Device[%s] Phase is NORMAL", device.Name)
 		// 检查是否上锁
 		if device.Status.Lock.IsLocked != true {
 			logs.Errorf("[DEVICE RUNTIME] Device[%s] is not locked", name)
 			return fmt.Errorf("error! Device[%s] is not locked", name)
 		}
-		logs.Infof("[DEVICE RUNTIME] Check Device[%s] Lock is NORMAL", name)
+		logs.Tracef("[DEVICE RUNTIME] Check Device[%s] Lock is NORMAL", name)
 		// 检查能力的状态
 		for _, spec := range specs {
 			for _, abilityName := range spec.Abilities {
 				if ability, ok := device.Status.Abilities[abilityName]; ok {
 					switch ability.Status {
 					case apis.AbilityRunning:
-						logs.Infof("[DEVICE RUNTIME] Device[%s] Ability[%s] is running, NORMAL", name, ability.Name)
+						logs.Tracef("[DEVICE RUNTIME] Device[%s] Ability[%s] is running, NORMAL", name, ability.Name)
 					case apis.AbilityReadyStartUp:
 						for {
-							logs.Warnf("[DEVICE RUNTIME] Device[%s] Ability[%s] is ready STARTUP, Waiting!", name, ability.Name)
+							logs.Tracef("[DEVICE RUNTIME] Device[%s] Ability[%s] is ready STARTUP, Waiting!", name, ability.Name)
 							time.Sleep(1 * time.Second)
 							var err error
 							device, err = m.GetDevice(device.Name, device.Namespace)
@@ -43,7 +43,7 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m 
 								return err
 							}
 							if device.Status.Abilities[abilityName].Status == apis.AbilityRunning {
-								logs.Infof("[DEVICE RUNTIME] Device[%s] Ability[%s] is running, NORMAL]", name, ability.Name)
+								logs.Tracef("[DEVICE RUNTIME] Device[%s] Ability[%s] is running, NORMAL]", name, ability.Name)
 								deviceMap[name] = device
 								break
 							}

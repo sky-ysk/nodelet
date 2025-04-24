@@ -88,14 +88,14 @@ func (am *ManagerOfAbility) StartupAbility() (HeartBeat, error) {
 	// 获取能力的uuid
 	id, err := am.GetUUID()
 	if err != nil {
-		logs.Info("[DEVICE EXPORTER-ABILITY MONITOR] Can Not Get uuid\n")
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Can Not Get uuid, %s\n", err.Error())
 		return HeartBeat{}, err
 	}
 	logs.Info("[DEVICE EXPORTER-ABILITY MONITOR] Find Ability's uuid\n")
 	// 获取能力的taskId
 	taskId, err := PostLifeCycleRequest(id, Start, am.Url)
 	if err != nil {
-		logs.Info("[DEVICE EXPORTER-ABILITY MONITOR] can not post lifecycle request and obtain taskId\n")
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] can not post lifecycle request and obtain taskId, %s\n", err.Error())
 		return HeartBeat{}, err
 	}
 	am.TaskId = taskId

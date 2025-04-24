@@ -1893,11 +1893,12 @@ func createClientSet() (*clients.ClientSet, error) {
 
 // go test -run TestEnd -v
 func TestEnd(t *testing.T) {
-	url1 := "http://192.168.8.165:8080"
-	url2 := "http://192.168.8.197:8080"
-	abilityName1 := "ArmControl.Leju.Guochuang"
-	abilityName2 := "Detect"
-	abilityName3 := "ActInferenceAbility"
+	url1 := "http://192.168.8.197:8080"
+	url2 := "http://192.168.8.165:8080"
+	abilityName1 := "DetectPosition.Galaxea.Guochuang"
+	abilityName2 := "GrabBall.Galaxea.Guochuang"
+	abilityName3 := "DetectPosition.Leju.Guochuang"
+	abilityName4 := "GrabBall.Leju.Guochuang"
 	err := manager.NewAbilityManager(url1, abilityName1).TerminateAbility()
 	if err != nil {
 		logs.Errorf("fail to create AbilityManager: %v", err)
@@ -1907,6 +1908,10 @@ func TestEnd(t *testing.T) {
 		logs.Errorf("fail to create AbilityManager: %v", err)
 	}
 	err = manager.NewAbilityManager(url2, abilityName3).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
+	err = manager.NewAbilityManager(url2, abilityName4).TerminateAbility()
 	if err != nil {
 		logs.Errorf("fail to create AbilityManager: %v", err)
 	}
