@@ -44,7 +44,8 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m 
 							}
 							if device.Status.Abilities[abilityName].Status == apis.AbilityRunning {
 								logs.Infof("[DEVICE RUNTIME] Device[%s] Ability[%s] is running, NORMAL]", name, ability.Name)
-								return nil
+								deviceMap[name] = device
+								break
 							}
 						}
 					case apis.AbilityError:
