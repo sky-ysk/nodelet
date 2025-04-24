@@ -227,28 +227,31 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 						logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Monitor Device[%s] Ability[%s]", device.Name, ability.Name)
 						if ability.Status == apis.AbilityReadyStartUp { // 如果ability需要被拉起就给他拉起
 							logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] is ReadyStartUp", device.Name, ability.Name)
-							am := NewAbilityManager(url, ability.Name)
-							err = am.BindUUID()
-							if err != nil {
-								logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Bind uuid failed, err:%s", device.Name, ability.Name, err.Error())
-								errChan <- err
-								return
-							}
-							var hb HeartBeat
-							hb, err = am.StartupAbility()
-							if err != nil {
-								logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup failed, err:%s", device.Name, ability.Name, err.Error())
-								errChan <- err
-								return
-							}
-							logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup Success!", device.Name, ability.Name)
-							ability.Status = apis.AbilityRunning
-							for sn, service := range ability.Services {
-								port := strconv.Itoa(hb.AbilityPort)
-								service.Port = &port
-								ability.Services[sn] = service
-							}
-							device.Status.Abilities[name] = ability
+							go func() {
+								am := NewAbilityManager(url, ability.Name)
+								err = am.BindUUID()
+								if err != nil {
+									logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Bind uuid failed, err:%s", device.Name, ability.Name, err.Error())
+									errChan <- err
+									return
+								}
+								var hb HeartBeat
+								hb, err = am.StartupAbility()
+								if err != nil {
+									logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup failed, err:%s", device.Name, ability.Name, err.Error())
+									errChan <- err
+									return
+								}
+								logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup Success!", device.Name, ability.Name)
+								ability.Status = apis.AbilityRunning
+								for sn, service := range ability.Services {
+									port := strconv.Itoa(hb.AbilityPort)
+									service.Port = &port
+									ability.Services[sn] = service
+								}
+								device.Status.Abilities[name] = ability
+							}()
+
 						}
 					}
 					var patchDevice []byte
