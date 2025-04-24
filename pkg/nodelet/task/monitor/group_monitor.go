@@ -1410,12 +1410,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		if err != nil {
 			logs.Errorf("Update task err-333:%v", err)
 		}
-
-		if runtime.Spec.Type == apis.ByPod { //是pod类型的任务
-			err := gmo.runtimeManager.Kill(get, action, runtime, actionSpecName, runtimeSpecName)
-			if err != nil {
-				logs.Errorf("Stop runtime error:%v", err)
-			}
+	}
+	logs.Infof("runtime.Spec.Name:%v,runtime.Spec.Type:%v", runtime.Spec.Name, runtime.Spec.Type)
+	if runtime.Spec.Type == apis.ByPod { //是pod类型的任务
+		logs.Infof("=============删除==============pod、service,runtime.Name:%v", runtime.Name)
+		err := gmo.runtimeManager.Kill(get, action, runtime, actionSpecName, runtimeSpecName)
+		if err != nil {
+			logs.Errorf("Stop runtime error:%v", err)
 		}
 	}
 	//测试：

@@ -64,6 +64,7 @@ func NewConfig(configPath string) *Config {
 		// logs.Info("framework-conf ", configPath)
 		//没有指定配置文件位置，则去默认位置加载
 		if configPath == "" {
+			logs.Info("ConfigPath is empty, using default")
 			fileName := "frameworkConf.yaml"
 			// 获取当前文件绝对路径
 			_, currentFilePath, _, _ := runtime.Caller(0)
@@ -72,6 +73,7 @@ func NewConfig(configPath string) *Config {
 			// 构建配置文件的绝对路径
 			configPath = filepath.Join(projectRoot, fileName)
 		}
+		logs.Infof("configPath:%v", configPath)
 		// 验证路径有效性
 		if _, err := os.Stat(configPath); os.IsNotExist(err) {
 			logs.Errorf("配置文件不存在于：%s", configPath)
@@ -86,6 +88,7 @@ func NewConfig(configPath string) *Config {
 	nodeName := GetNodeName(config)
 	clusterCategory := GetClusterCategory(config)
 	address := GetAPIServerHost(config)
+	logs.Infof("address:%v==============", address)
 	groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
 	if err != nil {
 		logs.Errorf("targetMap build failed")

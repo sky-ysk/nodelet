@@ -46,6 +46,7 @@ func New(ctx context.Context, configPath string) (*Nodelet, error) {
 	}
 	stopEverything := ctx.Done()
 	apiserverHost := cfg.apiserverAddr
+	logs.Infof("apiserverHost: %s", apiserverHost)
 	clientSet, err := InitClient(apiserverHost)
 	if err != nil {
 		log.Fatalf("init client failed: %v", err)

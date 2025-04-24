@@ -7,6 +7,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	"os"
+	"path/filepath"
 )
 
 type K8sConfig struct {
@@ -23,7 +24,12 @@ func getK8sConfig() (*rest.Config, error) {
 	}
 	// 否则，使用 kubeconfig（集群外）
 	logs.Info("Running outside Kubernetes cluster (using kubeConfig)")
-	return clientcmd.BuildConfigFromFlags("", kubeConfig) // 返回集群外配置
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logs.Errorf("无法获取用户 HOME 目录: %v", err)
+	}
+	kubeconfig := filepath.Join(homeDir, ".kube", "config")
+	return clientcmd.BuildConfigFromFlags("", kubeconfig) // 返回集群外配置
 }
 
 func LoadConfig() *kubernetes.Clientset {

@@ -25,7 +25,7 @@ import (
 
 var scheme = runtime.NewScheme()
 
-const NodeName = "debian1"
+const NodeName = "n19" //1$
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -41,8 +41,8 @@ func main() {
 	task1Name := "T1" // 第一个Task的Name
 
 	// group1 - Client -A机器
-	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{1, 0}
+	group1_1Name := "G1"              // 第一个Task下的第一个GroupName
+	group1_1Replicas := []int32{1, 0} //6$
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -52,11 +52,11 @@ func main() {
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := true
 	runtime1_1_1_1FineGrainedControlPort := "30052"
-	runtime1_1_1_1FineGrainedControlService := "172.110.0.103" //A机器IP地址
+	runtime1_1_1_1FineGrainedControlService := "10.31.10.19" //A机器IP地址 //2$
 
 	runtime1_1_1_1Input := []apis.Value{
 		apis.Value{
-			From: "/home/public/goprojects/reference/test/nodelet/switch/grpc-client-pod.yaml",
+			From: "/root/goprojects/reference/pod/grpc-client-pod.yaml", //3$
 		},
 	}
 
@@ -72,11 +72,11 @@ func main() {
 	// runtime是否细粒度控制
 	runtime1_2_1_1FineGrainedControl := true
 	runtime1_2_1_1FineGrainedControlPort := "30051"
-	runtime1_2_1_1FineGrainedControlService := "172.110.0.104" //B机器ip地址
+	runtime1_2_1_1FineGrainedControlService := "10.31.10.210" //B机器ip地址 //4$
 
 	runtime1_2_1_1Input := []apis.Value{
 		apis.Value{
-			From: "/home/public/goprojects/reference/test/nodelet/switch/grpc-server-pod.yaml",
+			From: "/root/goprojects/reference/pod/grpc-server-pod.yaml", //5$
 		},
 	}
 
@@ -190,28 +190,6 @@ func prompt() {
 		panic(err)
 	}
 	logs.Info()
-}
-
-func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
-	return apis.ConditionFormula{
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      parentName,
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "NodeDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
 }
 
 var node = &apis.Node{

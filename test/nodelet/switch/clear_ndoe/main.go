@@ -70,6 +70,7 @@ func main() {
 	actionsClient := clientSet.Core().Actions("test")
 	runtimesClient := clientSet.Core().Runtimes("test")
 	eventsClient := clientSet.Core().Events("test")
+	nodesClient := clientSet.Core().Nodes("test")
 
 	// Task资源
 	logs.Info("======Task")
@@ -137,8 +138,24 @@ func main() {
 		}
 		logs.Infof("Event删除成功: %v", event.Name)
 	}
+	// Node资源
+	logs.Info("======Node")
+	list6, err := nodesClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, node := range list6.Items {
+		err := nodesClient.Delete(context.TODO(), node.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Node删除成功: %v", node.Name)
+	}
 	// 删除service、pod
 	clientset := config.LoadConfig()
+	if clientset == nil {
+		logs.Infof("clientset is nil")
+	}
 	DeletePod(clientset, "grpc-client-pod", "switch")
 	DeleteService(clientset, "grpc-client-service", "switch") // 删除k8s当中的Service
 	DeletePod(clientset, "grpc-client-pod-copy", "switch")
