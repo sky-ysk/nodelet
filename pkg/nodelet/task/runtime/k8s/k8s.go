@@ -55,7 +55,7 @@ func NewK8sRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus,
 	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, recorder: recorder, monitor: k8sMonitor, eventBus: eventBus}
 }
 func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
-	logs.Infof("k8s runtime kill task: %s", runtime.Name)
+	logs.Infof("k8s runtime kill runtime: %s", runtime.Name)
 	yamlFilePatch := runtime.Spec.Inputs[0].From
 	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, *group.Status.Node)
 	if err != nil {
@@ -154,7 +154,7 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
-	logs.Infof("开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, *runtime.Spec.EnableFineGrainedControlPort)
+	logs.Infof("[Start]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, *runtime.Spec.EnableFineGrainedControlPort)
 	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, *runtime.Spec.EnableFineGrainedControlPort)
 	_, err = client.RunAppStart()
 	if err != nil {
@@ -175,6 +175,7 @@ func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
+	logs.Infof("[Init]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, *runtime.Spec.EnableFineGrainedControlPort)
 	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, *runtime.Spec.EnableFineGrainedControlPort)
 	_, err = client.RunAppInit()
 	if err != nil {

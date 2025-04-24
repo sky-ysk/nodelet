@@ -118,7 +118,7 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		// 获取关联状态
 		value, ok := m.infoMap.Load(stateKey(apis.ByDeployment, currentDeploy.Namespace, currentDeploy.Name))
 		if !ok {
-			logs.Errorf("Deployment %s/%s not found in infoMap", currentDeploy.Namespace, currentDeploy.Name)
+			logs.Infof("Deployment %s/%s not found in infoMap", currentDeploy.Namespace, currentDeploy.Name)
 			return
 		}
 
@@ -185,7 +185,7 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		// 获取关联状态
 		value, ok := m.infoMap.Load(stateKey(apis.ByPod, currentPod.Namespace, currentPod.Name))
 		if !ok {
-			logs.Errorf("Pod %s/%s not found in infoMap", currentPod.Namespace, currentPod.Name)
+			logs.Infof("Pod %s/%s not found in infoMap", currentPod.Namespace, currentPod.Name)
 			return
 		}
 		rs := value.(ResourceState)
@@ -255,7 +255,7 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		// 获取关联状态
 		value, ok := m.infoMap.Load(stateKey(apis.ByService, currentService.Namespace, currentService.Name))
 		if !ok {
-			logs.Errorf("Service %s/%s not found in infoMap", currentService.Namespace, currentService.Name)
+			logs.Infof("Service %s/%s not found in infoMap", currentService.Namespace, currentService.Name)
 			return
 		}
 
