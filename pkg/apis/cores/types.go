@@ -1065,6 +1065,7 @@ type SceneStatus struct {
 	Lock Lock `json:"lock,omitempty" yaml:"lock"`
 }
 type DataSpec struct {
+	Name string `json:"name,omitempty" yaml:"name"`
 	// 对于文件类型的Data
 	// 文件格式
 	// 文件大小
@@ -1160,6 +1161,8 @@ type RuntimeSpec struct {
 	// 环境变量
 	// +Optional
 	EnvVar []EnvVar `json:"env_var,omitempty" yaml:"env_var"`
+	// 运行时的工作目录，拉起任务前创建并填入
+	Directory string `json:"directory,omitempty" yaml:"directory"`
 
 	// Runtime条件
 	// +Optional
@@ -1282,6 +1285,7 @@ type RuntimeStatus struct {
 	FinishAt *Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
+	
 	//增加一个参数0hzy
 	Waiting            bool   `json:"waiting,omitempty" yaml:"waiting"`
 	Initing            bool   `json:"initing,omitempty" yaml:"initing"`
