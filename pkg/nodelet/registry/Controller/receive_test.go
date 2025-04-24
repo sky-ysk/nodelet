@@ -1,7 +1,7 @@
 package Controller
 
 import (
-	utils "RegistryClient/Utils"
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 	"fmt"
 	"testing"
 )
