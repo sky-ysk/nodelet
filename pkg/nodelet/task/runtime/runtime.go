@@ -2,11 +2,13 @@ package runtime
 
 import (
 	"fmt"
+	"sync"
+
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
-	"sync"
+	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
@@ -77,7 +79,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			break
 		case apis.ByWasm:
 			//TODO
-			//runtime = wasm.NewWasmRuntime()
+			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus)
 			break
 		case apis.ByCommand: //任务作为系统命令执行
 			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool)
