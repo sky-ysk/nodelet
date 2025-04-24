@@ -197,14 +197,14 @@ func MonitorAllDevices(clientManager *m.Manager) error {
 
 func MonitorAllAbilities(clientManager *m.Manager) error {
 	// 首先获取所有的Devices
-	logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Try to Get All Devices")
+	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Try to Get All Devices")
 	deviceList, err := clientManager.GetDevices("", "test")
 	if err != nil {
 		logs.Errorf("[DEVICE EXPORTER] Get All Devices failed err: %s", err.Error())
 		return err
 	}
-	logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Get All Devices Success!")
-	logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] ETCD Has %d Devices", len(deviceList.Items))
+	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Get All Devices Success!")
+	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] ETCD Has %d Devices", len(deviceList.Items))
 	// 并发同步控制
 	var wg sync.WaitGroup
 	// 错误处理通道
@@ -223,7 +223,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 				if devicePhase == apis.DeviceIdle { // 当phase为IDLE
 					url := device.Spec.AccessMethod.URL
 					for name, ability := range device.Status.Abilities {
-						logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Monitor Device[%s] Ability[%s]", device.Name, ability.Name)
+						logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Monitor Device[%s] Ability[%s]", device.Name, ability.Name)
 						if ability.Status == apis.AbilityReadyStartUp { // 如果ability需要被拉起就给他拉起
 							logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] is ReadyStartUp", device.Name, ability.Name)
 							am := NewAbilityManager(url, ability.Name)
