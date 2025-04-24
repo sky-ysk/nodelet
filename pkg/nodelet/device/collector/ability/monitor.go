@@ -226,6 +226,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 					for name, ability := range device.Status.Abilities {
 						logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Monitor Device[%s] Ability[%s]", device.Name, ability.Name)
 						if ability.Status == apis.AbilityReadyStartUp { // 如果ability需要被拉起就给他拉起
+							logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] is ReadyStartUp", device.Name, ability.Name)
 							am := NewAbilityManager(url, ability.Name)
 							err = am.BindUUID()
 							if err != nil {

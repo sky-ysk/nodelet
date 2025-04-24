@@ -63,6 +63,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 	// 检查Device
 	if err := utils.CheckDevices(deviceMap, deviceSpecList, dr.clientManager); err != nil {
 		logs.Errorf("[DEVICE RUNTIME] Check Devices failed: %s", err.Error())
+		return err
 	}
 	//TODO 改runtime的map
 	// 构造参数

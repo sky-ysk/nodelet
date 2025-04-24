@@ -37,7 +37,7 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m 
 							logs.Warnf("[DEVICE RUNTIME] Device[%s] Ability[%s] is ready STARTUP, Waiting!", name, ability.Name)
 							time.Sleep(1 * time.Second)
 							var err error
-							device, err = m.GetDevice(name, device.Namespace)
+							device, err = m.GetDevice(device.Name, device.Namespace)
 							if err != nil {
 								logs.Errorf("[DEVICE RUNTIME] Device[%s] Get Device Error: %v", name, err)
 								return err
