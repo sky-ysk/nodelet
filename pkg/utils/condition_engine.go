@@ -19,44 +19,6 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 )
 
-// switch kind {
-// case "Runtime":
-// 	r := (o).(apis.Runtime)
-// 	namespace = r.Namespace
-// 	name, kindType, from, fromKey, err = e.GetNameFromRuntime(typeName, parts, &r)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// case "Action":
-// 	r := (o).(apis.Action)
-// 	namespace = r.Namespace
-// 	name, kindType, from, fromKey, err = e.GetNameFromAction(typeName, parts, &r)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// case "Group":
-// 	r := (o).(apis.Group)
-// 	namespace = r.Namespace
-// 	name, kindType, from, fromKey, err = e.GetNameFromGroup(typeName, parts, &r)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// case "Task":
-// 	r := (o).(apis.Task)
-// 	namespace = r.Namespace
-// 	name, kindType, from, fromKey, err = e.GetNameFromTask(typeName, parts, &r)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// case "Workflow":
-// 	r := (o).(apis.Workflow)
-// 	namespace = r.Namespace
-// 	name, kindType, from, fromKey, err = e.GetNameFromWorkflow(typeName, parts, &r)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// }
-
 // 为后续做成有状态的类留出扩展
 type ConditionEngine struct {
 	engine *value.Engine // 添加 Engine 字段
@@ -89,7 +51,7 @@ func InitClient() (*clients.ClientSet, error) {
 	}
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to initialize clientSet: %v", err)
+		return nil, fmt.Errorf("failed to initialize clientSet: %v", err)
 	}
 	return clientSet, nil
 }
@@ -111,14 +73,14 @@ func NewConditionEngine() *ConditionEngine {
 }
 
 // o传入的是一个对象，可能是workflow、task、group、action、runtime等
-func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions, o interface{}) (apis.ResultType, error) {
+func (engine *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interface{}) (apis.ResultType, error) {
 
 	if len(conditions.Formulas) == 0 {
 		return apis.True, nil
 	}
 
 	for _, formula := range conditions.Formulas {
-		checkRes, err := engine.checkFormula(formula, o)
+		checkRes, err := engine.checkFormula(&formula, o)
 		if err != nil {
 			return apis.False, err
 		}
@@ -129,134 +91,100 @@ func (engine *ConditionEngine) CheckConditions(conditions apis.Conditions, o int
 	return apis.True, nil
 }
 
-func (engine *ConditionEngine) checkFormula(formula apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
+func (engine *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
 	switch formula.ConditionType {
 	case apis.NodeDependency:
 		res, err := engine.checkNodeDependency(formula, o)
 		if err != nil {
 			return apis.False, err
 		}
-		if res != apis.True {
-			return res, nil
-		}
-		return apis.True, nil
+		return res, nil
 	case apis.DataDependency:
 		res, err := engine.checkDataDependency(formula, o)
 		if err != nil {
 			return apis.False, err
 		}
-		if res != apis.True {
-			return res, nil
-		}
-		return apis.True, nil
+		return res, nil
 	case apis.ResourceDependency:
 		res, err := engine.checkResourceDependency(formula, o)
 		if err != nil {
 			return apis.False, err
 		}
-		if res != apis.True {
-			return res, nil
-		}
-		return apis.True, nil
+		return res, nil
 	case apis.ProgramDependency:
 		res, err := engine.checkProgramDependency(formula, o)
 		if err != nil {
 			return apis.False, err
 		}
-		if res != apis.True {
-			return res, nil
-		}
-		return apis.True, nil
+		return res, nil
 	default:
 		logs.Error("unsupported condition type ", formula.ConditionType)
 		return apis.False, errors.New(string("unsupported signal type " + formula.Signal))
 	}
 }
 
-// rightReady, rightVal := engine.extractValue(formula.LeftValue)
-// leftReady, leftVal := engine.extractValue(formula.RightValue)
-// if !leftReady || !rightReady {
-// 	return apis.NotReady, nil
-// }
-// if formula.Signal == apis.Equal {
-// 	if leftVal != rightVal {
-// 		return apis.False, nil
-// 	}
-// 	return apis.True, nil
-// } else if formula.Signal == apis.Equal {
-// 	if leftVal == rightVal {
-// 		return apis.False, nil
-// 	}
-// 	return apis.True, nil
-// }
-// logs.Error("unsupported signal type ", formula.Signal)
-
 // TODO:细化每一种依赖里面的每一种情况
-func (ce *ConditionEngine) checkNodeDependency(formula apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
+func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
 	kind := reflect.TypeOf(o).Name()
-	switch kind {
-	case "Runtime":
-		r := (o).(apis.Runtime)
-		logs.Info(r)
-	case "Action":
-		r := (o).(apis.Action)
-		logs.Info(r)
-	case "Group":
-		r := (o).(apis.Group)
-		logs.Info(r)
-	case "Task":
-		r := (o).(apis.Task)
-		logs.Info(r)
-	case "Workflow":
-		r := (o).(apis.Workflow)
-		logs.Info(r)
+	val := reflect.ValueOf(o)
+	Name := val.FieldByName("Name")
+	// 解析parent的Phase的值
+	value, err := ce.engine.GetValue(&formula.LeftValue, o)
+	if err != nil {
+		logs.Error("condititon Engine: check Dodedependency GetValue error: ", err)
+		return apis.False, err
 	}
-	
-	return apis.True, nil
-}
-
-func (ce *ConditionEngine) checkDataDependency(formula apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
-
-	return apis.True, nil
-}
-
-func (ce *ConditionEngine) checkResourceDependency(formula apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
-
-	return apis.True, nil
-}
-
-func (ce *ConditionEngine) checkProgramDependency(formula apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
-
-	return apis.True, nil
-}
-
-// TODO 解析具体的值，返回bool表示值是否就绪，string表示值
-func (ce *ConditionEngine) extractValue(value apis.Value, o interface{}) (bool, string) {
-
-	switch value.Type {
-	case apis.ConstData:
-		return true, value.Value
-
-	case apis.LocalData:
-		return true, value.Value
-		////TODO 从client里面拿结果 校验
-	case apis.DeviceData:
-		val, err := ce.engine.GetValue(&value, o)
-		if err != nil {
-			logs.Error("extract value error: ", err)
-			return false, "0"
-		}
-		if val.Value == "" {
-			return false, "0"
-		}
-		//检查数据是否存在，存在返回“1”即可，与rightVal的“1”进行比较
-		return true, "1"
-
-	default:
-		logs.Fatal("unsupported value type ", value.ValueType)
-		return false, ""
+	if value.Value != string(apis.Successed) {
+		// parent未完成
+		logs.Infof("condititon Engine: check Dodedependency error: %v %v's parent not succeed!", kind, Name)
+		return apis.NotReady, errors.New("nodedependency is not ready")
+	} else {
+		return apis.True, nil
 	}
 }
+
+func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
+
+	return apis.True, nil
+}
+
+func (ce *ConditionEngine) checkResourceDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
+
+	return apis.True, nil
+}
+
+func (ce *ConditionEngine) checkProgramDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
+
+	return apis.True, nil
+}
+
+// // TODO 解析具体的值，返回bool表示值是否就绪，string表示值
+// func (ce *ConditionEngine) extractValue(value apis.Value, o interface{}) (bool, string) {
+
+// 	switch value.Type {
+// 	case apis.ConstData:
+// 		return true, value.Value
+
+// 	case apis.LocalData:
+// 		return true, value.Value
+// 		////TODO 从client里面拿结果 校验
+// 	case apis.DeviceData:
+// 		val, err := ce.engine.GetValue(&value, o)
+// 		if err != nil {
+// 			logs.Error("extract value error: ", err)
+// 			return false, "0"
+// 		}
+// 		if val.Value == "" {
+// 			return false, "0"
+// 		}
+// 		//检查数据是否存在，存在返回“1”即可，与rightVal的“1”进行比较
+// 		return true, "1"
+
+// 	default:
+// 		logs.Fatal("unsupported value type ", value.ValueType)
+// 		return false, ""
+// 	}
+// }
 
 // //后续可能会用到，目前没用
 // // 防止有这样的需求：依然是根据From、Field来选择。目前是根据每一种情况的正则表达式来访问数据
