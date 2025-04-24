@@ -635,26 +635,26 @@ func TestCreateWorkFlow(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R2",
 			Type: apis.ByDevice,
-			//Conditions: &apis.Conditions{
-			//	Formulas: []apis.ConditionFormula{
-			//		{
-			//			LeftValue: apis.Value{
-			//				Type:      apis.ResultsData,
-			//				Name:      "NodeDependency",
-			//				Value:     "0",
-			//				ValueType: "string",
-			//				From:      "R5",
-			//			},
-			//			RightValue: apis.Value{
-			//				Type:      apis.ConstData,
-			//				Name:      "NodeDependency",
-			//				Value:     "1",
-			//				ValueType: "string",
-			//				From:      "R5",
-			//			},
-			//		},
-			//	},
-			//},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						LeftValue: apis.Value{
+							Type:      apis.ResultsData,
+							Name:      "NodeDependency",
+							Value:     "0",
+							ValueType: "string",
+							From:      "R5",
+						},
+						RightValue: apis.Value{
+							Type:      apis.ConstData,
+							Name:      "NodeDependency",
+							Value:     "1",
+							ValueType: "string",
+							From:      "R5",
+						},
+					},
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Detector2",
@@ -791,80 +791,80 @@ func TestCreateWorkFlow(t *testing.T) {
 		},
 	}
 
-	// 乐聚检测
-	//runtime5 := &apis.Runtime{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      "R5",
-	//		Namespace: "test",
-	//		Labels: map[string]string{
-	//			"environment": "dev",
-	//		},
-	//	},
-	//	TypeMeta: metav1.TypeMeta{
-	//		Kind:       "Runtime",
-	//		APIVersion: "resources/v1",
-	//	},
-	//	Spec: apis.RuntimeSpec{
-	//		Name: "R5",
-	//		Type: apis.ByDevice,
-	//		Devices: []apis.DeviceSpec{
-	//			apis.DeviceSpec{
-	//				Name: "Detector2",
-	//				ExpectedProperties: map[string]apis.Property{
-	//					"name": apis.Property{
-	//						Value: "deviceLeju",
-	//					},
-	//				},
-	//				Abilities: []string{
-	//					"Detect",
-	//				},
-	//			},
-	//		},
-	//		Image: "Device{Detector2}.Ability{Detect}.Service{Download}",
-	//		Inputs: []apis.Value{
-	//			{
-	//				Name:      "user_id",
-	//				Type:      apis.ConstData,
-	//				ValueType: apis.StringType,
-	//				Value:     "1",
-	//			},
-	//			{
-	//				Name:      "model_id",
-	//				Type:      apis.ConstData,
-	//				ValueType: apis.StringType,
-	//				Value:     "2",
-	//			},
-	//			{
-	//				Name:      "path",
-	//				Type:      apis.ConstData,
-	//				ValueType: apis.StringType,
-	//				Value:     "",
-	//			},
-	//			{
-	//				Name:      "filename",
-	//				Type:      apis.ConstData,
-	//				ValueType: apis.StringType,
-	//				Value:     "ball.onnx",
-	//			},
-	//		},
-	//		Outputs: []apis.Value{
-	//			{
-	//				Name:      "Success",
-	//				Type:      apis.LocalData,
-	//				ValueType: apis.BoolType,
-	//			},
-	//		},
-	//	},
-	//	Status: apis.RuntimeStatus{
-	//		Devices: map[string]apis.ObjectReference{
-	//			"deviceLeju": apis.ObjectReference{
-	//				Name:      "deviceLeju",
-	//				Namespace: "test",
-	//				Kind:      "Device",
-	//			},
-	//		},
-	//	},
-	//}
+	//乐聚下载
+	runtime5 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R5",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R5",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Detector2",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceLeju",
+						},
+					},
+					Abilities: []string{
+						"Detect",
+					},
+				},
+			},
+			Image: "Device{Detector2}.Ability{Detect}.Service{Download}",
+			Inputs: []apis.Value{
+				{
+					Name:      "user_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "1",
+				},
+				{
+					Name:      "model_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "2",
+				},
+				{
+					Name:      "path",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "",
+				},
+				{
+					Name:      "filename",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "ball.onnx",
+				},
+			},
+			Outputs: []apis.Value{
+				{
+					Name:      "Success",
+					Type:      apis.LocalData,
+					ValueType: apis.BoolType,
+				},
+			},
+		},
+		Status: apis.RuntimeStatus{
+			Devices: map[string]apis.ObjectReference{
+				"deviceLeju": apis.ObjectReference{
+					Name:      "deviceLeju",
+					Namespace: "test",
+					Kind:      "Device",
+				},
+			},
+		},
+	}
 
 	// 星海图检测
 	action1 := &apis.Action{
@@ -909,7 +909,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			},
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
-				//runtime5.Spec,
+				runtime5.Spec,
 				runtime2.Spec,
 			},
 		},
