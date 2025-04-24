@@ -40,6 +40,7 @@ func NewDeviceExporter(cfg *Config) (*DeviceExporter, error) {
 	de := &DeviceExporter{
 		deviceCollector: dc,
 	}
+	//TODO 添加设备 device.json  replace 设备注册
 	return de, nil
 }
 
