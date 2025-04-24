@@ -25,14 +25,14 @@ func NewManagers() *Managers {
 
 // MonitorAllDevices 检测所有设备的在线情况
 func MonitorAllDevices(clientManager *m.Manager) error {
-	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Try to Get All Devices")
+	logs.Tracef("[DEVICE EXPORTER-DEVICE MONITOR] Try to Get All Devices")
 	deviceList, err := clientManager.GetDevices("", "test")
 	if err != nil {
 		logs.Errorf("[DEVICE EXPORTER-DEVICE MONITOR] Get All Devices failed err: %s", err.Error())
 		return err
 	}
-	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Get All Devices Success!")
-	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] ETCD Has %d Devices", len(deviceList.Items))
+	logs.Tracef("[DEVICE EXPORTER-DEVICE MONITOR] Get All Devices Success!")
+	logs.Tracef("[DEVICE EXPORTER-DEVICE MONITOR] ETCD Has %d Devices", len(deviceList.Items))
 
 	// 并发同步控制
 	var wg sync.WaitGroup
@@ -264,7 +264,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 						logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Patch Device[%s] failed, err:%s", device.Name, err.Error())
 						return
 					}
-					logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Patch Device[%s] Success!", device.Name)
+					logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Patch Device[%s] Success!", device.Name)
 				}
 			}()
 		}

@@ -86,7 +86,7 @@ func (n *DeviceExporter) Run() error {
 			if err2 != nil {
 				logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
 			}
-			time.Sleep(20 * time.Second)
+			time.Sleep(5 * time.Second)
 		}
 	}()
 	// 加入关于Ability的信息收集
