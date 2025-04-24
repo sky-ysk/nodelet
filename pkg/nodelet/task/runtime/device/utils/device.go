@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec) error {
+func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m *manager.Manager) error {
 	// 遍历device
 	for name, device := range deviceMap {
 		logs.Infof("[DEVICE RUNTIME] Check Device[%s] ", name)
@@ -29,14 +29,27 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec) er
 		for _, spec := range specs {
 			for _, abilityName := range spec.Abilities {
 				if ability, ok := device.Status.Abilities[abilityName]; ok {
-					if ability.Status != apis.AbilityRunning { // 做一些处理
-						logs.Warnf("[DEVICE RUNTIME] Device[%s] is not running]", name)
-						if ability.Status == apis.AbilityReadyStartUp { // TODO deviceExporter 拉起能力
-							logs.Warnf("[DEVICE RUNTIME] Device[%s] is ready STARTUP", name)
+					switch ability.Status {
+					case apis.AbilityRunning:
+						logs.Infof("[DEVICE RUNTIME] Device[%s] Ability[%s] is running, NORMAL", name, ability.Name)
+					case apis.AbilityReadyStartUp:
+						for {
+							logs.Warnf("[DEVICE RUNTIME] Device[%s] Ability[%s] is ready STARTUP, Waiting!", name, ability.Name)
+							time.Sleep(1 * time.Second)
+							var err error
+							device, err = m.GetDevice(name, device.Namespace)
+							if err != nil {
+								logs.Errorf("[DEVICE RUNTIME] Device[%s] Get Device Error: %v", name, err)
+								return err
+							}
+							if device.Status.Abilities[abilityName].Status == apis.AbilityRunning {
+								logs.Infof("[DEVICE RUNTIME] Device[%s] Ability[%s] is running, NORMAL]", name, ability.Name)
+								return nil
+							}
 						}
-
-					} else {
-						logs.Infof("[DEVICE RUNTIME] Device[%s] Ability[%s] is NORMAL", name, abilityName)
+					case apis.AbilityError:
+						logs.Errorf("[DEVICE RUNTIME] Device[%s] Ability[%s] is ERROR!", name, ability.Name)
+						return fmt.Errorf("error! Device[%s] Ability[%s] is ERROR", name, ability.Name)
 					}
 				}
 			}

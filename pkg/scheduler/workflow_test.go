@@ -320,7 +320,7 @@ func TestCreateWorkFlow(t *testing.T) {
 							Port:      new(string),
 						},
 					},
-					Status: apis.AbilityRunning,
+					Status: apis.AbilityReadyStartUp,
 				},
 				"Grab": {
 					Name: "GrabBall.Galaxea.Guochuang",
@@ -331,7 +331,7 @@ func TestCreateWorkFlow(t *testing.T) {
 							Port:      new(string),
 						},
 					},
-					Status: apis.AbilityRunning,
+					Status: apis.AbilityReadyStartUp,
 				},
 			},
 			Lock: apis.Lock{
@@ -343,10 +343,8 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.197"
-	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Port = "55823" // 填写这个端口
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.197"
-	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Port = "37427"
 
 	_, err = m.CreateDevice(deviceGalaxea, "test")
 	if err != nil {
@@ -390,7 +388,7 @@ func TestCreateWorkFlow(t *testing.T) {
 							Port:      new(string),
 						},
 					},
-					Status: apis.AbilityRunning,
+					Status: apis.AbilityReadyStartUp,
 				},
 				"Grab": {
 					Name: "GrabBall.Leju.Guochuang",
@@ -401,7 +399,7 @@ func TestCreateWorkFlow(t *testing.T) {
 							Port:      new(string),
 						},
 					},
-					Status: apis.AbilityRunning,
+					Status: apis.AbilityReadyStartUp,
 				},
 			},
 			Lock: apis.Lock{
@@ -413,13 +411,10 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
 	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Port = "36735" // 填写这个端口
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Port = "36735" // 填写这个端口
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Port = "36689"
 	_, err = m.CreateDevice(deviceLeju, "test")
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
@@ -740,6 +735,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "星海图检测",
+			},
 			Name: "A1",
 			Runtimes: []apis.RuntimeSpec{
 				runtime1.Spec,
@@ -761,6 +759,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "乐聚检测",
+			},
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
 				//runtime5.Spec,
@@ -783,6 +784,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "星海图抓取",
+			},
 			Name: "A3",
 			Runtimes: []apis.RuntimeSpec{
 				runtime3.Spec,
@@ -825,6 +829,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "乐聚抓取",
+			},
 			Name: "A4",
 			Runtimes: []apis.RuntimeSpec{
 				runtime4.Spec,
@@ -866,6 +873,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
+			Desc: &apis.Description{
+				Docs: "星海图检测和抓取",
+			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
 				action1.Spec, action3.Spec,
@@ -888,6 +898,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
+			Desc: &apis.Description{
+				Docs: "乐聚检测和抓取",
+			},
 			Name: "G2",
 			Actions: []apis.ActionSpec{
 				action2.Spec, action4.Spec,
@@ -912,6 +925,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "星海图&乐聚的检测和抓取",
+			},
 			Name: "T1",
 			Groups: []apis.GroupSpec{
 				group1.Spec, group2.Spec,

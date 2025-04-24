@@ -962,6 +962,7 @@ type Ability struct {
 	InstanceID *string                   `json:"instance_id,omitempty" yaml:"instance_id"`
 	State      *AbilityState             `json:"state,omitempty" yaml:"state"`
 	Status     AbilityStatus             `json:"status,omitempty" yaml:"status"`
+	Lock       Lock                      `json:"lock,omitempty" yaml:"lock"`
 }
 
 // AbilityService 描述一个能力的具体业务（技能）
