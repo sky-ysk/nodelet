@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func createConditionTask() apis.Task {
@@ -350,6 +351,7 @@ func TestCreateWorkFlow(t *testing.T) {
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceGalaxea.Name, err.Error())
 	}
+
 	deviceLeju := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "deviceLeju",
@@ -419,6 +421,8 @@ func TestCreateWorkFlow(t *testing.T) {
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
 	}
+
+	time.Sleep(5 * time.Second)
 
 	// 星海图检测
 	runtime1 := &apis.Runtime{
