@@ -2,10 +2,13 @@ package runtime
 
 import (
 	"fmt"
+	"sync"
+
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
-	"sync"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
+	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
@@ -37,9 +40,10 @@ type RuntimeManager struct {
 	clientsManager *manager.Manager
 	mu             sync.Mutex
 	pool           *pool.ConnectionPool
+	NodeName       string
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, nodeName string) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
@@ -49,6 +53,7 @@ func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, 
 		//groupClient:  groupClient,
 		clientsManager: clientsManager,
 		pool:           pool.NewConnectionPool(),
+		NodeName:       nodeName,
 	}
 }
 
@@ -70,11 +75,11 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			break
 		case apis.ByK8s: //k8s-Pod\k8s-deployment\k8s-service
 			//TODO
-			//runtime = k8s.NewK8sRuntime(rm.eventbus, rm.recorder, rm.pool)
+			runtime = k8s.NewK8sRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool, rm.NodeName)
 			break
 		case apis.ByWasm:
 			//TODO
-			//runtime = wasm.NewWasmRuntime()
+			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus)
 			break
 		case apis.ByCommand: //任务作为系统命令执行
 			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool)

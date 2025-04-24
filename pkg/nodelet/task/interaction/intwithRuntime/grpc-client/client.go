@@ -35,7 +35,10 @@ func NewRuntimeClient(port string, pool *pool.ConnectionPool) *RuntimeClient {
 	return client
 }
 func NewK8sRuntimeClient(service, port string, pool *pool.ConnectionPool) *RuntimeClient {
-	client := &RuntimeClient{ServerIPAndPort: service + port, connPool: pool}
+	client := &RuntimeClient{ServerIPAndPort: service + ":" + port, connPool: pool}
+	if ok := client.checkConnection1(); !ok {
+		logs.Errorf("初次连接 gRPC 服务端失败")
+	}
 	//for {
 	//	success := client.checkConnection()
 	//	if success {

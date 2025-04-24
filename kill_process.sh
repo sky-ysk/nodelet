@@ -11,6 +11,10 @@ killall nodelet
 echo "Killing all scheduler processes..."
 killall scheduler
 
+# 停止所有 wasm runtime 进程
+echo "Killing all wasm runtime processes..."
+killall server
+
 echo "All specified processes have been killed."
 
 

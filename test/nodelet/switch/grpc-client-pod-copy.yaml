@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: grpc-client-pod-copy  # 必须全局唯一
+  namespace: switch
+  labels:
+    app: grpc-client-v2     # 关键标签，必须与 Service 匹配
+spec:
+  restartPolicy: Never  # 添加 RestartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: k8s-node1 # 直接使用节点名称标签
+  containers:
+  - name: grpc-client
+    image: registry.cn-hangzhou.aliyuncs.com/sudasuzhou/grpc_service:grpc-client-pod-v4.0
+    env:
+    - name: MY_IP
+      value: "grpc-server-service"
+    - name: MY_PORT
+      value: "50051" #serviceName必须得搭配Clust IP
+    ports:
+    - containerPort: 50052  # 容器实际监听端口
+---
+# Service 保持完全不变
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-client-service-copy
+  namespace: switch
+spec:
+  selector:
+    app: grpc-client-v2    # 通过标签关联 Pod
+  ports:
+  - protocol: TCP
+    port: 50052         # Service 对外端口
+    targetPort: 50052   # 指向 Pod 容器端口
+    nodePort: 30053   # 供外部访问的端口 (可选, 也可让K8s自动分配)
+  type: NodePort
+

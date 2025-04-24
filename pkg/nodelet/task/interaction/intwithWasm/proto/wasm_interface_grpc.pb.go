@@ -29,8 +29,8 @@ type WasmInterfaceClient interface {
 	Start(ctx context.Context, in *StartIntent, opts ...grpc.CallOption) (*Result, error)
 	// 释放资源
 	Destroy(ctx context.Context, in *DestroyIntent, opts ...grpc.CallOption) (*Result, error)
-	// 获取应用状态
-	GetStatus(ctx context.Context, in *GetStatusIntent, opts ...grpc.CallOption) (*APPStatus, error)
+	// 获取应用状态，调用方需要对每个执行的任务都获取一次状态
+	GetStatus(ctx context.Context, in *GetStatusIntent, opts ...grpc.CallOption) (*Result, error)
 	// 迁移相关
 	Store(ctx context.Context, in *StoreIntent, opts ...grpc.CallOption) (*Result, error)
 	Restore(ctx context.Context, in *RestoreIntent, opts ...grpc.CallOption) (*Result, error)
@@ -80,8 +80,8 @@ func (c *wasmInterfaceClient) Destroy(ctx context.Context, in *DestroyIntent, op
 	return out, nil
 }
 
-func (c *wasmInterfaceClient) GetStatus(ctx context.Context, in *GetStatusIntent, opts ...grpc.CallOption) (*APPStatus, error) {
-	out := new(APPStatus)
+func (c *wasmInterfaceClient) GetStatus(ctx context.Context, in *GetStatusIntent, opts ...grpc.CallOption) (*Result, error) {
+	out := new(Result)
 	err := c.cc.Invoke(ctx, "/wasm_interface.WasmInterface/getStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -118,8 +118,8 @@ type WasmInterfaceServer interface {
 	Start(context.Context, *StartIntent) (*Result, error)
 	// 释放资源
 	Destroy(context.Context, *DestroyIntent) (*Result, error)
-	// 获取应用状态
-	GetStatus(context.Context, *GetStatusIntent) (*APPStatus, error)
+	// 获取应用状态，调用方需要对每个执行的任务都获取一次状态
+	GetStatus(context.Context, *GetStatusIntent) (*Result, error)
 	// 迁移相关
 	Store(context.Context, *StoreIntent) (*Result, error)
 	Restore(context.Context, *RestoreIntent) (*Result, error)
@@ -142,7 +142,7 @@ func (UnimplementedWasmInterfaceServer) Start(context.Context, *StartIntent) (*R
 func (UnimplementedWasmInterfaceServer) Destroy(context.Context, *DestroyIntent) (*Result, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Destroy not implemented")
 }
-func (UnimplementedWasmInterfaceServer) GetStatus(context.Context, *GetStatusIntent) (*APPStatus, error) {
+func (UnimplementedWasmInterfaceServer) GetStatus(context.Context, *GetStatusIntent) (*Result, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
 }
 func (UnimplementedWasmInterfaceServer) Store(context.Context, *StoreIntent) (*Result, error) {

@@ -494,6 +494,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							}
 						}
 						for _, runtimeReference := range actionStatus.Runtimes {
+							logs.Trace("-------------------------------------------get Runtime----------------------------,runtimeReferenceName:%v,runtimeReferenceNamespace:%v", runtimeReference.Name, runtimeReference.Namespace)
 							runtime, err := gmo.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 							if err != nil {
 								logs.Errorf("Get runtime error-3:%v", err)
@@ -531,26 +532,45 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							//说明runtime可以执行，这里为了适配迁移，如果是副本group，初始化任务的时候直接使用关键状态数据
 							// 这块可以执行到，因为group当中有很多action，有多个Action的话，总有没执行的Action，这时候需要判断runtime的启动方式（细粒度的话使用StartingRuntime启动、粗粒度的话使用Run启动）
 							if runtime.Spec.EnableFineGrainedControl { // 当前group是副本任务，且实现了细粒度控制方法
-								logs.Infof("****************************hhhhhhhhhhhhhhhh****************************************")
-								//if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting { //TODO 这个参数好像可以删了，有Waiting是不是就够了？
-								logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
-								if runtimeStatus.KeyStatus == "" { // 说明不是副本任务，还没初始化---TODO 这里需要这个检查的原因：有可能是即时的迁移迁移，那迁移过去的group是没有进入init状态的，所以这边迁移过去的副本是处于DeployCheck的状态开始恢复任务状态
-									logs.Info("))))))))))))))))))))))))))))))))))))))))))))))")
-									go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
-								} else {
-									logs.Info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-									go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) //这句好像会阻塞
-									go gmo.runtimeManager.RestoreData(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
+								if !runtime.Status.Starting { // 还没有调用Start或者Run方法，说明第一次进入  ----Start参数主要解决的问题：Action、Runtime的依赖都满足，且调用了Run、Start方法进入了Runtime的运行时，但是卡在运行时，没有将Runtime、Action的状态设置为Running，导致一直重复进入Action.Status== apis.Deploycheck这个分支
+									logs.Infof("****************************hhhhhhhhhhhhhhhh****************************************")
+									//if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting { //TODO 这个参数好像可以删了，有Waiting是不是就够了？
+									logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
+									if runtimeStatus.KeyStatus == "" { // 说明不是副本任务，还没初始化---TODO 这里需要这个检查的原因：有可能是即时的迁移迁移，那迁移过去的group是没有进入init状态的，所以这边迁移过去的副本是处于DeployCheck的状态开始恢复任务状态
+										logs.Info("))))))))))))))))))))))))))))))))))))))))))))))")
+										go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
+									} else {
+										logs.Info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+										go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) //这句好像会阻塞
+										go gmo.runtimeManager.RestoreData(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
+									}
+									patchRuntime, err := json.Marshal(map[string]interface{}{
+										"status": map[string]interface{}{
+											"starting": true,
+										},
+									})
+									logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&-1,name:%v,namespace:%v", runtime.Name, runtime.Namespace)
+									_, err = gmo.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+									if err != nil {
+										logs.Errorf("patch runtimeStatus error")
+									}
+									logs.Info("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&-2")
 								}
-								//grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
-								//}
 							} else {
 								// ①副本任务，但没有细粒度控制 ②原任务（没有副本） 采用Run方式启动任务
-								//logs.Infof("****************************ashdkhaskldhklashdk****************************************")
-								//if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting {
-								go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
-								//grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting = true
-								//}
+								logs.Infof("****************************ashdkhaskldhklashdk****************************************")
+								if !runtime.Status.Starting {
+									go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
+									patchRuntime, err := json.Marshal(map[string]interface{}{
+										"status": map[string]interface{}{
+											"starting": true,
+										},
+									})
+									_, err = gmo.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+									if err != nil {
+										logs.Errorf("patch runtimeStatus error")
+									}
+								}
 							}
 						}
 						continue
@@ -1390,12 +1410,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		if err != nil {
 			logs.Errorf("Update task err-333:%v", err)
 		}
-
-		if runtime.Spec.Type == apis.ByPod { //是pod类型的任务
-			err := gmo.runtimeManager.Kill(get, action, runtime, actionSpecName, runtimeSpecName)
-			if err != nil {
-				logs.Errorf("Stop runtime error:%v", err)
-			}
+	}
+	logs.Infof("runtime.Spec.Name:%v,runtime.Spec.Type:%v", runtime.Spec.Name, runtime.Spec.Type)
+	if runtime.Spec.Type == apis.ByPod { //是pod类型的任务
+		logs.Infof("=============删除==============pod、service,runtime.Name:%v", runtime.Name)
+		err := gmo.runtimeManager.Kill(get, action, runtime, actionSpecName, runtimeSpecName)
+		if err != nil {
+			logs.Errorf("Stop runtime error:%v", err)
 		}
 	}
 	//测试：

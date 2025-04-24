@@ -123,7 +123,7 @@ func DeleteResources(clientset *kubernetes.Clientset, objects []runtime.Object) 
 			err := clientset.AppsV1().Deployments(namespace).Delete(
 				context.TODO(), resource.Name, metav1.DeleteOptions{},
 			)
-			logs.Info("-----------------k8s Deployment created----------------------------")
+			logs.Info("-----------------k8s Deployment delete----------------------------")
 			if handleDeleteError(err, "Deployment", resource.Name) != nil {
 				return err
 			}
@@ -132,7 +132,7 @@ func DeleteResources(clientset *kubernetes.Clientset, objects []runtime.Object) 
 			err := clientset.CoreV1().Services(namespace).Delete(
 				context.TODO(), resource.Name, metav1.DeleteOptions{},
 			)
-			logs.Info("-----------------k8s Service created----------------------------")
+			logs.Info("-----------------k8s Service delete----------------------------")
 			if handleDeleteError(err, "Service", resource.Name) != nil {
 				return err
 			}

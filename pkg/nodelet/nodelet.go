@@ -3,10 +3,11 @@ package nodelet
 import (
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/component-base/logs"
 	"log"
 	"net/http"
 	"time"
+
+	"hit.edu/framework/pkg/component-base/logs"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -37,14 +38,15 @@ type Nodelet struct {
 	StopEverything <-chan struct{}
 }
 
-func New(ctx context.Context) (*Nodelet, error) {
-	cfg := NewConfig()
+func New(ctx context.Context, configPath string) (*Nodelet, error) {
+	cfg := NewConfig(configPath)
 	if cfg == nil {
 		logs.Error("config is nil")
 		return nil, fmt.Errorf("配置初始化失败")
 	}
 	stopEverything := ctx.Done()
 	apiserverHost := cfg.apiserverAddr
+	logs.Infof("apiserverHost: %s", apiserverHost)
 	clientSet, err := InitClient(apiserverHost)
 	if err != nil {
 		log.Fatalf("init client failed: %v", err)

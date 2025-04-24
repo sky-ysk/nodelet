@@ -32,7 +32,7 @@ import (
 // }
 var scheme = runtime.NewScheme()
 
-const NodeName = "CloudNode1"
+const NodeName = "n19" // 1$
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -67,7 +67,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
+			From:      "/root/workspace/yolo_projects/requirements1.txt", //2$
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -111,8 +111,8 @@ func main() {
 						Name:                         runtime1_1_1_1Name,
 						Type:                         apis.ByCommand,
 						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s
-						Parents:                      make([]string, 0),                                                // 加入Parents
+						Args:                         []string{"/root/workspace/yolo_projects/yolo-runner1.py"}, //20s   //3$
+						Parents:                      make([]string, 0),                                         // 加入Parents
 						Conditions:                   &runtime1_1_1_1Condition,
 						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
@@ -159,28 +159,6 @@ func prompt() {
 		panic(err)
 	}
 	logs.Info()
-}
-
-func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
-	return apis.ConditionFormula{
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      parentName,
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "NodeDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
 }
 
 var node = &apis.Node{

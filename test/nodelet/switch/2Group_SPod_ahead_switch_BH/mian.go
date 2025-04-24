@@ -23,16 +23,9 @@ import (
 	"time"
 )
 
-// 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
-// if strings.Contains(group.ObjectMeta.Name, "G1") {
-// host = "CloudNode1"
-// }
-// if strings.Contains(group.ObjectMeta.Name, "copy") {
-// host = "CloudNode2"
-// }
 var scheme = runtime.NewScheme()
 
-const NodeName = "CloudNode1"
+const NodeName = "n19" //1$
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -47,9 +40,9 @@ func main() {
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
-	// group
-	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{1, 0}
+	// group1 - Client -A机器
+	group1_1Name := "G1"              // 第一个Task下的第一个GroupName
+	group1_1Replicas := []int32{1, 0} //6$
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -58,32 +51,32 @@ func main() {
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := true
-	runtime1_1_1_1FineGrainedControlPort := "5123"
+	runtime1_1_1_1FineGrainedControlPort := "30052"
+	runtime1_1_1_1FineGrainedControlService := "10.31.10.19" //A机器IP地址 //2$
 
-	// 程序依赖（requirements.txt）
-	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "ProgramDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
+	runtime1_1_1_1Input := []apis.Value{
+		apis.Value{
+			From: "/root/goprojects/reference/pod/grpc-client-pod.yaml", //3$
 		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "ProgramDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
 	}
 
-	runtime1_1_1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			ProgramDependencyConditionFormula,
+	// group2 -Server-B机器
+	group1_2Name := "G2" // 第一个Task下的第一个GroupName
+	group1_2Replicas := []int32{0, 0}
+
+	// action
+	action1_2_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+
+	// runtime
+	runtime1_2_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	// runtime是否细粒度控制
+	runtime1_2_1_1FineGrainedControl := true
+	runtime1_2_1_1FineGrainedControlPort := "30051"
+	runtime1_2_1_1FineGrainedControlService := "10.31.10.210" //B机器ip地址 //4$
+
+	runtime1_2_1_1Input := []apis.Value{
+		apis.Value{
+			From: "/root/goprojects/reference/pod/grpc-server-pod.yaml", //5$
 		},
 	}
 
@@ -108,15 +101,53 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                         runtime1_1_1_1Name,
-						Type:                         apis.ByCommand,
-						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s
-						Parents:                      make([]string, 0),                                                // 加入Parents
-						Conditions:                   &runtime1_1_1_1Condition,
-						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
-						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
+						Name:                            runtime1_1_1_1Name,
+						Type:                            apis.ByPod,
+						Command:                         []string{},
+						Args:                            []string{},        //20s
+						Parents:                         make([]string, 0), // 加入Parents
+						EnvVar:                          []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+						Inputs:                          runtime1_1_1_1Input,
+						EnableFineGrainedControl:        runtime1_1_1_1FineGrainedControl,
+						EnableFineGrainedControlService: &runtime1_1_1_1FineGrainedControlService,
+						EnableFineGrainedControlPort:    &runtime1_1_1_1FineGrainedControlPort,
+					},
+				},
+			},
+		},
+	}
+	// Server -B 机器
+	gs2 := apis.GroupSpec{
+		ResourceRequirements: []apis.ResourceRequirement{
+			apis.ResourceRequirement{
+				Name:       "CPU",
+				Lowbound:   "2",
+				Upperbound: "4",
+			},
+			apis.ResourceRequirement{
+				Name:       "RAM",
+				Lowbound:   "2",
+				Upperbound: "4",
+			},
+		},
+		Replicas: group1_2Replicas,
+		Name:     group1_2Name,
+		Parents:  make([]string, 0),
+		Actions: []apis.ActionSpec{
+			apis.ActionSpec{
+				Name: action1_2_1Name,
+				Runtimes: []apis.RuntimeSpec{
+					apis.RuntimeSpec{
+						Name:                            runtime1_2_1_1Name,
+						Type:                            apis.ByPod,
+						Command:                         []string{},
+						Args:                            []string{},        //20s
+						Parents:                         make([]string, 0), // 加入Parents
+						EnvVar:                          []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+						Inputs:                          runtime1_2_1_1Input,
+						EnableFineGrainedControl:        runtime1_2_1_1FineGrainedControl,
+						EnableFineGrainedControlService: &runtime1_2_1_1FineGrainedControlService,
+						EnableFineGrainedControlPort:    &runtime1_2_1_1FineGrainedControlPort,
 					},
 				},
 			},
@@ -126,7 +157,7 @@ func main() {
 	ts := apis.TaskSpec{
 		Name: task1Name,
 		Groups: []apis.GroupSpec{
-			gs1,
+			gs1, gs2,
 		},
 	}
 	// 生成UUID
@@ -161,28 +192,6 @@ func prompt() {
 	logs.Info()
 }
 
-func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
-	return apis.ConditionFormula{
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      parentName,
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "NodeDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
-}
-
 var node = &apis.Node{
 	ObjectMeta: meta.ObjectMeta{Name: NodeName, Namespace: "test"},
 	TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "resources/v1"},
@@ -201,7 +210,6 @@ func postEventForMigrate(client core.EventInterface) {
 	recorder.Event(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", node.Name))
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
-
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	apis.AddToScheme(scheme)
 	logs.Info(scheme)
