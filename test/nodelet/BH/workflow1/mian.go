@@ -122,7 +122,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
+			From:      "/root/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -258,8 +258,8 @@ func main() {
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"}, //20s
-						Parents:                  make([]string, 0),                                                // 加入Parents
+						Args:                     []string{"/root/workspace/heongtong_yolo_linux/train.py"}, //20s
+						Parents:                  make([]string, 0),                                         // 加入Parents
 						Conditions:               &runtime1_1_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
@@ -268,8 +268,8 @@ func main() {
 						Name:                     runtime1_1_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/predict.py"}, //8s
-						Parents:                  []string{runtime1_1_1_1Name},                                       // 加入Parents
+						Args:                     []string{"/root/workspace/heongtong_yolo_linux/predict.py"}, //8s
+						Parents:                  []string{runtime1_1_1_1Name},                                // 加入Parents
 						Conditions:               &runtime1_1_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
@@ -304,8 +304,8 @@ func main() {
 						Name:                     runtime1_2_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"}, //8s
-						Parents:                  make([]string, 0),                                                            // 加入Parents
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/wine.py"}, //8s
+						Parents:                  make([]string, 0),                                                     // 加入Parents
 						Conditions:               &runtime1_2_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
@@ -314,7 +314,7 @@ func main() {
 						Name:                     runtime1_2_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"},
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/wine.py"},
 						Parents:                  []string{runtime1_2_1_1Name}, // 加入Parents
 						Conditions:               &runtime1_2_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -350,8 +350,8 @@ func main() {
 						Name:                     runtime1_3_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/mnist.py"}, //24s
-						Parents:                  make([]string, 0),                                                             // 加入Parents
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/mnist.py"}, //24s
+						Parents:                  make([]string, 0),                                                      // 加入Parents
 						Conditions:               &runtime1_3_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
@@ -360,7 +360,7 @@ func main() {
 						Name:                     runtime1_3_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/mnist.py"},
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/mnist.py"},
 						Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
 						Conditions:               &runtime1_3_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -397,8 +397,8 @@ func main() {
 						Name:                     runtime1_4_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Iris.py"}, //11s
-						Parents:                  make([]string, 0),                                                            // 加入Parents
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/Iris.py"}, //11s
+						Parents:                  make([]string, 0),                                                     // 加入Parents
 						Conditions:               &runtime1_4_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_4_1_1FineGrainedControl,
@@ -407,7 +407,7 @@ func main() {
 						Name:                     runtime1_4_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Iris.py"},
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/Iris.py"},
 						Parents:                  []string{runtime1_4_1_1Name}, // 加入Parents
 						Conditions:               &runtime1_4_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -443,8 +443,8 @@ func main() {
 						Name:                     runtime1_5_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Diabetes.py"}, //14s
-						Parents:                  make([]string, 0),                                                                // 加入Parents
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/Diabetes.py"}, //14s
+						Parents:                  make([]string, 0),                                                         // 加入Parents
 						Conditions:               &runtime1_5_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_5_1_1FineGrainedControl,
@@ -453,7 +453,7 @@ func main() {
 						Name:                     runtime1_5_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Diabetes.py"},
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/Diabetes.py"},
 						Parents:                  []string{runtime1_5_1_1Name}, // 加入Parents
 						Conditions:               &runtime1_5_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -490,10 +490,9 @@ func main() {
 						Name:                     runtime1_6_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/breast_cancer.py"}, //10s
-						Parents:                  make([]string, 0),                                                                     // 加入Parents
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/breast_cancer.py"}, //10s
+						Parents:                  make([]string, 0),                                                              // 加入Parents
 						Conditions:               &runtime1_6_1_1Condition,
-						Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_6_1_1FineGrainedControl,
 					},
@@ -501,10 +500,9 @@ func main() {
 						Name:                     runtime1_6_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/breast_cancer.py"},
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/breast_cancer.py"},
 						Parents:                  []string{runtime1_6_1_1Name}, // 加入Parents
 						Conditions:               &runtime1_6_1_2Condition,
-						Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_6_1_2FineGrainedControl,
 					},

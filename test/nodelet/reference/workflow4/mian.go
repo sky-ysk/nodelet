@@ -206,13 +206,13 @@ func main() {
 	}
 
 	group1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{},
+		Formulas: []apis.ConditionFormula{
+			GetNodeDepencyConditionFormula(group1_2Name),
+		},
 	}
 
 	group1_2Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_1Name),
-		},
+		Formulas: []apis.ConditionFormula{},
 	}
 
 	group1_3Condition := apis.Conditions{
@@ -220,13 +220,14 @@ func main() {
 	}
 	group1_4Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_3Name),
+			GetNodeDepencyConditionFormula(group1_2Name),
 		},
 	}
 
 	group1_5Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{},
 	}
+
 	group1_6Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
 			GetNodeDepencyConditionFormula(group1_5Name),
