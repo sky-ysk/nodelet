@@ -322,20 +322,18 @@ func (m *Monitor) SetState(group *apis.Group, resourceName, resourceNamespace st
 	}
 	switch runtime.Spec.Type {
 	case apis.ByDeployment:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByDeployment, resourceNamespace, resourceName), state)
-		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByDeployment, resourceNamespace, resourceName))
-		}
+		m.infoMap.Store(stateKey(apis.ByDeployment, resourceNamespace, resourceName), state)
+
 	case apis.ByPod:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByPod, resourceNamespace, resourceName), state)
-		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByPod, resourceNamespace, resourceName))
-		}
+		m.infoMap.Store(stateKey(apis.ByPod, resourceNamespace, resourceName), state)
+		//if loaded {
+		//	logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByPod, resourceNamespace, resourceName))
+		//}
 	case apis.ByService:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByService, resourceNamespace, resourceName), state)
-		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByService, resourceNamespace, resourceName))
-		}
+		m.infoMap.Store(stateKey(apis.ByService, resourceNamespace, resourceName), state)
+		//if loaded {
+		//	logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByService, resourceNamespace, resourceName))
+		//}
 	}
 }
 
