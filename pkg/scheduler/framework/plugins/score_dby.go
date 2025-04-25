@@ -15,6 +15,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
+	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"net/http"
 	"time"
@@ -24,6 +25,7 @@ type ScorePluginDBY struct {
 	pluginClient ScorePluginClient
 	clientSet    *clients.ClientSet
 	taskClient   core.TaskInterface
+	valueEngine  *value.Engine
 }
 
 type ScorePluginClient struct {
@@ -130,7 +132,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	taskName := group.Status.Belong.Name
 
 	request := transport.ScoreRequest{
-		GroupID: group.Spec.Name,
+		GroupID: group.ObjectMeta.Name,
 		TaskID:  taskName,
 		NodeID:  nodeName,
 	}
@@ -159,7 +161,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 }
 
 func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (bool, *framework.Status) {
-	request := buildSendGroupsRequest(ctx, task)
+	request := sp.buildSendGroupsRequest(ctx, task)
 	resp := sp.pluginClient.SendGroups(request)
 	if resp.BaseResponse.Success {
 		return true, framework.NewStatus(framework.Success, "default success")
@@ -221,30 +223,32 @@ type SendGroupsResponse struct {
 	State  int64  `json:"state"`
 }
 
-func BuildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
-	return buildSendGroupsRequest(ctx, task)
-}
+//func BuildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
+//	return buildSendGroupsRequest(ctx, task)
+//}
 
-func buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
+func (sp *ScorePluginDBY) buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
 	topInfo := make([]GroupTopInfo, 0)
 	groupsID := make([]string, 0)
 	resourcesMap := make(map[string][]apis.ResourceRequirement)
-	taskID := task.Spec.Name
+	taskID := task.ObjectMeta.Name
 	//TODO 可能需要做深复制 @lbh
 	for _, group := range task.Spec.Groups {
-		groupsID = append(groupsID, group.Name)
+		groupID := task.Status.Groups[group.Name].Name
+		groupsID = append(groupsID, groupID)
 		resources := make([]apis.ResourceRequirement, 0)
 		for _, requirement := range group.ResourceRequirements {
 			resources = append(resources, requirement)
 		}
 		if len(resources) > 0 {
-			resourcesMap[group.Name] = resources
+			resourcesMap[groupID] = resources
 		}
 		for _, parent := range group.Parents {
 			//fmt.Println("parent : ", parent, " child ", group.Status.GroupID)
+			parID := task.Status.Groups[parent].Name
 			topInfo = append(topInfo, GroupTopInfo{
-				Child:  group.Name,
-				Parent: parent,
+				Child:  groupID,
+				Parent: parID,
 			})
 		}
 	}
