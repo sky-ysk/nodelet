@@ -757,7 +757,7 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，
 		yamlFilePath := r.Spec.Inputs[0].From
 		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)       //yaml文件名加上-copy后缀
-		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型
+		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
 		runtimeCopy.Spec.EnableFineGrainedControlPort = StringPtr("30053")
 		// 2、接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
 		// 3、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名

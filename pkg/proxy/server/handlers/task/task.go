@@ -228,7 +228,7 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 	}
 
 	// 删除task
-	err := h.manager.DeleteTask(namespace, name)
+	err := h.manager.DeleteTask(name, namespace)
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)

@@ -58,7 +58,7 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	t.Status.CreateAt = &apis.Time{Time: time.Now()}
 
 	// 初始化状态
-	t.Status.Phase = apis.Pending
+	t.Status.Phase = apis.Unknown
 	t.Status.Groups = map[string]apis.ObjectReference{}
 
 	// 打上Label, 当前任务属于哪个Task和uuid域
