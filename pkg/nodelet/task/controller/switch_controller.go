@@ -374,6 +374,8 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		copiesInDomain = group.Spec.Replicas[0]
 		copiesInOtherDomain = group.Spec.Replicas[1]
 	}
+	// 加一个判断，如果说是域内迁移，迁移的点和副本的点一致，那么走副本预部署这条路；如果说迁移的点和副本不一致，走实时迁移这条路
+	// 如果是跨域迁移，迁移的域和副本的域一致，走副本预部署这条路；如果说迁移的域和副本不一致，走实时迁移这条路
 	if copiesInDomain+copiesInOtherDomain > 0 { // 提前部署了副本，那么就是修改副本的状态，让副本真正启动（Init->Running）
 		// 说明当前group已经提前往etcd里写入了副本group，那么此处就不用再写入了，只需要将原先写的副本group信息当中的groupCopy.Status.CopyStatus 改为"Starting"即可-采用patch
 		patchGroup, err := json.Marshal(map[string]interface{}{
@@ -388,38 +390,53 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		for key, value := range group.Spec.CopyInfo { // 这里相当于只遍历CopyInfo这个数组当中的第一个元素
 			groupCopyName = key
 			if value != "local" { // && event.Reason == events.TriggerCrossMigration
-				// 跨域迁移 通过跨域的通信总线通知另一个域的副本copyGroup进行状态的恢复,暂时使用update--后期改成patch
-				groupTarget := mc.groupTargets[value] //=-=-=-=-
-				//copyGroup, err := groupTarget.Get(context.TODO(), "test", groupCopyName, "groups", metav1.GetOptions{})
-				//if err != nil {
-				//	logs.Infof("Failed to get group from other domain: %v", err)
-				//}
-				//copyGroup.Status.CopyStatus = "Starting"
-				patchGroup, err := json.Marshal(map[string]interface{}{
-					"status": map[string]interface{}{
-						"copy_status": "Starting",
-					},
-				})
-				_, err = groupTarget.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
-				if err != nil {
-					logs.Errorf("Patch group %s cross domain failed: %v", groupCopyName, err)
+				if event.Reason == events.TriggerCrossMigration && (event.Message == value || event.Message == "") { //所要迁的目的地正好和副本所在的域相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+					// 跨域迁移 通过跨域的通信总线通知另一个域的副本copyGroup进行状态的恢复,暂时使用update--后期改成patch
+					groupTarget := mc.groupTargets[value] //=-=-=-=-
+					//copyGroup, err := groupTarget.Get(context.TODO(), "test", groupCopyName, "groups", metav1.GetOptions{})
+					//if err != nil {
+					//	logs.Infof("Failed to get group from other domain: %v", err)
+					//}
+					//copyGroup.Status.CopyStatus = "Starting"
+					patchGroup, err := json.Marshal(map[string]interface{}{
+						"status": map[string]interface{}{
+							"copy_status": "Starting",
+						},
+					})
+					_, err = groupTarget.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+					if err != nil {
+						logs.Errorf("Patch group %s cross domain failed: %v", groupCopyName, err)
+					}
+				} else {
+					continue //说明跨域迁移，指定的迁移目的域和副本所在的域不一致，那就接着查看其他副本，如果遍历完没有副本的话，那就走非预部署的流程
 				}
 			} else {
-				// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
-				_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
-				if err != nil {
-					logs.Errorf("Patch group error-6:%v", err)
+				if event.Reason == events.TriggerLocalMigration {
+					// 查副本group所在的节点是否为要迁移的目的节点
+					getCopyGroup, err := mc.clientsManager.GetGroup(groupCopyName, group.Namespace)
+					if err != nil {
+						logs.Errorf("Get group %s failed-66: %v", groupCopyName, err)
+					}
+					if event.Message == *getCopyGroup.Status.Node || event.Message == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
+						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
+						if err != nil {
+							logs.Errorf("Patch group error-6:%v", err)
+						}
+						logs.Info("Change the copy_Status of the copy task to Starting")
+					} else {
+						continue //说明本域迁移，指定的迁移目的域和副本所在的节点不一致，那就接着查看其他副本，如果遍历完没有副本的话，那就走非预部署的流程
+					}
 				}
-				logs.Info("Change the copy_Status of the copy task to Starting")
 			}
 			break
 		}
 	} else { // 还未部署副本，那就是直接即使触发迁移，粗粒度控制的任务或者细粒度控制的任务都有可能
 		// 先根据源group生成一个副本group的Name
 		//groupCopyName = "Reason-copy"          // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符,这里刚开始这么定义，是想让副本在指定的节点上生成
-		nodeName := extractNode(event.Message) // 如果nodeName未获取到，则nodeName = ""
 
 		if event.Reason == events.TriggerLocalMigration { // 本域迁移，指定了目标节点
+			nodeName := extractNode(event.Message) // 如果nodeName未获取到，则nodeName = ""
 			// TODO 本域迁移，则直接生成group副本并写入本域etcd当中
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 			groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
@@ -471,88 +488,89 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			}
 			logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
 		} else { // 为跨域迁移
-			if nodeName != "" { // 跨域迁移，指定了别的域的目标节点 TODO:后面这块应该删了，跨域迁移时不指定节点，只指定域的
-				// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
-				// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
-				groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
-				groupCopyName = groupCopy.Name
-				// 遍历action和Runtime，依次创建
-				for _, actionReference := range group.Status.Actions {
-					action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
-					if err != nil {
-						logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
-					}
-					actionCopy := NewActionInfoCopy(action)
-					actionTarget := mc.actionTargets["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID TODO 跨域可能也得加上namespace
-					_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
-					if err != nil {
-						logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
-					}
-					logs.Infof("Create actionCopy:%v", actionCopy.Name)
-					for _, runtimeReference := range action.Status.Runtimes {
-						runtime, err := mc.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
-						if err != nil {
-							logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
-						}
-						runtimeCopy := NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
-						runtimeTarget := mc.runtimeTargets["broker"]     //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
-						_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
-						if err != nil {
-							logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
-						}
-						logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
-					}
-				}
-				logs.Infof("group:%v######################################1", groupCopy.Name)
-				groupTarget := mc.groupTargets["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
-				_, err := groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
-				// 将副本任务信息写入到源任务的CopyInfo当中，将nodeName转换为连接
-				patchGroup, err := json.Marshal(map[string]interface{}{
-					"spec": map[string]interface{}{
-						"copy_info": map[string]string{groupCopyName: "broker"}, // TODO 后期这里也得改
-					},
-				})
+			//if nodeName != "" { // 跨域迁移，指定了别的域的目标节点 TODO:后面这块应该删了，跨域迁移时不指定节点，只指定域的
+			//	// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
+			//	// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
+			//	groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
+			//	groupCopyName = groupCopy.Name
+			//	// 遍历action和Runtime，依次创建
+			//	for _, actionReference := range group.Status.Actions {
+			//		action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
+			//		if err != nil {
+			//			logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
+			//		}
+			//		actionCopy := NewActionInfoCopy(action)
+			//		actionTarget := mc.actionTargets["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID TODO 跨域可能也得加上namespace
+			//		_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
+			//		if err != nil {
+			//			logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
+			//		}
+			//		logs.Infof("Create actionCopy:%v", actionCopy.Name)
+			//		for _, runtimeReference := range action.Status.Runtimes {
+			//			runtime, err := mc.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+			//			if err != nil {
+			//				logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
+			//			}
+			//			runtimeCopy := NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
+			//			runtimeTarget := mc.runtimeTargets["broker"]     //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+			//			_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
+			//			if err != nil {
+			//				logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
+			//			}
+			//			logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
+			//		}
+			//	}
+			//	logs.Infof("group:%v######################################1", groupCopy.Name)
+			//	groupTarget := mc.groupTargets["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+			//	_, err := groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+			//	// 将副本任务信息写入到源任务的CopyInfo当中，将nodeName转换为连接
+			//	patchGroup, err := json.Marshal(map[string]interface{}{
+			//		"spec": map[string]interface{}{
+			//			"copy_info": map[string]string{groupCopyName: "broker"}, // TODO 后期这里也得改
+			//		},
+			//	})
+			//	if err != nil {
+			//		logs.Errorf("Json Marshal failed, err:%v", err)
+			//	}
+			//	patchResult, err := mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
+			//	if err != nil {
+			//		logs.Errorf("Patch group error:%v", err)
+			//	}
+			//	logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopyName])
+			//} else { // 跨域迁移，未指定迁移到哪个节点，这里直接生成一个事件通过调度器，里面放Group信息
+			// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息
+			domainName := extractNode(event.Message)
+			groupCopy := NewGroupInfoCopy(group, false, "") //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
+			// 遍历action和Runtime，依次创建
+			for _, actionReference := range group.Status.Actions {
+				action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
 				if err != nil {
-					logs.Errorf("Json Marshal failed, err:%v", err)
+					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 				}
-				patchResult, err := mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
+				actionCopy := NewActionInfoCopy(action)
+				actionTarget := mc.actionTargets[domainName] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+				_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
 				if err != nil {
-					logs.Errorf("Patch group error:%v", err)
+					logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
 				}
-				logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopyName])
-			} else { // 跨域迁移，未指定迁移到哪个节点，这里直接生成一个事件通过调度器，里面放Group信息
-				// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息
-				groupCopy := NewGroupInfoCopy(group, false, "") //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
-				// 遍历action和Runtime，依次创建
-				for _, actionReference := range group.Status.Actions {
-					action, err := mc.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
+				logs.Infof("Create actionCopy:%v", actionCopy.Name)
+				for _, runtimeReference := range action.Status.Runtimes {
+					runtime, err := mc.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 					if err != nil {
-						logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
+						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 					}
-					actionCopy := NewActionInfoCopy(action)
-					actionTarget := mc.actionTargets["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
-					_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
+					runtimeCopy := NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
+					runtimeTarget := mc.runtimeTargets[domainName]   //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+					_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
 					if err != nil {
-						logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
+						logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
 					}
-					logs.Infof("Create actionCopy:%v", actionCopy.Name)
-					for _, runtimeReference := range action.Status.Runtimes {
-						runtime, err := mc.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
-						if err != nil {
-							logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
-						}
-						runtimeCopy := NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
-						runtimeTarget := mc.runtimeTargets["broker"]     //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
-						_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
-						if err != nil {
-							logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
-						}
-						logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
-					}
+					logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
 				}
-				mc.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
-				// TODO 这里还是需要调度器选择完节点后生成一个事件来通知部署器，接下来要做的是，监听事件，这块的方法可以自己从group_handler.go当中拿，已经写好
 			}
+			mc.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
+			// TODO 这里还是需要调度器选择完节点后生成一个事件来通知部署器，接下来要做的是，监听事件，这块的方法可以自己从group_handler.go当中拿，已经写好
+			//}
 		}
 	}
 
