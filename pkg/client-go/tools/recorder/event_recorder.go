@@ -23,15 +23,22 @@ type recorder struct {
 	// clock clock.Clock
 }
 
-func (recorder *recorder) Event(object runtime.Object, eventtype, reason, message string) {
-	recorder.generateEvent(object, eventtype, reason, message)
+// EventForMigration implements EventRecorder.
+func (recorder *recorder) EventForMigration(object runtime.Object, eventtype string, reason string, message string, migrationTarget string) {
+	recorder.generateEvent(object, eventtype, reason, message, migrationTarget)
 }
 
+// Event implements EventRecorder.
+func (recorder *recorder) Event(object runtime.Object, eventtype, reason, message string) {
+	recorder.generateEvent(object, eventtype, reason, message, "")
+}
+
+// Eventf implements EventRecorder.
 func (recorder *recorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
 	recorder.Event(object, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
 
-func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason, message string) {
+func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason, message, migrationTarget string) {
 	ref, err := reference.GetReference(recorder.scheme, object)
 	if err != nil {
 		logs.Error(err, "Could not construct reference, will not report event", "object", object, "eventType", eventtype, "reason", reason, "message", message)
@@ -49,7 +56,7 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 		return
 	}
 
-	event := recorder.makeEvent(ref, eventtype, reason, message)
+	event := recorder.makeEvent(ref, eventtype, reason, message, migrationTarget)
 	event.Source = recorder.source
 
 	// event.ReportingInstance = recorder.source.Host
@@ -68,7 +75,7 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 	}
 }
 
-func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason, message string) *apis.Event {
+func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason, message, migrationTarget string) *apis.Event {
 	t := apis.Time{Time: time.Now()}
 	namespace := ref.Namespace
 	if namespace == "" {
@@ -89,9 +96,10 @@ func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason
 		Message:        message,
 		// FirstTimestamp: t,
 		// LastTimestamp:  t,
-		Count:     1,
-		Type:      eventtype,
-		EventTime: apis.Time{time.Now()},
+		Count:           1,
+		Type:            eventtype,
+		EventTime:       apis.Time{time.Now()},
+		MigrationTarget: migrationTarget,
 	}
 }
 
