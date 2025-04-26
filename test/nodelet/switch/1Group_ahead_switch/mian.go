@@ -198,7 +198,7 @@ func postEventForMigrate(client core.EventInterface) {
 	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
-	recorder.Event(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", node.Name))
+	recorder.Event(node, apis.EventTypeNormal, events.TriggerLocalMigration, "")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 
