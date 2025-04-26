@@ -337,7 +337,7 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	//	}
 	//}
 
-	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, jsonStr)
+	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, []byte(jsonStr))
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)

@@ -114,7 +114,7 @@ func (mc *MigrationController) eventWatcher() {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			logs.Infof("接收到事件类型: %v\n", event.Type)
+			//logs.Infof("接收到事件类型: %v\n", event.Type)
 			switch event.Type {
 			case watch.Added:
 				// 类型断言放在最外层，避免重复断言
