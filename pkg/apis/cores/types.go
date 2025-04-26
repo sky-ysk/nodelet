@@ -115,10 +115,11 @@ type Event struct {
 	// 描述，应有用户可读性
 	Message string
 	// 事件产生来源
-	Source    EventSource
-	EventTime Time
-	Count     int32
-	Type      string // EventTypeNormal or EventTypeWarning
+	Source          EventSource
+	EventTime       Time
+	Count           int32
+	Type            string // EventTypeNormal or EventTypeWarning or EventTypeMigration
+	MigrationTarget string
 	// todo: 补充 action、reporting controller 、 instance
 }
 
