@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/fields"
 	"hit.edu/framework/pkg/apimachinery/util/wait"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -180,7 +181,7 @@ func (nm *NodeMonitor) generateMigrationEvent(n *apis.Node) error {
 		logs.Infof("Node %s is still in the cooling period (last event time: %s)", n.Name, nm.lastEventTime.Format(time.RFC3339))
 		return nil
 	}
-	nm.recorder.Event(n, apis.EventTypeNormal, events.TriggerLocalMigration, "") //fmt.Sprintf("Node Name:\t %s is shortage", n.Name)
+	nm.recorder.EventForMigration(n, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", n.Name), "") //
 	logs.Info("send Trigger Migration event=====================")
 	nm.lastEventTime = nowTime
 	return nil
