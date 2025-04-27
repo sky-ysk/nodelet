@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/util/manager"
@@ -64,56 +66,19 @@ func main() {
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	//group1_2Name := "G2" // 第一个Task下的第二个GroupName
-	//group1_3Name := "G3"
-	//group1_4Name := "G4"
-	//group1_5Name := "G5"
-	//group1_6Name := "G6"
 
 	group1_1Replicas := []int32{0, 0}
-	//group1_2Replicas := []int32{0, 0}
-	//group1_3Replicas := []int32{0, 0}
-	//group1_4Replicas := []int32{0, 0}
-	//group1_5Replicas := []int32{0, 0}
-	//group1_6Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
-	//action1_2_1Name := "A1" // 第一个Task下的第二个Group下的第一个ActionName
-	//action1_3_1Name := "A1" // 第一个Task下的第三个Group下的第一个ActionName
-	//action1_4_1Name := "A1"
-	//action1_5_1Name := "A1"
-	//action1_6_1Name := "A1"
 
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	runtime1_1_1_2Name := "R2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_2_1_1Name := "R1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_2_1_2Name := "R2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_3_1_1Name := "R1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_3_1_2Name := "R2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_4_1_1Name := "R1" // 第一个Task下的第4个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_4_1_2Name := "R2" // 第一个Task下的第4个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_5_1_1Name := "R1" // 第一个Task下的第5个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_5_1_2Name := "R2" // 第一个Task下的第5个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_6_1_1Name := "R1" // 第一个Task下的第6个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_6_1_2Name := "R2" // 第一个Task下的第6个Group下的第一个ActionName下的第二个RuntimeName
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
 	runtime1_1_1_2FineGrainedControl := false
-	//runtime1_2_1_1FineGrainedControl := false
-	//runtime1_2_1_2FineGrainedControl := false
-	//runtime1_3_1_1FineGrainedControl := false
-	//runtime1_3_1_2FineGrainedControl := false
-	//runtime1_4_1_1FineGrainedControl := false
-	//runtime1_4_1_2FineGrainedControl := false
-	//runtime1_5_1_1FineGrainedControl := false
-	//runtime1_5_1_2FineGrainedControl := false
-	//runtime1_6_1_1FineGrainedControl := false
-	//runtime1_6_1_2FineGrainedControl := false
-	// 统一地规定： Belongs：填的是ID
-	//            Parents: 填的也是ID吧--改为Name
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
@@ -148,90 +113,9 @@ func main() {
 		},
 	}
 
-	//runtime1_2_1_1Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_2_1_2Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(runtime1_2_1_1Name),
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//
-	//runtime1_3_1_1Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_3_1_2Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(runtime1_3_1_1Name),
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_4_1_1Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_4_1_2Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(runtime1_4_1_1Name),
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_5_1_1Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_5_1_2Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(runtime1_5_1_1Name),
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_6_1_1Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-	//runtime1_6_1_2Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(runtime1_6_1_1Name),
-	//		ProgramDependencyConditionFormula,
-	//	},
-	//}
-
 	group1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{},
 	}
-
-	//group1_2Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(group1_1Name),
-	//	},
-	//}
-	//
-	//group1_3Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{},
-	//}
-	//group1_4Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(group1_3Name),
-	//	},
-	//}
-	//
-	//group1_5Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{},
-	//}
-	//group1_6Condition := apis.Conditions{
-	//	Formulas: []apis.ConditionFormula{
-	//		GetNodeDepencyConditionFormula(group1_5Name),
-	//	},
-	//}
 
 	gs1 := apis.GroupSpec{
 		ResourceRequirements: []apis.ResourceRequirement{
@@ -279,240 +163,6 @@ func main() {
 		},
 	}
 
-	//gs2 := apis.GroupSpec{
-	//	ResourceRequirements: []apis.ResourceRequirement{
-	//		apis.ResourceRequirement{
-	//			Name:       "CPU",
-	//			Lowbound:   "0",
-	//			Upperbound: "2",
-	//		},
-	//		apis.ResourceRequirement{
-	//			Name:       "RAM",
-	//			Lowbound:   "0",
-	//			Upperbound: "2",
-	//		},
-	//	},
-	//	Replicas:   group1_2Replicas,
-	//	Name:       group1_2Name,
-	//	Parents:    []string{group1_1Name}, // 加入Parents
-	//	Conditions: &group1_2Condition,
-	//	Actions: []apis.ActionSpec{
-	//		apis.ActionSpec{
-	//			Name: action1_2_1Name,
-	//			Runtimes: []apis.RuntimeSpec{
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_2_1_1Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"}, //8s
-	//					Parents:                  make([]string, 0),                                                            // 加入Parents
-	//					Conditions:               &runtime1_2_1_1Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
-	//				},
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_2_1_2Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"},
-	//					Parents:                  []string{runtime1_2_1_1Name}, // 加入Parents
-	//					Conditions:               &runtime1_2_1_2Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_2_1_2FineGrainedControl,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//gs3 := apis.GroupSpec{
-	//	ResourceRequirements: []apis.ResourceRequirement{
-	//		apis.ResourceRequirement{
-	//			Name:       "CPU",
-	//			Lowbound:   "3",
-	//			Upperbound: "6",
-	//		},
-	//		apis.ResourceRequirement{
-	//			Name:       "RAM",
-	//			Lowbound:   "3",
-	//			Upperbound: "6",
-	//		},
-	//	},
-	//	Replicas:   group1_3Replicas,
-	//	Name:       group1_3Name,
-	//	Parents:    []string{},
-	//	Conditions: &group1_3Condition,
-	//	Actions: []apis.ActionSpec{
-	//		apis.ActionSpec{
-	//			Name: action1_3_1Name,
-	//			Runtimes: []apis.RuntimeSpec{
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_3_1_1Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/mnist.py"}, //24s
-	//					Parents:                  make([]string, 0),                                                             // 加入Parents
-	//					Conditions:               &runtime1_3_1_1Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_3_1_1FineGrainedControl,
-	//				},
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_3_1_2Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/mnist.py"},
-	//					Parents:                  []string{runtime1_3_1_1Name}, // 加入Parents
-	//					Conditions:               &runtime1_3_1_2Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_3_1_2FineGrainedControl,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//gs4 := apis.GroupSpec{
-	//
-	//	ResourceRequirements: []apis.ResourceRequirement{
-	//		apis.ResourceRequirement{
-	//			Name:       "CPU",
-	//			Lowbound:   "1",
-	//			Upperbound: "2",
-	//		},
-	//		apis.ResourceRequirement{
-	//			Name:       "RAM",
-	//			Lowbound:   "1",
-	//			Upperbound: "2",
-	//		},
-	//	},
-	//	Replicas:   group1_4Replicas,
-	//	Name:       group1_4Name,
-	//	Parents:    []string{group1_3Name}, // 加入Parents
-	//	Conditions: &group1_4Condition,
-	//	Actions: []apis.ActionSpec{
-	//		apis.ActionSpec{
-	//			Name: action1_4_1Name,
-	//			Runtimes: []apis.RuntimeSpec{
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_4_1_1Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Iris.py"}, //11s
-	//					Parents:                  make([]string, 0),                                                            // 加入Parents
-	//					Conditions:               &runtime1_4_1_1Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_4_1_1FineGrainedControl,
-	//				},
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_4_1_2Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Iris.py"},
-	//					Parents:                  []string{runtime1_4_1_1Name}, // 加入Parents
-	//					Conditions:               &runtime1_4_1_2Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_4_1_2FineGrainedControl,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//gs5 := apis.GroupSpec{
-	//	ResourceRequirements: []apis.ResourceRequirement{
-	//		apis.ResourceRequirement{
-	//			Name:       "CPU",
-	//			Lowbound:   "1",
-	//			Upperbound: "3",
-	//		},
-	//		apis.ResourceRequirement{
-	//			Name:       "RAM",
-	//			Lowbound:   "1",
-	//			Upperbound: "3",
-	//		},
-	//	},
-	//	Replicas:   group1_5Replicas,
-	//	Name:       group1_5Name,
-	//	Parents:    make([]string, 0),
-	//	Conditions: &group1_5Condition,
-	//	Actions: []apis.ActionSpec{
-	//		apis.ActionSpec{
-	//			Name: action1_5_1Name,
-	//			Runtimes: []apis.RuntimeSpec{
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_5_1_1Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Diabetes.py"}, //14s
-	//					Parents:                  make([]string, 0),                                                                // 加入Parents
-	//					Conditions:               &runtime1_5_1_1Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_5_1_1FineGrainedControl,
-	//				},
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_5_1_2Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/Diabetes.py"},
-	//					Parents:                  []string{runtime1_5_1_1Name}, // 加入Parents
-	//					Conditions:               &runtime1_5_1_2Condition,
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_5_1_2FineGrainedControl,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//gs6 := apis.GroupSpec{
-	//	ResourceRequirements: []apis.ResourceRequirement{
-	//		apis.ResourceRequirement{
-	//			Name:       "CPU",
-	//			Lowbound:   "1",
-	//			Upperbound: "2",
-	//		},
-	//		apis.ResourceRequirement{
-	//			Name:       "RAM",
-	//			Lowbound:   "1",
-	//			Upperbound: "2",
-	//		},
-	//	},
-	//	Replicas:   group1_6Replicas,
-	//	Name:       group1_6Name,
-	//	Parents:    []string{group1_5Name}, // 加入Parents
-	//	Conditions: &group1_6Condition,
-	//	Actions: []apis.ActionSpec{
-	//		apis.ActionSpec{
-	//
-	//			Name: action1_6_1Name,
-	//			Runtimes: []apis.RuntimeSpec{
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_6_1_1Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/breast_cancer.py"}, //10s
-	//					Parents:                  make([]string, 0),                                                                     // 加入Parents
-	//					Conditions:               &runtime1_6_1_1Condition,
-	//					Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_6_1_1FineGrainedControl,
-	//				},
-	//				apis.RuntimeSpec{
-	//					Name:                     runtime1_6_1_2Name,
-	//					Type:                     apis.ByCommand,
-	//					Command:                  []string{"python"},
-	//					Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/breast_cancer.py"},
-	//					Parents:                  []string{runtime1_6_1_1Name}, // 加入Parents
-	//					Conditions:               &runtime1_6_1_2Condition,
-	//					Image:                    "/home/public/workspace/heongtong_yolo_linux/predict.py",
-	//					EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-	//					EnableFineGrainedControl: runtime1_6_1_2FineGrainedControl,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-
 	ts := apis.TaskSpec{
 		Name: task1Name,
 		Groups: []apis.GroupSpec{
@@ -531,6 +181,81 @@ func main() {
 		return
 	}
 	fmt.Println(str)
+
+	prompt()
+	tasksClient := clientSet.Core().Tasks("test")
+	groupsClient := clientSet.Core().Groups("test")
+	actionsClient := clientSet.Core().Actions("test")
+	runtimesClient := clientSet.Core().Runtimes("test")
+	eventsClient := clientSet.Core().Events("test")
+
+	// Task资源
+	logs.Info("======Task")
+	list1, err := tasksClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, task := range list1.Items {
+		err := tasksClient.Delete(context.TODO(), task.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Task删除成功: %v", task.Name)
+	}
+	// group资源
+	logs.Info("======Group")
+	list2, err := groupsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, group := range list2.Items {
+		err := groupsClient.Delete(context.TODO(), group.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Group删除成功: %v", group.Name)
+	}
+	// action 资源
+	logs.Info("======Action")
+	list3, err := actionsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, action := range list3.Items {
+		err := actionsClient.Delete(context.TODO(), action.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Action删除成功: %v", action.Name)
+	}
+	// runtime 资源
+	logs.Info("======Runtime")
+	list4, err := runtimesClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, runtime := range list4.Items {
+		err := runtimesClient.Delete(context.TODO(), runtime.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Runtime删除成功:%v", runtime.Name)
+	}
+
+	// Event资源
+	logs.Info("======Event")
+	list5, err := eventsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, event := range list5.Items {
+		err := eventsClient.Delete(context.TODO(), event.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Event删除成功: %v", event.Name)
+	}
+
 }
 
 // From K8s
