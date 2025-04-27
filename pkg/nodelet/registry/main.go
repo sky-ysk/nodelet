@@ -1,21 +1,21 @@
 package main
 
 import (
+	"fmt"
+
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
-	"log"
-	"net/http"
 )
 
 func main() {
-	//url := "http://localhost:8081/download?filename=test.txt&tag=v1.2.0"
-	//savePath := "./test"
-	//
-	//err := utils.DownloadFile(url, savePath)
-	//if err != nil {
-	//	fmt.Println("Download failed:", err)
-	//} else {
-	//	fmt.Println("Download successful!")
-	//}
+	url := "http://localhost:8081/download?filename=test.txt&tag=v1.2.0"
+	savePath := "./test"
+
+	err := utils.DownloadFile(url, savePath)
+	if err != nil {
+		fmt.Println("Download failed:", err)
+	} else {
+		fmt.Println("Download successful!")
+	}
 
 	//url := "http://localhost:8081/upload"
 	//filePath := "./downloads/test.txt"
@@ -45,15 +45,15 @@ func main() {
 	//}
 	//defer resp.Body.Close() // 确保响应体被关闭
 
-	filePath := "./test"
-	http.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
-		utils.ReceiveDir(w, r, filePath)
-	})
+	// filePath := "./test"
+	// http.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
+	// 	utils.ReceiveDir(w, r, filePath)
+	// })
 
-	port := ":8080"
-	log.Printf("Server is running on port %s", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+	// port := ":8080"
+	// log.Printf("Server is running on port %s", port)
+	// if err := http.ListenAndServe(port, nil); err != nil {
+	// 	log.Fatalf("Failed to start server: %v", err)
+	// }
 
 }
