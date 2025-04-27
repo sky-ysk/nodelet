@@ -31,6 +31,16 @@ func NewServer(clientSet *clients.ClientSet) Server {
 		container: restful.NewContainer(),
 	}
 
+	cors := restful.CrossOriginResourceSharing{
+		ExposeHeaders:  []string{"X-My-Header"},
+		AllowedHeaders: []string{"Content-Type", "Accept"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
+		CookiesAllowed: false,
+		Container:      server.container,
+	}
+	server.container.Filter(cors.Filter)
+	server.container.Filter(server.container.OPTIONSFilter)
+
 	// 安装各类Handlers
 	server.InstallDefaultHandlers()
 	return server

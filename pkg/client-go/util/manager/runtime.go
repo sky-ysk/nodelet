@@ -116,7 +116,7 @@ func (m *Manager) GetRuntimes(namespace string) (*apis.RuntimeList, error) {
 	return g, nil
 }
 
-func (m *Manager) UpdateRuntime(namespace string, name string, a *apis.Runtime) (*apis.Runtime, error) {
+func (m *Manager) UpdateRuntime(name string, namespace string, a *apis.Runtime) (*apis.Runtime, error) {
 	c := m.GetRuntimeClient(namespace)
 
 	// 检查runtime是否存在

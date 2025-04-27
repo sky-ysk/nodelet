@@ -58,7 +58,7 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	t.Status.CreateAt = &apis.Time{Time: time.Now()}
 
 	// 初始化状态
-	t.Status.Phase = apis.Pending
+	t.Status.Phase = apis.Unknown
 	t.Status.Groups = map[string]apis.ObjectReference{}
 
 	// 打上Label, 当前任务属于哪个Task和uuid域
@@ -127,7 +127,7 @@ func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
 	return g, nil
 }
 
-func (m *Manager) UpdateTask(namespace string, name string, a *apis.Task) (*apis.Task, error) {
+func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis.Task, error) {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
@@ -174,10 +174,18 @@ func (m *Manager) DeleteTask(name string, namespace string) error {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
-	_, err := m.GetTask(name, namespace)
+	task, err := m.GetTask(name, namespace)
 	if err != nil {
 		logs.Errorf("get task %s error: %v , task not exist ", name, err)
 		return err
+	}
+
+	// 删除task里面的所有group
+	for _, v := range task.Status.Groups {
+		err := m.DeleteGroup(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 存在，删除

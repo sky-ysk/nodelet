@@ -115,10 +115,11 @@ type Event struct {
 	// 描述，应有用户可读性
 	Message string
 	// 事件产生来源
-	Source    EventSource
-	EventTime Time
-	Count     int32
-	Type      string // EventTypeNormal or EventTypeWarning
+	Source          EventSource
+	EventTime       Time
+	Count           int32
+	Type            string // EventTypeNormal or EventTypeWarning or EventTypeMigration
+	MigrationTarget string
 	// todo: 补充 action、reporting controller 、 instance
 }
 
@@ -1287,7 +1288,7 @@ type RuntimeStatus struct {
 	FinishAt *Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
-	
+
 	//增加一个参数0hzy
 	Waiting            bool   `json:"waiting,omitempty" yaml:"waiting"`
 	Starting           bool   `json:"starting,omitempty" yaml:"starting"`
