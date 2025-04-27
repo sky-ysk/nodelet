@@ -14,15 +14,15 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/utils/value"
-	"hit.edu/framework/pkg/client-go/util/manager"
 )
 
 // 为后续做成有状态的类留出扩展
 type ConditionEngine struct {
-	engine *value.Engine // 添加 Engine 字段
-	manager  *manager.Manager
+	engine  *value.Engine // 添加 Engine 字段
+	manager *manager.Manager
 }
 
 func InitClient() (*clients.ClientSet, error) {
@@ -67,8 +67,8 @@ func NewConditionEngine() *ConditionEngine {
 		logs.Errorf("Failed to initialize client: %v", err)
 	}
 	return &ConditionEngine{
-		engine: value.NewEngine(client), // 初始化 Engine
-		manager: manager.NewManager(client),	//TODO:有一个问题，这里使用相同的client会不会有问题
+		engine:  value.NewEngine(client),    // 初始化 Engine
+		manager: manager.NewManager(client), //TODO:有一个问题，这里使用相同的client会不会有问题
 	}
 }
 
@@ -144,6 +144,42 @@ func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o
 }
 
 func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
+	kind := reflect.TypeOf(o).Name()
+	Datatype := formula.LeftValue.Type
+	switch Datatype {
+	case apis.ConstData:
+
+	case apis.LocalData:
+
+	case apis.DeviceData:
+
+	case apis.ResultsData:
+
+	case apis.FileData:
+		// 后续看情况是否改成使用GetValue的形式获取Value。估计是没必要，直接在Runtime这里访问Data
+		// 由于没有Data的Client，暂时使用RuntimeSpec里面的Data而不是Status里面的Data，检查Data[]里面所有的文件是否下载到本地
+		switch kind {
+		case "Runtime":
+			r := (o).(apis.Runtime)
+			for _, data := range r.Spec.Data {
+				//拼接目录
+				file := apis.FileFolder + r.Spec.Directory + data.Name
+				if _, err := os.Stat(file); err != nil {
+					// 文件不存在的日志
+					logs.Errorf("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, file)
+					return apis.NotReady, errors.New("dataDependency:file not exist")
+				}
+				// 日志
+				// logs.Infof("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, file)
+			}
+			return apis.True, nil
+		default:
+			logs.Error("DataDependency unsupported kind:", kind)
+			return apis.False, errors.New("unsupported kind " + kind)
+		}
+	default:
+		logs.Error("DataDependency unsupported type:", Datatype)
+	}
 
 	return apis.True, nil
 }

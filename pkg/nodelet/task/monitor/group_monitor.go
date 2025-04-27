@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"hit.edu/framework/pkg/client-go/util/manager"
-	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
+
+	"hit.edu/framework/pkg/client-go/util/manager"
+	"hit.edu/framework/pkg/utils"
+	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -43,8 +45,10 @@ type GroupMonitor struct {
 	// 管理运行所需的Runtime
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
-	//管理依赖
+	// 管理依赖
 	dependencyManager *dependency.DependencyManager
+	// conditionEngine
+	conditionEngine *utils.ConditionEngine
 	////Client-go
 	//nodesClient   core.NodeInterface //需要查node信息
 	//groupClient   core.GroupInterface
@@ -61,7 +65,9 @@ type GroupMonitor struct {
 	belongTasks map[string]*apis.Task
 }
 
-func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder, runtimeManager *runtime.RuntimeManager, clientsManager *manager.Manager, dependencyManager *dependency.DependencyManager, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupMonitor {
+func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder,
+	runtimeManager *runtime.RuntimeManager, clientsManager *manager.Manager, dependencyManager *dependency.DependencyManager, conditionEngine *utils.ConditionEngine,
+	groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:      groupManager,
 		groupQueues:       groupQueues,
@@ -1548,45 +1554,43 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 	if group.Spec.Conditions == nil {
 		return true
 	}
-	if len(group.Spec.Parents) == 0 {
-		return true
-	}
 	if len(group.Spec.Conditions.Formulas) == 0 {
 		return true
 	}
-	for index, i := range group.Spec.Conditions.Formulas {
-		if i.LeftValue.Name == "NodeDependency" {
-			parentGroupName := i.LeftValue.From
-			parentGroupRef := task.Status.Groups[parentGroupName]
+	if len(group.Spec.Parents) == 0 {
+		// 没有父节点，直接去检查后续的依赖
+	} else {
+		for _, parentName := range group.Spec.Parents {
+			parentGroupRef := task.Status.Groups[parentName]
 			parentGroup, err := gmo.clientsManager.GetGroup(parentGroupRef.Name, parentGroupRef.Namespace)
 			if err != nil {
-				logs.Errorf("Failed to get parent group:%v form etcd, err:%v", parentGroupName, err)
+				logs.Errorf("Failed to get parent group:%v form etcd, err:%v", parentName, err)
 			}
 			if parentGroup.Status.Phase != apis.Successed {
-				if parentGroup.Status.Phase == apis.Migrated { // 因为有些group处于DeployCheck状态，不会被迁移走，所以如果该group的父亲Group被迁移走了，需要查父亲Group的copy_status属性，该属性存放副本是否完成
-					if parentGroup.Status.CopyStatus == "Successed" {
-						i.LeftValue.Value = "1"
-					}
-				} else {
-					i.LeftValue.Value = "0"
-				}
-			} else {
-				i.LeftValue.Value = "1"
+				logs.Trace("group %v's parent group:%v is not completed", group.Name, parentName)
+				return false
 			}
-			if i.LeftValue.Value == i.RightValue.Value {
-				i.Result = apis.True
-				logs.Infof("group NodeDependency condition[%v]:%v satisfy!", index, i.LeftValue.Name)
-			}
-		}
-
-		if i.Result != apis.True {
-			//logs.Infof("group condition[%v]:%v do not satisfy, groupName:%v", index, i.LeftValue.Name, group.Spec.Name)
-			return false
-		} else {
-			logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 		}
 	}
-	return true
+	// 其他依赖
+	res, err := gmo.conditionEngine.CheckConditions(group.Spec.Conditions, group)
+	if err != nil {
+		logs.Errorf("Check group conditions error:%v", err)
+		return false
+	}
+	switch res {
+	case apis.True:
+		logs.Infof("group %v's conditions is satisfy", group.Name)
+		return true
+	case apis.False:
+		logs.Tracef("group %v's conditions is not satisfy", group.Name)
+		return false
+	case apis.NotReady:
+		logs.Tracef("group %v's conditions is not ready", group.Name)
+		return false
+	default:
+		return false
+	}
 }
 
 // 检查Action的依赖是否满足
@@ -1600,80 +1604,76 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 		return true
 	}
 	if len(action.Spec.Parents) == 0 {
-		return true
-	}
-	for index, i := range actionSpec.Conditions.Formulas {
-		if i.LeftValue.Name == "NodeDependency" {
-			parentActionName := i.LeftValue.From
-			parentActionRef := group.Status.Actions[parentActionName]
+		// 没有父节点，直接去检查后续的依赖
+	} else {
+		for _, parentName := range actionSpec.Parents {
+			parentActionRef := group.Status.Actions[parentName]
 			parentAction, err := gmo.clientsManager.GetAction(parentActionRef.Name, parentActionRef.Namespace)
 			if err != nil {
-				logs.Errorf("Failed to get parent action:%v form etcd, err:%v", parentActionName, err)
+				logs.Errorf("Failed to get parent action:%v form etcd, err:%v", parentName, err)
 			}
 			if parentAction.Status.Phase != apis.Successed {
-				i.LeftValue.Value = "0"
-			} else {
-				i.LeftValue.Value = "1"
+				logs.Trace("action %v's parent action:%v is not completed", action.Name, parentName)
+				return false
 			}
-			if i.LeftValue.Value == i.RightValue.Value {
-				i.Result = apis.True
-			}
-		}
-		if i.Result != apis.True {
-			logs.Tracef("action condition[%v]:%v do not satisfy, actionName:%v", index, i.LeftValue.Name, actionSpec.Name)
-			return false
-		} else {
-			// logs.Tracef("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 		}
 	}
-	return true
+	// 其他依赖
+	res, err := gmo.conditionEngine.CheckConditions(actionSpec.Conditions, action)
+	if err != nil {
+		logs.Errorf("Check action conditions error:%v", err)
+		return false
+	}
+	switch res {
+	case apis.True:
+		logs.Infof("action %v's conditions is satisfy", action.Name)
+		return true
+	case apis.False:
+		logs.Tracef("action %v's conditions is not satisfy", action.Name)
+		return false
+	case apis.NotReady:
+		logs.Tracef("action %v's conditions is not ready", action.Name)
+		return false
+	default:
+		return false
+	}
 }
 
 // 检查Runtime的依赖是否满足
 func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis.Action) bool {
 	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
 	runtimeStatus := &runtime.Status
+	if runtimeStatus.IsDependencySatisf {
+		return true
+	}
 	if runtime.Spec.Conditions == nil {
 		return true
 	}
 	if len(runtime.Spec.Conditions.Formulas) == 0 {
 		return true
 	}
-	if runtimeStatus.IsDependencySatisf {
-		return true
-	}
-	for index, i := range runtime.Spec.Conditions.Formulas {
-		if i.LeftValue.Name == string(apis.NodeDependency) {
-			//正则匹配选择parents的pahse
-			// logs.Info("NodeCondition: get RuntimeName:", i.LeftValue.From)
-			parentRuntimeOb := action.Status.Runtimes[i.LeftValue.From]
-			parentRt, err := gmo.clientsManager.GetRuntime(parentRuntimeOb.Name, parentRuntimeOb.Namespace)
+
+	// 使用Parents检查Runtime的顺序依赖，如果不满足则返回false
+	if len(runtime.Spec.Parents) == 0 {
+		// 没有父节点，直接去检查后续的依赖
+	} else {
+		for _, parentName := range runtime.Spec.Parents {
+			parentRuntimeRef := action.Status.Runtimes[parentName]
+			parentRuntime, err := gmo.clientsManager.GetRuntime(parentRuntimeRef.Name, parentRuntimeRef.Namespace)
 			if err != nil {
-				logs.Errorf("Failed to get parent group:%v form etcd, err:%v", i.LeftValue.From, err)
+				logs.Errorf("Failed to get parent runtime:%v form etcd, err:%v", parentName, err)
 			}
-
-			if parentRt.Status.Phase == apis.Successed {
-				i.LeftValue.Value = "1"
-			} else {
-				i.LeftValue.Value = "0"
-			}
-
-			if i.LeftValue.Value == i.RightValue.Value {
-				i.Result = apis.True
-				logs.Trace("NodeCondition success : parent RuntimeName:", i.LeftValue.From)
-			}
-
-			if i.Result != apis.True {
-				//logs.Infof("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
+			if parentRuntime.Status.Phase != apis.Successed {
+				logs.Trace("runtime %v's parent:%v is not completed", runtime.Name, parentName)
 				return false
-			} else {
-				// logs.Infof("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
 			}
-		} else if i.LeftValue.Name == string(apis.DataDependency) {
+		}
+	}
 
-		} else if i.LeftValue.Name == string(apis.ResourceDependency) {
-
-		} else if i.LeftValue.Name == string(apis.ProgramDependency) {
+	// 其他依赖
+	for _, i := range runtime.Spec.Conditions.Formulas {
+		// ProgramDependency暂时不方便直接使用ConditionEngine
+		if i.LeftValue.Name == string(apis.ProgramDependency) {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
@@ -1728,38 +1728,14 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 					runtimeStatus.DepenPreparing = true
 					// go dependency.SetupEnvironment(dependencyFile, runtime.Name)
 				} else {
-					logs.Info("runtime %v is waiting for installing dependency!", runtime.Name)
+					logs.Trace("runtime %v is waiting for installing dependency!", runtime.Name)
 				}
-				return false
-			} else {
-				//修改conditionIndex对应的condition结果
-				i.LeftValue.Value = "1"
-				if i.Signal == apis.Equal {
-					if i.LeftValue.Value == i.RightValue.Value {
-						i.Result = apis.True
-					}
-					//暂时没想到 ！= 如何使用，暂定判断条件相等 ==
-					// }else {
-					// 	if runtime.Conditions.Formulas[conditionIndex].LeftValue.Value != runtime.Conditions.Formulas[conditionIndex].RightValue.Value {
-					// 		runtime.Conditions.Formulas[conditionIndex].Result = true
-					// 	}
-				}
-				if i.Result != apis.True {
-					logs.Trace("runtime condition[%v]:%v do not satisfy, runtimeName:%v", index, i.LeftValue.Name, runtime.Name)
-					return false
-				} else {
-					logs.Trace("group condition[%v]:%v satisfy!", index, i.LeftValue.Name)
-				}
-			}
-			if !err {
-				logs.Infof("%v: envName err:%v", runtime.Name, envName)
+				logs.Infof("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
 				return false
 			}
+
 			envVar := []apis.EnvVar{}
 			envVar = append(envVar, apis.EnvVar{Name: "PATH", Value: envPath})
-
-			//TODO 后续将envPath改为数组，返回多种程序依赖
-			// envVar = append(envVar, apis.EnvVar{Name: "python", Value: envPath})
 			runtime.Spec.EnvVar = append(runtime.Spec.EnvVar, envVar...)
 		}
 	}

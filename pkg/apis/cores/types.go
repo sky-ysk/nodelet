@@ -1172,6 +1172,7 @@ type RuntimeSpec struct {
 	// 需要的数据
 	// 输入数据
 	// 	输入数据作为参数注入到命令参数中
+	// 这个数据的检查放在数据依赖里了，保证input里面的内容在DataDependency里有即可，依赖检查成功时可以直接作为参数访问到
 	Inputs []Value `json:"inputs,omitempty" yaml:"inputs"`
 
 	// 输出数据
@@ -1199,6 +1200,7 @@ const (
 	ResultsData DataType = "results"
 	LocalData   DataType = "local"
 	DeviceData  DataType = "device"
+	FileData    DataType = "file"
 )
 
 // 值类型，表示数据使用
@@ -1712,4 +1714,9 @@ const (
 	DataDependency     conditionType = "DataDependency"
 	ResourceDependency conditionType = "ResourceDependency"
 	ProgramDependency  conditionType = "ProgramDependency"
+)
+
+const (
+	// 文件的存储位置,暂时位于 adaptive-scheduling-framework/test/tmp/data
+	FileFolder string = "./test/tmp/data/"
 )
