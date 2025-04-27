@@ -245,13 +245,13 @@ func CheckRequirements(requirements []apis.Requirement, installed []apis.Require
 			allSatisfied = false
 		} else if req.Version != "" && installedVersion < req.Version {
 			//如果找到了，但是对应的package但是版本落后，也不满足
-			logs.Tracef("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
+			//logs.Tracef("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
 			allSatisfied = false
 		}
 
 	}
 	//下面这一行用于调试，打印出满足的虚拟环境
-	logs.Infof("requirements satisfied envName: %v", envName)
+	logs.Trace("requirements satisfied envName: %v", envName)
 	timeCost := time.Since(startTime)
 	logs.Trace("CheckRequirements cost %s time", timeCost)
 	//直到最后allsatisfied都为true，才说明满足
