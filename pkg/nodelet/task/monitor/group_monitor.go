@@ -1677,6 +1677,13 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
+
+			// 首先判断这个程序依赖的condition是否已经是满足的，如果是满足的直接跳过
+			if i.Result == apis.True {
+				// logs.Tracef("runtime %v's program dependency is satisfy", runtime.Name)
+				continue
+			}
+
 			var dependencyFile = i.LeftValue.From
 			if !runtimeStatus.IsParsed {
 				// runtimeReqPackages := make([]apis.Requirement, 0)
@@ -1733,6 +1740,8 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 				logs.Infof("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
 				return false
 			}
+
+			i.Result = apis.True
 
 			envVar := []apis.EnvVar{}
 			envVar = append(envVar, apis.EnvVar{Name: "PATH", Value: envPath})
