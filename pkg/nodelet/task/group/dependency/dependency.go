@@ -149,7 +149,7 @@ func (dm *DependencyManager) UpdateEnvs() error {
 	dm.allEnv = envs
 
 	timeCost := time.Since(startTime)
-	logs.Trace("UpdateEnvs success! cost %v time", timeCost)
+	logs.Tracef("UpdateEnvs success! cost %v time", timeCost)
 	// logs.Trace("UpdateEnvs success")
 	return nil
 }
