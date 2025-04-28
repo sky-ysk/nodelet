@@ -2,11 +2,13 @@ package task
 
 import (
 	"context"
-	"hit.edu/framework/pkg/client-go/util/manager"
 	"sync"
 	"time"
 
+	"hit.edu/framework/pkg/client-go/util/manager"
+
 	metav1 "hit.edu/framework/pkg/apis/meta"
+	fileManager "hit.edu/framework/pkg/nodelet/registry"
 	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 	"hit.edu/framework/pkg/utils"
@@ -99,6 +101,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
 	conditionEngine := utils.NewConditionEngine() // 初始化时传入 clientset
+	// fileManager配置
+	fileManager := fileManager.NewFileManager()
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -118,7 +122,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
 		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),

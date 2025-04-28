@@ -142,7 +142,7 @@ func main() {
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"}, //20s
+						Args:                     []string{"train.py"}, //20s
 						Parents:                  make([]string, 0),                                                // 加入Parents
 						Conditions:               &runtime1_1_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -152,7 +152,7 @@ func main() {
 						Name:                     runtime1_1_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/modelfortest/model_torch_absolute/wine.py"}, //8s
+						Args:                     []string{"wine.py"}, //8s
 						Parents:                  []string{runtime1_1_1_1Name},                                                 // 加入Parents
 						Conditions:               &runtime1_1_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},

@@ -110,7 +110,16 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	//CMD.Stdout = outfile
 	CMD.Stderr = os.Stderr
 	// CMD.Env = append(CMD.Env, )
-	//CMD.Dir = apis.FileFolder + runtime.Spec.Name // 设置工作目录,TODO：注意需要在拉起runtime的时候创建好文件夹
+
+	// 设置工作目录,TODO：注意需要在拉起runtime的时候创建好文件夹
+	// CMD.Dir = apis.FileFolder + runtime.Spec.Name 
+	CMD.Dir = apis.FileFolder
+	//创建工作目录
+	if err := os.MkdirAll(CMD.Dir, os.ModePerm); err != nil {
+		logs.Errorf("Failed to create directory: %v", err)
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
 	// 启动命令
 	logs.Infof("runtime Name:\t %s is Running", runtime.Name)
 

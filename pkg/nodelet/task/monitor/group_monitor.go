@@ -20,6 +20,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	fileManager "hit.edu/framework/pkg/nodelet/registry"
 	group "hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 	"hit.edu/framework/pkg/nodelet/task/runtime"
@@ -49,6 +50,8 @@ type GroupMonitor struct {
 	dependencyManager *dependency.DependencyManager
 	// conditionEngine
 	conditionEngine *utils.ConditionEngine
+	// FileManager
+	fileManager *fileManager.FileManager
 	////Client-go
 	//nodesClient   core.NodeInterface //需要查node信息
 	//groupClient   core.GroupInterface
@@ -67,7 +70,8 @@ type GroupMonitor struct {
 
 func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder,
 	runtimeManager *runtime.RuntimeManager, clientsManager *manager.Manager, dependencyManager *dependency.DependencyManager, conditionEngine *utils.ConditionEngine,
-	groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupMonitor {
+	groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface,
+	fileManager *fileManager.FileManager) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:      groupManager,
 		groupQueues:       groupQueues,
@@ -1642,6 +1646,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 // 检查Runtime的依赖是否满足
 func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis.Action) bool {
 	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
+	logs.Tracef("runtime %v's conditions is Chekingggggggggggggggggg", runtime.Name)
 	runtimeStatus := &runtime.Status
 	if runtimeStatus.IsDependencySatisf {
 		return true
@@ -1737,7 +1742,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 				} else {
 					logs.Trace("runtime %v is waiting for installing dependency!", runtime.Name)
 				}
-				logs.Infof("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
+				logs.Tracef("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
 				return false
 			}
 
