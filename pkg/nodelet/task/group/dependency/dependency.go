@@ -1,4 +1,4 @@
-// Dependency作用是检查程序的包依赖是否满足（目前针对python任务），具体功能有：
+// Dependency作用是检查程序的包依赖是否满足（目前针对python任务），具体功能有：-1
 // check:检查设备上的虚拟环境与提供的requirememts.txt是否能够满足
 // setUpEnv:根据requirememts.txt创建新的虚拟环境，一般在不满足依赖的情况下调用
 // inputEnv:注入环境变量，将系统自身的Env加上指定虚拟环境的python的环境变量加入到PATH之后，注入到runtime的Env中，在command.go中执行的时候直接加入到cmd.Env即可
@@ -245,14 +245,14 @@ func CheckRequirements(requirements []apis.Requirement, installed []apis.Require
 			return allSatisfied
 		} else if req.Version != "" && installedVersion < req.Version {
 			//找到对应的package但是版本落后
-			logs.Info("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
+			//logs.Infof("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
 			allSatisfied = false
 			return allSatisfied
 		} else {
 			// logs.Info("Package %s is satisfied.", req.Name)
 		}
 	}
-	// logs.Info("requirements satisfied envName: %v", envName)
+	logs.Tracef("requirements satisfied envName: %v", envName)
 	timeCost := time.Since(startTime)
 	logs.Trace("CheckRequirements cost %s time", timeCost)
 	return allSatisfied

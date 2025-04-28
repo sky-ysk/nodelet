@@ -9,6 +9,8 @@ import (
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
+	"hit.edu/framework/pkg/nodelet/task/util"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"path/filepath"
 	"regexp"
@@ -772,25 +774,48 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 		runtimeCopy.Status.Phase = apis.Unknown
 	}
 	if runtimeCopy.Spec.Type == apis.ByPod {
-		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，
-		yamlFilePath := r.Spec.Inputs[0].From
-		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)       //yaml文件名加上-copy后缀
-		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
-		runtimeCopy.Spec.EnableFineGrainedControlPort = StringPtr("30053")
-		// 2、接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
-		// 3、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名
-		if isCrossDomain {
+		yamlFileName := r.Spec.Data[0].Name
+		//yamlFilePath := r.Spec.Inputs[0].From
+		copyYamlFileName := AddCopySuffixToFile(yamlFileName, "-copy")
+		runtimeCopy.Spec.Data[0].Name = copyYamlFileName //yaml文件名加上-copy后缀
+		runtimeCopy.Spec.Directory = ""                  // 文件下载到本地的地址
+		//runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
+		//runtimeCopy.Spec.EnableFineGrainedControlPort = StringPtr("30053")
+		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
 
+		// 2、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名
+		var url string
+		if isCrossDomain {
+			err = util.NewCopyYmal(r.Spec.Directory+"/"+yamlFileName, r.Spec.Directory, copyYamlFileName, "pve2") // 传入filePath，和最终生成文件的保存目录
+			if err != nil {
+				logs.Errorf("Copy runtime yaml file failed:%v", err)
+			}
+			//需要创建副本的yaml文件，然后上传给其他域，这里先传给broker域
+			url = "http://" + "broker." + "registry-svc.test.svc.cluster.local:3001/upload"
+		} else {
+			err = util.NewCopyYmal(r.Spec.Directory+"/"+yamlFileName, r.Spec.Directory, copyYamlFileName, "") // 传入filePath，和最终生成文件的保存目录
+			if err != nil {
+				logs.Errorf("Copy runtime yaml file failed:%v", err)
+			}
+			// 上传到本域的文件仓库
+			url = "http://registry-svc.test.svc.cluster.local:3001/upload"
+		}
+		filePath := r.Spec.Directory + "/" + r.Spec.Data[0].Name
+		err := utils.UploadFile(filePath, "v1.0", url)
+		if err != nil {
+			logs.Errorf("Upload File:%v error:%v", filePath, err)
+		} else {
+			logs.Infof("Upload File:%v", filePath)
 		}
 
 		// 4、接着修改runtime.Spec.EnableFineGrainedControlService
-		//parts := strings.Split(*runtimeCopy.Spec.EnableFineGrainedControlService, ".")
-		//if len(parts) >= 2 { // 至少包含 service.namespace.svc...
-		//	// 从yaml当中读取新修改后的serviceName
-		//	parts[0] = "new-service-name"
-		//	joinedStr := strings.Join(parts, ".")
-		//	runtimeCopy.Spec.EnableFineGrainedControlService = &joinedStr // 替换服务名（此处直接使用 newServiceName，也可动态替换如 oldServiceName+"-copy"）
-		//}
+		parts := strings.Split(*runtimeCopy.Spec.EnableFineGrainedControlService, ".")
+		if len(parts) >= 2 { // 至少包含 service.namespace.svc...
+			// 从yaml当中读取新修改后的serviceName
+			parts[0] = parts[0] + "-copy"
+			joinedStr := strings.Join(parts, ".")
+			runtimeCopy.Spec.EnableFineGrainedControlService = &joinedStr // 替换服务名（此处直接使用 newServiceName，也可动态替换如 oldServiceName+"-copy"）
+		}
 
 		//
 		//for j := range action.Status.RuntimeStatus {
@@ -842,7 +867,7 @@ func StringPtr(s string) *string {
 }
 
 // 在文件名中插入 "-copy" 后缀（保持路径结构不变）
-func AddCopySuffixToFilePath(originalPath string) string {
+func AddCopySuffixToFilePath(originalPath string, suffix string) string {
 	// 分离目录和文件名
 	dir := filepath.Dir(originalPath)
 	base := filepath.Base(originalPath)
@@ -852,8 +877,17 @@ func AddCopySuffixToFilePath(originalPath string) string {
 	name := strings.TrimSuffix(base, ext) // 去除扩展名的纯文件名（如 `grpc-client-pod`）
 
 	// 构建新文件名
-	newBase := name + "-copy" + ext
+	newBase := name + suffix + ext
 
 	// 组合新路径
 	return filepath.Join(dir, newBase)
+}
+func AddCopySuffixToFile(originalFileName string, suffix string) string {
+	// 分离目录和文件名
+	ext := filepath.Ext(originalFileName)             // 获取扩展名（如 `.yaml`）
+	name := strings.TrimSuffix(originalFileName, ext) // 去除扩展名
+
+	newName := name + suffix + ext
+
+	return newName
 }

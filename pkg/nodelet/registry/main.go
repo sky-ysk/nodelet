@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 	"log"
 	"net/http"
@@ -17,14 +18,14 @@ func main() {
 	//	fmt.Println("Download successful!")
 	//}
 
-	//url := "http://localhost:8081/upload"
-	//filePath := "./downloads/test.txt"
-	//err := utils.UploadFile(filePath, "v1.0.0", url)
-	//if err != nil {
-	//	fmt.Println("Upload failed:", err)
-	//} else {
-	//	fmt.Println("Upload successful!")
-	//}
+	url := "http://localhost:8081/upload"
+	filePath := "./downloads/test.txt"
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+	} else {
+		fmt.Println("Upload successful!")
+	}
 
 	//url := "http://localhost:8081/upload?filename=downloads"
 	//filePath := "./downloads"

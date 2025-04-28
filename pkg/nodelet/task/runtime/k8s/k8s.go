@@ -56,8 +56,9 @@ func NewK8sRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus,
 }
 func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("k8s runtime kill runtime: %s", runtime.Name)
-	yamlFilePatch := runtime.Spec.Inputs[0].From
-	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, *group.Status.Node)
+	//yamlFilePath := runtime.Spec.Inputs[0].From
+	yamlFilePath := runtime.Spec.Directory + "/" + runtime.Spec.Data[0].Name
+	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePath, *group.Status.Node)
 	if err != nil {
 		logs.Errorf("Get k8s resources from yaml file failed: %v", err)
 	}
@@ -73,9 +74,10 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	logs.Infof("k8s runtime for task: %s", group.Name)
 	//先执行共同的操作,再各自调用代码
 	// 1、首先读取yaml文件，转换为资源
-	yamlFilePatch := runtime.Spec.Inputs[0].From
+	//yamlFilePath := runtime.Spec.Inputs[0].From
+	yamlFilePath := runtime.Spec.Directory + "/" + runtime.Spec.Data[0].Name
 	logs.Infof("group.Status.Node:%v", *group.Status.Node)
-	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, *group.Status.Node)
+	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePath, *group.Status.Node)
 	if err != nil {
 		logs.Errorf("Get k8s resources from yaml file failed: %v", err)
 	}
