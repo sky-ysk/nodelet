@@ -390,7 +390,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		for key, value := range group.Spec.CopyInfo { // 这里相当于只遍历CopyInfo这个数组当中的第一个元素
 			groupCopyName = key
 			if value != "local" { // && event.Reason == events.TriggerCrossMigration
-				if event.Reason == events.TriggerCrossMigration && (event.Message == value || event.Message == "") { //所要迁的目的地正好和副本所在的域相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+				if event.Reason == events.TriggerCrossMigration && (event.MigrationTarget == value || event.MigrationTarget == "") { //所要迁的目的地正好和副本所在的域相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 					// 跨域迁移 通过跨域的通信总线通知另一个域的副本copyGroup进行状态的恢复,暂时使用update--后期改成patch
 					groupTarget := mc.groupTargets[value] //=-=-=-=-
 					//copyGroup, err := groupTarget.Get(context.TODO(), "test", groupCopyName, "groups", metav1.GetOptions{})
@@ -398,11 +398,11 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					//	logs.Infof("Failed to get group from other domain: %v", err)
 					//}
 					//copyGroup.Status.CopyStatus = "Starting"
-					patchGroup, err := json.Marshal(map[string]interface{}{
-						"status": map[string]interface{}{
-							"copy_status": "Starting",
-						},
-					})
+					//patchGroup, err := json.Marshal(map[string]interface{}{
+					//	"status": map[string]interface{}{
+					//		"copy_status": "Starting",
+					//	},
+					//})
 					_, err = groupTarget.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 					if err != nil {
 						logs.Errorf("Patch group %s cross domain failed: %v", groupCopyName, err)
@@ -417,7 +417,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					if err != nil {
 						logs.Errorf("Get group %s failed-66: %v", groupCopyName, err)
 					}
-					if event.Message == *getCopyGroup.Status.Node || event.Message == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+					if event.MigrationTarget == *getCopyGroup.Status.Node || event.MigrationTarget == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
 						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
 						if err != nil {
@@ -436,7 +436,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		//groupCopyName = "Reason-copy"          // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符,这里刚开始这么定义，是想让副本在指定的节点上生成
 
 		if event.Reason == events.TriggerLocalMigration { // 本域迁移，指定了目标节点
-			nodeName := extractNode(event.Message) // 如果nodeName未获取到，则nodeName = ""
+			nodeName := extractNode(event.MigrationTarget) // 如果nodeName未获取到，则nodeName = ""
 			// TODO 本域迁移，则直接生成group副本并写入本域etcd当中
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 			groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
@@ -539,7 +539,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			//	logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopyName])
 			//} else { // 跨域迁移，未指定迁移到哪个节点，这里直接生成一个事件通过调度器，里面放Group信息
 			// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息
-			domainName := extractNode(event.Message)
+			domainName := extractNode(event.MigrationTarget)
 			groupCopy := NewGroupInfoCopy(group, false, "") //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
 			// 遍历action和Runtime，依次创建
 			for _, actionReference := range group.Status.Actions {

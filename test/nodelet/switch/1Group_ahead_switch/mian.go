@@ -23,16 +23,21 @@ import (
 	"time"
 )
 
-// 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
-// if strings.Contains(group.ObjectMeta.Name, "G1") {
-// host = "CloudNode1"
-// }
-// if strings.Contains(group.ObjectMeta.Name, "copy") {
-// host = "CloudNode2"
-// }
+// 适配从debian1 迁移到 ubuntu2
+// 修改1：
+// 调度器代码: 触发debian1资源不足事件,从Debian1迁移到ubuntu2
+//if strings.Contains(group.ObjectMeta.Name, "G1") {
+//host = "debian1"
+//}
+//if strings.Contains(group.ObjectMeta.Name, "copy") {
+//host = "ubuntu2"
+//}
+// 修改2：调度器关闭score插件
+// 修改3：const NodeName = "debian1"
+
 var scheme = runtime.NewScheme()
 
-const NodeName = "CloudNode1"
+const NodeName = "debian1"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
