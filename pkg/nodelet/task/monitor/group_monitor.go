@@ -1678,7 +1678,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 	// 其他依赖
 	for _, i := range runtime.Spec.Conditions.Formulas {
 		// ProgramDependency暂时不方便直接使用ConditionEngine
-		if i.LeftValue.Name == string(apis.ProgramDependency) {
+		if i.ConditionType == apis.ProgramDependency {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
 			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
