@@ -224,7 +224,7 @@ func TestPatchRuntime(t *testing.T) {
 
 	// 修改parent
 	patchData := "{\"spec\": {\n    \"parents\": [\n      \"runtimeTest1\",\n      \"runtimeTest2\"\n    ]\n  }}"
-	patched, err := m.PatchRuntime(runtime.Name, "Guochuang", patchData)
+	patched, err := m.PatchRuntime(runtime.Name, "Guochuang", []byte(patchData))
 	if err != nil {
 		panic(err)
 	} else {

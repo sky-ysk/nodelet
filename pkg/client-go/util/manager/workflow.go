@@ -120,7 +120,7 @@ func (m *Manager) UpdateWorkflow(name string, namespace string, a *apis.Workflow
 
 }
 
-func (m *Manager) PatchWorkflow(name string, namespace string, patchWorkflow string) (*apis.Workflow, error) {
+func (m *Manager) PatchWorkflow(name string, namespace string, patchWorkflow []byte) (*apis.Workflow, error) {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
