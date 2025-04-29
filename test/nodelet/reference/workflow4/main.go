@@ -60,7 +60,7 @@ func main() {
 	//groupsClient := clientSet.Core().Groups("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
-	task1Name := "T1" // 第一个Task的Name
+	task1Name := "T4" // 第一个Task的Name
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
