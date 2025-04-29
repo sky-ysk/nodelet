@@ -2,14 +2,15 @@ package command
 
 import (
 	"fmt"
-	"hit.edu/framework/pkg/client-go/util/manager"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 	"os"
 	"os/exec"
 	"strconv"
 	"sync"
 	"syscall"
 	"time"
+
+	"hit.edu/framework/pkg/client-go/util/manager"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
@@ -112,9 +113,9 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	// CMD.Env = append(CMD.Env, )
 
 	// 设置工作目录,TODO：注意需要在拉起runtime的时候创建好文件夹
-	// CMD.Dir = apis.FileFolder + runtime.Spec.Name 
+	// CMD.Dir = apis.FileFolder + runtime.Spec.Name
 	CMD.Dir = apis.FileFolder
-	//创建工作目录
+	//创建工作目录，如果存在则不操作，否则创建（实际上应该在runtime下载数据依赖所需要的数据时就创建好了）
 	if err := os.MkdirAll(CMD.Dir, os.ModePerm); err != nil {
 		logs.Errorf("Failed to create directory: %v", err)
 		return fmt.Errorf("failed to create directory: %w", err)
