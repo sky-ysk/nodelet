@@ -42,6 +42,8 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 		strategy = &lib.DownloadModelStrategy{}
 	case "PredictByUrl":
 		strategy = &lib.PreByUrlStrategy{}
+	case "test":
+		strategy = &lib.TestStrategy{}
 	default:
 		logs.Errorf("[DEVICE RUNTIME] Unknown Ability")
 		return "", fmt.Errorf("unknow ability")

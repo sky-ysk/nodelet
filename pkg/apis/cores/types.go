@@ -1008,7 +1008,8 @@ type DeviceStatus struct {
 
 	// 设备事件描述
 	Events []DeviceEvent `json:"events,omitempty" yaml:"events"`
-
+	// 绑定到哪个Group中
+	Group ObjectReference `json:"group,omitempty" yaml:"group"`
 	// 上次成功获取设备状态的时间
 	// 如果长时间不能获取设备的状态，则认为设备离线
 	LastTime Time   `json:"last_time,omitempty" yaml:"last_time"`

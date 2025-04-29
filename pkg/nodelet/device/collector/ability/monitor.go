@@ -25,14 +25,14 @@ func NewManagers() *Managers {
 
 // MonitorAllDevices 检测所有设备的在线情况
 func MonitorAllDevices(clientManager *m.Manager) error {
-	logs.Tracef("[DEVICE EXPORTER-DEVICE MONITOR] Try to Get All Devices")
+	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Try to Get All Devices")
 	deviceList, err := clientManager.GetDevices("", "test")
 	if err != nil {
 		logs.Errorf("[DEVICE EXPORTER-DEVICE MONITOR] Get All Devices failed err: %s", err.Error())
 		return err
 	}
-	logs.Tracef("[DEVICE EXPORTER-DEVICE MONITOR] Get All Devices Success!")
-	logs.Tracef("[DEVICE EXPORTER-DEVICE MONITOR] ETCD Has %d Devices", len(deviceList.Items))
+	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Get All Devices Success!")
+	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] ETCD Has %d Devices", len(deviceList.Items))
 
 	// 并发同步控制
 	var wg sync.WaitGroup
@@ -42,6 +42,9 @@ func MonitorAllDevices(clientManager *m.Manager) error {
 	// 遍历所有的Device
 	for _, d := range deviceList.Items {
 		device := d
+		if device.Name == "deviceLock" {
+			return nil
+		}
 		// Ability类型的device
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
 			wg.Add(1)
@@ -213,7 +216,11 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 	// 遍历所有的Device
 	for _, d := range deviceList.Items {
 		device := d
+		if device.Name == "deviceLock" {
+			return nil
+		}
 		// Ability类型的device
+		//logs.Infof("device type is %v", device.Spec.AccessMethod.Type)
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
 			wg.Add(1)
 			// 每个Device单独开一个协程

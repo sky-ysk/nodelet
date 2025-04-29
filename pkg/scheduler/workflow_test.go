@@ -1190,6 +1190,344 @@ func TestCreateWorkFlow(t *testing.T) {
 	}
 }
 
+func TestLockDevice(t *testing.T) {
+	cs, err := utils.CreateClientSetWithTimeOut(2000)
+	if err != nil {
+		panic(err)
+	}
+	m := manager.NewManager(cs)
+	// 创建Device
+	deviceLock := &apis.Device{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deviceLock",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Device",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DeviceSpec{
+			Name: "deviceLock",
+			AccessMethod: &apis.AccessMethod{
+				Type: apis.AccessByAbility,
+				URL:  "http://192.168.8.197:8080",
+			},
+			Abilities: []string{
+				"Test1", "Test2",
+			},
+		},
+		Status: apis.DeviceStatus{
+			Abilities: map[string]apis.Ability{
+				"Test1": {
+					Name: "test",
+					Services: map[string]apis.AbilityService{
+						"test": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityRunning,
+					Lock: apis.Lock{
+						Ref:      1,
+						IsLocked: false,
+					},
+				},
+				"Test2": {
+					Name: "test",
+					Services: map[string]apis.AbilityService{
+						"test": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityRunning,
+					Lock: apis.Lock{
+						Ref:      2,
+						IsLocked: false,
+					},
+				},
+			},
+			Lock: apis.Lock{
+				IsLocked: true,
+				Ref:      3,
+			},
+			Phase: apis.DeviceIdle,
+		},
+	}
+	*deviceLock.Status.Abilities["Test1"].Services["test"].Interface = "/api/task/detect"
+	*deviceLock.Status.Abilities["Test1"].Services["test"].Ip = "192.168.8.197"
+	*deviceLock.Status.Abilities["Test1"].Services["test"].Port = "22"
+	*deviceLock.Status.Abilities["Test2"].Services["test"].Interface = "/api/task/detect"
+	*deviceLock.Status.Abilities["Test2"].Services["test"].Ip = "192.168.8.197"
+	*deviceLock.Status.Abilities["Test2"].Services["test"].Port = "22"
+
+	_, err = m.CreateDevice(deviceLock, "test")
+	if err != nil {
+		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLock.Name, err.Error())
+	}
+
+}
+
+// go test -run TestCreateWorkFlow -v
+func TestCreateLockTest(t *testing.T) {
+	cs, err := utils.CreateClientSetWithTimeOut(2000)
+	if err != nil {
+		panic(err)
+	}
+	m := manager.NewManager(cs)
+
+	// 星海图检测
+	runtime1 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R1",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "deviceLock",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceLock",
+						},
+					},
+					Abilities: []string{
+						"Test1",
+					},
+				},
+			},
+			Image: "Device{deviceLock}.Ability{Test1}.Service{test}",
+		},
+	}
+
+	// 乐聚检测
+	runtime2 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R2",
+			Type: apis.ByDevice,
+
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "deviceLock",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceLock",
+						},
+					},
+					Abilities: []string{
+						"Test1",
+					},
+				},
+			},
+			Image: "Device{deviceLock}.Ability{Test2}.Service{test}",
+		},
+	}
+
+	// 星海图抓取
+	runtime3 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R3",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "deviceLock",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceLock",
+						},
+					},
+					Abilities: []string{
+						"test2",
+					},
+				},
+			},
+			Image: "Device{deviceLock}.Ability{Test2}.Service{test}",
+		},
+	}
+
+	// 星海图检测
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "启始任务",
+			},
+			Name: "A1",
+			Runtimes: []apis.RuntimeSpec{
+				runtime1.Spec,
+			},
+		},
+	}
+
+	// 乐聚检测
+	action2 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "并行任务1",
+			},
+			Name: "A2",
+			Runtimes: []apis.RuntimeSpec{
+				runtime2.Spec,
+			},
+		},
+	}
+
+	// 星海图抓取
+	action3 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "并行任务2",
+			},
+			Name: "A3",
+			Runtimes: []apis.RuntimeSpec{
+				runtime3.Spec,
+			},
+			Parents: []string{"A1"},
+			//Conditions: &apis.Conditions{
+			//	Formulas: []apis.ConditionFormula{
+			//		{
+			//			LeftValue: apis.Value{
+			//				Type:      apis.ResultsData,
+			//				Name:      "NodeDependency",
+			//				Value:     "0",
+			//				ValueType: "string",
+			//				From:      "A1",
+			//			},
+			//			RightValue: apis.Value{
+			//				Type:      apis.ConstData,
+			//				Name:      "NodeDependency",
+			//				Value:     "1",
+			//				ValueType: "string",
+			//				From:      "A1",
+			//			},
+			//		},
+			//	},
+			//},
+		},
+	}
+
+	group1 := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "G1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.GroupSpec{
+			Desc: &apis.Description{
+				Docs: "测试Group",
+			},
+			Name: "G1",
+			Actions: []apis.ActionSpec{
+				action1.Spec, action2.Spec, action3.Spec,
+			},
+			Replicas: []int32{0, 0},
+		},
+	}
+
+	task1 := &apis.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "T1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "测试Task",
+			},
+			Name: "T1",
+			Groups: []apis.GroupSpec{
+				group1.Spec,
+			},
+		},
+	}
+
+	u := uuid.Must(uuid.NewV7())
+	_, err = m.CreateTask(task1.Spec, nil, task1.Namespace, u.String(), "")
+	if err != nil {
+		logs.Errorf("[TEST] create task err:%v", err)
+	}
+}
+
 // go test -run TestSendScene1ToProxy -v
 func TestSendScene1ToProxy(t *testing.T) {
 	logs.Init("testModule")
