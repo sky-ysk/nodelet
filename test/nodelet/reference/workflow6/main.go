@@ -117,15 +117,16 @@ func main() {
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
+			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
 			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
+			Name:      "ProgramDependency",
 			Value:     "1",
 			ValueType: "string",
 			From:      "",
