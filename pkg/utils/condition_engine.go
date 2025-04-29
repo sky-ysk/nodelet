@@ -127,7 +127,7 @@ func (engine *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o in
 func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
 	kind := reflect.TypeOf(o).Name()
 	val := reflect.ValueOf(o)
-	Name := val.FieldByName("Name")
+	Name := val.Elem().FieldByName("Name")
 	// 解析parent的Phase的值
 	value, err := ce.engine.GetValue(&formula.LeftValue, o)
 	if err != nil {
