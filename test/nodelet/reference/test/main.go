@@ -280,7 +280,7 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 			Name:      "NodeDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      parentName,
+			From:      "runtime{" + parentName +"}",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
