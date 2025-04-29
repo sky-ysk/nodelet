@@ -192,6 +192,7 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 				//}
 				if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 					if gr.Status.Phase == apis.ReadyToDeploy {
+						logs.Infof("Receive-GroupName：%v,groupStatus:%v", gr.Name, gr.Status.Phase)
 						groupUpdate := types.GroupUpdate{
 							Group: gr,
 							Op:    types.ADD,

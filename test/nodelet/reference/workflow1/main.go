@@ -548,16 +548,15 @@ func prompt() {
 
 func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 	return apis.ConditionFormula{
+		ConditionType: apis.NodeDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
 			Value:     "0",
 			ValueType: "string",
 			From:      parentName,
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
-			Name:      "NodeDependency",
 			Value:     "1",
 			ValueType: "string",
 			From:      "",

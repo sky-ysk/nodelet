@@ -60,7 +60,7 @@ func main() {
 	//groupsClient := clientSet.Core().Groups("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
-	task1Name := "T1" // 第一个Task的Name
+	task1Name := "T5" // 第一个Task的Name
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
@@ -546,16 +546,15 @@ func prompt() {
 
 func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 	return apis.ConditionFormula{
+		ConditionType: apis.NodeDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
 			Value:     "0",
 			ValueType: "string",
 			From:      parentName,
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
-			Name:      "NodeDependency",
 			Value:     "1",
 			ValueType: "string",
 			From:      "",
