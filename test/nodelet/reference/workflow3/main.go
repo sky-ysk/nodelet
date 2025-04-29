@@ -117,6 +117,7 @@ func main() {
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
 			Name:      "ProgramDependency",
@@ -556,12 +557,14 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 		ConditionType: apis.NodeDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
+			Name:      "NodeDependency",
 			Value:     "0",
 			ValueType: "string",
 			From:      parentName,
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
+			Name:      "NodeDependency",
 			Value:     "1",
 			ValueType: "string",
 			From:      "",

@@ -349,7 +349,7 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			logs.Infof("接收到事件类型: %v\n", event.Type)
+			logs.Tracef("接收到事件类型: %v\n", event.Type)
 			switch event.Type {
 			case watch.Added:
 				logs.Infof("资源被添加: ", event.Object)
