@@ -22,6 +22,92 @@ func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, pr
 	return actions, nil
 }
 
+// 创建带有label的Action
+func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Action, error) {
+	// 临时创建一个Action对象
+	a := apis.Action{}
+
+	// 构造名称
+	if g != nil {
+		a.Name = prefix + as.Name + "-" + uuid
+		// 有父亲节点，则需要继承Prefix
+		prefix = prefix + as.Name + "."
+	} else {
+		a.Name = as.Name + "-" + uuid
+		// 没有父亲节点，则需要本地构造prefix
+		prefix = as.Name + "."
+	}
+
+	// 构造Namespace
+	if namespace == "" {
+		a.Namespace = apis.NamespaceDefault
+	} else {
+		a.Namespace = namespace
+	}
+
+	a.Kind = "Action"
+	a.APIVersion = "resources/v1"
+
+	// 构造Labels
+	a.Labels = labels
+
+	// 复制Spec
+	a.Spec = as
+
+	// 构造Status
+	a.Status = apis.ActionStatus{}
+
+	// 记录Create时间
+	a.Status.CreateAt = &apis.Time{Time: time.Now()}
+
+	// 初始化状态
+	a.Status.Phase = apis.Unknown
+	a.Status.Runtimes = map[string]apis.ObjectReference{}
+
+	// 打上Label, 当前任务属于哪个Group和uuid域
+	if g != nil {
+		a.Labels["belong"] = g.Name
+		a.Status.Belong = &apis.ObjectReference{
+			Name:            g.Name,
+			Namespace:       g.Namespace,
+			Kind:            g.Kind,
+			ResourceVersion: g.ResourceVersion,
+			UID:             apis.UID(uuid),
+		}
+	}
+	a.Labels["uuid"] = uuid
+
+	// 根据Spec创建Runtimes
+	runtimes, err := m.CreateRuntimes(&a, namespace, uuid, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据生成的Runtime修改Action.Status.Runtimes
+	for _, r := range runtimes {
+		a.Status.Runtimes[r.Spec.Name] = apis.ObjectReference{
+			Name:            r.Name,
+			Namespace:       r.Namespace,
+			Kind:            r.Kind,
+			ResourceVersion: r.ResourceVersion,
+			UID:             apis.UID(r.UID),
+		}
+	}
+
+	// 写入Client-Go中, 返回实际的Action
+	c := m.GetActionClient(a.Namespace)
+
+	fa, err := c.Client.Create(context.TODO(), &a, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("Failed to create action: %v", err)
+		return nil, err
+	}
+
+	//
+	logs.Debugf("Created action: %v", fa)
+	return fa, nil
+}
+
 func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string) (*apis.Action, error) {
 	// 临时创建一个Action对象
 	a := apis.Action{}
@@ -131,6 +217,34 @@ func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
 	//
 	logs.Debugf("Get actions success.")
 	return a, nil
+}
+
+// 根据Label查询Actions
+func (m *Manager) FilterActions(namespace string, labelSelector string) (*apis.ActionList, error) {
+	//labelSelector := ""
+	//for i, l := range label {
+	//	if i == 0 {
+	//		labelSelector = l
+	//	} else {
+	//		labelSelector += "," + l
+	//	}
+	//}
+
+	logs.Infof("Filter actions by label selector: %v", labelSelector)
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
+	c := m.GetActionClient(namespace)
+	d, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		logs.Errorf("Failed to get actions with labelselector: %s , error %v ", labelSelector, err)
+		return nil, err
+	}
+	logs.Infof("Get actionslist : %v", d)
+	logs.Infof("Get actions with label success.")
+	return d, nil
 }
 
 func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*apis.Action, error) {

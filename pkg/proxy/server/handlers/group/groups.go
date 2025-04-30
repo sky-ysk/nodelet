@@ -40,13 +40,28 @@ func (h *GroupsHandler) GetGroups(request *restful.Request, response *restful.Re
 		return
 	}
 
-	results, err := h.manager.GetGroups(namespace)
-	if err != nil {
-		logs.Errorf("Get groups failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	labels := request.QueryParameter("Label")
+	var results *apis.GroupList
+	var err error
+	if labels == "" {
+		results, err = h.manager.GetGroups(namespace)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get groups with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
+		}
+	} else {
+		results, err = h.manager.FilterGroups(namespace, labels)
+		if err != nil {
+			logs.Errorf("Get groups failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
@@ -70,6 +85,7 @@ func (h *GroupsHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.GET("/").
 		Doc("Get all groups").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Label", "Labels of the groups (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the groups").DataType("string")).
 		To(h.GetGroups).
 		Operation("Get groups").

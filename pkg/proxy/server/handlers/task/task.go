@@ -132,16 +132,34 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
-	// 将 Task写入数据库中
-	result, err := h.manager.CreateTask(et.Spec, nil, namespace, UUID, "")
-	if err != nil {
-		err1 := response.WriteError(http.StatusInternalServerError, err)
-		if err1 != nil {
-			logs.Errorf("failed to return a status code ,error : %v ", err1)
+	var result *apis.Task
+
+	// 查看是否创建自定义的labels , 不创建自定义label
+	if et.Labels == nil {
+		// 将 Task写入数据库中
+		result, err = h.manager.CreateTask(et.Spec, nil, namespace, UUID, "")
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error : %v ", err1)
+				return
+			}
+			logs.Errorf("Create task fail  ,failed write it to database , error: %v ", err)
 			return
 		}
-		logs.Errorf("Create task fail  ,failed write it to database , error: %v ", err)
-		return
+	} else {
+		// 创建自定义label
+		result, err = h.manager.CreateTaskWithLabels(et.Spec, nil, namespace, UUID, "", et.Labels)
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error : %v ", err1)
+				return
+			}
+			logs.Errorf("Create task  with label fail  ,failed write it to database , error: %v ", err)
+			return
+		}
+
 	}
 
 	//// 构造tasks

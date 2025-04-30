@@ -40,15 +40,32 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 		return
 	}
 
-	results, err := h.manager.GetWorkflows(namespace)
-	if err != nil {
-		logs.Errorf("Get workflows failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	var results *apis.WorkflowList
+	var err error
+	labels := request.QueryParameter("Label")
+	if labels == "" {
+		results, err = h.manager.GetWorkflows(namespace)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
+			logs.Errorf("Get workflows failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 			return
 		}
-		return
+	} else {
+		results, err = h.manager.FilterWorkflows(namespace, labels)
+		if err != nil {
+			logs.Errorf("Get workflows failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
+			return
+		}
+
 	}
 
 	err = response.WriteEntity(results)
@@ -101,6 +118,7 @@ func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.GET(fmt.Sprintf("/")).
 		Doc("Get all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Label", "Labels of the workflows (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the workflows").DataType("string")).
 		To(h.GetWorkflows).
 		Operation("Get workflows").
