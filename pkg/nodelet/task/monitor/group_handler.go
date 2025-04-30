@@ -166,6 +166,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 		copiesInDomain = gr.Spec.Replicas[0]
 		copiesInOtherDomain = gr.Spec.Replicas[1]
 	}
+
 	if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的
 		// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本
 		for i := 0; i < int(copiesInDomain); i++ {
@@ -236,7 +237,10 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 				}
 				actionCopy := controller.NewActionInfoCopy(action)
-				actionTarget := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID   TODO 目前跨域还没有适配指定namespace创建
+				actionTarget, ok := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID   TODO 目前跨域还没有适配指定namespace创建
+				if !ok {
+					logs.Info("[actionTarget]键 'broker' 不存在==========================================")
+				}
 				_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
 				if err != nil {
 					logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
@@ -248,7 +252,10 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 					}
 					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
-					runtimeTarget := gh.runtimeTarget["broker"]                 //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+					runtimeTarget, ok := gh.runtimeTarget["broker"]             //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+					if !ok {
+						logs.Info("[runtimeTarget]键 'broker' 不存在==========================================")
+					}
 					_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
 					if err != nil {
 						logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
@@ -257,7 +264,10 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				}
 			}
 			// 暂时做成，往跨域的etcd里写入数据
-			groupTarget := gh.groupTarget["broker"] // -=-=-=-=- TODO：这里还得加逻辑，就是有这个域的连接，才能填入这个key
+			groupTarget, ok := gh.groupTarget["broker"] // -=-=-=-=- TODO：这里还得加逻辑，就是有这个域的连接，才能填入这个key
+			if !ok {
+				logs.Info("[groupTarget]键 'broker' 不存在==========================================")
+			}
 			_, err = groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
 			if err != nil {
 				logs.Errorf("Create cross-domain group error:%v", err)
