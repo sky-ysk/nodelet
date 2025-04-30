@@ -132,16 +132,31 @@ func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restf
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
-	// 创建runtime
-	result, err := h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
-	if err != nil {
-		err1 := response.WriteError(http.StatusInternalServerError, err)
-		if err1 != nil {
-			logs.Errorf("failed to return a status code ,error: %v", err1)
+	var result *apis.Runtime
+	if ew.Labels == nil {
+		// 创建runtime without label
+		result, err = h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create runtime fail ,failed write it to database , error: %v", err)
 			return
 		}
-		logs.Errorf("Create runtime fail ,failed write it to database , error: %v", err)
-		return
+	} else {
+		// 创建runtime with label
+		result, err = h.manager.CreateRuntimeWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create runtime with labels fail ,failed write it to database , error: %v", err)
+			return
+		}
 	}
 
 	// 返回结果

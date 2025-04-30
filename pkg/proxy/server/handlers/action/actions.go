@@ -39,17 +39,33 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 		}
 		return
 	}
-	
-	results, err := h.manager.GetActions(namespace)
-	if err != nil {
-		logs.Errorf("Get actions failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+
+	labels := request.QueryParameter("Label")
+	var results *apis.ActionList
+	var err error
+	if labels == "" {
+		results, err = h.manager.GetActions(namespace)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get actions failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
+	} else {
+		results, err = h.manager.FilterActions(namespace, labels)
+		if err != nil {
+			logs.Errorf("Get actions with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
+		}
+
 	}
-	
+
 	err = response.WriteEntity(results)
 	if err != nil {
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -58,7 +74,7 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 			return
 		}
 	}
-	logs.Debugf("Get actions")
+	logs.Debugf("Get actions ")
 }
 
 func (h *ActionsHandler) NewGetWebService() *restful.WebService {
@@ -66,16 +82,17 @@ func (h *ActionsHandler) NewGetWebService() *restful.WebService {
 	ws.Path(ACTIONS_PATH).
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
-	
+
 	ws.Route(ws.GET("/").
 		Doc("Get all actions").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Label", "Labels of the action (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		To(h.GetActions).
 		Operation("Get actions").
 		Returns(200, "OK", []apis.Action{}).
 		Returns(400, "Not Found", nil),
 	)
-	
+
 	return ws
 }

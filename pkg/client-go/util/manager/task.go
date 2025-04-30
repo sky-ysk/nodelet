@@ -103,6 +103,87 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	return ft, nil
 }
 
+// 创建带有label的task
+func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Task, error) {
+	// 临时创建一个Task对象
+	t := apis.Task{}
+	// 构造名称
+	if w != nil {
+		t.Name = prefix + ts.Name + "-" + uuid
+		prefix = prefix + ts.Name + "."
+	} else {
+		t.Name = ts.Name + "-" + uuid
+		prefix = ts.Name + "."
+	}
+
+	// 构造Namespace
+	if namespace == "" {
+		t.Namespace = apis.NamespaceDefault
+	} else {
+		t.Namespace = namespace
+	}
+
+	t.Kind = "Task"
+	t.APIVersion = "resources/v1"
+
+	// 构造Labels
+	t.Labels = labels
+
+	// 复制Spec
+	t.Spec = ts
+
+	// 构造Status
+	t.Status = apis.TaskStatus{}
+
+	// 记录Create时间
+	t.Status.CreateAt = &apis.Time{Time: time.Now()}
+
+	// 初始化状态
+	t.Status.Phase = apis.Unknown
+	t.Status.Groups = map[string]apis.ObjectReference{}
+
+	// 打上Label, 当前任务属于哪个Task和uuid域
+	if w != nil {
+		t.Status.Belong = &apis.ObjectReference{
+			Name:            w.Name,
+			Namespace:       w.Namespace,
+			Kind:            w.Kind,
+			ResourceVersion: w.ResourceVersion,
+			UID:             apis.UID(uuid),
+		}
+		t.Labels["belong"] = w.Name
+	}
+	t.Labels["uuid"] = uuid
+
+	// 根据Spec创建Runtimes
+	groups, err := m.CreateGroups(&t, namespace, uuid, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据生成的Runtime修改Task.Status.Groups
+	for _, r := range groups {
+		t.Status.Groups[r.Spec.Name] = apis.ObjectReference{
+			Name:            r.Name,
+			Namespace:       r.Namespace,
+			Kind:            r.Kind,
+			ResourceVersion: r.ResourceVersion,
+			UID:             apis.UID(r.UID),
+		}
+	}
+	// 写入Client-Go中, 返回实际的Task
+	c := m.GetTaskClient(t.Namespace)
+
+	ft, err := c.Client.Create(context.TODO(), &t, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("Failed to create task: %v", err)
+		return nil, err
+	}
+
+	logs.Debugf("Created task: %v", ft)
+	return ft, nil
+}
+
 func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
 	c := m.GetTaskClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -113,6 +194,29 @@ func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
 
 	logs.Debugf("Get task: %v", a)
 	return a, nil
+}
+
+// 根据Label查询Tasks
+func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.TaskList, error) {
+	//labelSelector := ""
+	//for i, l := range label {
+	//	if i == 0 {
+	//		labelSelector = l
+	//	} else {
+	//		labelSelector += "," + l
+	//	}
+	//}
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
+	c := m.GetTaskClient(namespace)
+	d, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		return nil, err
+	}
+	return d, nil
 }
 
 func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {

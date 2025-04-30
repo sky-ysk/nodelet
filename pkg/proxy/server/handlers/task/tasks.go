@@ -40,13 +40,28 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	results, err := h.manager.GetTasks(namespace)
-	if err != nil {
-		logs.Errorf("Get tasks failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	labels := request.QueryParameter("Label")
+	var results *apis.TaskList
+	var err error
+	if labels == "" {
+		results, err = h.manager.GetTasks(namespace)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get tasks with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
+		}
+	} else {
+		results, err = h.manager.FilterTasks(namespace, labels)
+		if err != nil {
+			logs.Errorf("Get tasks with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
@@ -71,6 +86,7 @@ func (h *TasksHandler) NewGetWebService() *restful.WebService {
 		//Docs
 		Doc("Get all tasks").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Label", "Labels of the tasks (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the tasks").DataType("string")).
 		To(h.GetTasks).
 		Operation("Get tasks").
