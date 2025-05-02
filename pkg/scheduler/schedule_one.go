@@ -50,8 +50,8 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
 	logs.Trace("now schedule one running")
 	groupInfo, err := sched.ReadyGroup(ctx)
-	msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
-	logs.Info(msg)
+	//msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
+	//logs.Info(msg)
 	//groupInfo := groupInfos[0]
 	if err != nil {
 		logs.Error(err.Error())
@@ -86,7 +86,7 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//	logs.Error(err.Error())
 	//}
 	//logs.Info(string(jsonData))
-	msg = fmt.Sprintf("schedule result : group %s on node %s", scheduleResult.Group.ObjectMeta.Name, scheduleResult.SuggestedHost)
+	msg := fmt.Sprintf("schedule result : group %s on node %s", scheduleResult.Group.ObjectMeta.Name, scheduleResult.SuggestedHost)
 	logs.Info(msg)
 
 	//TODO: 部署任务/Bind相关接口

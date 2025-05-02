@@ -119,8 +119,8 @@ func (p *PriorityQueue) AddToPending(ctx context.Context, group *apis.Group) {
 	defer p.lock.Unlock()
 	gInfo := p.newQueuedGroupInfo(group)
 	if added := p.moveToPendingQ(ctx, gInfo); added {
-		msg := fmt.Sprintf("group %s now in pending queue", gInfo.Group.ObjectMeta.Name)
-		logs.Info(msg)
+		//msg := fmt.Sprintf("group %s now in pending queue", gInfo.Group.ObjectMeta.Name)
+		//logs.Info(msg)
 		p.readyQ.broadcast()
 	}
 }

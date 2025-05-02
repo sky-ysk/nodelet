@@ -399,7 +399,7 @@ func GetAPIServerHost() string {
 }
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
-		logs.Info("group add: ", g.Name)
+		//logs.Info("group add: ", g.Name)
 		sched.SchedulingQueue.Add(ctx, g)
 	} else {
 		logs.Error("cannot convert to group")

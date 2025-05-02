@@ -145,20 +145,23 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	time.Sleep(8 * time.Second)
 	logs.Infof("now send schedule request to dts, group %s , time %s", request.GroupID, time.Now().String())
 	sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
-	time.Sleep(5 * time.Second)
+	time.Sleep(8 * time.Second)
 	//logs.Info("sleep 5s to get dts score")
 	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	logs.Infof("raw result given by dts is %s ", string(data))
 	var resp transport.ScoreRespData
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
 		logs.Error(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	logs.Infof("score given by dts plugin : %d, group : %s, node %s", resp.Score, resp.GroupID, resp.NodeID)
+	logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+	if resp.GroupID != group.ObjectMeta.Name {
+		logs.Warnf("group %s get schdule fail, node %s", group.Name, nodeName)
+	}
+	//logs.Infof("score given by dts plugin : %d, group : %s, node %s", resp.Score, resp.GroupID, resp.NodeID)
 	return resp.Score, framework.NewStatus(framework.Success)
 }
 
