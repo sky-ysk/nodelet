@@ -1887,12 +1887,12 @@ func TestEnd(t *testing.T) {
 // go test -run TestEnd -v
 func TestParse(t *testing.T) {
 	logs.Init("ttt")
-	mess := "{\"groupID\" : \"afsd\", \"c\", \"d\"}"
+	mess := "{\"groupID\" : \"afsd\", \"c\": \"d\"}"
 
 	var resp transport.ScoreRespData
 	err := json.Unmarshal([]byte(mess), &resp)
 	if err != nil {
-		logs.Error(err)
+		logs.Error(err.Error())
 	}
 	fmt.Println(resp.Score)
 }

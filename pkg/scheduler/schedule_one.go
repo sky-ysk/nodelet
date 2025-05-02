@@ -302,7 +302,7 @@ func (sched *Scheduler) findNodesThatFitGroup(ctx context.Context, fwk framework
 	if err != nil {
 		return nil, err
 	}
-	logs.Infof("found %d nodes", len(allNodes))
+	//logs.Infof("found %d nodes", len(allNodes))
 	//TODO Run "prefilter" plugins. 这个先不做
 	//preRes, s, unscheduledPlugins := fwk.RunPreFilterPlugins(ctx, state, pod)
 

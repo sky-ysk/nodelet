@@ -66,13 +66,13 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		logs.Fatal(err)
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
-	logs.Infof("the groups request send to dts is %s", string(jsonData))
 	data, err := client.SendData(jsonData, "/schedule/postGroup")
 	if err != nil {
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
-	fmt.Println("raw resp is like")
-	fmt.Println(string(data))
+	logs.Infof("the group request send to dts is task %s, time %s", request.TaskId, time.Now().String())
+	//fmt.Println("raw resp is like")
+	//fmt.Println(string(data))
 	//TODO 确认下返回细节
 	var resp SendGroupsResponse
 	err = json.Unmarshal(data, &resp)
@@ -142,11 +142,12 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Fatal(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	time.Sleep(5 * time.Second)
-	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	time.Sleep(8 * time.Second)
+	logs.Infof("now send schedule request to dts, group %s , time %s", request.GroupID, time.Now().String())
+	sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	time.Sleep(5 * time.Second)
 	//logs.Info("sleep 5s to get dts score")
-	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
