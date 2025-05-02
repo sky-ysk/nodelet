@@ -128,7 +128,7 @@ func (sp *ScorePluginDBY) Name() string {
 
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	//TODO 没测过
-	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
+	//logs.Infof("use DTS plugin to generate a score on %s", nodeName)
 	taskName := group.Status.Belong.Name
 
 	request := transport.ScoreRequest{
@@ -137,14 +137,15 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		NodeID:  nodeName,
 	}
 	jsonData, err := json.Marshal(request)
-	logs.Infof("the request send to dts is %s", string(jsonData))
+	//logs.Infof("the request send to dts is %s", string(jsonData))
 	if err != nil {
 		logs.Fatal(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
+	time.Sleep(5 * time.Second)
 	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	time.Sleep(5 * time.Second)
-	logs.Info("sleep 5s to get dts score")
+	//logs.Info("sleep 5s to get dts score")
 	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error, err.Error())
@@ -156,7 +157,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Error(err)
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
-	logs.Infof("score given by dts plugin : %d, group : %s", resp.Score, resp.GroupID)
+	logs.Infof("score given by dts plugin : %d, group : %s, node %s", resp.Score, resp.GroupID, resp.NodeID)
 	return resp.Score, framework.NewStatus(framework.Success)
 }
 
