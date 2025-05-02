@@ -99,11 +99,11 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 		logs.Error(err.Error())
 		return framework.NewStatus(framework.Error, err.Error())
 	}
-	patchResult, err := bp.groupClient.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	_, err = bp.groupClient.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 	if err != nil {
 		logs.Error(err.Error())
 	}
-	logs.Info(patchResult)
+	//logs.Info(patchResult)
 
 	//get belonged task
 	//belongedTaskID := group.Status.Belongs.TaskID

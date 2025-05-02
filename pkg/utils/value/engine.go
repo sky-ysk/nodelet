@@ -296,7 +296,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 	switch name {
 	case "GroupExpr":
 		// Group{}位置
-		fmt.Println("GroupExpr")
+		//fmt.Println("GroupExpr")
 		target := parts[1]
 		from := parts[2]
 		fromKey := parts[3]
