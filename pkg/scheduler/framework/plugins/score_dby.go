@@ -73,8 +73,8 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
 	logs.Infof("the group request send to dts is task %s, time %s", request.TaskId, time.Now().String())
-	//fmt.Println("raw resp is like")
-	//fmt.Println(string(data))
+	fmt.Println("raw resp is like")
+	fmt.Println(string(data))
 	//TODO 确认下返回细节
 	var resp SendGroupsResponse
 	err = json.Unmarshal(data, &resp)
