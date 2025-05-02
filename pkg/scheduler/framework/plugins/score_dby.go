@@ -17,6 +17,7 @@ import (
 	"hit.edu/framework/pkg/scheduler/transport"
 	"hit.edu/framework/pkg/utils/value"
 	"io"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -26,6 +27,7 @@ type ScorePluginDBY struct {
 	clientSet    *clients.ClientSet
 	taskClient   core.TaskInterface
 	valueEngine  *value.Engine
+	r            *rand.Rand
 }
 
 type ScorePluginClient struct {
@@ -130,7 +132,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	//TODO 没测过
 	//logs.Infof("use DTS plugin to generate a score on %s", nodeName)
 	taskName := group.Status.Belong.Name
-
+	randScore := int64(sp.r.Intn(3))
 	request := transport.ScoreRequest{
 		GroupID: group.ObjectMeta.Name,
 		TaskID:  taskName,
@@ -139,30 +141,67 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	jsonData, err := json.Marshal(request)
 	//logs.Infof("the request send to dts is %s", string(jsonData))
 	if err != nil {
-		logs.Fatal(err)
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
 	time.Sleep(8 * time.Second)
 	logs.Infof("now send schedule request to dts, group %s , time %s", request.GroupID, time.Now().String())
-	sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
-	time.Sleep(8 * time.Second)
-	//logs.Info("sleep 5s to get dts score")
+	var resp transport.ScoreRespData
+	//先发第一次 理论上第一次是收不到的
 	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	var resp transport.ScoreRespData
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
-		logs.Error(err)
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
+	}
+	//logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+	if resp.GroupID == group.ObjectMeta.Name {
+		return resp.Score, framework.NewStatus(framework.Success, "")
+	}
+
+	//理论上第二次才能收到分数
+	time.Sleep(8 * time.Second)
+	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	if err != nil {
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
+	}
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
 	logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
-	if resp.GroupID != group.ObjectMeta.Name {
-		logs.Warnf("group %s get schdule fail, node %s", group.Name, nodeName)
+	if resp.GroupID == group.ObjectMeta.Name {
+		return resp.Score, framework.NewStatus(framework.Success, "")
 	}
-	//logs.Infof("score given by dts plugin : %d, group : %s, node %s", resp.Score, resp.GroupID, resp.NodeID)
-	return resp.Score, framework.NewStatus(framework.Success)
+
+	//大约20%的请求会走到这里
+	logs.Warnf("group %s get schedule fail, node %s", group.Name, nodeName)
+	for {
+		time.Sleep(5 * time.Second)
+		data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+		if err != nil {
+			logs.Error(err.Error())
+			return randScore, framework.NewStatus(framework.Error, err.Error())
+		}
+		err = json.Unmarshal(data, &resp)
+		if err != nil {
+			logs.Error(err.Error())
+			return randScore, framework.NewStatus(framework.Error, err.Error())
+		}
+		//logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+		if resp.GroupID == group.ObjectMeta.Name {
+			break
+		}
+		logs.Warnf("group %s get schedule fail again, node %s", group.Name, nodeName)
+	}
+	logs.Infof("group %s finally get the score ! Node %s, Score %d", group.Name, nodeName, resp.Score)
+	return resp.Score, framework.NewStatus(framework.Success, "")
 }
 
 func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (bool, *framework.Status) {
@@ -208,6 +247,7 @@ func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugi
 		clientSet:    cs,
 		taskClient:   tc,
 		pluginClient: NewScorePluginClient(),
+		r:            rand.New(rand.NewSource(time.Now().UnixNano())),
 	}, nil
 }
 
