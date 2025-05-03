@@ -371,6 +371,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 							}
 							continue // 这样能快速遍历下一个Action，不然还会进入下面的判断，稍微好一丢丢
 						}
+						// 目前对应pod运行时，发现如果副本处于Init状态，原任务处于Succeed状态，下面这段代码会进行Pod的关闭，然后Pod的EndHandler方法，监控到任务完成也会进行Pod的关闭
 						if actionStatus.CopyStatus == "Succeeded" { // 这里有个小插曲，就是对于副本任务里面改Action，其下面的Runtime的状态没有改为Succeed，可以补充进来--  这是为啥呢？因为这里是一层层遍历，虽然说源任务runtime完成、Action完成会同时修改副本的runtime、Action，但是由于这里的逻辑是先遍历到Action，然后再遍历到下面的runtime，这里选择不再遍历下去，这样会很，直接遍历到Action状态为Successed，然后调用一个方法将Action下面的所有runtime的Phase改为Succeed即可
 							logs.Info("***************************************************************Succeeed")
 							for _, runtimeReference := range actionStatus.Runtimes {
