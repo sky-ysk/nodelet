@@ -20,7 +20,7 @@ import (
 
 // 为后续做成有状态的类留出扩展
 type ConditionEngine struct {
-	engine  *value.Engine // 添加 Engine 字段
+	engine *value.Engine // 添加 Engine 字段
 }
 
 func InitClient() (*clients.ClientSet, error) {
@@ -66,11 +66,12 @@ func NewConditionEngine() *ConditionEngine {
 	}
 	engine := value.NewEngine(client)
 	return &ConditionEngine{
-		engine:  engine,    // 初始化 Engine
+		engine: engine, // 初始化 Engine
 	}
 }
 
 // o传入的是一个对象，可能是workflow、task、group、action、runtime等
+// 目前o传入的是指针，在考虑是否改成传入值
 func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interface{}) (apis.ResultType, error) {
 	if conditions == nil {
 		logs.Error("condition is nil")
@@ -83,7 +84,6 @@ func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interf
 
 	for _, formula := range conditions.Formulas {
 		checkRes, err := ce.checkFormula(&formula, o)
-		logs.Infof("&formula is nil??%v", &formula)
 		if err != nil {
 			return apis.False, err
 		}
@@ -128,7 +128,7 @@ func (ce *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o interf
 
 // TODO:细化每一种依赖里面的每一种情况
 func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
-	logs.Infof("checkNodeDependency val : %v", o)
+	// logs.Infof("checkNodeDependency val : %v", o)
 	val := reflect.ValueOf(o)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem() // 解引用指针，获取指针所指向的值
@@ -137,16 +137,15 @@ func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o
 	Name := val.FieldByName("Name")
 
 	//debug日志
-	logs.Infof("checkNodeDependency after val : %v", val)
-	logs.Infof("checkNodeDependency Name : %v, kind:%v", Name, kind)
-	logs.Infof("checkNodeDependency formula pointer : %v", &formula.LeftValue)
-	logs.Infof("get value:::::::LeftValue:%v", formula.LeftValue)
+	// logs.Infof("checkNodeDependency after val : %v", val)
+	// logs.Infof("checkNodeDependency Name : %v, kind:%v", Name, kind)
+	// logs.Infof("checkNodeDependency formula pointer : %v", &formula.LeftValue)
+	// logs.Infof("get value:::::::LeftValue:%v", formula.LeftValue)
 	// 解析parent的Phase的值
 	// TODO FIXME，调用engine就会报引用空指针的错，目前不清楚是为什么
 	// panic: runtime error: invalid memory address or nil pointer dereference
 	value, err := ce.engine.GetValue(&(formula.LeftValue), val)
-	logs.Infof("after GetValue!")
-	
+
 	if err != nil {
 		logs.Error("condititon Engine: check Dodedependency GetValue error: ", err)
 		return apis.False, err

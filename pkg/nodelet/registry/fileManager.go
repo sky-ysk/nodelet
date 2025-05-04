@@ -93,7 +93,6 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 	// 调用 utils.DownloadFile 函数下载文件
 	// 这里的 filename 是要下载的文件名，savePath 是保存路径
 	// 返回下载结果和错误信息
-	logs.Infof("Download url: %s", fm.DownloadURL)
 	url := fm.DownloadURL
 	downloadURL := url + filename
 	fm.DownloadStatus[filename] = Downloading
