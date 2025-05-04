@@ -112,13 +112,11 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	CMD.Stderr = os.Stderr
 	// CMD.Env = append(CMD.Env, )
 
-	// 设置工作目录,TODO：注意需要在拉起runtime的时候创建好文件夹
-	// CMD.Dir = apis.FileFolder + runtime.Spec.Name
-	CMD.Dir = apis.FileFolder
-	//创建工作目录，如果存在则不操作，否则创建（实际上应该在runtime下载数据依赖所需要的数据时就创建好了）
-	if err := os.MkdirAll(CMD.Dir, os.ModePerm); err != nil {
-		logs.Errorf("Failed to create directory: %v", err)
-		return fmt.Errorf("failed to create directory: %w", err)
+	CMD.Dir = apis.FileFolder + "/" + runtime.Name
+	// 检查工作目录，如果不存在说明数据出问题了
+	if _, err := os.Stat(CMD.Dir); os.IsNotExist(err) {
+		logs.Errorf("Directory %s does not exist: %v", CMD.Dir, err)
+		return fmt.Errorf("directory %s does not exist: %w", CMD.Dir, err)
 	}
 
 	// 启动命令
