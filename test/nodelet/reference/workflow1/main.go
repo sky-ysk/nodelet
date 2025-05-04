@@ -144,7 +144,7 @@ func main() {
 	}
 	runtime1_1_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_1_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_1_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -156,7 +156,7 @@ func main() {
 	}
 	runtime1_2_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_2_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_2_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -168,7 +168,7 @@ func main() {
 	}
 	runtime1_3_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_3_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_3_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -179,7 +179,7 @@ func main() {
 	}
 	runtime1_4_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_4_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_4_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -190,7 +190,7 @@ func main() {
 	}
 	runtime1_5_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_5_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_5_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -201,7 +201,7 @@ func main() {
 	}
 	runtime1_6_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_6_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_6_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -212,7 +212,7 @@ func main() {
 
 	group1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_1Name),
+			//GetNodeDepencyConditionFormula(group1_1Name),
 		},
 	}
 
@@ -221,7 +221,7 @@ func main() {
 	}
 	group1_4Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_3Name),
+			//GetNodeDepencyConditionFormula(group1_3Name),
 		},
 	}
 
@@ -230,7 +230,7 @@ func main() {
 	}
 	group1_6Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_5Name),
+			//GetNodeDepencyConditionFormula(group1_5Name),
 		},
 	}
 
@@ -547,25 +547,25 @@ func prompt() {
 	logs.Info()
 }
 
-func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
-	return apis.ConditionFormula{
-		ConditionType: apis.NodeDependency,
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      parentName,
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "NodeDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
-}
+//func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
+//	return apis.ConditionFormula{
+//		ConditionType: apis.NodeDependency,
+//		LeftValue: apis.Value{
+//			Type:      apis.ResultsData,
+//			Name:      "NodeDependency",
+//			Value:     "0",
+//			ValueType: "string",
+//			From:      parentName,
+//		},
+//		RightValue: apis.Value{
+//			Type:      apis.ConstData,
+//			Name:      "NodeDependency",
+//			Value:     "1",
+//			ValueType: "string",
+//			From:      "",
+//		},
+//		Signal: apis.Equal,
+//		Join:   "",
+//		Result: apis.False,
+//	}
+//}

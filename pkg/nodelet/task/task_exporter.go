@@ -69,6 +69,7 @@ var _ Exporter = &TaskExporter{}
 
 func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
 	// Task Exporter配置 config
+	taskTargetMap := cfg.taskTargetMap
 	groupTargetMap := cfg.groupTargetMap
 	actionTargetMap := cfg.actionTargetMap
 	runtimeTargetMap := cfg.runtimeTargetMap
@@ -122,7 +123,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
 		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),

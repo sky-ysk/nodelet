@@ -62,6 +62,8 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	runtimeTargets map[string]cross_core.RuntimeInterface
 	// group_manager
 	groupManager group.Manager
+	// client-go
+	//nodeClient core.NodeInterface
 }
 
 func NewMigrationController(eventClient core.EventInterface, clientSet *clients.ClientSet, clientsManager *manager.Manager, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string, groupTarget map[string]cross_core.GroupInterface, ActionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface, groupManager group.Manager) *MigrationController {
@@ -86,6 +88,7 @@ func NewMigrationController(eventClient core.EventInterface, clientSet *clients.
 		runtimeTargets:  runtimeTarget,
 		groupManager:    groupManager,
 		nodeName:        nodeName,
+		//nodeClient:      nodeClient,
 	}
 	return ctrl
 }
@@ -93,7 +96,7 @@ func (mc *MigrationController) eventWatcher() {
 	// 筛选出 type是 EventTypeMigration 的事件
 	// fieldSelector := fmt.Sprintf("type=%v", apis.EventTypeMigration)
 	// 设置长超时时间
-	var timeout int64 = 3600
+	var timeout int64 = 7200
 	watchOptions := meta.ListOptions{
 		TimeoutSeconds: &timeout,
 		// FieldSelector:  fieldSelector,
@@ -434,7 +437,10 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	} else { // 还未部署副本，那就是直接即使触发迁移，粗粒度控制的任务或者细粒度控制的任务都有可能
 		// 先根据源group生成一个副本group的Name
 		//groupCopyName = "Reason-copy"          // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符,这里刚开始这么定义，是想让副本在指定的节点上生成
-
+		//node, err2 := mc.nodeClient.Get(context.TODO(), *group.Status.Node, metav1.GetOptions{})
+		//if err2 != nil {
+		//	logs.Errorf("Get node %s failed-66: %v", *group.Status.Node, err2)
+		//}
 		if event.Reason == events.TriggerLocalMigration { // 本域迁移，指定了目标节点
 			nodeName := extractNode(event.MigrationTarget) // 如果nodeName未获取到，则nodeName = ""
 			// TODO 本域迁移，则直接生成group副本并写入本域etcd当中
@@ -669,7 +675,7 @@ func extractNode(str string) string {
 }
 
 // 新增一个创建一个空白的Group信息，删除不必要的内容（例如Running、DeployCheck的属性都得改为Unknown，时间也得修改）
-func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group {
+func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group { // NodeName表示指定这个Group迁移到哪个节点
 	logs.Info("=====================NewGroupInfoCopy=======================================")
 	// 将原始对象序列化为JSON
 	data, err := json.Marshal(g)
@@ -702,12 +708,13 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 		groupCopy.Status.CopyStatus = "Starting"
 	}
 	// 将groupStatus下的node属性进行设置
-	if nodeName != "" {
-		groupCopy.Status.Node = &nodeName
-	}
 	groupCopy.Status.Node = StringPtr("")
 	if groupCopy.Status.Phase != apis.Successed {
 		groupCopy.Status.Phase = apis.Unknown
+	}
+	if nodeName != "" || groupCopy.Status.Phase != apis.Successed { // 用户指定了group迁移到哪个节点，那么这里直接把调度器的工作给做了，把Group的Status.phase改为ReadyToDeploy，并且把Group的Staus.Node改为指定的节点 TODO 这里需要和调度器说一下，就是调度器读取到分配了的Group，不会再修改
+		groupCopy.Status.Node = &nodeName
+		groupCopy.Status.Phase = apis.ReadyToDeploy
 	}
 	// 遍历GroupStatus下面的Action数组，把Reference里面的Actionname，后面都加上"-copy"
 	for aSpecName, _ := range groupCopy.Status.Actions {
@@ -715,6 +722,10 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 		objRef.Name += "-copy"
 		groupCopy.Status.Actions[aSpecName] = objRef
 	}
+	//// 将副本Group的Status的CopyBelongClustID属性设置为源任务所在的集群的id
+	//if localClusterID != "" {
+	//	groupCopy.Status.CopyBelongClustID = &localClusterID
+	//}
 	return groupCopy
 }
 

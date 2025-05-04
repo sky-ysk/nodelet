@@ -227,6 +227,9 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 			if phase == apis.Failed && (get.Status.Phase == apis.Migrating || get.Status.Phase == apis.Migrated) {
 				return
 			}
+			if phase == apis.Failed && get.Status.Phase == apis.Successed { // 处理副本任务处于Init初始化过后，由于源任务完成后，需要销毁副本任务，在关闭pod的过程当中，会监控到pod的状态为Failed，这里需要避免这个情况，副本任务被关闭，且源任务执行完成，理应是Succeed状态
+				phase = apis.Successed
+			}
 			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed || phase == apis.Unknown {
 				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
 			} else { //启动

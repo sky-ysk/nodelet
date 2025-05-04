@@ -296,7 +296,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 			case watch.Added:
 				{
 					if t, ok := event.Object.(*apis.Task); ok {
-						logs.Infof("send groups to dts plugin, task : %s", t.Name)
+						//logs.Infof("send groups to dts plugin, task : %s", t.Name)
 						plugin.SendGroups(ctx, t)
 					} else {
 						logs.Error("monitor task : cannot convert to task")
@@ -372,7 +372,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			logs.Infof("scheduler接收到group事件类型: %v\n", event.Type)
+			//logs.Infof("scheduler接收到group事件类型: %v\n", event.Type)
 			switch event.Type {
 			case watch.Added:
 				{
@@ -399,7 +399,7 @@ func GetAPIServerHost() string {
 }
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
-		logs.Info("group add: ", g.Name)
+		//logs.Info("group add: ", g.Name)
 		sched.SchedulingQueue.Add(ctx, g)
 	} else {
 		logs.Error("cannot convert to group")

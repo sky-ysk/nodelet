@@ -144,7 +144,7 @@ func main() {
 	}
 	runtime1_1_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_1_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_1_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -156,7 +156,7 @@ func main() {
 	}
 	runtime1_2_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_2_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_2_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -168,7 +168,7 @@ func main() {
 	}
 	runtime1_3_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_3_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_3_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -179,7 +179,7 @@ func main() {
 	}
 	runtime1_4_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_4_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_4_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -190,7 +190,7 @@ func main() {
 	}
 	runtime1_5_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_5_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_5_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
@@ -201,14 +201,14 @@ func main() {
 	}
 	runtime1_6_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_6_1_1Name),
+			//GetNodeDepencyConditionFormula(runtime1_6_1_1Name),
 			ProgramDependencyConditionFormula,
 		},
 	}
 
 	group1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_2Name),
+			//GetNodeDepencyConditionFormula(group1_2Name),
 		},
 	}
 
@@ -221,7 +221,7 @@ func main() {
 	}
 	group1_4Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_2Name),
+			//GetNodeDepencyConditionFormula(group1_2Name),
 		},
 	}
 
@@ -231,7 +231,7 @@ func main() {
 
 	group1_6Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(group1_5Name),
+			//GetNodeDepencyConditionFormula(group1_5Name),
 		},
 	}
 
@@ -250,7 +250,7 @@ func main() {
 		},
 		Replicas:   group1_1Replicas,
 		Name:       group1_1Name,
-		Parents:    make([]string, 0),
+		Parents:    []string{group1_2Name},
 		Conditions: &group1_1Condition,
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
@@ -296,7 +296,7 @@ func main() {
 		},
 		Replicas:   group1_2Replicas,
 		Name:       group1_2Name,
-		Parents:    []string{group1_1Name}, // 加入Parents
+		Parents:    make([]string, 0), // 加入Parents
 		Conditions: &group1_2Condition,
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
@@ -389,7 +389,7 @@ func main() {
 		},
 		Replicas:   group1_4Replicas,
 		Name:       group1_4Name,
-		Parents:    []string{group1_3Name}, // 加入Parents
+		Parents:    []string{group1_2Name}, // 加入Parents
 		Conditions: &group1_4Condition,
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
@@ -548,25 +548,25 @@ func prompt() {
 	logs.Info()
 }
 
-func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
-	return apis.ConditionFormula{
-		ConditionType: apis.NodeDependency,
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      parentName,
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "NodeDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
-}
+//func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
+//	return apis.ConditionFormula{
+//		ConditionType: apis.NodeDependency,
+//		LeftValue: apis.Value{
+//			Type:      apis.ResultsData,
+//			Name:      "NodeDependency",
+//			Value:     "0",
+//			ValueType: "string",
+//			From:      parentName,
+//		},
+//		RightValue: apis.Value{
+//			Type:      apis.ConstData,
+//			Name:      "NodeDependency",
+//			Value:     "1",
+//			ValueType: "string",
+//			From:      "",
+//		},
+//		Signal: apis.Equal,
+//		Join:   "",
+//		Result: apis.False,
+//	}
+//}

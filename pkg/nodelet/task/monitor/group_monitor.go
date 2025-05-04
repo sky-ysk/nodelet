@@ -62,6 +62,7 @@ type GroupMonitor struct {
 	clientsManager *manager.Manager
 	stopCh         chan struct{}
 	// 跨域
+	taskTargets    map[string]cross_core.TaskInterface
 	groupTargets   map[string]cross_core.GroupInterface
 	actionTargets  map[string]cross_core.ActionInterface
 	runtimeTargets map[string]cross_core.RuntimeInterface
@@ -71,7 +72,7 @@ type GroupMonitor struct {
 
 func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder,
 	runtimeManager *runtime.RuntimeManager, clientsManager *manager.Manager, dependencyManager *dependency.DependencyManager, conditionEngine *utils.ConditionEngine,
-	groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface,
+	taskTarget map[string]cross_core.TaskInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface,
 	fileManager *fileManager.FileManager) *GroupMonitor {
 	return &GroupMonitor{
 		groupManager:      groupManager,
@@ -88,6 +89,7 @@ func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues,
 		//runtimeClient:     runtimeClient,
 		clientsManager: clientsManager,
 		stopCh:         make(chan struct{}),
+		taskTargets:    taskTarget,
 		groupTargets:   groupTarget,
 		actionTargets:  actionTarget,
 		runtimeTargets: runtimeTarget,
@@ -208,12 +210,33 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 				if exists {
 					logs.Tracef("Group:%v's belong Task:%v is already find", gr.Name, task.Name)
 				} else {
-					logs.Tracef("Group:%v's belong task has't find", gr.Name)
-					task, err = gmo.clientsManager.GetTask(gr.Status.Belong.Name, gr.Status.Belong.Namespace)
-					if err != nil {
-						logs.Errorf("Etcd get task error:%v", err)
+					if getGroup.Spec.IsCopy { // 如果是副本迁移到本节点的话，说明源任务本来就是Running状态才迁移过来的，所以说迁移过来的任务的依赖是满足的，所以说这里可以直接赋值task为nil传给groupDepenSatisfy方法直接返回true即可
+						// 需要跨域去找Task
+						//logs.Tracef("Group:%v's belong task has't find, now to find in other Domain", gr.Name)
+						//BelongClustID := *getGroup.Status.CopyBelongClustID
+						//if BelongClustID == "" {
+						//	logs.Error("Group belong ClusterID is nill")
+						//}
+						//taskTarget, ok := gmo.taskTargets[BelongClustID]
+						//if !ok {
+						//	logs.Error("Get taskTarget error==========================")
+						//}
+						//task, err = taskTarget.Get(context.TODO(), gr.Status.Belong.Name, metav1.GetOptions{})
+						//if err != nil {
+						//	logs.Errorf("Corss etcd get task error:%v", err)
+						//}
+						//gmo.belongTasks[gr.Name] = task
+						task = nil
+						logs.Info("Copy Group has't have Task")
+					} else {
+						// 直接本域去找Task
+						logs.Tracef("Group:%v's belong task has't find, now to find in local Domain", gr.Name)
+						task, err = gmo.clientsManager.GetTask(gr.Status.Belong.Name, gr.Status.Belong.Namespace)
+						if err != nil {
+							logs.Errorf("Etcd get task error:%v", err)
+						}
+						gmo.belongTasks[gr.Name] = task
 					}
-					gmo.belongTasks[gr.Name] = task
 				}
 				if !gmo.groupDepenSatisfy(getGroup, task) { //再次检查group的执行依赖是否满足了（注意：group_workers当中任务头一次执行前也会检查）
 					//logs.Debugf("The group ：%s execution dependency is not satisfied again, now still in Checking Queue", gr.Name)
@@ -350,6 +373,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 							}
 							continue // 这样能快速遍历下一个Action，不然还会进入下面的判断，稍微好一丢丢
 						}
+						// 目前对应pod运行时，发现如果副本处于Init状态，原任务处于Succeed状态，下面这段代码会进行Pod的关闭，然后Pod的EndHandler方法，监控到任务完成也会进行Pod的关闭
 						if actionStatus.CopyStatus == "Succeeded" { // 这里有个小插曲，就是对于副本任务里面改Action，其下面的Runtime的状态没有改为Succeed，可以补充进来--  这是为啥呢？因为这里是一层层遍历，虽然说源任务runtime完成、Action完成会同时修改副本的runtime、Action，但是由于这里的逻辑是先遍历到Action，然后再遍历到下面的runtime，这里选择不再遍历下去，这样会很，直接遍历到Action状态为Successed，然后调用一个方法将Action下面的所有runtime的Phase改为Succeed即可
 							logs.Info("***************************************************************Succeeed")
 							for _, runtimeReference := range actionStatus.Runtimes {
@@ -866,6 +890,19 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 			completed := gmo.groupQueues.GetAllCompleted()
 			for i := range completed {
 				gro := completed[i]
+				if gro.Spec.IsCopy { // 如果是副本Group，无须检查所属的Task其下面的Group是否都完成
+					logs.Infof("Delete group:%v", gro.Spec.Name)
+					gmo.groupManager.DeleteGroup(gro)
+					gmo.groupQueues.DeleteFromCompleted(gro.Name)
+					// 删除一下BelongTask当中这个记录
+					if _, exists := gmo.belongTasks[gro.Name]; exists {
+						delete(gmo.belongTasks, gro.Name)
+						logs.Trace("Delete group:%v in belongTasks map", gro.Spec.Name)
+					} else {
+						logs.Trace("key not exist")
+					}
+					continue
+				}
 				// 再次检查Group所属的Task，其下面的Group是否都完成，如果完成，就设置Task状态没设置为Succeed，就再设置Task状态为Successed
 				taskName := gro.Status.Belong.Name
 				var otherGroupCompleted = true
@@ -877,7 +914,7 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 					logs.Infof("Delete group:%v", gro.Spec.Name)
 					gmo.groupManager.DeleteGroup(gro)
 					gmo.groupQueues.DeleteFromCompleted(gro.Name)
-					// 删除婴喜爱BelongTask当中这个记录
+					// 删除一下BelongTask当中这个记录
 					if _, exists := gmo.belongTasks[gro.Name]; exists {
 						delete(gmo.belongTasks, gro.Name)
 						logs.Trace("Delete group:%v in belongTasks map", gro.Spec.Name)
@@ -1594,6 +1631,10 @@ func (gmo *GroupMonitor) UpdateRuntimeStatus(runtimeNamespace string, runtimeSta
 func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) bool {
 	// TODO：实现依赖检查逻辑
 	// 目前只是检查Spec当中的Parents选项
+	// 新加一个逻辑：副本Group，直接返回依赖满足
+	if group.Spec.IsCopy {
+		return true
+	}
 	if group.Spec.Conditions == nil {
 		return true
 	}
