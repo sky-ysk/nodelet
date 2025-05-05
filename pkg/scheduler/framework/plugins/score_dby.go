@@ -153,7 +153,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Error(err.Error())
 		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	logs.Infof("first time raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+	//logs.Infof("first time raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
 		logs.Error(err.Error())
@@ -178,6 +178,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	}
 	logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
 	if resp.GroupID == group.ObjectMeta.Name {
+		logs.Infof("score by dts is %d ,\n group : %s, node %s\"", resp.Score, group.Name, nodeName)
 		return resp.Score, framework.NewStatus(framework.Success, "")
 	}
 

@@ -270,6 +270,7 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	// 筛选
 	//host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
 	host, err := selectHostByProbability(priorityList)
+	logs.Infof("host select by probability is %s, group %s", host, group.ObjectMeta.Name)
 	if err != nil {
 		logs.Error(err.Error())
 	}
