@@ -1,8 +1,8 @@
 package fileManager
 
 const (
-	DataSavedDir    = "./data"
-	UploadURL  = "localhost:8888/upload"
-	ForwardURL = "localhost:8888/forward"
-	DownloadURL = "localhost:8888/download?filename="
+	DataSavedDir string = "./data"
+	UploadURL    string = "http://localhost:8888/upload"
+	ForwardURL   string = "http://localhost:8888/forward"
+	DownloadURL  string = "http://localhost:8888/download?filename="
 )

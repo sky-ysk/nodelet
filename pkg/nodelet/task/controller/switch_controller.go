@@ -96,7 +96,7 @@ func (mc *MigrationController) eventWatcher() {
 	// 筛选出 type是 EventTypeMigration 的事件
 	// fieldSelector := fmt.Sprintf("type=%v", apis.EventTypeMigration)
 	// 设置长超时时间
-	var timeout int64 = 3600
+	var timeout int64 = 7200
 	watchOptions := meta.ListOptions{
 		TimeoutSeconds: &timeout,
 		// FieldSelector:  fieldSelector,

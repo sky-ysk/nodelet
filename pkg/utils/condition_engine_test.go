@@ -3,6 +3,10 @@ package utils
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -11,9 +15,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func TestAddAction(t *testing.T) {
@@ -77,8 +78,6 @@ func TestAddAction(t *testing.T) {
 
 }
 
-
-
 func TestGetValue(t *testing.T) {
 	logs.Init("main")
 	scheme := runtime.NewScheme()
@@ -138,4 +137,25 @@ func TestGetValue(t *testing.T) {
 	}
 	fmt.Println("get result ", result)
 
+}
+
+// TODO 测试NodeDependency
+func TestNodeDependency(t *testing.T) {
+
+	//参数配置
+}
+
+// TODO 测试DataDependency
+func TestDataDependency(t *testing.T) {
+	//参数配置
+}
+
+// TODO 测试ResourceDependency
+func TestResourceDependency(t *testing.T) {
+	//参数配置
+}
+
+// TODO 测试ProcessDependency
+func TestProcessDependency(t *testing.T) {
+	//参数配置
 }

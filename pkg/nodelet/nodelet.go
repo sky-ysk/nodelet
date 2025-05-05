@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof" // 自动注册 pprof 处理器
 	"time"
 
 	"hit.edu/framework/pkg/component-base/logs"
@@ -83,7 +84,7 @@ func InitClient(apiserverHost string) (*clients.ClientSet, error) {
 			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
-		Timeout: 3600 * time.Second,
+		Timeout: 7200 * time.Second, //改成7200s
 	}
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
@@ -93,6 +94,9 @@ func InitClient(apiserverHost string) (*clients.ClientSet, error) {
 }
 
 func (nl *Nodelet) Run(ctx context.Context) {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	// 构造Node Exporter
 	ne, err := node.NewNodeExporter(nl.cfg.nc, nl.clientSet)
 	if err != nil {
@@ -112,7 +116,5 @@ func (nl *Nodelet) Run(ctx context.Context) {
 	// TODO：配置不同的Channel
 
 	// TODO: 运行不同的模块,多进程？
-	for {
-
-	}
+	<-ctx.Done()
 }
