@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -269,16 +268,20 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	}
 	//TODO out-tree input nodes + group
 	// 筛选
-	host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
-	if strings.Contains(group.ObjectMeta.Name, "Train") {
-		host = "CloudNode1"
+	//host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
+	host, err := selectHostByProbability(priorityList)
+	if err != nil {
+		logs.Error(err.Error())
 	}
-	if strings.Contains(group.ObjectMeta.Name, "Reason") {
-		host = "EdgeNode1"
-	}
-	if strings.Contains(group.ObjectMeta.Name, "Robot") {
-		host = "EdgeNode1"
-	}
+	//if strings.Contains(group.ObjectMeta.Name, "Train") {
+	//	host = "CloudNode1"
+	//}
+	//if strings.Contains(group.ObjectMeta.Name, "Reason") {
+	//	host = "EdgeNode1"
+	//}
+	//if strings.Contains(group.ObjectMeta.Name, "Robot") {
+	//	host = "EdgeNode1"
+	//}
 	return ScheduleResult{
 		SuggestedHost: host,
 		Group:         group,
@@ -489,6 +492,7 @@ func prioritizeNodes(
 	// If no priority configs are provided, then all nodes will have a score of one.
 	// This is required to generate the priority list in the required format
 	if !fwk.HasScorePlugins() {
+		logs.Warnf("no score plugins, use default score, group name %s", group.ObjectMeta.Name)
 		result := make([]framework.NodePluginScores, 0, len(nodes))
 		for i := range nodes {
 			result = append(result, framework.NodePluginScores{
@@ -570,4 +574,37 @@ func selectHost(nodeScoreList []framework.NodePluginScores, count int) (string, 
 	}
 
 	return sortedNodeScoreList[0].Name, sortedNodeScoreList, nil
+}
+
+func selectHostByProbability(nodeScoreList []framework.NodePluginScores) (string, error) {
+
+	if len(nodeScoreList) == 0 {
+		return "", errors.New("node score list is empty")
+	}
+
+	// 计算总分数
+	total := int64(0)
+	for _, score := range nodeScoreList {
+		total += score.TotalScore
+	}
+
+	if total == 0 {
+		return "", errors.New("all scores are zero, cannot select a host")
+	}
+
+	// 初始化随机数种子
+	rand.Seed(time.Now().UnixNano())
+
+	// 生成一个 0 到 total-1 之间的随机数
+	randomNum := int64(rand.Intn(int(total)))
+	// 根据随机数选择节点
+	currentSum := int64(0)
+	for _, score := range nodeScoreList {
+		currentSum += score.TotalScore
+		if randomNum < currentSum {
+			return score.Name, nil
+		}
+	}
+
+	return "", errors.New("unexpected error occurred while selecting a host")
 }
