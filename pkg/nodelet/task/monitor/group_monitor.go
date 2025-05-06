@@ -892,15 +892,21 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 						if err != nil {
 							logs.Errorf("Etcd get group error-4:%v", err)
 						}
-						//logs.Infof("groupStatus.Phase:%v,groupID:%v", grStatus.Phase, grStatus.GroupID)
-						if brotherGroup.Status.Phase == apis.Running || brotherGroup.Status.Phase == apis.DeployCheck || brotherGroup.Status.Phase == apis.Migrating || brotherGroup.Status.Phase == apis.Init { // 说明其他Group还未执行或者还没迁移成功
+						//logs.Infof("brotherGroupStatus.Phase:%v,groupName:%v", brotherGroup.Status.Phase, brotherGroup.Name)
+						//if brotherGroup.Status.Phase == apis.Running || brotherGroup.Status.Phase == apis.DeployCheck || brotherGroup.Status.Phase == apis.Migrating || brotherGroup.Status.Phase == apis.Init || brotherGroup.Status.Phase == apis.ReadyToDeploy || brotherGroup.Status.Phase == apis.Unknown { // 说明其他Group还未执行或者还没迁移成功
+						//	otherGroupCompleted = false
+						//	logs.Infof("groupName:%v has't done, otherGroupCompleted:%v", brotherGroup.Name, otherGroupCompleted)
+						//}
+						if brotherGroup.Status.Phase != apis.Successed && brotherGroup.Status.Phase != apis.Failed { // 说明其他Group还未执行或者还没迁移成功
 							otherGroupCompleted = false
+							break
 							logs.Infof("groupName:%v has't done, otherGroupCompleted:%v", brotherGroup.Name, otherGroupCompleted)
 						}
 						if brotherGroup.Status.Phase == apis.Migrated { // 还得去查对应副本任务的状态，如果状态为Running（大概率是这个状态）或者是DeployChek（说明迁移过去的group依赖不满足，暂时还不能执行），那么otherGroupCompleted参数也是false
 							// 为了适配迁移，目前还是处理同域的迁移,这里怎么根据源任务找到副本任务，还是一个遗留的问题
 							if brotherGroup.Status.CopyStatus == "" { // 副本任务只有Succeed和Failed才会修改源任务的copyStatus，如果说是空，说明副本任务还在运行
 								otherGroupCompleted = false
+								break
 							}
 						}
 					}
@@ -1270,7 +1276,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		if err != nil {
 			logs.Errorf("Get task error from etcd-22:%v", err)
 		}
-		// 检查其他的group是否完成,修改Task的状态 ---需要适配迁移（目前只适配了本域迁移）
+		// 检查其他的group是否完成,修改Task的状态 ---需要适配迁移
 		for gSpecName, groupReference := range task.Status.Groups {
 			allgroup, err := gmo.clientsManager.GetGroup(groupReference.Name, groupReference.Namespace)
 			if err != nil {
@@ -1279,23 +1285,28 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			grStatus := &allgroup.Status     // for 循环遍历到的Group
 			if gSpecName != groupSpec.Name { //遍历到的group的Spec.Name不等于当前处理的Group的Spec.Name,即遍历兄弟group
 				//logs.Infof("groupStatus.Phase:%v,groupID:%v", grStatus.Phase, grStatus.GroupID)
-				if grStatus.Phase == apis.DeployCheck || grStatus.Phase == apis.Migrating || grStatus.Phase == apis.Running || grStatus.Phase == apis.Init { // 说明其他Group还未执行或者还没迁移成功
+				//if grStatus.Phase == apis.DeployCheck || grStatus.Phase == apis.Migrating || grStatus.Phase == apis.Running || grStatus.Phase == apis.Init || grStatus.Phase == apis.Unknown || grStatus.Phase == apis.ReadyToDeploy { // 说明其他Group还未执行或者还没迁移成功
+				//	otherGroupCompleted = false
+				//}
+				if grStatus.Phase != apis.Successed && grStatus.Phase != apis.Failed && grStatus.Phase != apis.Migrated { // 说明其他Group还未执行或者还没迁移成功
 					otherGroupCompleted = false
+					break
 				}
-				if grStatus.Phase == apis.Failed { // 如果有一个Group的状态为Failed，则Task状态必定为Failed
-					finalTaskIsFailed = true
-				}
-				if grStatus.Phase == apis.Killed {
-					finalTaskIsKilled = true
-				}
+				// 这里就不再检查兄弟group的killed的状态以及Failed状态，兄弟group他自己发现Failed和Killed，会自己修改其状态的
+				//if grStatus.Phase == apis.Failed { // 如果有一个Group的状态为Failed，则Task状态必定为Failed
+				//	finalTaskIsFailed = true
+				//}
+				//if grStatus.Phase == apis.Killed {
+				//	finalTaskIsKilled = true
+				//}
 				if grStatus.Phase == apis.Migrated { // 还得去查对应副本任务的状态，如果状态为Running（大概率是这个状态）或者是DeployChek（说明迁移过去的group依赖不满足，暂时还不能执行），那么otherGroupCompleted参数也是false
 					// 为了适配迁移，目前还是处理同域的迁移,这里怎么根据源任务找到副本任务，还是一个遗留的问题
-					if grStatus.CopyStatus == "" { // 副本任务只有Succeed和Failed才会修改源任务的copyStatus，如果说是空，说明副本任务还在运行
+					if grStatus.CopyStatus == "" { // 副本任务只有Succeed和Failed才会修改源任务的copyStatus，如果说是空，说明副本任务还在运行，
 						otherGroupCompleted = false
 					}
-					if grStatus.CopyStatus == "Failed" {
-						finalTaskIsFailed = true
-					}
+					//if grStatus.CopyStatus == "Failed" { //这里就不再根据兄弟group的状态来修改finalTaskIsFailed参数了，因为
+					//	finalTaskIsFailed = true
+					//}
 				}
 				continue
 			}
@@ -1925,29 +1936,23 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 				}
 				groupStatus := &allGroup.Status
 				//logs.Infof("groupStatus.Phase:%v,groupID:%v", grStatus.Phase, grStatus.GroupID)
-				if groupStatus.Phase == apis.DeployCheck || groupStatus.Phase == apis.Migrating || groupStatus.Phase == apis.Init || groupStatus.Phase == apis.Running { // 说明其他Group还未执行或者还没迁移成功
+				//if groupStatus.Phase == apis.DeployCheck || groupStatus.Phase == apis.Migrating || groupStatus.Phase == apis.Init || groupStatus.Phase == apis.Running || groupStatus.Phase == apis.Unknown || groupStatus.Phase == apis.ReadyToDeploy { // 说明其他Group还未执行或者还没迁移成功
+				//	otherGroupCompleted = false
+				//}
+				if groupStatus.Phase != apis.Successed && groupStatus.Phase != apis.Migrated && groupStatus.Phase != apis.Failed {
 					otherGroupCompleted = false
+					break // 可以节省遍历
 				}
-				if groupStatus.Phase == apis.Failed { // 如果有一个Group的状态为Failed，则Task状态必定为Failed
-					finalTaskIsFailed = true
-				}
+				//if groupStatus.Phase == apis.Failed { // 如果有一个Group的状态为Failed，则Task状态必定为Failed
+				//	finalTaskIsFailed = true
+				//}
 				if groupStatus.Phase == apis.Migrated { // 还得去查对应副本任务的状态，如果状态为Running（大概率是这个状态）或者是DeployChek（说明迁移过去的group依赖不满足，暂时还不能执行），那么otherGroupCompleted参数也是false
-					// 为了适配迁移，目前还是处理同域的迁移,这里怎么根据源任务找到副本任务，还是一个遗留的问题
-					//copyGroup, err := gmo.groupClient.Get(context.TODO(), "Reason-Copy", metav1.GetOptions{})
-					//if err != nil {
-					//	logs.Errorf("Get copy group err:%v", err)
-					//}
-					if groupStatus.CopyStatus == "" { // 说明该Group的副本group正在运行还没结束
+					if groupStatus.CopyStatus == "" { // 说明该Group的副本group正在运行还没结束，如果说有值为Successed或者Failed，说明这个Group是已经完成的
 						otherGroupCompleted = false
+						break
 					}
-					if groupStatus.CopyStatus == "Failed" {
-						finalTaskIsFailed = false
-					}
-					//if copyGroup.Status.Phase == apis.DeployCheck || copyGroup.Status.Phase == apis.Running {
-					//	otherGroupCompleted = false
-					//}
-					//if copyGroup.Status.Phase == apis.Failed {
-					//	finalTaskIsFailed = true
+					//if groupStatus.CopyStatus == "Failed" {
+					//	finalTaskIsFailed = false
 					//}
 				}
 				continue
@@ -2197,18 +2202,12 @@ func (gmo *GroupMonitor) handleTaskSucceedUpdate(gro *apis.Group) {
 				if groupStatus.CopyStatus != "Successed" { // 兄弟group的副本group是Failed或者正在运行，copy_status为""
 					otherGroupIsSuccessed = false
 				}
-				//copyGroup, err := gmo.groupClient.Get(context.TODO(), "Reason-Copy", metav1.GetOptions{})
-				//if err != nil {
-				//	logs.Errorf("Get copy group err:%v", err)
-				//}
-				//if copyGroup.Status.Phase == apis.DeployCheck || copyGroup.Status.Phase == apis.Running {
-				//	otherGroupIsSuccessed = false
-				//}
 			}
 			if groupStatus.Phase == apis.Successed {
 				continue
 			}
-			if groupStatus.Phase == apis.DeployCheck || groupStatus.Phase == apis.Running {
+			//if groupStatus.Phase == apis.DeployCheck || groupStatus.Phase == apis.Running { 5.6修改
+			if groupStatus.Phase != apis.Migrated && groupStatus.Phase != apis.Successed {
 				otherGroupIsSuccessed = false
 			}
 			// apis.Failed 这个状态其实不用考虑了，因为当其他group的状态为Failed的话，就会主动该Task的状态为Failed
