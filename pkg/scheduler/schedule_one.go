@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -273,6 +274,13 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	logs.Infof("host select by probability is %s, group %s", host, group.ObjectMeta.Name)
 	if err != nil {
 		logs.Error(err.Error())
+	}
+	if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
+		if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
+			host = "EdgeNode1"
+		} else {
+			host = "CloudNode1"
+		}
 	}
 	//if strings.Contains(group.ObjectMeta.Name, "Train") {
 	//	host = "CloudNode1"
