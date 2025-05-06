@@ -163,7 +163,6 @@ func (sp *ScorePluginDBY) greedyScore(ctx context.Context, group *apis.Group, no
 		return 0, framework.NewStatus(framework.Error, err.Error())
 	}
 	score := int64(((100-cpuAvgUse)*5 + 100 - ramUse) / 60)
-	logs.Infof("node %s CPU use %f, mem use %f, score %d, group %s", nodeName, cpuAvgUse, ramUse, score, group.Name)
 	if score <= 0 {
 		logs.Errorf("invalid score %d, group %s, node %s", score, group.Name, nodeName)
 		return 1, framework.NewStatus(framework.Success, fmt.Sprintf("invalid score %d, group %s, node %s", score, group.Name, nodeName))
@@ -172,6 +171,7 @@ func (sp *ScorePluginDBY) greedyScore(ctx context.Context, group *apis.Group, no
 		logs.Warnf("score exceed %d, group %s, node %s", score, group.Name, nodeName)
 		score = 10
 	}
+	logs.Infof("node %s CPU use %f, mem use %f, score %d, group %s", nodeName, cpuAvgUse, ramUse, score, group.Name)
 	return score, framework.NewStatus(framework.Success, "")
 }
 
