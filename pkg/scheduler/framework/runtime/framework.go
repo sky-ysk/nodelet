@@ -167,7 +167,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 					//err := fmt.Errorf("plugin %q failed with: %w", pl.Name(), status.AsError())
 					//errCh.SendErrorWithCancel(err, cancel)
 					logs.Errorf("plugin %q failed with: %s , node %s ", pl.Name(), status.AsError().Error(), nodeName)
-					logs.Errorf("plugin %q fail on node %s , use default score", pl.Name(), nodeName)
+					//logs.Errorf("plugin %q fail on node %s , use default score", pl.Name(), nodeName)
 					s = 5
 				}
 				pluginToNodeScores[pl.Name()][index] = framework.NodeScore{
