@@ -1720,5 +1720,5 @@ const (
 
 const (
 	// 文件的存储位置,暂时位于 adaptive-scheduling-framework/test/tmp/data
-	FileFolder string = "./test/tmp/data/"
+	FileFolder  string = "../tmp/data"
 )

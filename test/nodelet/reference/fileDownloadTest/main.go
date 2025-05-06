@@ -4,6 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -15,13 +19,11 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"os"
-	"time"
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
-// 测试部署-123-12
-// 3个group，3个Action，每个Action两个Runtime， 一共6个Runtime，其中第一个group为训练任务（debian1上处理），第二个任务为推理任务（pve2上处理），第三个任务为机器人任务（pve2上处理）
+// 测试部署一个Task，一个Group，一个Action，每个Action一个Runtime
+// 用于测试DataDependency的条件和NodeDependency的条件是否正确运行
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
@@ -74,25 +76,25 @@ func main() {
 
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_1_1_2Name := "R2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
+	runtime1_1_1_2Name := "R2" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
 	runtime1_1_1_2FineGrainedControl := false
 
-	// 程序依赖（requirements.txt）
-	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		ConditionType: apis.ProgramDependency,
+	// 数据依赖（../tmp/testFolder）
+	DataDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.DataDependency,
 		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "ProgramDependency",
+			Type:      apis.FileData,
+			Name:      "asdasd",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
+			From:      "",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
-			Name:      "ProgramDependency",
+			Name:      "asdasd",
 			Value:     "1",
 			ValueType: "string",
 			From:      "",
@@ -101,19 +103,28 @@ func main() {
 		Join:   "",
 		Result: apis.False,
 	}
+	//上传文件，runtime的Data[]里面的每一个文件都需要上传
+	//filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/upload.py"
+	//filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/test.txt"
+	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/test.txt"
+	UploadFile(filePath)
+	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/upload.py"
+	UploadFile(filePath)
+
+	// node依赖
+	NodeDependencyCondition := GetNodeDepencyConditionFormula("R1")
 
 	runtime1_1_1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			ProgramDependencyConditionFormula,
+			DataDependencyConditionFormula,
 		},
 	}
 	runtime1_1_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_1_1_1Name),
-			ProgramDependencyConditionFormula,
+			NodeDependencyCondition,
+			DataDependencyConditionFormula,
 		},
 	}
-
 	group1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{},
 	}
@@ -143,9 +154,11 @@ func main() {
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"train.py"}, //20s
-						Parents:                  make([]string, 0),                                                // 加入Parents
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "upload.py"}, apis.DataSpec{Name: "test.txt"}}, // 需要下载的文件
+						Args:                     []string{"upload.py"},                                                              //20s
+						Parents:                  make([]string, 0),                                                                  // 加入Parents
 						Conditions:               &runtime1_1_1_1Condition,
+						Inputs:                   []apis.Value{apis.Value{Value: "test.txt"}, apis.Value{Value: "success.txt"}},
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
@@ -153,9 +166,11 @@ func main() {
 						Name:                     runtime1_1_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"wine.py"}, //8s
-						Parents:                  []string{runtime1_1_1_1Name},                                                 // 加入Parents
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "upload.py"}, apis.DataSpec{Name: "test.txt"}}, // 需要下载的文件
+						Args:                     []string{"upload.py"},                                                              //20s
+						Parents:                  []string{runtime1_1_1_1Name},                                                                  // 加入Parents
 						Conditions:               &runtime1_1_1_2Condition,
+						Inputs:                   []apis.Value{apis.Value{Value: "test.txt"}, apis.Value{Value: "success.txt"}},
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
 					},
@@ -276,11 +291,11 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 	return apis.ConditionFormula{
 		ConditionType: apis.NodeDependency,
 		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
+			Type:      apis.LocalData,
 			Name:      "NodeDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "runtime{" + parentName +"}",
+			From:      "runtime{" + parentName + "}",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -292,5 +307,21 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 		Signal: apis.Equal,
 		Join:   "",
 		Result: apis.False,
+	}
+}
+
+// 上传文件
+func UploadFile(filePath string) (string, error) {
+	// 调用 utils.UploadFile 函数上传文件
+	// 这里的 filePath 是要上传的文件路径
+	// 返回上传结果和错误信息
+	url := "http://localhost:10000/apis/resources/v1/upload"
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+		return "", err
+	} else {
+		fmt.Println("Upload successful!")
+		return "Upload successful!", nil
 	}
 }

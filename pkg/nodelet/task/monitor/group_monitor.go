@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"reflect"
 	"sync"
 	"time"
@@ -80,6 +81,7 @@ func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues,
 		recorder:          recorder,
 		runtimeManager:    runtimeManager,
 		dependencyManager: dependencyManager,
+		fileManager:       fileManager,
 		//nodesClient:       nodeClient,
 		//groupClient:       groupClient,
 		//taskClient:        taskClient,
@@ -110,7 +112,7 @@ func (gmo *GroupMonitor) Start(ctx context.Context) {
 	depenUpdateDone := make(chan struct{})
 	go func() {
 		defer close(depenUpdateDone)
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(60 * time.Second)
 		//循环检查更新依赖，有两个内容要更新：所有虚拟环境的名字；每个虚拟环境所包含的所有包
 		for {
 			select {
@@ -534,6 +536,43 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								logs.Errorf("Get runtime error-3:%v", err)
 							}
 							runtimeStatus := &runtime.Status
+							// 4-30 runtime第一次被准备启动，在检查依赖等之前，创建runtime专属的文件目录，并且下载其Data[]里面填入的所有文件===暂时只考虑到单个文件
+							// 后续还需要考虑到这些目录的删除。例如在运行完成之后，生成的结果要么直接上传到etcd，要么直接上传到文件仓库。在这些操作完成之后，考虑删除这些已完成的任务的文件夹
+							dir := apis.FileFolder + "/" + runtime.Name
+							if _, err := os.Stat(dir); os.IsNotExist(err) {
+								// 目录不存在，创建目录
+								err := os.Mkdir(dir, os.ModePerm) // 权限
+								if err != nil {
+									logs.Errorf("monitor创建目录时发生错误: %v\n", err)
+								}
+								logs.Tracef("monitor创建目录完成,runtime:%v, namaspace:%v", runtime.Name, runtime.Namespace)
+							} else if err != nil {
+								// 其他错误
+								logs.Errorf("检查目录时发生错误: %v\n", err)
+								return
+							} else {
+								// 目录已存在
+								// logs.Tracef("创建目录时目录已存在: %v\n", err)
+							}
+							// TODO检查完目录之后，准备使用fileManager下载文件，并更新文件下载状态。使用协程下载
+							logs.Infof("runtime Data[]:%v", runtime.Spec.Data)
+							for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
+								// 下载日志
+								gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.NotDownloaded
+								if gmo.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloaded { // 说明已经下载过了
+									logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
+									continue
+								} else if gmo.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloading { // 说明正在下载
+									logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
+									continue
+								}
+								if gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloading ||  gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloaded{ // 说明没有下载过
+									gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.Downloading
+									logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
+									go gmo.fileManager.DownloadFile(filedata.Name, dir)
+								}
+							}
+
 							if runtimeStatus.Waiting == true { // 说明是第二次遍历到这个runtime，第一次遍历到该runtime的时候，其依赖没有满足（判断Runtime是否处于等待）
 								if !gmo.runtimeDepenSatisfy(runtime, action) { // runtime 依赖不满足
 									continue
@@ -1629,7 +1668,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 		}
 	}
 	// 其他依赖
-	res, err := gmo.conditionEngine.CheckConditions(group.Spec.Conditions, group)
+	res, err := gmo.conditionEngine.CheckConditions(group.Spec.Conditions, *group)
 	if err != nil {
 		logs.Errorf("Check group conditions error:%v", err)
 		return false
@@ -1675,7 +1714,7 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 		}
 	}
 	// 其他依赖
-	res, err := gmo.conditionEngine.CheckConditions(actionSpec.Conditions, action)
+	res, err := gmo.conditionEngine.CheckConditions(actionSpec.Conditions, *action)
 	if err != nil {
 		logs.Errorf("Check action conditions error:%v", err)
 		return false
@@ -1730,6 +1769,16 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 	// 其他依赖
 	for _, i := range runtime.Spec.Conditions.Formulas {
 		// ProgramDependency暂时不方便直接使用ConditionEngine
+		result, err := gmo.conditionEngine.CheckConditions(runtime.Spec.Conditions, *runtime)
+		if err != nil {
+			logs.Errorf("Monitor:Check runtime conditions error:%v", err)
+			return false
+		}
+		if result != apis.True {
+			logs.Tracef("runtime %v's conditions is not satisfy", runtime.Name)
+			return false
+		}
+		// 这里需要判断这个条件的类型，如果是ProgramDependency类型的条件，则需要进行特殊处理(nodelet这里直接使用Parents来处理，暂时不使用ConditionEngine)
 		if i.ConditionType == apis.ProgramDependency {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
