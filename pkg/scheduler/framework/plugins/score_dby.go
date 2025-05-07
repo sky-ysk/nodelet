@@ -164,11 +164,11 @@ func (sp *ScorePluginDBY) greedyScore(ctx context.Context, group *apis.Group, no
 	}
 	score := int64((100 - cpuAvgUse) / 10)
 	if score <= 0 {
-		logs.Errorf("invalid score %d, group %s, node %s", score, group.Name, nodeName)
+		//logs.Errorf("invalid score %d, group %s, node %s", score, group.Name, nodeName)
 		score = 1
 	}
 	if score > 100 {
-		logs.Warnf("score exceed %d, group %s, node %s", score, group.Name, nodeName)
+		//logs.Warnf("score exceed %d, group %s, node %s", score, group.Name, nodeName)
 		score = 10
 	}
 	logs.Infof("node %s CPU use %f, mem use %f, score %d, group %s", nodeName, cpuAvgUse, ramUse, score, group.Name)
