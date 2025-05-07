@@ -214,7 +214,7 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 			logs.Errorf("failed to return a status code")
 			return
 		}
-		//return
+		return
 	}
 
 	// TODO：为NODE分配MachineID?

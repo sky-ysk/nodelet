@@ -215,7 +215,7 @@ func (h *DeviceHandler) CreateDevice(request *restful.Request, response *restful
 			logs.Errorf("failed to return a status code")
 			return
 		}
-		// return
+		return
 	}
 
 	// TODO：为Device分配ID?
