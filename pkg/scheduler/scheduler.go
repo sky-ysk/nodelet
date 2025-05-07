@@ -203,7 +203,7 @@ func (sched *Scheduler) Run(ctx context.Context) {
 		go wait.UntilWithContext(ctx, sched.ScheduleOne, 0)
 	}
 	go sched.monitorWorkflow(ctx)
-	//go sched.monitorTask(ctx)
+	go sched.monitorTask(ctx)
 	<-ctx.Done()
 
 	// TODO: 具体内容实现

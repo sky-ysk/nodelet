@@ -9,7 +9,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
@@ -20,7 +19,6 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -131,128 +129,82 @@ func (sp *ScorePluginDBY) Name() string {
 //	return ""
 //}
 
-func (sp *ScorePluginDBY) greedyScore(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
-	node, err := sp.nodeClient.Get(ctx, nodeName, metav1.GetOptions{})
+func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
+	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
+	taskName := group.Status.Belong.Name
+	randScore := int64(sp.r.Intn(3))
+	request := transport.ScoreRequest{
+		GroupID: group.ObjectMeta.Name,
+		TaskID:  taskName,
+		NodeID:  nodeName,
+	}
+	jsonData, err := json.Marshal(request)
+	//logs.Infof("the request send to dts is %s", string(jsonData))
 	if err != nil {
 		logs.Error(err.Error())
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	if _, ok := node.Status.Usage["cpu"]; !ok {
-		return 0, framework.NewStatus(framework.Error, "CPU usage info is nil")
-	}
-	if _, ok := node.Status.Usage["memory"]; !ok {
-		return 0, framework.NewStatus(framework.Error, "RAM usage info is nil")
-	}
-	if len(node.Status.Usage["memory"]) == 0 || len(node.Status.Usage["cpu"]) == 0 {
-		return 0, framework.NewStatus(framework.Error, " usage len  is 0")
-	}
-	cpuValue := node.Status.Usage["cpu"][0]
-	ramValue := node.Status.Usage["memory"][0]
-	if _, ok := cpuValue.Values["AveUtil"]; !ok {
-		return 0, framework.NewStatus(framework.Error, "CPU value is nil")
-	}
-	if _, ok := ramValue.Values["Usage"]; !ok {
-		return 0, framework.NewStatus(framework.Error, "ram value is nil")
-	}
-	cpuAvgUse, err := strconv.ParseFloat(cpuValue.Values["AveUtil"], 64)
+	time.Sleep(8 * time.Second)
+	logs.Infof("now send schedule request to dts, group %s , time %s", request.GroupID, time.Now().String())
+	var resp transport.ScoreRespData
+	//先发第一次 理论上第一次是收不到的
+	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	ramUse, err := strconv.ParseFloat(ramValue.Values["Usage"], 64)
+	//logs.Infof("first time raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+	err = json.Unmarshal(data, &resp)
 	if err != nil {
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	score := int64((100 - cpuAvgUse) / 10)
-	if score <= 0 {
-		//logs.Errorf("invalid score %d, group %s, node %s", score, group.Name, nodeName)
-		score = 1
-	}
-	if score > 100 {
-		//logs.Warnf("score exceed %d, group %s, node %s", score, group.Name, nodeName)
-		score = 10
-	}
-	logs.Infof("node %s CPU use %f, mem use %f, score %d, group %s", nodeName, cpuAvgUse, ramUse, score, group.Name)
-	return score, framework.NewStatus(framework.Success, "")
-}
-
-func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
-	return sp.greedyScore(ctx, group, nodeName)
-	//TODO 没测过
-	//logs.Infof("use DTS plugin to generate a score on %s", nodeName)
-	//taskName := group.Status.Belong.Name
-	//randScore := int64(sp.r.Intn(3))
-	//request := transport.ScoreRequest{
-	//	GroupID: group.ObjectMeta.Name,
-	//	TaskID:  taskName,
-	//	NodeID:  nodeName,
-	//}
-	//jsonData, err := json.Marshal(request)
-	////logs.Infof("the request send to dts is %s", string(jsonData))
-	//if err != nil {
-	//	logs.Error(err.Error())
-	//	return randScore, framework.NewStatus(framework.Error, err.Error())
-	//}
-	//time.Sleep(8 * time.Second)
-	//logs.Infof("now send schedule request to dts, group %s , time %s", request.GroupID, time.Now().String())
-	//var resp transport.ScoreRespData
-	////先发第一次 理论上第一次是收不到的
-	//data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
-	//if err != nil {
-	//	logs.Error(err.Error())
-	//	return randScore, framework.NewStatus(framework.Error, err.Error())
-	//}
-	////logs.Infof("first time raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
-	//err = json.Unmarshal(data, &resp)
-	//if err != nil {
-	//	logs.Error(err.Error())
-	//	return randScore, framework.NewStatus(framework.Error, err.Error())
-	//}
-	////logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
-	//if resp.GroupID == group.ObjectMeta.Name {
-	//	return resp.Score, framework.NewStatus(framework.Success, "")
-	//}
-	//
-	////理论上第二次才能收到分数
-	//time.Sleep(8 * time.Second)
-	//data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
-	//if err != nil {
-	//	logs.Error(err.Error())
-	//	return randScore, framework.NewStatus(framework.Error, err.Error())
-	//}
-	//err = json.Unmarshal(data, &resp)
-	//if err != nil {
-	//	logs.Error(err.Error())
-	//	return randScore, framework.NewStatus(framework.Error, err.Error())
-	//}
 	//logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
-	//if resp.GroupID == group.ObjectMeta.Name {
-	//	logs.Infof("score by dts is %d ,\n group : %s, node %s\"", resp.Score, group.Name, nodeName)
-	//	return resp.Score, framework.NewStatus(framework.Success, "")
-	//}
-	//
-	////大约20%的请求会走到这里
-	//logs.Warnf("group %s get schedule fail, node %s", group.Name, nodeName)
-	//for {
-	//	time.Sleep(5 * time.Second)
-	//	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
-	//	if err != nil {
-	//		logs.Error(err.Error())
-	//		return randScore, framework.NewStatus(framework.Error, err.Error())
-	//	}
-	//	logs.Infof("loop raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
-	//	err = json.Unmarshal(data, &resp)
-	//	if err != nil {
-	//		logs.Error(err.Error())
-	//		return randScore, framework.NewStatus(framework.Error, err.Error())
-	//	}
-	//	//logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
-	//	if resp.GroupID == group.ObjectMeta.Name {
-	//		break
-	//	}
-	//	logs.Warnf("group %s get schedule fail again, node %s", group.Name, nodeName)
-	//}
-	//logs.Infof("group %s finally get the score ! Node %s, Score %d", group.Name, nodeName, resp.Score)
-	//return resp.Score, framework.NewStatus(framework.Success, "")
+	if resp.GroupID == group.ObjectMeta.Name {
+		return resp.Score, framework.NewStatus(framework.Success, "")
+	}
+
+	//理论上第二次才能收到分数 --5.7更新 理论上100%的请求在第二次发送拿到结果
+	time.Sleep(8 * time.Second)
+	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	if err != nil {
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
+	}
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
+	}
+	logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+	if resp.GroupID == group.ObjectMeta.Name {
+		logs.Infof("score by dts is %d ,\n group : %s, node %s\"", resp.Score, group.Name, nodeName)
+		return resp.Score, framework.NewStatus(framework.Success, "")
+	}
+
+	//大约20%的请求会走到这里 -- 5.7更新 ： DTS插件已修复，理论上不会有任何请求走到这里
+	logs.Warnf("group %s get schedule fail, node %s", group.Name, nodeName)
+	for {
+		time.Sleep(5 * time.Second)
+		data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+		if err != nil {
+			logs.Error(err.Error())
+			return randScore, framework.NewStatus(framework.Error, err.Error())
+		}
+		logs.Infof("loop raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+		err = json.Unmarshal(data, &resp)
+		if err != nil {
+			logs.Error(err.Error())
+			return randScore, framework.NewStatus(framework.Error, err.Error())
+		}
+		//logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+		if resp.GroupID == group.ObjectMeta.Name {
+			break
+		}
+		logs.Warnf("group %s get schedule fail again, node %s", group.Name, nodeName)
+	}
+	logs.Infof("group %s finally get the score ! Node %s, Score %d", group.Name, nodeName, resp.Score)
+	return resp.Score, framework.NewStatus(framework.Success, "")
 }
 
 func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (bool, *framework.Status) {

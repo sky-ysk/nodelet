@@ -275,6 +275,8 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	if err != nil {
 		logs.Error(err.Error())
 	}
+
+	//前端演示页面特判逻辑
 	if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
 		if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
 			host = "EdgeNode1"
