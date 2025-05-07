@@ -310,7 +310,10 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	// 获取更改的字符串
 	bodyBytes, err := io.ReadAll(request.Request.Body)
 	if err != nil {
-		response.WriteError(http.StatusBadRequest, err)
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			return
+		}
 		return
 	}
 	jsonStr := string(bodyBytes)
