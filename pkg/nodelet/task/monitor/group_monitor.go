@@ -87,13 +87,14 @@ func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues,
 		//taskClient:        taskClient,
 		//actionClient:      actionClient,
 		//runtimeClient:     runtimeClient,
-		clientsManager: clientsManager,
-		stopCh:         make(chan struct{}),
-		taskTargets:    taskTarget,
-		groupTargets:   groupTarget,
-		actionTargets:  actionTarget,
-		runtimeTargets: runtimeTarget,
-		belongTasks:    make(map[string]*apis.Task),
+		clientsManager:  clientsManager,
+		stopCh:          make(chan struct{}),
+		taskTargets:     taskTarget,
+		groupTargets:    groupTarget,
+		actionTargets:   actionTarget,
+		runtimeTargets:  runtimeTarget,
+		conditionEngine: conditionEngine,
+		belongTasks:     make(map[string]*apis.Task),
 	}
 }
 
@@ -566,7 +567,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 									logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
 									continue
 								}
-								if gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloading ||  gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloaded{ // 说明没有下载过
+								if gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloading || gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloaded { // 说明没有下载过
 									gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.Downloading
 									logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
 									go gmo.fileManager.DownloadFile(filedata.Name, dir)
