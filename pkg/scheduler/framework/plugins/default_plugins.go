@@ -63,7 +63,8 @@ func (sp *DefaultScorePlugin) Name() string {
 func (sp *DefaultScorePlugin) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
 	status := framework.NewStatus(framework.Success, "default success")
 	logs.Infof("use default stategy to generate the score on node %s ", nodeName)
-	return int64(sp.r.Intn(11)), status
+	//return sp.r.Int63n(10) + 1, status
+	return int64(2), status
 }
 
 func NewDefaultFilterPlugin(ctx context.Context, f framework.Handle) (framework.Plugin, error) {
@@ -99,11 +100,11 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 		logs.Error(err.Error())
 		return framework.NewStatus(framework.Error, err.Error())
 	}
-	patchResult, err := bp.groupClient.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	_, err = bp.groupClient.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 	if err != nil {
 		logs.Error(err.Error())
 	}
-	logs.Info(patchResult)
+	//logs.Info(patchResult)
 
 	//get belonged task
 	//belongedTaskID := group.Status.Belongs.TaskID

@@ -69,6 +69,7 @@ var _ Exporter = &TaskExporter{}
 
 func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
 	// Task Exporter配置 config
+	taskTargetMap := cfg.taskTargetMap
 	groupTargetMap := cfg.groupTargetMap
 	actionTargetMap := cfg.actionTargetMap
 	runtimeTargetMap := cfg.runtimeTargetMap
@@ -122,7 +123,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
 		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),
@@ -192,6 +193,7 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 				//}
 				if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 					if gr.Status.Phase == apis.ReadyToDeploy {
+						logs.Infof("Receive-GroupName：%v,groupStatus:%v", gr.Name, gr.Status.Phase)
 						groupUpdate := types.GroupUpdate{
 							Group: gr,
 							Op:    types.ADD,

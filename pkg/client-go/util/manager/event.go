@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -22,6 +23,12 @@ func (m *Manager) CreateEvent(e *apis.Event, namespace string) (*apis.Event, err
 func (m *Manager) LogEvent(object runtime.Object, eventtype, reason, message string, namespace string) error {
 	c := m.GetEventClient(namespace)
 	c.Recoder.Event(object, eventtype, reason, message)
+	return nil
+}
+
+func (m *Manager) LogEventForMigration(object runtime.Object, eventtype, reason, message string, migrationTarget string, namespace string) error {
+	c := m.GetEventClient(namespace)
+	c.Recoder.EventForMigration(object, eventtype, reason, message, migrationTarget)
 	return nil
 }
 

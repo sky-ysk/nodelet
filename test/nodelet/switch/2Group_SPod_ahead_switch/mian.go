@@ -28,7 +28,20 @@ var scheme = runtime.NewScheme()
 const NodeName = "debian1"
 
 // 测试切换
-// 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
+// 适配从debian1 迁移到 ubuntu2
+// 修改1：
+// 调度器代码: 触发debian1资源不足事件,从debian1迁移到ubuntu2
+// if strings.Contains(group.ObjectMeta.Name, "G1") {
+// host = "debian1"
+// }
+// if strings.Contains(group.ObjectMeta.Name, "copy") {
+// host = "ubuntu2"
+// }
+// if strings.Contains(group.ObjectMeta.Name, "G2") {
+// host = "ubuntu2"
+// }
+// 修改2：调度器关闭score插件
+// 修改3：const NodeName = "debian1"
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)

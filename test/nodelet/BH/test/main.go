@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/util/manager"
@@ -64,56 +66,19 @@ func main() {
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	//group1_2Name := "G2" // 第一个Task下的第二个GroupName
-	//group1_3Name := "G3"
-	//group1_4Name := "G4"
-	//group1_5Name := "G5"
-	//group1_6Name := "G6"
 
 	group1_1Replicas := []int32{0, 0}
-	//group1_2Replicas := []int32{0, 0}
-	//group1_3Replicas := []int32{0, 0}
-	//group1_4Replicas := []int32{0, 0}
-	//group1_5Replicas := []int32{0, 0}
-	//group1_6Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
-	//action1_2_1Name := "A1" // 第一个Task下的第二个Group下的第一个ActionName
-	//action1_3_1Name := "A1" // 第一个Task下的第三个Group下的第一个ActionName
-	//action1_4_1Name := "A1"
-	//action1_5_1Name := "A1"
-	//action1_6_1Name := "A1"
 
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	runtime1_1_1_2Name := "R2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_2_1_1Name := "R1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_2_1_2Name := "R2" // 第一个Task下的第二个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_3_1_1Name := "R1" // 第一个Task下的第三个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_3_1_2Name := "R2" // 第一个Task下的第三个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_4_1_1Name := "R1" // 第一个Task下的第4个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_4_1_2Name := "R2" // 第一个Task下的第4个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_5_1_1Name := "R1" // 第一个Task下的第5个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_5_1_2Name := "R2" // 第一个Task下的第5个Group下的第一个ActionName下的第二个RuntimeName
-	//runtime1_6_1_1Name := "R1" // 第一个Task下的第6个Group下的第一个ActionName下的第一个RuntimeName
-	//runtime1_6_1_2Name := "R2" // 第一个Task下的第6个Group下的第一个ActionName下的第二个RuntimeName
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
 	runtime1_1_1_2FineGrainedControl := false
-	//runtime1_2_1_1FineGrainedControl := false
-	//runtime1_2_1_2FineGrainedControl := false
-	//runtime1_3_1_1FineGrainedControl := false
-	//runtime1_3_1_2FineGrainedControl := false
-	//runtime1_4_1_1FineGrainedControl := false
-	//runtime1_4_1_2FineGrainedControl := false
-	//runtime1_5_1_1FineGrainedControl := false
-	//runtime1_5_1_2FineGrainedControl := false
-	//runtime1_6_1_1FineGrainedControl := false
-	//runtime1_6_1_2FineGrainedControl := false
-	// 统一地规定： Belongs：填的是ID
-	//            Parents: 填的也是ID吧--改为Name
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
@@ -122,7 +87,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/l1hy/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
+			From:      "/root/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -177,8 +142,8 @@ func main() {
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/train.py"}, //20s
-						Parents:                  make([]string, 0),                                              // 加入Parents
+						Args:                     []string{"/root/workspace/heongtong_yolo_linux/train.py"}, //20s
+						Parents:                  make([]string, 0),                                         // 加入Parents
 						Conditions:               &runtime1_1_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
@@ -187,8 +152,8 @@ func main() {
 						Name:                     runtime1_1_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/l1hy/workspace/heongtong_yolo_linux/predict.py"}, //8s
-						Parents:                  []string{runtime1_1_1_1Name},                                     // 加入Parents
+						Args:                     []string{"/root/workspace/modelfortest/model_torch_absolute/wine.py"}, //8s
+						Parents:                  []string{runtime1_1_1_1Name},                                          // 加入Parents
 						Conditions:               &runtime1_1_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
@@ -216,6 +181,81 @@ func main() {
 		return
 	}
 	fmt.Println(str)
+
+	prompt()
+	tasksClient := clientSet.Core().Tasks("test")
+	groupsClient := clientSet.Core().Groups("test")
+	actionsClient := clientSet.Core().Actions("test")
+	runtimesClient := clientSet.Core().Runtimes("test")
+	eventsClient := clientSet.Core().Events("test")
+
+	// Task资源
+	logs.Info("======Task")
+	list1, err := tasksClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, task := range list1.Items {
+		err := tasksClient.Delete(context.TODO(), task.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Task删除成功: %v", task.Name)
+	}
+	// group资源
+	logs.Info("======Group")
+	list2, err := groupsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, group := range list2.Items {
+		err := groupsClient.Delete(context.TODO(), group.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Group删除成功: %v", group.Name)
+	}
+	// action 资源
+	logs.Info("======Action")
+	list3, err := actionsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, action := range list3.Items {
+		err := actionsClient.Delete(context.TODO(), action.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Action删除成功: %v", action.Name)
+	}
+	// runtime 资源
+	logs.Info("======Runtime")
+	list4, err := runtimesClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, runtime := range list4.Items {
+		err := runtimesClient.Delete(context.TODO(), runtime.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Runtime删除成功:%v", runtime.Name)
+	}
+
+	// Event资源
+	logs.Info("======Event")
+	list5, err := eventsClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, event := range list5.Items {
+		err := eventsClient.Delete(context.TODO(), event.Name, metav1.DeleteOptions{})
+		if err != nil {
+			panic(err)
+		}
+		logs.Infof("Event删除成功: %v", event.Name)
+	}
+
 }
 
 // From K8s

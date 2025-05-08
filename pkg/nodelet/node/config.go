@@ -15,9 +15,11 @@ type Config struct {
 	NodeName string
 	//  节点所属类别
 	ClusterCategory string
+	// 节点所在集群的集群ID
+	LocalClusterID string
 }
 
-func NewConfig(enabledCollectors []string, resourceAccessMethod, nodeName, clusterCategory string) *Config {
+func NewConfig(enabledCollectors []string, resourceAccessMethod, nodeName, clusterCategory string, localClusterID string) *Config {
 	//监测当前系统平台
 	platform := runtime.GOOS
 	// 如果资源访问方式为空，设置默认值
@@ -29,6 +31,7 @@ func NewConfig(enabledCollectors []string, resourceAccessMethod, nodeName, clust
 		EnabledCollectors:    enabledCollectors,
 		ResourceAccessMethod: resourceAccessMethod,
 		NodeName:             nodeName,
+		LocalClusterID:       localClusterID,
 		ClusterCategory:      clusterCategory,
 	}
 }

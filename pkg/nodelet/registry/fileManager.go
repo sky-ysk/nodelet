@@ -3,17 +3,40 @@ package fileManager
 import (
 	"fmt"
 
+	"hit.edu/framework/pkg/component-base/logs"
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
 // 测试使用，暂时只支持单个文件的上传和下载，删除需要手动。
 // 在config.go中配置上传和下载的url、保存路径等信息。
-
+const (
+	//未下载
+	NotDownloaded string = "not_downloaded"
+	//正在下载
+	Downloading string = "downloading"
+	//下载完成
+	Downloaded string = "download_completed"
+	//下载失败
+	DownloadFailed string = "download_failed"
+	//未上传
+	NotUploaded string = "not_uploaded"
+	//正在上传
+	Uploading string = "uploading"
+	//上传完成
+	Uploaded string = "upload_completed"
+	//上传失败
+	UploadFailed string = "upload_failed"
+)
 type FileManager struct {
+	// 一些配置参数，例如上传和下载的URL、保存路径等
 	DataSavedDir string
 	UploadURL    string
 	ForwardURL   string
 	DownloadURL  string
+	// 记录本地的runtime的文件下载情况：未下载、正在下载、下载完成、下载失败。key是带后缀的runtime.Name，value是data[]里面所有文件的下载状态
+	DownloadStatus map[string]string
+	// 记录本地的runtime的文件上传情况：未上传、正在上传、上传完成、上传失败。key是带后缀的runtime.Name，value是data[]里面所有文件的上传状态
+	UploadStatus   map[string]string
 }
 
 // type FileHandler interface {
@@ -27,11 +50,20 @@ type FileManager struct {
 // }
 
 func NewFileManager() *FileManager {
+	logs.Infof("DataSavedDir: %s", DataSavedDir)
+	logs.Infof("UploadURL: %s", UploadURL)
+	logs.Infof("ForwardURL: %s", ForwardURL)
+	logs.Infof("DownloadURL: %s", DownloadURL)
+	downloadStatus := make(map[string]string)
+	uploadStatus := make(map[string]string)
+	// 初始化 FileManager
 	return &FileManager{
 		DataSavedDir: DataSavedDir,
 		UploadURL:    UploadURL,
 		ForwardURL:   ForwardURL,
 		DownloadURL:  DownloadURL,
+		DownloadStatus: downloadStatus,
+		UploadStatus:   uploadStatus,
 	}
 }
 
@@ -63,16 +95,21 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 	// 返回下载结果和错误信息
 	url := fm.DownloadURL
 	downloadURL := url + filename
+	fm.DownloadStatus[filename] = Downloading
 	// fmt.Println("Download URL:", downloadURL)
 	// fmt.Println("Save Path:", savePath)
 	err := utils.DownloadFile(downloadURL, savePath)
 	if err != nil {
 		fmt.Println("Download failed:", err)
+		fm.DownloadStatus[filename] = DownloadFailed
+		fmt.Printf("file:%s,Download status:%s", filename, DownloadFailed)
 		return "", err
 	} else {
+		fm.DownloadStatus[filename] = Downloaded
 		fmt.Println("Download successful!")
 		return "Download successful!", nil
 	}
+	// TODO 更新文件下载的状态 
 }
 
 // func (fm *FileManager) DownloadDir(dirPath, savePath string) (string, error) {

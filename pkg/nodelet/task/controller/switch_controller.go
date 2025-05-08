@@ -9,8 +9,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
-	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
-	"hit.edu/framework/pkg/nodelet/task/util"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"path/filepath"
 	"regexp"
@@ -64,6 +62,8 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	runtimeTargets map[string]cross_core.RuntimeInterface
 	// group_manager
 	groupManager group.Manager
+	// client-go
+	//nodeClient core.NodeInterface
 }
 
 func NewMigrationController(eventClient core.EventInterface, clientSet *clients.ClientSet, clientsManager *manager.Manager, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string, groupTarget map[string]cross_core.GroupInterface, ActionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface, groupManager group.Manager) *MigrationController {
@@ -88,6 +88,7 @@ func NewMigrationController(eventClient core.EventInterface, clientSet *clients.
 		runtimeTargets:  runtimeTarget,
 		groupManager:    groupManager,
 		nodeName:        nodeName,
+		//nodeClient:      nodeClient,
 	}
 	return ctrl
 }
@@ -95,7 +96,7 @@ func (mc *MigrationController) eventWatcher() {
 	// 筛选出 type是 EventTypeMigration 的事件
 	// fieldSelector := fmt.Sprintf("type=%v", apis.EventTypeMigration)
 	// 设置长超时时间
-	var timeout int64 = 3600
+	var timeout int64 = 7200
 	watchOptions := meta.ListOptions{
 		TimeoutSeconds: &timeout,
 		// FieldSelector:  fieldSelector,
@@ -392,7 +393,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		for key, value := range group.Spec.CopyInfo { // 这里相当于只遍历CopyInfo这个数组当中的第一个元素
 			groupCopyName = key
 			if value != "local" { // && event.Reason == events.TriggerCrossMigration
-				if event.Reason == events.TriggerCrossMigration && (event.Message == value || event.Message == "") { //所要迁的目的地正好和副本所在的域相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+				if event.Reason == events.TriggerCrossMigration && (event.MigrationTarget == value || event.MigrationTarget == "") { //所要迁的目的地正好和副本所在的域相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 					// 跨域迁移 通过跨域的通信总线通知另一个域的副本copyGroup进行状态的恢复,暂时使用update--后期改成patch
 					groupTarget := mc.groupTargets[value] //=-=-=-=-
 					//copyGroup, err := groupTarget.Get(context.TODO(), "test", groupCopyName, "groups", metav1.GetOptions{})
@@ -400,11 +401,11 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					//	logs.Infof("Failed to get group from other domain: %v", err)
 					//}
 					//copyGroup.Status.CopyStatus = "Starting"
-					patchGroup, err := json.Marshal(map[string]interface{}{
-						"status": map[string]interface{}{
-							"copy_status": "Starting",
-						},
-					})
+					//patchGroup, err := json.Marshal(map[string]interface{}{
+					//	"status": map[string]interface{}{
+					//		"copy_status": "Starting",
+					//	},
+					//})
 					_, err = groupTarget.Patch(context.TODO(), groupCopyName, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 					if err != nil {
 						logs.Errorf("Patch group %s cross domain failed: %v", groupCopyName, err)
@@ -419,7 +420,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					if err != nil {
 						logs.Errorf("Get group %s failed-66: %v", groupCopyName, err)
 					}
-					if event.Message == *getCopyGroup.Status.Node || event.Message == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+					if event.MigrationTarget == *getCopyGroup.Status.Node || event.MigrationTarget == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
 						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
 						if err != nil {
@@ -436,9 +437,12 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	} else { // 还未部署副本，那就是直接即使触发迁移，粗粒度控制的任务或者细粒度控制的任务都有可能
 		// 先根据源group生成一个副本group的Name
 		//groupCopyName = "Reason-copy"          // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符,这里刚开始这么定义，是想让副本在指定的节点上生成
-
+		//node, err2 := mc.nodeClient.Get(context.TODO(), *group.Status.Node, metav1.GetOptions{})
+		//if err2 != nil {
+		//	logs.Errorf("Get node %s failed-66: %v", *group.Status.Node, err2)
+		//}
 		if event.Reason == events.TriggerLocalMigration { // 本域迁移，指定了目标节点
-			nodeName := extractNode(event.Message) // 如果nodeName未获取到，则nodeName = ""
+			nodeName := extractNode(event.MigrationTarget) // 如果nodeName未获取到，则nodeName = ""
 			// TODO 本域迁移，则直接生成group副本并写入本域etcd当中
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 			groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
@@ -541,7 +545,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			//	logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopyName])
 			//} else { // 跨域迁移，未指定迁移到哪个节点，这里直接生成一个事件通过调度器，里面放Group信息
 			// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息
-			domainName := extractNode(event.Message)
+			domainName := extractNode(event.MigrationTarget)
 			groupCopy := NewGroupInfoCopy(group, false, "") //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
 			// 遍历action和Runtime，依次创建
 			for _, actionReference := range group.Status.Actions {
@@ -671,7 +675,7 @@ func extractNode(str string) string {
 }
 
 // 新增一个创建一个空白的Group信息，删除不必要的内容（例如Running、DeployCheck的属性都得改为Unknown，时间也得修改）
-func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group {
+func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group { // NodeName表示指定这个Group迁移到哪个节点
 	logs.Info("=====================NewGroupInfoCopy=======================================")
 	// 将原始对象序列化为JSON
 	data, err := json.Marshal(g)
@@ -704,12 +708,13 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 		groupCopy.Status.CopyStatus = "Starting"
 	}
 	// 将groupStatus下的node属性进行设置
-	if nodeName != "" {
-		groupCopy.Status.Node = &nodeName
-	}
 	groupCopy.Status.Node = StringPtr("")
 	if groupCopy.Status.Phase != apis.Successed {
 		groupCopy.Status.Phase = apis.Unknown
+	}
+	if nodeName != "" || groupCopy.Status.Phase != apis.Successed { // 用户指定了group迁移到哪个节点，那么这里直接把调度器的工作给做了，把Group的Status.phase改为ReadyToDeploy，并且把Group的Staus.Node改为指定的节点 TODO 这里需要和调度器说一下，就是调度器读取到分配了的Group，不会再修改
+		groupCopy.Status.Node = &nodeName
+		groupCopy.Status.Phase = apis.ReadyToDeploy
 	}
 	// 遍历GroupStatus下面的Action数组，把Reference里面的Actionname，后面都加上"-copy"
 	for aSpecName, _ := range groupCopy.Status.Actions {
@@ -717,6 +722,10 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 		objRef.Name += "-copy"
 		groupCopy.Status.Actions[aSpecName] = objRef
 	}
+	//// 将副本Group的Status的CopyBelongClustID属性设置为源任务所在的集群的id
+	//if localClusterID != "" {
+	//	groupCopy.Status.CopyBelongClustID = &localClusterID
+	//}
 	return groupCopy
 }
 
@@ -774,48 +783,25 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 		runtimeCopy.Status.Phase = apis.Unknown
 	}
 	if runtimeCopy.Spec.Type == apis.ByPod {
-		yamlFileName := r.Spec.Data[0].Name
-		//yamlFilePath := r.Spec.Inputs[0].From
-		copyYamlFileName := AddCopySuffixToFile(yamlFileName, "-copy")
-		runtimeCopy.Spec.Data[0].Name = copyYamlFileName //yaml文件名加上-copy后缀
-		runtimeCopy.Spec.Directory = ""                  // 文件下载到本地的地址
-		//runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
-		//runtimeCopy.Spec.EnableFineGrainedControlPort = StringPtr("30053")
-		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
-
-		// 2、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名
-		var url string
+		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，
+		yamlFilePath := r.Spec.Inputs[0].From
+		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)       //yaml文件名加上-copy后缀
+		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
+		runtimeCopy.Spec.EnableFineGrainedControlPort = StringPtr("30053")
+		// 2、接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
+		// 3、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名
 		if isCrossDomain {
-			err = util.NewCopyYmal(r.Spec.Directory+"/"+yamlFileName, r.Spec.Directory, copyYamlFileName, "pve2") // 传入filePath，和最终生成文件的保存目录
-			if err != nil {
-				logs.Errorf("Copy runtime yaml file failed:%v", err)
-			}
-			//需要创建副本的yaml文件，然后上传给其他域，这里先传给broker域
-			url = "http://" + "broker." + "registry-svc.test.svc.cluster.local:3001/upload"
-		} else {
-			err = util.NewCopyYmal(r.Spec.Directory+"/"+yamlFileName, r.Spec.Directory, copyYamlFileName, "") // 传入filePath，和最终生成文件的保存目录
-			if err != nil {
-				logs.Errorf("Copy runtime yaml file failed:%v", err)
-			}
-			// 上传到本域的文件仓库
-			url = "http://registry-svc.test.svc.cluster.local:3001/upload"
-		}
-		filePath := r.Spec.Directory + "/" + r.Spec.Data[0].Name
-		err := utils.UploadFile(filePath, "v1.0", url)
-		if err != nil {
-			logs.Errorf("Upload File:%v error:%v", filePath, err)
-		} else {
-			logs.Infof("Upload File:%v", filePath)
+
 		}
 
 		// 4、接着修改runtime.Spec.EnableFineGrainedControlService
-		parts := strings.Split(*runtimeCopy.Spec.EnableFineGrainedControlService, ".")
-		if len(parts) >= 2 { // 至少包含 service.namespace.svc...
-			// 从yaml当中读取新修改后的serviceName
-			parts[0] = parts[0] + "-copy"
-			joinedStr := strings.Join(parts, ".")
-			runtimeCopy.Spec.EnableFineGrainedControlService = &joinedStr // 替换服务名（此处直接使用 newServiceName，也可动态替换如 oldServiceName+"-copy"）
-		}
+		//parts := strings.Split(*runtimeCopy.Spec.EnableFineGrainedControlService, ".")
+		//if len(parts) >= 2 { // 至少包含 service.namespace.svc...
+		//	// 从yaml当中读取新修改后的serviceName
+		//	parts[0] = "new-service-name"
+		//	joinedStr := strings.Join(parts, ".")
+		//	runtimeCopy.Spec.EnableFineGrainedControlService = &joinedStr // 替换服务名（此处直接使用 newServiceName，也可动态替换如 oldServiceName+"-copy"）
+		//}
 
 		//
 		//for j := range action.Status.RuntimeStatus {
@@ -867,7 +853,7 @@ func StringPtr(s string) *string {
 }
 
 // 在文件名中插入 "-copy" 后缀（保持路径结构不变）
-func AddCopySuffixToFilePath(originalPath string, suffix string) string {
+func AddCopySuffixToFilePath(originalPath string) string {
 	// 分离目录和文件名
 	dir := filepath.Dir(originalPath)
 	base := filepath.Base(originalPath)
@@ -877,17 +863,8 @@ func AddCopySuffixToFilePath(originalPath string, suffix string) string {
 	name := strings.TrimSuffix(base, ext) // 去除扩展名的纯文件名（如 `grpc-client-pod`）
 
 	// 构建新文件名
-	newBase := name + suffix + ext
+	newBase := name + "-copy" + ext
 
 	// 组合新路径
 	return filepath.Join(dir, newBase)
-}
-func AddCopySuffixToFile(originalFileName string, suffix string) string {
-	// 分离目录和文件名
-	ext := filepath.Ext(originalFileName)             // 获取扩展名（如 `.yaml`）
-	name := strings.TrimSuffix(originalFileName, ext) // 去除扩展名
-
-	newName := name + suffix + ext
-
-	return newName
 }

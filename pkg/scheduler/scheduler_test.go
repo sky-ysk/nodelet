@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -12,6 +13,7 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
+	"hit.edu/framework/pkg/scheduler/transport"
 	"net/http"
 	"testing"
 	"time"
@@ -1880,6 +1882,19 @@ func TestEnd(t *testing.T) {
 	if err != nil {
 		logs.Errorf("fail to create AbilityManager: %v", err)
 	}
+}
+
+// go test -run TestEnd -v
+func TestParse(t *testing.T) {
+	logs.Init("ttt")
+	mess := "{\"groupID\" : \"afsd\", \"c\": \"d\"}"
+
+	var resp transport.ScoreRespData
+	err := json.Unmarshal([]byte(mess), &resp)
+	if err != nil {
+		logs.Error(err.Error())
+	}
+	fmt.Println(resp.Score)
 }
 
 //func TestFile(t *testing.T) {

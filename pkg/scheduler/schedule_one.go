@@ -50,8 +50,8 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//TODO @linbohai 从调度队列中获取待调度的Group
 	logs.Trace("now schedule one running")
 	groupInfo, err := sched.ReadyGroup(ctx)
-	msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
-	logs.Info(msg)
+	//msg := fmt.Sprintf("ready group info: %v", groupInfo.Group.ObjectMeta.Name)
+	//logs.Info(msg)
 	//groupInfo := groupInfos[0]
 	if err != nil {
 		logs.Error(err.Error())
@@ -86,7 +86,7 @@ func (sched *Scheduler) ScheduleOne(ctx context.Context) {
 	//	logs.Error(err.Error())
 	//}
 	//logs.Info(string(jsonData))
-	msg = fmt.Sprintf("schedule result : group %s on node %s", scheduleResult.Group.ObjectMeta.Name, scheduleResult.SuggestedHost)
+	msg := fmt.Sprintf("schedule result : group %s on node %s", scheduleResult.Group.ObjectMeta.Name, scheduleResult.SuggestedHost)
 	logs.Info(msg)
 
 	//TODO: 部署任务/Bind相关接口
@@ -269,16 +269,30 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	}
 	//TODO out-tree input nodes + group
 	// 筛选
-	host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
-	if strings.Contains(group.ObjectMeta.Name, "Train") {
-		host = "CloudNode1"
+	//host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
+	host, err := selectHostByProbability(priorityList)
+	logs.Infof("host select by probability is %s, group %s", host, group.ObjectMeta.Name)
+	if err != nil {
+		logs.Error(err.Error())
 	}
-	if strings.Contains(group.ObjectMeta.Name, "Reason") {
-		host = "EdgeNode1"
+
+	//前端演示页面特判逻辑
+	if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
+		if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
+			host = "EdgeNode1"
+		} else {
+			host = "CloudNode1"
+		}
 	}
-	if strings.Contains(group.ObjectMeta.Name, "Robot") {
-		host = "EdgeNode1"
-	}
+	//if strings.Contains(group.ObjectMeta.Name, "Train") {
+	//	host = "CloudNode1"
+	//}
+	//if strings.Contains(group.ObjectMeta.Name, "Reason") {
+	//	host = "EdgeNode1"
+	//}
+	//if strings.Contains(group.ObjectMeta.Name, "Robot") {
+	//	host = "EdgeNode1"
+	//}
 	return ScheduleResult{
 		SuggestedHost: host,
 		Group:         group,
@@ -302,7 +316,7 @@ func (sched *Scheduler) findNodesThatFitGroup(ctx context.Context, fwk framework
 	if err != nil {
 		return nil, err
 	}
-	logs.Infof("found %d nodes", len(allNodes))
+	//logs.Infof("found %d nodes", len(allNodes))
 	//TODO Run "prefilter" plugins. 这个先不做
 	//preRes, s, unscheduledPlugins := fwk.RunPreFilterPlugins(ctx, state, pod)
 
@@ -489,6 +503,7 @@ func prioritizeNodes(
 	// If no priority configs are provided, then all nodes will have a score of one.
 	// This is required to generate the priority list in the required format
 	if !fwk.HasScorePlugins() {
+		logs.Warnf("no score plugins, use default score, group name %s", group.ObjectMeta.Name)
 		result := make([]framework.NodePluginScores, 0, len(nodes))
 		for i := range nodes {
 			result = append(result, framework.NodePluginScores{
@@ -570,4 +585,37 @@ func selectHost(nodeScoreList []framework.NodePluginScores, count int) (string, 
 	}
 
 	return sortedNodeScoreList[0].Name, sortedNodeScoreList, nil
+}
+
+func selectHostByProbability(nodeScoreList []framework.NodePluginScores) (string, error) {
+
+	if len(nodeScoreList) == 0 {
+		return "", errors.New("node score list is empty")
+	}
+
+	// 计算总分数
+	total := int64(0)
+	for _, score := range nodeScoreList {
+		total += score.TotalScore
+	}
+
+	if total == 0 {
+		return "", errors.New("all scores are zero, cannot select a host")
+	}
+
+	// 初始化随机数种子
+	rand.Seed(time.Now().UnixNano())
+
+	// 生成一个 0 到 total-1 之间的随机数
+	randomNum := int64(rand.Intn(int(total)))
+	// 根据随机数选择节点
+	currentSum := int64(0)
+	for _, score := range nodeScoreList {
+		currentSum += score.TotalScore
+		if randomNum < currentSum {
+			return score.Name, nil
+		}
+	}
+
+	return "", errors.New("unexpected error occurred while selecting a host")
 }

@@ -198,6 +198,8 @@ type NodeSpec struct {
 
 	//  +个字段（Cloud、Edge、End）
 	ClusterCategory string `json:"clusterCategory,omitempty" yaml:"clusterCategory"` //该节点所在的集群类别：1、云集群 2、边集群 3、端集群
+	// hzy 添加 ，节点所属的集群ID
+	ClusterID *string `json:"cluster_id,omitempty" yaml:"cluster_id"`
 }
 
 // 计算、网络、存储等定量资源
@@ -1718,5 +1720,5 @@ const (
 
 const (
 	// 文件的存储位置,暂时位于 adaptive-scheduling-framework/test/tmp/data
-	FileFolder string = "./test/tmp/data/"
+	FileFolder  string = "../tmp/data"
 )

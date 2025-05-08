@@ -15,7 +15,6 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
-	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
@@ -23,24 +22,21 @@ import (
 	"time"
 )
 
-// 适配从debian1 迁移到 ubuntu2
-// 修改1：
-// 调度器代码: 触发debian1资源不足事件,从Debian1迁移到ubuntu2
-//if strings.Contains(group.ObjectMeta.Name, "G1") {
-//host = "debian1"
-//}
-//if strings.Contains(group.ObjectMeta.Name, "copy") {
-//host = "ubuntu2"
-//}
-//if strings.Contains(group.ObjectMeta.Name, "G2") {
-//host = "ubuntu2"
-//}
+// 适配从pve2 迁移到 broker
+// 修改1：---这个可以不用改
+// 调度器代码: 触发pve2资源不足事件,从pve2迁移到broker
+// if strings.Contains(group.ObjectMeta.Name, "G1") {
+// host = "debian1"
+// }
+// if strings.Contains(group.ObjectMeta.Name, "copy") {
+// host = "ubuntu2"
+// }
 // 修改2：调度器关闭score插件
 // 修改3：const NodeName = "debian1"
-
+// 修改4：recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration
 var scheme = runtime.NewScheme()
 
-const NodeName = "debian1"
+const NodeName = "k8s-master"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -139,18 +135,14 @@ func main() {
 		},
 	}
 	// 生成UUID
-	u := uuid.Must(uuid.NewV7())
 	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	u := uuid.Must(uuid.NewV7())
+	_, err := m.CreateTask(ts, nil, "test", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	str, err := analyzer.SerializeToJson(task)
-	if err != nil {
-		return
-	}
-	fmt.Println(str)
 
+	logs.Info("下发一个任务======")
 	prompt()
 	postEventForMigrate(eventclient)
 	prompt()
@@ -170,28 +162,6 @@ func prompt() {
 	logs.Info()
 }
 
-func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
-	return apis.ConditionFormula{
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      parentName,
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "NodeDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
-}
-
 var node = &apis.Node{
 	ObjectMeta: meta.ObjectMeta{Name: NodeName, Namespace: "test"},
 	TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "resources/v1"},
@@ -199,6 +169,7 @@ var node = &apis.Node{
 }
 
 func postEventForMigrate(client core.EventInterface) {
+	logs.Info("发送跨域迁移事件======")
 	// 这些配置实际在组件初始化时就已经完成
 	ctx := context.Background()
 	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
@@ -207,7 +178,8 @@ func postEventForMigrate(client core.EventInterface) {
 	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
-	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
+	time.Sleep(10 * time.Millisecond)
+	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 
