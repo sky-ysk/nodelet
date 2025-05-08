@@ -207,16 +207,16 @@ func (h *DeviceHandler) CreateDevice(request *restful.Request, response *restful
 	//}
 
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Device{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Device{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// TODO：为Device分配ID?
 
@@ -336,16 +336,16 @@ func (h *DeviceHandler) UpdateDevice(request *restful.Request, response *restful
 		//logs.Debugf("Update device to : %v", device)
 
 		// 格式验证
-		res, err := analyzer.SerializeToJson(device)
-		_, err = analyzer.Deserialize(res, apis.Device{})
-		if err != nil {
-			err := response.WriteError(http.StatusBadRequest, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
-			// return
-		}
+		//res, err := analyzer.SerializeToJson(device)
+		//_, err = analyzer.Deserialize(res, apis.Device{})
+		//if err != nil {
+		//	err := response.WriteError(http.StatusBadRequest, err)
+		//	if err != nil {
+		//		logs.Errorf("failed to return a status code ")
+		//		return
+		//	}
+		//	// return
+		//}
 
 		updatedDevice, updateErr := c.client.Update(context.TODO(), ew, metav1.UpdateOptions{})
 		if updateErr != nil {
