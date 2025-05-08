@@ -147,7 +147,49 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 		// TODO 这里得直接提交给调度器，告知group无法部署
 		return
 	}
-	// 3、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
+
+	// TODO：3、fileDownload协程，只执行一次，如果没有才下载。目录依据task.Spec.Name来创建，不带后缀
+// // 4-30 runtime第一次被准备启动，在检查依赖等之前，创建runtime专属的文件目录，并且下载其Data[]里面填入的所有文件===暂时只考虑到单个文件
+// 							// 后续还需要考虑到这些目录的删除。例如在运行完成之后，生成的结果要么直接上传到etcd，要么直接上传到文件仓库。在这些操作完成之后，考虑删除这些已完成的任务的文件夹
+// 							dir := apis.FileFolder + "/" + runtime.Name
+// 							if _, err := os.Stat(dir); os.IsNotExist(err) {
+// 								// 目录不存在，创建目录
+// 								err := os.Mkdir(dir, os.ModePerm) // 权限
+// 								if err != nil {
+// 									logs.Errorf("monitor创建目录时发生错误: %v\n", err)
+// 								}
+// 								logs.Tracef("monitor创建目录完成,runtime:%v, namaspace:%v", runtime.Name, runtime.Namespace)
+// 							} else if err != nil {
+// 								// 其他错误
+// 								logs.Errorf("检查目录时发生错误: %v\n", err)
+// 								return
+// 							} else {
+// 								// 目录已存在
+// 								// logs.Tracef("创建目录时目录已存在: %v\n", err)
+// 							}
+// 							// TODO检查完目录之后，准备使用fileManager下载文件，并更新文件下载状态。使用协程下载
+// 							logs.Infof("runtime Data[]:%v", runtime.Spec.Data)
+// 							for _, filedata := range runtime.Spec.Data {
+// 								gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.NotDownloaded
+// 							}
+
+// 							for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
+// 								// 下载日志
+
+// 								if gmo.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloaded { // 说明已经下载过了
+// 									logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
+// 									continue
+// 								} else if gmo.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloading { // 说明正在下载
+// 									logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
+// 									continue
+// 								}
+// 								if gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloading || gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloaded { // 说明没有下载过
+// 									gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.Downloading
+// 									logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
+// 									go gmo.fileManager.DownloadFile(filedata.Name, dir)
+// 								}
+// 							}
+	// 4、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
 	var copiesInDomain, copiesInOtherDomain int32 = 0, 0
 	// 安全处理逻辑
 	// 情况1：用户未传参时 Replicas == nil

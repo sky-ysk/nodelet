@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,6 +113,8 @@ func (gmo *GroupMonitor) Start(ctx context.Context) {
 	//启动环境的依赖检查与更新
 	depenUpdateDone := make(chan struct{})
 	go func() {
+		gmo.dependencyManager.UpdateEnvs()
+		gmo.dependencyManager.UpdateEnvPackages()
 		defer close(depenUpdateDone)
 		ticker := time.NewTicker(60 * time.Second)
 		//循环检查更新依赖，有两个内容要更新：所有虚拟环境的名字；每个虚拟环境所包含的所有包
@@ -556,10 +559,14 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								// logs.Tracef("创建目录时目录已存在: %v\n", err)
 							}
 							// TODO检查完目录之后，准备使用fileManager下载文件，并更新文件下载状态。使用协程下载
-							logs.Infof("runtime Data[]:%v", runtime.Spec.Data)
+							logs.Tracef("runtime Data[]:%v", runtime.Spec.Data)
+
 							for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
-								// 下载日志
-								gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.NotDownloaded
+								// 检查DownloadStatus[]是否存在
+								if _, ok := gmo.fileManager.DownloadStatus[filedata.Name]; !ok { // 说明没有下载过
+									gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.NotDownloaded
+									logs.Tracef("file not downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
+								}
 								if gmo.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloaded { // 说明已经下载过了
 									logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
 									continue
@@ -1792,46 +1799,39 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 			}
 
 			var dependencyFile = i.LeftValue.From
+			// 如果dependencyFile这个文件路径不包含/,说明是相对路径，需要拼接为绝对路径
+			if !strings.Contains(dependencyFile, "/") {
+				// 这里需要拼接为绝对路径
+				dependencyFile = apis.FileFolder + "/" + runtime.Name + "/" + dependencyFile
+			}
+			// 检查这个文件是否存在
+			if _, err := os.Stat(dependencyFile); os.IsNotExist(err) {
+				logs.Tracef("dependency file %v is not exist!", dependencyFile)
+				return false
+			}
+
 			if !runtimeStatus.IsParsed {
-				// runtimeReqPackages := make([]apis.Requirement, 0)
 				runtimeReqPackages, err := gmo.dependencyManager.ParseRequirements(dependencyFile)
 				if err != nil {
-					logs.Info("parse Runtime Requirements error!")
+					logs.Errorf("parse Runtime Requirements error!")
 					runtimeStatus.IsParsed = false
 					return false
 				}
 				runtimeStatus.IsParsed = true
 				runtime.Spec.Packages = runtimeReqPackages
 				// 这里需要将Package写到etcd上去
-				// 为runtime添加一个依赖是否已经满足的参数，如果已经满足的话则标记为true
-				//patchGroup, err := json.Marshal([]map[string]interface{}{
-				//	{
-				//		"op":    "replace",
-				//		"path":  "/status/action_status/" + strconv.Itoa(actionIndex) + "/status/" + strconv.Itoa(runtimeIndex) + "/isparsed",
-				//		"value": true,
-				//	},
-				//})
-				//if err != nil {
-				//	logs.Errorf("Marshal patch group err:%v", err)
-				//}
-				//_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup, metav1.PatchOptions{})
-				//if err != nil {
-				//	logs.Errorf("Patch group err-32:%v", err)
-				//}
-				//patchGroup2, err := json.Marshal([]map[string]interface{}{
-				//	{
-				//		"op":    "replace",
-				//		"path":  "/spec/actions/" + strconv.Itoa(actionIndex) + "/spec/runtimes/" + strconv.Itoa(runtimeIndex) + "package",
-				//		"value": runtimeReqPackages,
-				//	},
-				//})
-				//if err != nil {
-				//	logs.Errorf("Marshal patch group err:%v", err)
-				//}
-				//_, err = gmo.groupClient.Patch(context.TODO(), group.Name, types.JSONPatchType, patchGroup2, metav1.PatchOptions{})
-				//if err != nil {
-				//	logs.Errorf("Patch group err-33:%v", err)
-				//}
+				patchRuntime, err := json.Marshal(map[string]interface{}{
+					"status": map[string]interface{}{
+						"IsParsed": true,
+					},
+					"spec": map[string]interface{}{
+						"packages": runtimeReqPackages,
+					},
+				})
+				_, err = gmo.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+				if err != nil {
+					logs.Errorf("patch runtimeStatus error")
+				}
 			}
 			envName, envPath, err := gmo.dependencyManager.CheckEnvironmentSatisfy(runtime.Spec.Packages)
 			if !err {

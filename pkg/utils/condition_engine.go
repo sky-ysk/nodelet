@@ -97,11 +97,12 @@ func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interf
 func (ce *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
 	switch formula.ConditionType {
 	case apis.NodeDependency:
-		res, err := ce.checkNodeDependency(formula, o)
-		if err != nil {
-			return apis.False, err
-		}
-		return res, nil
+		// res, err := ce.checkNodeDependency(formula, o)
+		// if err != nil {
+		// 	return apis.False, err
+		// }
+		// return res, nil
+		return apis.True, nil
 	case apis.DataDependency:
 		res, err := ce.checkDataDependency(formula, o)
 		if err != nil {
@@ -204,7 +205,7 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 				filePath := apis.FileFolder + "/" + r.Name + "/" + data.Name
 				if _, err := os.Stat(filePath); err != nil {
 					// 文件不存在的日志
-					logs.Errorf("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
+					logs.Tracef("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
 					return apis.NotReady, errors.New("dataDependency:file not exist")
 				}
 				// 日志

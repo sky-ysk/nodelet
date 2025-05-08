@@ -91,6 +91,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	}
 
 	envVars := runtime.Spec.EnvVar
+	// 处理cmd
 	if cmd == "python" {
 		for _, value := range envVars {
 			if value.Name == "" {

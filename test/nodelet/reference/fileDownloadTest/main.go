@@ -315,7 +315,7 @@ func UploadFile(filePath string) (string, error) {
 	// 调用 utils.UploadFile 函数上传文件
 	// 这里的 filePath 是要上传的文件路径
 	// 返回上传结果和错误信息
-	url := "http://localhost:10000/apis/resources/v1/upload"
+	url := "http://localhost:8888/upload"
 	err := utils.UploadFile(filePath, "v1.0.0", url)
 	if err != nil {
 		fmt.Println("Upload failed:", err)
