@@ -1719,6 +1719,6 @@ const (
 )
 
 const (
-	// 文件的存储位置,暂时位于 adaptive-scheduling-framework/test/tmp/data
+	// 文件的存储位置,暂时位于项目目录同级的tmp/data目录下
 	FileFolder  string = "../tmp/data"
 )
