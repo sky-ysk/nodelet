@@ -495,7 +495,7 @@ func TestPatchTask(t *testing.T) {
 	// 把抬手改成放下
 	patchData := "{\n  \"spec\": {\n      \"desc\": {\n          \"docs\": \"test after patch\"\n      }\n  }\n\n}"
 
-	patched, err := m.PatchTask(task.Name, task.Namespace, patchData)
+	patched, err := m.PatchTask(task.Name, task.Namespace, []byte(patchData))
 	if err != nil {
 		panic(err)
 	} else {

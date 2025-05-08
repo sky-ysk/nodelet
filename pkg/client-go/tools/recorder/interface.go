@@ -14,6 +14,8 @@ type EventRecorder interface {
 	// // Eventf is just like Event, but with Sprintf for the message field.
 	Eventf(object runtime.Object, eventtype, reason, message string, args ...interface{})
 
+	EventForMigration(object runtime.Object, eventtype, reason, message, migrationTarget string)
+
 	// // AnnotatedEventf is just like eventf, but with annotations attached
 	// AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{})
 }

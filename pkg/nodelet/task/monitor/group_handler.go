@@ -150,26 +150,23 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	// 3、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
 	var copiesInDomain, copiesInOtherDomain int32 = 0, 0
 	// 安全处理逻辑
-	if gr != nil {
-		// 情况1：用户未传参时 Replicas == nil
-		if gr.Spec.Replicas == nil {
-			logs.Info("Replicas未配置，使用默认值[0,0]")
-		} else if len(gr.Spec.Replicas) < 2 {
-			logs.Warn("Replicas长度不足，使用前N个值并用0补全",
-				"输入值", gr.Spec.Replicas,
-				"有效长度", len(gr.Spec.Replicas))
-			// 安全取值（避免越界）
-			if len(gr.Spec.Replicas) >= 1 {
-				copiesInDomain = gr.Spec.Replicas[0]
-			}
-			// 第二个值保持默认0
-		} else { // 情况3：正常情况
+	// 情况1：用户未传参时 Replicas == nil
+	if gr.Spec.Replicas == nil {
+		logs.Info("Replicas未配置，使用默认值[0,0]")
+	} else if len(gr.Spec.Replicas) < 2 {
+		logs.Warn("Replicas长度不足，使用前N个值并用0补全",
+			"输入值", gr.Spec.Replicas,
+			"有效长度", len(gr.Spec.Replicas))
+		// 安全取值（避免越界）
+		if len(gr.Spec.Replicas) >= 1 {
 			copiesInDomain = gr.Spec.Replicas[0]
-			copiesInOtherDomain = gr.Spec.Replicas[1]
 		}
-	} else {
-		logs.Error("Group或Spec对象为空，使用默认值[0,0]")
+		// 第二个值保持默认0
+	} else { // 情况3：正常情况
+		copiesInDomain = gr.Spec.Replicas[0]
+		copiesInOtherDomain = gr.Spec.Replicas[1]
 	}
+
 	if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的
 		// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本
 		for i := 0; i < int(copiesInDomain); i++ {
@@ -240,7 +237,10 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 				}
 				actionCopy := controller.NewActionInfoCopy(action)
-				actionTarget := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID   TODO 目前跨域还没有适配指定namespace创建
+				actionTarget, ok := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID   TODO 目前跨域还没有适配指定namespace创建
+				if !ok {
+					logs.Info("[actionTarget]键 'broker' 不存在==========================================")
+				}
 				_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
 				if err != nil {
 					logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
@@ -252,7 +252,10 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
 					}
 					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
-					runtimeTarget := gh.runtimeTarget["broker"]                 //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+					runtimeTarget, ok := gh.runtimeTarget["broker"]             //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+					if !ok {
+						logs.Info("[runtimeTarget]键 'broker' 不存在==========================================")
+					}
 					_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
 					if err != nil {
 						logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
@@ -261,7 +264,10 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				}
 			}
 			// 暂时做成，往跨域的etcd里写入数据
-			groupTarget := gh.groupTarget["broker"] // -=-=-=-=- TODO：这里还得加逻辑，就是有这个域的连接，才能填入这个key
+			groupTarget, ok := gh.groupTarget["broker"] // -=-=-=-=- TODO：这里还得加逻辑，就是有这个域的连接，才能填入这个key
+			if !ok {
+				logs.Info("[groupTarget]键 'broker' 不存在==========================================")
+			}
 			_, err = groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
 			if err != nil {
 				logs.Errorf("Create cross-domain group error:%v", err)
@@ -353,7 +359,7 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			logs.Infof("接收到事件类型: %v\n", event.Type)
+			logs.Tracef("接收到事件类型: %v\n", event.Type)
 			switch event.Type {
 			case watch.Added:
 				logs.Infof("资源被添加: ", event.Object)

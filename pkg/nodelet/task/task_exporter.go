@@ -7,7 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"hit.edu/framework/pkg/client-go/util/manager"
+
 	metav1 "hit.edu/framework/pkg/apis/meta"
+	fileManager "hit.edu/framework/pkg/nodelet/registry"
 	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 	"hit.edu/framework/pkg/utils"
@@ -68,6 +71,7 @@ var _ Exporter = &TaskExporter{}
 
 func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
 	// Task Exporter配置 config
+	taskTargetMap := cfg.taskTargetMap
 	groupTargetMap := cfg.groupTargetMap
 	actionTargetMap := cfg.actionTargetMap
 	runtimeTargetMap := cfg.runtimeTargetMap
@@ -95,11 +99,14 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
+	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager, cfg.NodeName)
 	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager, engine)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
-	conditionEngine := utils.NewConditionEngine()
+	conditionEngine := utils.NewConditionEngine() // 初始化时传入 clientset
+	// fileManager配置
+	fileManager := fileManager.NewFileManager()
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers
@@ -119,9 +126,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
-		migrationController: controller.NewMigrationController(clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
+		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
@@ -154,7 +161,7 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 		te.ReceiveGroupInfo(ctx) // 持续从etcd当中读取group
 	}()
 
-	//go te.migrationController.Run(5, ctx.Done())
+	go te.migrationController.Run(5, ctx.Done())
 	//go te.nodeMonitor.Run(2, ctx.Done())
 	<-ctx.Done()
 	wg.Wait()
@@ -189,6 +196,7 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 				//}
 				if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 					if gr.Status.Phase == apis.ReadyToDeploy {
+						logs.Infof("Receive-GroupName：%v,groupStatus:%v", gr.Name, gr.Status.Phase)
 						groupUpdate := types.GroupUpdate{
 							Group: gr,
 							Op:    types.ADD,

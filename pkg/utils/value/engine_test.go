@@ -94,10 +94,10 @@ func TestValueExtract(t *testing.T) {
 	
 	engine := NewEngine(clientSet)
 	
-	name := "T1.G1-01964c83-f450-78d3-b547-47f0ef9b6c39"
+	name := "T1-01966742-ab54-7c2f-a89c-0c53a655c66b"
 	namespace := "Guochuang"
 	
-	g, err := engine.manager.GetGroup(name, namespace)
+	g, err := engine.manager.GetTask(name, namespace)
 	if err != nil {
 		panic(err)
 	}
@@ -117,9 +117,10 @@ func TestValueExtract(t *testing.T) {
 	// fmt.Println(v)
 	
 	value := apis.Value{
+		NameSpace: "Guochuang",
 		Name:      "Test",
 		Type:      apis.LocalData,
-		From:      "Group{G1}.Status{phase}",
+		From:      "Task{T1}.Group{G1}.Status{phase}",
 		ValueType: apis.StringType,
 	}
 	
@@ -215,7 +216,7 @@ func TestGetDeviceImage(t *testing.T) {
 	engine := NewEngine(clientSet)
 	
 	namespace := "Guochuang"
-	// from := "Device{Robot}.Ability{Move}.Service{Start}"
+
 	from := "Device{Robot}.Ability{Move}.Service{Start}"
 	
 	v, err := engine.ExtractDeviceValue(from, namespace)

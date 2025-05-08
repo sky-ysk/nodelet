@@ -10,6 +10,7 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -131,16 +132,31 @@ func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restf
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
-	// 创建runtime
-	result, err := h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
-	if err != nil {
-		err1 := response.WriteError(http.StatusInternalServerError, err)
-		if err1 != nil {
-			logs.Errorf("failed to return a status code ,error: %v", err1)
+	var result *apis.Runtime
+	if ew.Labels == nil {
+		// 创建runtime without label
+		result, err = h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create runtime fail ,failed write it to database , error: %v", err)
 			return
 		}
-		logs.Errorf("Create runtime fail ,failed write it to database , error: %v", err)
-		return
+	} else {
+		// 创建runtime with label
+		result, err = h.manager.CreateRuntimeWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create runtime with labels fail ,failed write it to database , error: %v", err)
+			return
+		}
 	}
 
 	// 返回结果
@@ -207,7 +223,7 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 	}
 
 	// 更新runtime
-	updatedRuntime, updateErr := h.manager.UpdateRuntime(namespace, name, ew)
+	updatedRuntime, updateErr := h.manager.UpdateRuntime(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update runtime %s error: %v", name, updateErr)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -259,7 +275,7 @@ func (h *RuntimeHandler) DeleteRuntime(request *restful.Request, response *restf
 	}
 
 	// 删除runtime
-	err := h.manager.DeleteRuntime(namespace, name)
+	err := h.manager.DeleteRuntime(name, namespace)
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -279,31 +295,42 @@ func (h *RuntimeHandler) DeleteRuntime(request *restful.Request, response *restf
 
 func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restful.Response) {
 	// 获取json
-	req := &apis.Runtime{}
-	err := request.ReadEntity(&req)
+	//req := &apis.Runtime{}
+	//err := request.ReadEntity(&req)
+	//if err != nil {
+	//	logs.Errorf("Failed to deserialize json data, error: %v", err)
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
+
+	// 获取更改的字符串
+	bodyBytes, err := io.ReadAll(request.Request.Body)
 	if err != nil {
-		logs.Errorf("Failed to deserialize json data, error: %v", err)
 		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
 			return
 		}
 		return
 	}
+	jsonStr := string(bodyBytes)
 
 	// 获取name
 	name := request.QueryParameter(RUNTIME_NAME)
 	if name == "" {
-		if req.Name != "" {
-			name = req.Name
-		} else {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		//if req.Name != "" {
+		//	name = req.Name
+		//} else {
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		//return
+		//}
 	}
 
 	// 获取namespace
@@ -318,17 +345,17 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	}
 
 	// 序列化Patchruntime
-	patchRuntime, err := analyzer.SerializeToJson(req)
-	if err != nil {
-		logs.Errorf("Serialize patch runtime error: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-	}
+	//patchRuntime, err := analyzer.SerializeToJson(req)
+	//if err != nil {
+	//	logs.Errorf("Serialize patch runtime error: %v", err)
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
 
-	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, []byte(patchRuntime))
+	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, []byte(jsonStr))
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)

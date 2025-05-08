@@ -1,13 +1,5 @@
 package entity
 
-import (
-	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-)
-
 //// Service 定义
 //type Service struct {
 //	Namespace   string               // Service 所在命名空间
@@ -46,6 +38,7 @@ import (
 //	}
 //}
 
+/*
 func GetServiceFromParam1(customService *apis.Service) *corev1.Service {
 	labels := customService.Labels
 	if labels == nil {
@@ -100,6 +93,7 @@ func GetServiceFromParam1(customService *apis.Service) *corev1.Service {
 
 	return service
 }
+*/
 
 //func NewService(name, namespace string, selector map[string]string, ports []apis.Port, serviceType string) *Service {
 //	return &Service{

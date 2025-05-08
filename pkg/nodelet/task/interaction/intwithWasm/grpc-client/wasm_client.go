@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"hit.edu/framework/pkg/component-base/logs"
 	wasm_interface "hit.edu/framework/pkg/nodelet/task/interaction/intwithWasm/proto"
@@ -43,7 +44,10 @@ func NewClient(ctx context.Context, port string, app string) *WasmClient {
 // 检查并重建与任务的rpc连接
 func (c *WasmClient) checkConnection() bool {
 	connState := true
-	if c.conn == nil {
+	if c.conn != nil {
+		logs.Infof("wasm checkConnection : %v", c.conn.GetState().String())
+	}
+	if c.conn == nil || c.conn.GetState() == connectivity.TransientFailure || c.conn.GetState() == connectivity.Shutdown {
 		// conn, err := grpc.NewClient(c.serverIPAndPort)
 		conn, err := grpc.Dial(c.serverIPAndPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -73,7 +77,7 @@ func (c *WasmClient) Deploy(wasm_file string) (*wasm_interface.Result, error) {
 		return nil, err
 	}
 	// fmt.Println(f)
-	data := wasm_interface.Data{Type: wasm_interface.DataType_DATA, Data: f}
+	data := wasm_interface.Data{Type: wasm_interface.DataType_BYTES, Data: f}
 	wasm_task := wasm_interface.WasmFile{Name: wasm_file_1, Data: &data}
 	// runtime config
 	// runtime_config := wasm_interface.RuntimeConfig{}
@@ -110,7 +114,7 @@ func (c *WasmClient) Init() (*wasm_interface.Result, error) {
 	defer cancel()
 	result, err := c.client.Init(ctx, init_intent)
 	for err != nil {
-		logs.Error("%v : Init() failed, retry to rpc Init() , %v", c.app, err)
+		logs.Errorf("%v : Init() failed, retry to rpc Init() , %v", c.app, err)
 		result, err = c.client.Init(ctx, init_intent)
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -126,18 +130,71 @@ func (c *WasmClient) Start() (*wasm_interface.Result, error) {
 	}
 
 	// init_intent_data
-	start_intent := &wasm_interface.StartIntent{App: c.app}
+	// todo: 增加start和_start的条件判断
+	start_intent := &wasm_interface.StartIntent{App: c.app, FuncName: "start"}
 
 	// ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result, err := c.client.Start(ctx, start_intent)
 	for err != nil {
-		logs.Error("%v : Start() failed, retry to rpc Start() , %v", c.app, err)
+		logs.Errorf("%v : Start() failed, retry to rpc Start() , %v", c.app, err)
 		result, err = c.client.Start(ctx, start_intent)
 		time.Sleep(500 * time.Millisecond)
 	}
 	out := fmt.Sprintf("wasm start result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
+	logs.Info(out)
+	return result, err
+}
+
+// store-grpc接口
+func (c *WasmClient) Store() (*wasm_interface.Result, error) {
+	if !c.checkConnection() {
+		return &wasm_interface.Result{}, errors.New("Store: grpc connection failed")
+	}
+
+	// init_intent_data
+	store_intent := &wasm_interface.StoreIntent{App: c.app}
+
+	// ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result, err := c.client.Store(ctx, store_intent)
+	for err != nil {
+		logs.Errorf("%v : Store() failed, retry to rpc store() , %v", c.app, err)
+		result, err = c.client.Store(ctx, store_intent)
+		time.Sleep(500 * time.Millisecond)
+	}
+	out := fmt.Sprintf("wasm store result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
+	logs.Info(out)
+	return result, err
+}
+
+// restore-grpc接口
+func (c *WasmClient) Restore(data []byte) (*wasm_interface.Result, error) {
+	if !c.checkConnection() {
+		return &wasm_interface.Result{}, errors.New("Restore: grpc connection failed")
+	}
+
+	// init_intent_data
+	restore_intent := &wasm_interface.RestoreIntent{
+		App: c.app,
+		Data: &wasm_interface.Data{
+			Type: wasm_interface.DataType_BYTES,
+			Data: data,
+		},
+	}
+
+	// ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result, err := c.client.Restore(ctx, restore_intent)
+	for err != nil {
+		logs.Errorf("%v : restore() failed, retry to rpc restore() , %v", c.app, err)
+		result, err = c.client.Restore(ctx, restore_intent)
+		time.Sleep(500 * time.Millisecond)
+	}
+	out := fmt.Sprintf("wasm restore result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
 	logs.Info(out)
 	return result, err
 }
@@ -156,7 +213,7 @@ func (c *WasmClient) Destory() (*wasm_interface.Result, error) {
 	defer cancel()
 	result, err := c.client.Destroy(ctx, destroy_intent)
 	for err != nil {
-		logs.Error("%v : Destory() failed, retry to rpc Destory() , %v", c.app, err)
+		logs.Errorf("%v : Destory() failed, retry to rpc Destory() , %v", c.app, err)
 		result, err = c.client.Destroy(ctx, destroy_intent)
 		time.Sleep(500 * time.Millisecond)
 	}

@@ -17,28 +17,19 @@ service WasmInterface {
     // 释放资源
     rpc destroy (DestroyIntent) returns (Result) {}
     
-    // 获取应用状态
-    rpc getStatus (GetStatusIntent) returns (APPStatus) {}
+    // 获取应用状态，调用方需要对每个执行的任务都获取一次状态
+    rpc getStatus (GetStatusIntent) returns (Result) {}
 
     // 迁移相关
     rpc store (StoreIntent) returns (Result) {}
     rpc restore (RestoreIntent) returns (Result) {}
 }
 
-// Constants
-// 应用生命周期
- enum AppLifecycle {
-    INIT = 0;
-    PENDING = 1;
-    RUNNING = 2;
-    COMPLETED = 3;
-    ERROR = 4;
-}
-
 // 应用数据类型
 enum DataType {
-    DATA = 0;
-    HTTP = 1;
+    BYTES = 0;
+	JSON = 1;
+    HTTP = 2;
     // ... 其他数据格式
 }
 
@@ -47,15 +38,6 @@ message Result {
 	int32 stateCode = 1;
     string msg = 2;
 	optional Data data = 3;
-}
-
-// 如果应用执行发生错误，或者产生其他的行为
-// 则返回对应的StateCode，并在Msg中返回对应的结构化数据
-// 调度框架会根据应用的生命周期，状态码以及状态信息，做出相应的处理
-message APPStatus {
-    string msg = 1;
-    int32 stateCode = 2;
-    AppLifecycle lifecycle = 3;
 }
 
 // MetaData
@@ -69,12 +51,6 @@ message Data {
 message RuntimeConfig{
     optional string aot_compiler = 1;
     repeated string aot_compiler_args = 2;
-    enum ForceLinkage {
-        Address=0;
-        FuncRef=1;
-    } 
-    optional ForceLinkage force_linkage = 3;
-    optional uint32 stack_size = 4;
 }
 
 // 部署信息
@@ -119,6 +95,8 @@ message InitIntent {
 message StartIntent {
     // 应用名称
     string app = 1;
+	// 执行的函数
+	string func_name = 2;
 }
 
 message DestroyIntent {

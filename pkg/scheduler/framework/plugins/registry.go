@@ -9,9 +9,16 @@ import "hit.edu/framework/pkg/scheduler/framework/runtime"
 func NewInTreeRegistry() runtime.Registry {
 	registry := runtime.Registry{
 		//将实现的插件放入这个位置
-		"DefaultFilter":      NewDefaultFilterPlugin,
+		"DefaultFilter": NewDefaultFilterPlugin,
+
+		//下面这仨是打分插件，测试性能的时候，同一时间只开一个，用不到的注释掉
+		//贪心调度策略（CPU占用率低优先调度）
+		"GreedyScore": NewGreedyScorePlugin,
+		//随机调度
 		"DefaultScorePlugin": NewDefaultScorePlugin,
-		//"ScorePluginForDBY":  NewScorePluginDBY,
+		//DTS插件策略
+		"ScorePluginForDBY": NewScorePluginDBY,
+
 		"DefaultBindPlugin": NewDefaultBindPlugin,
 	}
 	return registry

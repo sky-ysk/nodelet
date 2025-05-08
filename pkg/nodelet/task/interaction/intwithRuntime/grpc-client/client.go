@@ -35,7 +35,10 @@ func NewRuntimeClient(port string, pool *pool.ConnectionPool) *RuntimeClient {
 	return client
 }
 func NewK8sRuntimeClient(service, port string, pool *pool.ConnectionPool) *RuntimeClient {
-	client := &RuntimeClient{ServerIPAndPort: service + port, connPool: pool}
+	client := &RuntimeClient{ServerIPAndPort: service + ":" + port, connPool: pool}
+	if ok := client.checkConnection1(); !ok {
+		logs.Errorf("初次连接 gRPC 服务端失败")
+	}
 	//for {
 	//	success := client.checkConnection()
 	//	if success {
@@ -116,20 +119,20 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 }
 
 // rpc远程调用服务端保存应用状态
-func (c *RuntimeClient) RunAppStore() (result *pb.Result, err error) {
+func (c *RuntimeClient) RunAppStore() (answer int64, err error) {
 	logs.Infof("RunAppStore()")
 	if !c.checkConnection1() {
-		return &pb.Result{}, errors.New("runAppStore: grpc connection failed")
+		return 0, errors.New("runAppStore: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	result, err = c.grpcClient.Store(ctx, &pb.StoreIntent{})
+	result, err := c.grpcClient.Store(ctx, &pb.StoreIntent{})
 	for err != nil {
 		logs.Debug("retry to runAppStore")
 		result, err = c.grpcClient.Store(ctx, &pb.StoreIntent{})
 	}
 	logs.Infof("runAppStore: result:%v", result)
-	return result, nil
+	return result.StateCode, nil
 }
 
 // rpc远程调用服务端保存应用状态

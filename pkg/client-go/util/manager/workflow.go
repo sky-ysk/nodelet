@@ -9,6 +9,72 @@ import (
 	"time"
 )
 
+// 创建带有label的task
+func (m *Manager) CreateWorkflowWithLabels(ts apis.WorkflowSpec, namespace string, uuid string, labels map[string]string) (*apis.Workflow, error) {
+	// 临时创建一个Workflow对象
+	w := apis.Workflow{}
+	// 构造名称
+
+	w.Name = ts.Name + "-" + uuid
+	prefix := ts.Name + "."
+
+	// 构造Namespace
+	if namespace == "" {
+		w.Namespace = apis.NamespaceDefault
+	} else {
+		w.Namespace = namespace
+	}
+
+	w.Kind = "Workflow"
+	w.APIVersion = "resources/v1"
+
+	// 构造Labels
+	w.Labels = labels
+
+	// 复制Spec
+	w.Spec = ts
+
+	// 构造Status
+	w.Status = apis.WorkflowStatus{}
+
+	// 记录Create时间
+	w.Status.CreateAt = &apis.Time{Time: time.Now()}
+
+	// 初始化状态
+	w.Status.Phase = apis.Pending
+	w.Status.Tasks = map[string]apis.ObjectReference{}
+
+	w.Labels["uuid"] = uuid
+
+	// 根据Spec创建Runtimes
+	tasks, err := m.CreateTasks(&w, namespace, uuid, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据生成的Runtime修改Workflow.Status.Tasks
+	for _, r := range tasks {
+		w.Status.Tasks[r.Spec.Name] = apis.ObjectReference{
+			Name:            r.Name,
+			Namespace:       r.Namespace,
+			Kind:            r.Kind,
+			ResourceVersion: r.ResourceVersion,
+			UID:             apis.UID(r.UID),
+		}
+	}
+	// 写入Client-Go中, 返回实际的Runtime
+	c := m.GetWorkflowClient(w.Namespace)
+
+	fw, err := c.Client.Create(context.TODO(), &w, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("Failed to create workflow: %v", err)
+		return nil, err
+	}
+
+	logs.Debugf("Created workflow: %v", fw)
+	return fw, nil
+}
+
 func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid string) (*apis.Workflow, error) {
 	// 临时创建一个Workflow对象
 	w := apis.Workflow{}
@@ -98,7 +164,7 @@ func (m *Manager) GetWorkflows(namespace string) (*apis.WorkflowList, error) {
 	return g, nil
 }
 
-func (m *Manager) UpdateWorkflow(namespace string, name string, a *apis.Workflow) (*apis.Workflow, error) {
+func (m *Manager) UpdateWorkflow(name string, namespace string, a *apis.Workflow) (*apis.Workflow, error) {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
@@ -120,7 +186,7 @@ func (m *Manager) UpdateWorkflow(namespace string, name string, a *apis.Workflow
 
 }
 
-func (m *Manager) PatchWorkflow(name string, namespace string, patchWorkflow string) (*apis.Workflow, error) {
+func (m *Manager) PatchWorkflow(name string, namespace string, patchWorkflow []byte) (*apis.Workflow, error) {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
@@ -145,10 +211,18 @@ func (m *Manager) DeleteWorkflow(name string, namespace string) error {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
-	_, err := m.GetWorkflow(name, namespace)
+	workflow, err := m.GetWorkflow(name, namespace)
 	if err != nil {
 		logs.Errorf("get workflow %s error: %v , workflow not exist ", name, err)
 		return err
+	}
+
+	// 删除workflow里面的所有task
+	for _, v := range workflow.Status.Tasks {
+		err := m.DeleteTask(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 存在，删除
@@ -163,19 +237,55 @@ func (m *Manager) DeleteWorkflow(name string, namespace string) error {
 }
 
 func (m *Manager) DeleteWorkflows(namespace string) error {
-	c := m.GetWorkflowClient(namespace)
+	// c := m.GetWorkflowClient(namespace)
 
-	str := "Spec.Name=" + namespace
-	lstOpts := metav1.ListOptions{
-		FieldSelector: str,
-	}
+	// 不知道怎么调用，示例只给了用Name
+	//str := "NameSpace=" + namespace
+	//lstOpts := metav1.ListOptions{
+	//	FieldSelector: str,
+	//}
+	//
+	//err := c.Client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	//if err != nil {
+	//	logs.Errorf("Delete workflows failed: %v", err)
+	//	return err
+	//}
 
-	err := c.Client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	// 获取 workflows
+	list, err := m.GetWorkflows(namespace)
 	if err != nil {
-		logs.Errorf("Delete workflows failed: %v", err)
 		return err
+	}
+	for _, v := range list.Items {
+		err := m.DeleteWorkflow(v.Name, v.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	logs.Debugf("Delete workflows in %s success.", namespace)
 	return nil
+}
+
+// FilterWorkflows 根据Label查询Workflows
+func (m *Manager) FilterWorkflows(namespace string, labelSelector string) (*apis.WorkflowList, error) {
+	//labelSelector := ""
+	//for i, l := range label {
+	//	if i == 0 {
+	//		labelSelector = l
+	//	} else {
+	//		labelSelector += "," + l
+	//	}
+	//}
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
+	c := m.GetWorkflowClient(namespace)
+	d, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		return nil, err
+	}
+	return d, nil
 }

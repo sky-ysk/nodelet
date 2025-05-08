@@ -131,16 +131,33 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
-	// 创建action
-	result, err := h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
-	if err != nil {
-		err1 := response.WriteError(http.StatusInternalServerError, err)
-		if err1 != nil {
-			logs.Errorf("failed to return a status code ,error: %v", err1)
+	var result *apis.Action
+
+	// 创建action without labels
+	if ew.Labels == nil {
+		result, err = h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create action fail ,failed write it to database , error: %v", err)
 			return
 		}
-		logs.Errorf("Create action fail ,failed write it to database , error: %v", err)
-		return
+	} else {
+		// 创建action with labels
+		result, err = h.manager.CreateActionWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create action with label fail ,failed write it to database , error: %v", err)
+			return
+		}
+
 	}
 
 	// 返回结果

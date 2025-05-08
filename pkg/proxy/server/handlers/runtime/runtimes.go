@@ -40,13 +40,28 @@ func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restfu
 		return
 	}
 
-	results, err := h.manager.GetRuntimes(namespace)
-	if err != nil {
-		logs.Errorf("Get runtimes failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	labels := request.QueryParameter("Label")
+	var results *apis.RuntimeList
+	var err error
+	if labels == "" {
+		results, err = h.manager.GetRuntimes(namespace)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get runtimes failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
+		}
+	} else {
+		results, err = h.manager.FilterRuntimes(namespace, labels)
+		if err != nil {
+			logs.Errorf("Get runtimes failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
@@ -70,6 +85,7 @@ func (h *RuntimesHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.GET("/").
 		Doc("Get all runtimes").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Label", "Labels of the runtimes (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the runtimes").DataType("string")).
 		To(h.GetRuntimes).
 		Operation("Get runtimes").

@@ -48,9 +48,7 @@
       "additionalProperties": {
         "type": "string"
       }
-    },
-
-
+    }
   },
   "additionalProperties": true
 }

@@ -15,7 +15,9 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
+	"hit.edu/framework/pkg/utils/value"
 	"io"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -24,6 +26,9 @@ type ScorePluginDBY struct {
 	pluginClient ScorePluginClient
 	clientSet    *clients.ClientSet
 	taskClient   core.TaskInterface
+	nodeClient   core.NodeInterface
+	valueEngine  *value.Engine
+	r            *rand.Rand
 }
 
 type ScorePluginClient struct {
@@ -64,11 +69,11 @@ func (client *ScorePluginClient) SendGroups(request *SendGroupsRequest) transpor
 		logs.Fatal(err)
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
-	logs.Infof("the groups request send to dts is %s", string(jsonData))
 	data, err := client.SendData(jsonData, "/schedule/postGroup")
 	if err != nil {
 		return transport.NewFailSendScoreResponse(request.TaskId, err)
 	}
+	logs.Infof("the group request send to dts is task %s, time %s", request.TaskId, time.Now().String())
 	fmt.Println("raw resp is like")
 	fmt.Println(string(data))
 	//TODO 确认下返回细节
@@ -125,41 +130,85 @@ func (sp *ScorePluginDBY) Name() string {
 //}
 
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
-	//TODO 没测过
 	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
 	taskName := group.Status.Belong.Name
-
+	randScore := int64(sp.r.Intn(3))
 	request := transport.ScoreRequest{
-		GroupID: group.Spec.Name,
+		GroupID: group.ObjectMeta.Name,
 		TaskID:  taskName,
 		NodeID:  nodeName,
 	}
 	jsonData, err := json.Marshal(request)
-	logs.Infof("the request send to dts is %s", string(jsonData))
+	//logs.Infof("the request send to dts is %s", string(jsonData))
 	if err != nil {
-		logs.Fatal(err)
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
-	time.Sleep(5 * time.Second)
-	logs.Info("sleep 5s to get dts score")
-	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
-	if err != nil {
-		return 0, framework.NewStatus(framework.Error, err.Error())
-	}
-	logs.Infof("raw result given by dts is %s ", string(data))
+	time.Sleep(8 * time.Second)
+	logs.Infof("now send schedule request to dts, group %s , time %s", request.GroupID, time.Now().String())
 	var resp transport.ScoreRespData
+	//先发第一次 理论上第一次是收不到的
+	data, err := sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	if err != nil {
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
+	}
+	//logs.Infof("first time raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
-		logs.Error(err)
-		return 0, framework.NewStatus(framework.Error, err.Error())
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	logs.Infof("score given by dts plugin : %d, group : %s", resp.Score, resp.GroupID)
-	return resp.Score, framework.NewStatus(framework.Success)
+	//logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+	if resp.GroupID == group.ObjectMeta.Name {
+		return resp.Score, framework.NewStatus(framework.Success, "")
+	}
+
+	//理论上第二次才能收到分数 --5.7更新 理论上100%的请求在第二次发送拿到结果
+	time.Sleep(8 * time.Second)
+	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+	if err != nil {
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
+	}
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		logs.Error(err.Error())
+		return randScore, framework.NewStatus(framework.Error, err.Error())
+	}
+	logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+	if resp.GroupID == group.ObjectMeta.Name {
+		logs.Infof("score by dts is %d ,\n group : %s, node %s\"", resp.Score, group.Name, nodeName)
+		return resp.Score, framework.NewStatus(framework.Success, "")
+	}
+
+	//大约20%的请求会走到这里 -- 5.7更新 ： DTS插件已修复，理论上不会有任何请求走到这里
+	logs.Warnf("group %s get schedule fail, node %s", group.Name, nodeName)
+	for {
+		time.Sleep(5 * time.Second)
+		data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
+		if err != nil {
+			logs.Error(err.Error())
+			return randScore, framework.NewStatus(framework.Error, err.Error())
+		}
+		logs.Infof("loop raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+		err = json.Unmarshal(data, &resp)
+		if err != nil {
+			logs.Error(err.Error())
+			return randScore, framework.NewStatus(framework.Error, err.Error())
+		}
+		//logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
+		if resp.GroupID == group.ObjectMeta.Name {
+			break
+		}
+		logs.Warnf("group %s get schedule fail again, node %s", group.Name, nodeName)
+	}
+	logs.Infof("group %s finally get the score ! Node %s, Score %d", group.Name, nodeName, resp.Score)
+	return resp.Score, framework.NewStatus(framework.Success, "")
 }
 
 func (sp *ScorePluginDBY) SendGroups(ctx context.Context, task *apis.Task) (bool, *framework.Status) {
-	request := buildSendGroupsRequest(ctx, task)
+	request := sp.buildSendGroupsRequest(ctx, task)
 	resp := sp.pluginClient.SendGroups(request)
 	if resp.BaseResponse.Success {
 		return true, framework.NewStatus(framework.Success, "default success")
@@ -196,11 +245,14 @@ func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugi
 		panic(err)
 	}
 
-	tc := cs.Core().Tasks("test")
+	tc := cs.Core().Tasks(apis.NamespaceTest)
+	nc := cs.Core().Nodes(apis.NamespaceTest)
 	return &ScorePluginDBY{
 		clientSet:    cs,
 		taskClient:   tc,
 		pluginClient: NewScorePluginClient(),
+		r:            rand.New(rand.NewSource(time.Now().UnixNano())),
+		nodeClient:   nc,
 	}, nil
 }
 
@@ -221,30 +273,32 @@ type SendGroupsResponse struct {
 	State  int64  `json:"state"`
 }
 
-func BuildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
-	return buildSendGroupsRequest(ctx, task)
-}
+//func BuildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
+//	return buildSendGroupsRequest(ctx, task)
+//}
 
-func buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
+func (sp *ScorePluginDBY) buildSendGroupsRequest(ctx context.Context, task *apis.Task) *SendGroupsRequest {
 	topInfo := make([]GroupTopInfo, 0)
 	groupsID := make([]string, 0)
 	resourcesMap := make(map[string][]apis.ResourceRequirement)
-	taskID := task.Spec.Name
+	taskID := task.ObjectMeta.Name
 	//TODO 可能需要做深复制 @lbh
 	for _, group := range task.Spec.Groups {
-		groupsID = append(groupsID, group.Name)
+		groupID := task.Status.Groups[group.Name].Name
+		groupsID = append(groupsID, groupID)
 		resources := make([]apis.ResourceRequirement, 0)
 		for _, requirement := range group.ResourceRequirements {
 			resources = append(resources, requirement)
 		}
 		if len(resources) > 0 {
-			resourcesMap[group.Name] = resources
+			resourcesMap[groupID] = resources
 		}
 		for _, parent := range group.Parents {
 			//fmt.Println("parent : ", parent, " child ", group.Status.GroupID)
+			parID := task.Status.Groups[parent].Name
 			topInfo = append(topInfo, GroupTopInfo{
-				Child:  group.Name,
-				Parent: parent,
+				Child:  groupID,
+				Parent: parID,
 			})
 		}
 	}

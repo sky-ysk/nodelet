@@ -489,7 +489,7 @@ func TestPatchWorkflow(t *testing.T) {
 
 	patchData := "{\n  \"spec\": {\n      \"desc\": {\n          \"docs\": \"test after patch\"\n      }\n  }\n\n}"
 
-	patched, err := m.PatchWorkflow(w.Name, "Guochuang", patchData)
+	patched, err := m.PatchWorkflow(w.Name, "Guochuang", []byte(patchData))
 	if err != nil {
 		panic(err)
 	} else {

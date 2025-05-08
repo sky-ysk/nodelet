@@ -5,6 +5,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/labels"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/tools/cache"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
@@ -19,15 +20,14 @@ import (
 
 const (
 	CreateorLabel = "app.kubernetes.io/created-by"
-	SystemName    = "deploy-system"
 )
 
 type ResourceState struct {
-	group        *apis.Group
-	action       *apis.Action
-	runtime      *apis.Runtime
-	actionIndex  int
-	runtimeIndex int
+	group           *apis.Group
+	action          *apis.Action
+	runtime         *apis.Runtime
+	actionSpecName  string
+	runtimeSpecName string
 }
 
 //	type DeploymentMonitor struct {
@@ -37,21 +37,25 @@ type Monitor struct {
 	clientset kubernetes.Interface
 	eventBus  *eventbus.EventBus
 	stopChan  chan struct{}
+	nodeName  string
 	//stateMap   sync.Map // 保存资源状态的并发安全存储
-	eventHooks []func(eventType string, obj interface{})
-	infoMap    sync.Map
+	eventHooks     []func(eventType string, obj interface{})
+	infoMap        sync.Map
+	clientsManager *manager.Manager
 }
 
-func NewMonitor(clientset kubernetes.Interface, eventBus *eventbus.EventBus) *Monitor {
+func NewMonitor(clientset kubernetes.Interface, eventBus *eventbus.EventBus, nodeName string, clientsManager *manager.Manager) *Monitor {
 	return &Monitor{
-		clientset: clientset,
-		stopChan:  make(chan struct{}),
-		eventBus:  eventBus,
+		clientset:      clientset,
+		stopChan:       make(chan struct{}),
+		eventBus:       eventBus,
+		nodeName:       nodeName,
+		clientsManager: clientsManager,
 	}
 }
 func (m *Monitor) Start() {
 	labelSelector := labels.SelectorFromSet(labels.Set{
-		CreateorLabel: SystemName,
+		CreateorLabel: m.nodeName,
 	})
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		m.clientset, 10*time.Minute, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
@@ -114,7 +118,7 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		// 获取关联状态
 		value, ok := m.infoMap.Load(stateKey(apis.ByDeployment, currentDeploy.Namespace, currentDeploy.Name))
 		if !ok {
-			logs.Errorf("Deployment %s/%s not found in infoMap", currentDeploy.Namespace, currentDeploy.Name)
+			logs.Infof("Deployment %s/%s not found in infoMap", currentDeploy.Namespace, currentDeploy.Name)
 			return
 		}
 
@@ -137,10 +141,20 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		}
 		if shouldNotify {
 			phase := convertDeploymentStatus(currentDeploy, currentStatus, eventType)
-			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
-				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+			// 这里要去判断一下，这个Deployment是被迁移关闭的还是说是被主动关闭的,首先获取GroupName--，去etcd当中查状态，然后判断如果Group的Phase为Migrating，就将phase改为apis.Unkonw，交给handleRuntimeEndUpdate去处理
+			groupName := rs.group.Name
+			groupNamespace := rs.group.Namespace
+			get, err := m.clientsManager.GetGroup(groupName, groupNamespace)
+			if err != nil {
+				logs.Errorf("Get group %s failed: %v", groupName, err)
+			}
+			if eventType == "DELETED" && get.Status.Phase == apis.Migrating {
+				phase = apis.Unknown
+			}
+			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed || phase == apis.Unknown {
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
 			} else if phase == apis.Running {
-				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
 			}
 			logs.Infof("[Deployment]=============发送状态：%v 给事件处理模块===========", phase)
 		}
@@ -159,7 +173,6 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 			currentPod = oldObj.(*corev1.Pod) // 删除时从oldObj获取
 			previousPod = nil
 		}
-
 		// 获取关联状态
 		if currentPod == nil {
 			return
@@ -172,7 +185,7 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		// 获取关联状态
 		value, ok := m.infoMap.Load(stateKey(apis.ByPod, currentPod.Namespace, currentPod.Name))
 		if !ok {
-			logs.Errorf("Pod %s/%s not found in infoMap", currentPod.Namespace, currentPod.Name)
+			logs.Infof("Pod %s/%s not found in infoMap", currentPod.Namespace, currentPod.Name)
 			return
 		}
 		rs := value.(ResourceState)
@@ -192,14 +205,35 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		}
 		if shouldNotify {
 			phase := convertPodPhase(targetPhase)
+			// 这里要去判断一下，这个Pod是被迁移关闭的还是说是被主动关闭的,首先获取GroupName，然后去etcd当中查状态，然后判断如果Group的Phase为Migrating，就将phase改为apis.Unkonw，交给handleRuntimeEndUpdate去处理
+			groupName := rs.group.Name
+			groupNamespace := rs.group.Namespace
+			get, err := m.clientsManager.GetGroup(groupName, groupNamespace)
+			if err != nil {
+				logs.Errorf("Get group %s failed: %v", groupName, err)
+			}
+			logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&get.Status.Phase:%v", get.Status.Phase)
+			if get.Status.Phase == apis.Migrating { // 目前发现一个现象，就是在关闭pod的时候，会短暂的出现一个Failed的状态，为了规避这个状态
+				phase = apis.Unknown //设置为迁移状态--最好是让他设置一次即可
+			}
 			// 特殊处理删除事件
 			if eventType == "DELETED" {
-				phase = apis.Killed // 或根据实际状态处理
+				if get.Status.Phase == apis.Migrated || get.Status.Phase == apis.Successed || get.Status.Phase == apis.Migrating || get.Status.Phase == apis.Failed { // 得排除迁移的时候，A设备对任务的关闭，还得排除，pod任务正常执行完成或执行失败，进入终止状态了该不是人为的情况
+					return
+				} else if get.Status.Phase == apis.DeployCheck || get.Status.Phase == apis.Running {
+					phase = apis.Killed // 该状态为人为关闭状态
+				}
 			}
-			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
-				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
-			} else {
-				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+			if phase == apis.Failed && (get.Status.Phase == apis.Migrating || get.Status.Phase == apis.Migrated) {
+				return
+			}
+			if phase == apis.Failed && get.Status.Phase == apis.Successed { // 处理副本任务处于Init初始化过后，由于源任务完成后，需要销毁副本任务，在关闭pod的过程当中，会监控到pod的状态为Failed，这里需要避免这个情况，副本任务被关闭，且源任务执行完成，理应是Succeed状态
+				phase = apis.Successed
+			}
+			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed || phase == apis.Unknown {
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
+			} else { //启动
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
 			}
 			logs.Infof("[Pod]=============发送状态：%v 给事件处理模块===========", phase)
 		}
@@ -224,13 +258,13 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		// 获取关联状态
 		value, ok := m.infoMap.Load(stateKey(apis.ByService, currentService.Namespace, currentService.Name))
 		if !ok {
-			logs.Errorf("Service %s/%s not found in infoMap", currentService.Namespace, currentService.Name)
+			logs.Infof("Service %s/%s not found in infoMap", currentService.Namespace, currentService.Name)
 			return
 		}
 
 		rs := value.(ResourceState)
 		if eventType == "ADDED" {
-			m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", apis.Running, nowTime, nowTime)
+			m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", apis.Running, nowTime, nowTime)
 		}
 		// 状态判定逻辑
 		currentStatus := getServiceStatus(currentService)
@@ -253,9 +287,9 @@ func (m *Monitor) handleEvent(eventType string, resType apis.RuntimeType, oldObj
 		if shouldNotify {
 			phase := convertServiceStatus(currentService, currentStatus, eventType)
 			if phase == apis.Killed || phase == apis.Failed || phase == apis.Successed {
-				m.notifyRuntimeEndPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, phase, nowTime, nowTime)
+				m.notifyRuntimeEndPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, phase, nowTime, nowTime)
 			} else {
-				m.notifyRuntimeStartPhase(rs.group.Name, rs.actionIndex, rs.runtimeIndex, "", phase, nowTime, nowTime)
+				m.notifyRuntimeStartPhase(rs.group.Name, rs.group.Namespace, rs.actionSpecName, rs.runtimeSpecName, "", phase, nowTime, nowTime)
 			}
 			logs.Infof("[Service]=============发送状态：%v 给事件处理模块===========", phase)
 		}
@@ -282,31 +316,27 @@ func (m *Monitor) RegisterHook(hook func(eventType string, obj interface{})) {
 }
 
 // 保存资源的信息
-func (m *Monitor) SetState(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionIndex, runtimeIndex int) {
+func (m *Monitor) SetState(group *apis.Group, resourceName, resourceNamespace string, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) {
 	var state ResourceState
 	state = ResourceState{
-		group:        group,
-		action:       action,
-		runtime:      runtime,
-		actionIndex:  actionIndex,
-		runtimeIndex: runtimeIndex,
+		group:           group,
+		actionSpecName:  actionSpecName,
+		runtimeSpecName: runtimeSpecName,
 	}
 	switch runtime.Spec.Type {
 	case apis.ByDeployment:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByDeployment, runtime.Spec.Deployment.Namespace, runtime.Deployment.Name), state)
-		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByDeployment, runtime.Deployment.Namespace, runtime.Deployment.Name))
-		}
+		m.infoMap.Store(stateKey(apis.ByDeployment, resourceNamespace, resourceName), state)
+
 	case apis.ByPod:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByPod, runtime.Pod.Namespace, runtime.Pod.Name), state)
-		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByPod, runtime.Pod.Namespace, runtime.Pod.Name))
-		}
+		m.infoMap.Store(stateKey(apis.ByPod, resourceNamespace, resourceName), state)
+		//if loaded {
+		//	logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByPod, resourceNamespace, resourceName))
+		//}
 	case apis.ByService:
-		_, loaded := m.infoMap.LoadOrStore(stateKey(apis.ByService, runtime.Service.Namespace, runtime.Service.Name), state)
-		if loaded {
-			logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByService, runtime.Service.Namespace, runtime.Service.Name))
-		}
+		m.infoMap.Store(stateKey(apis.ByService, resourceNamespace, resourceName), state)
+		//if loaded {
+		//	logs.Errorf("Key %s already exists, overwriting", stateKey(apis.ByService, resourceNamespace, resourceName))
+		//}
 	}
 }
 
@@ -316,26 +346,28 @@ func (m *Monitor) Stop() {
 }
 
 // 通过 EventBus 通知 Runtime 状态更新
-func (m *Monitor) notifyRuntimeStartPhase(groupName string, actionIndex, runtimeIndex int, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
+func (m *Monitor) notifyRuntimeStartPhase(groupName, groupNamespace string, actionSpecName, runtimeSpecName string, processId string, phase apis.Phase, startAt, lastTime apis.Time) {
 	event := events.RuntimeStartPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		ProcessId:    processId,
-		Phase:        phase,
-		StartAt:      startAt,
-		LastTime:     lastTime,
+		GroupName:       groupName,
+		GroupNamespace:  groupNamespace,
+		ActionSpecName:  actionSpecName,
+		RuntimeSpecName: runtimeSpecName,
+		ProcessId:       processId,
+		Phase:           phase,
+		StartAt:         startAt,
+		LastTime:        lastTime,
 	}
 	m.eventBus.Publish(event)
 }
-func (m *Monitor) notifyRuntimeEndPhase(groupName string, actionIndex, runtimeIndex int, phase apis.Phase, finishTime, lastTime apis.Time) {
+func (m *Monitor) notifyRuntimeEndPhase(groupName, groupNamespace string, actionSpecName, runtimeSpecName string, phase apis.Phase, finishTime, lastTime apis.Time) {
 	event := events.RuntimeEndPhaseEvent1{
-		GroupName:    groupName,
-		ActionIndex:  actionIndex,
-		RuntimeIndex: runtimeIndex,
-		Phase:        phase,
-		FinishAt:     finishTime,
-		LastTime:     lastTime,
+		GroupName:       groupName,
+		GroupNamespace:  groupNamespace,
+		ActionSpecName:  actionSpecName,
+		RuntimeSpecName: runtimeSpecName,
+		Phase:           phase,
+		FinishAt:        finishTime,
+		LastTime:        lastTime,
 	}
 	m.eventBus.Publish(event)
 }
@@ -390,6 +422,7 @@ func isDeploymentTimeout(d *appsv1.Deployment) bool {
 
 // Pod Phase 转换逻辑
 func convertPodPhase(phase corev1.PodPhase) apis.Phase {
+	logs.Infof("================================================k8s-Phase:%v", phase)
 	switch phase {
 	case corev1.PodPending:
 		return apis.Running

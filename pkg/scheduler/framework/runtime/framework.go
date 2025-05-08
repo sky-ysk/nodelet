@@ -33,7 +33,8 @@ type frameworkImpl struct {
 
 	parallelizer utils.Parallelizer
 
-	scorePluginWeight map[string]int
+	//TODO 调度器权重暂时不做
+	//scorePluginWeight map[string]int
 }
 
 func (f *frameworkImpl) GetDTSPlugin() framework.ScorePlugin {
@@ -166,7 +167,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 					//err := fmt.Errorf("plugin %q failed with: %w", pl.Name(), status.AsError())
 					//errCh.SendErrorWithCancel(err, cancel)
 					logs.Errorf("plugin %q failed with: %s , node %s ", pl.Name(), status.AsError().Error(), nodeName)
-					logs.Errorf("plugin %q fail on node %s , use default score", pl.Name(), nodeName)
+					//logs.Errorf("plugin %q fail on node %s , use default score", pl.Name(), nodeName)
 					s = 5
 				}
 				pluginToNodeScores[pl.Name()][index] = framework.NodeScore{
@@ -191,7 +192,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 		}
 
 		for i, pl := range plugins {
-			weight := f.scorePluginWeight[pl.Name()]
+			//weight := f.scorePluginWeight[pl.Name()]
 			nodeScoreList := pluginToNodeScores[pl.Name()]
 			score := nodeScoreList[index].Score
 
@@ -200,7 +201,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 			//	errCh.SendErrorWithCancel(err, cancel)
 			//	return
 			//}
-			weightedScore := score * int64(weight)
+			weightedScore := score * 1
 			nodePluginScores.Scores[i] = framework.PluginScore{
 				Name:  pl.Name(),
 				Score: weightedScore,

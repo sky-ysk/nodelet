@@ -2,6 +2,13 @@ package nodelet
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
+
 	"gopkg.in/yaml.v3"
 	run "hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -13,12 +20,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task"
 	"hit.edu/framework/test/etcd_sync/active/clients"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
-	"net/http"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"time"
 )
 
 type Config struct {
@@ -40,7 +41,7 @@ func IsRunningInPod() bool {
 	//return !os.IsNotExist(err)
 }
 
-func NewConfig() *Config {
+func NewConfig(configPath string) *Config {
 	var config *FrameworkConfig
 	var err error
 
@@ -60,13 +61,19 @@ func NewConfig() *Config {
 		//	}
 		//}
 	} else { // 为二进制环境,从本地读取配置文件
-		fileName := "frameworkConf.yaml"
-		// 获取当前文件绝对路径
-		_, currentFilePath, _, _ := runtime.Caller(0)
-		// 计算项目根目录路径
-		projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
-		// 构建配置文件的绝对路径
-		configPath := filepath.Join(projectRoot, fileName)
+		// logs.Info("framework-conf ", configPath)
+		//没有指定配置文件位置，则去默认位置加载
+		if configPath == "" {
+			logs.Info("ConfigPath is empty, using default")
+			fileName := "frameworkConf.yaml"
+			// 获取当前文件绝对路径
+			_, currentFilePath, _, _ := runtime.Caller(0)
+			// 计算项目根目录路径
+			projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
+			// 构建配置文件的绝对路径
+			configPath = filepath.Join(projectRoot, fileName)
+		}
+		logs.Infof("configPath:%v", configPath)
 		// 验证路径有效性
 		if _, err := os.Stat(configPath); os.IsNotExist(err) {
 			logs.Errorf("配置文件不存在于：%s", configPath)
@@ -79,17 +86,19 @@ func NewConfig() *Config {
 	}
 	// 获取必要配置项（环境变量优先于配置文件）
 	nodeName := GetNodeName(config)
+	LocalClusterID := GetLocalClusterID(config)
 	clusterCategory := GetClusterCategory(config)
 	address := GetAPIServerHost(config)
-	groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
+	logs.Infof("address:%v==============", address)
+	taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
 	if err != nil {
 		logs.Errorf("targetMap build failed")
 		return nil
 	}
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
-		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory),
-		tc:            task.NewConfig(nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID),
+		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap),
 		apiserverAddr: address,
 	}
 }
@@ -102,6 +111,15 @@ func GetNodeName(config *FrameworkConfig) string {
 		return config.NodeName
 	}
 	return "CloudNode1"
+}
+func GetLocalClusterID(config *FrameworkConfig) string {
+	//if nodeName := os.Getenv("NODE_NAME"); nodeName != "" {
+	//	return nodeName
+	//}
+	if config.LocalClusterID != "" {
+		return config.ClusterCategory
+	}
+	return ""
 }
 func GetClusterCategory(config *FrameworkConfig) string {
 	//if clusterCategory := os.Getenv("CLUSTER_CATEGORY"); clusterCategory != "" {
@@ -137,18 +155,19 @@ type FrameworkConfig struct {
 }
 
 // 创建目标映射的函数
-func BuildTargetMap(config *FrameworkConfig) (map[string]cross_core.GroupInterface, map[string]cross_core.ActionInterface, map[string]cross_core.RuntimeInterface, error) {
+func BuildTargetMap(config *FrameworkConfig) (map[string]cross_core.TaskInterface, map[string]cross_core.GroupInterface, map[string]cross_core.ActionInterface, map[string]cross_core.RuntimeInterface, error) {
+	taskTargetMap := make(map[string]cross_core.TaskInterface)
 	groupTargetMap := make(map[string]cross_core.GroupInterface)
 	actionTargetMap := make(map[string]cross_core.ActionInterface)
 	runtimeTargetMap := make(map[string]cross_core.RuntimeInterface)
 	// 参数校验
 	if config == nil || len(config.OtherCluster) == 0 {
-		return groupTargetMap, actionTargetMap, runtimeTargetMap, nil
+		return taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, nil
 	}
 	// 获取本地集群ID（环境变量优先）
 	localID := getEnvWithFallback("LOCAL_CLUSTER_ID", config.LocalClusterID)
 	if localID == "" {
-		return nil, nil, nil, fmt.Errorf("missing local cluster ID")
+		return nil, nil, nil, nil, fmt.Errorf("missing local cluster ID")
 	}
 	// 优先从环境变量获取集群配置
 	envClusters := parseClusterEnv()
@@ -178,22 +197,25 @@ func BuildTargetMap(config *FrameworkConfig) (map[string]cross_core.GroupInterfa
 	for key, cluster := range clusters {
 		// 参数有效性检查
 		if cluster.ClusterID == "" || cluster.ClusterIP == "" {
-			return nil, nil, nil, fmt.Errorf("无效的集群配置: %s", key)
+			return nil, nil, nil, nil, fmt.Errorf("无效的集群配置: %s", key)
 		}
 		// 这里演示参数组合，请根据实际需求调整
+		logs.Infof("localID:%v,otherDomain.ClusterID:%v,otherDomain.ClusterIP:%v", localID, cluster.ClusterID, cluster.ClusterIP)
 		clientSet, err := InitCrossClient(localID, cluster.ClusterID, cluster.ClusterIP)
 		if err != nil {
 			logs.Errorf("init client failed: %v", err)
 		}
+		taskTarget := clientSet.Core().Tasks("test")
 		groupTarget := clientSet.Core().Groups("test")
 		actionTarget := clientSet.Core().Actions("test")
 		runtimeTarget := clientSet.Core().Runtimes("test")
 
+		taskTargetMap[cluster.ClusterID] = taskTarget
 		groupTargetMap[cluster.ClusterID] = groupTarget
 		actionTargetMap[cluster.ClusterID] = actionTarget
 		runtimeTargetMap[cluster.ClusterID] = runtimeTarget
 	}
-	return groupTargetMap, actionTargetMap, runtimeTargetMap, nil
+	return taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, nil
 }
 
 // 配置加载函数
@@ -277,7 +299,7 @@ func InitCrossClient(localID, clusterID, clusterIP string) (*clients.ClientSet, 
 				Version: "v1",
 			},
 			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
-			TargetURL:            "http://" + "clusterIP" + ":10000",
+			TargetURL:            "http://" + clusterIP + ":10000",
 			FlowType:             "etcd",
 			ClusterID:            clusterID,
 		},

@@ -42,7 +42,10 @@ const (
 // Status对应的正则表达式
 // Device对应的正则表达式
 
-// 解析Value的值
+// 解析Value的值, o为传入的对象，可能为Workflow、Task、Group、Action或Runtime
+// 解析的Value为condition里面的左右值、或者是input、output（这俩是Value类型的变量）
+// 解析的结果仍然是一个Value类型的变量，其Value.Value为值的string表达，其Value.ValueType为预定义好的类型（例如bool，string等）
+// 解析完Value之后，需要判断类型是否符合需求，然后再转换Value.Value为所需类型使用
 func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	// 判断数据类型
 	switch value.Type {
@@ -67,10 +70,19 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 		//  Workflow{W1}.Task{T1}
 
 		// 缺省值，默认访问本地
-		return value, nil
+		resultValue, err := e.ExtractLocalValue(value, o)
+		if err != nil {
+			return nil, err
+		}
+		return resultValue, nil
 	case apis.DeviceData:
 		// 对Device进行寻址
-		// result, err := e.ExtractDeviceValue(value.From, value.Namespace)
+		result, err := e.ExtractDeviceValue(value.From, value.NameSpace)
+		if err != nil {
+			return nil, err
+		}
+		value.Value = result
+		value.ValueType = apis.StringType
 		return value, nil
 	case apis.ResultsData:
 		return value, nil
@@ -106,7 +118,7 @@ func (e *Engine) ExtractDeviceValue(devices []apis.DeviceSpec, from string, name
 		fmt.Println(name, namespace, ability, service)
 		s, err := e.ExtractDeviceService(realName, namespace, ability, service)
 		if err == nil {
-			fmt.Println("success", s)
+			// fmt.Println("success", s)
 			return s, nil
 		}
 	}
@@ -322,7 +334,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 	switch name {
 	case "GroupExpr":
 		// Group{}位置
-		fmt.Println("GroupExpr")
+		//fmt.Println("GroupExpr")
 		target := parts[1]
 		from := parts[2]
 		fromKey := parts[3]
@@ -608,18 +620,16 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 // TODO: 解析Device字段
 func (e *Engine) ExtractDeviceService(robot string, namespace string, target string, subTarget string) (string, error) {
 	// 暂时直接使用客户端，后续改为使用manager
-	fmt.Println("before")
 	client := e.manager.ClientSet.Core().Devices(namespace)
 	d, err := client.Get(context.TODO(), robot, metav1.GetOptions{})
-	fmt.Println("get device:", d)
+	// logs.Info("get device:", d)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("after")
 
 	// 直接访问对应的能力
 	a, ok := d.Status.Abilities[target]
-	fmt.Println("get a:", a)
+	// logs.Info("get a:", a)
 	if ok {
 		s, ok := a.Services[subTarget]
 		if ok {
@@ -627,7 +637,6 @@ func (e *Engine) ExtractDeviceService(robot string, namespace string, target str
 			return r, nil
 		}
 	} else {
-		fmt.Println("errrrrrrrrrrr")
 	}
 
 	return "", errors.New(string("Unsupported Target " + target))

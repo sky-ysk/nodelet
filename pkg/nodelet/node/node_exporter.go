@@ -39,6 +39,7 @@ type NodeExporter struct {
 	nodesClient      core.NodeInterface
 	NodeName         string
 	ClusterCategory  string
+	LocalClusterID   string
 }
 
 func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, error) {
@@ -58,6 +59,7 @@ func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, 
 		dynamicCache:    make(map[string]collector.Metric),
 		nodesClient:     nodeClient,
 		NodeName:        cfg.NodeName,
+		LocalClusterID:  cfg.LocalClusterID,
 		ClusterCategory: cfg.ClusterCategory,
 	}, nil
 }
@@ -117,10 +119,12 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 	patchNode, err := json.Marshal(map[string]interface{}{
 		"spec": map[string]interface{}{
 			"clusterCategory": n.ClusterCategory,
+			"cluster_id":      n.LocalClusterID,
 		},
 	})
 	_, err = n.nodesClient.Patch(context.TODO(), n.NodeName, types.StrategicMergePatchType, patchNode, metav1.PatchOptions{})
 	if err != nil {
+		logs.Errorf("Patch node error:%v", err)
 		return err
 	}
 	// 先收集一次静态和动态数据

@@ -2,8 +2,9 @@
 package apis
 
 import (
-	"hit.edu/framework/pkg/apis/meta"
 	"time"
+
+	"hit.edu/framework/pkg/apis/meta"
 )
 
 const (
@@ -114,10 +115,11 @@ type Event struct {
 	// 描述，应有用户可读性
 	Message string
 	// 事件产生来源
-	Source    EventSource
-	EventTime Time
-	Count     int32
-	Type      string // EventTypeNormal or EventTypeWarning
+	Source          EventSource
+	EventTime       Time
+	Count           int32
+	Type            string // EventTypeNormal or EventTypeWarning or EventTypeMigration
+	MigrationTarget string
 	// todo: 补充 action、reporting controller 、 instance
 }
 
@@ -196,6 +198,8 @@ type NodeSpec struct {
 
 	//  +个字段（Cloud、Edge、End）
 	ClusterCategory string `json:"clusterCategory,omitempty" yaml:"clusterCategory"` //该节点所在的集群类别：1、云集群 2、边集群 3、端集群
+	// hzy 添加 ，节点所属的集群ID
+	ClusterID *string `json:"cluster_id,omitempty" yaml:"cluster_id"`
 }
 
 // 计算、网络、存储等定量资源
@@ -394,8 +398,9 @@ const (
 // 输出结果为Bool类型的值
 // TODO: Value格式检查和调整，比如存在空格的情况
 type ConditionFormula struct {
-	LeftValue  Value `json:"left_value,omitempty" yaml:"left_value"`
-	RightValue Value `json:"right_value,omitempty" yaml:"right_value"`
+	ConditionType conditionType `json:"condition_type,omitempty" yaml:"condition_type"`
+	LeftValue     Value         `json:"left_value,omitempty" yaml:"left_value"`
+	RightValue    Value         `json:"right_value,omitempty" yaml:"right_value"`
 	// == 或 !=
 	Signal SignalType `json:"signal,omitempty" yaml:"signal"`
 	// 在条件串中的期望结果
@@ -1070,6 +1075,7 @@ type SceneStatus struct {
 	Lock Lock `json:"lock,omitempty" yaml:"lock"`
 }
 type DataSpec struct {
+	Name string `json:"name,omitempty" yaml:"name"`
 	// 对于文件类型的Data
 	// 文件格式
 	// 文件大小
@@ -1165,6 +1171,8 @@ type RuntimeSpec struct {
 	// 环境变量
 	// +Optional
 	EnvVar []EnvVar `json:"env_var,omitempty" yaml:"env_var"`
+	// 运行时的工作目录，拉起任务前创建并填入
+	Directory string `json:"directory,omitempty" yaml:"directory"`
 
 	// Runtime条件
 	// +Optional
@@ -1173,6 +1181,7 @@ type RuntimeSpec struct {
 	// 需要的数据
 	// 输入数据
 	// 	输入数据作为参数注入到命令参数中
+	// 这个数据的检查放在数据依赖里了，保证input里面的内容在DataDependency里有即可，依赖检查成功时可以直接作为参数访问到
 	Inputs []Value `json:"inputs,omitempty" yaml:"inputs"`
 
 	// 输出数据
@@ -1200,10 +1209,13 @@ const (
 	ResultsData DataType = "results"
 	LocalData   DataType = "local"
 	DeviceData  DataType = "device"
+	FileData    DataType = "file"
 )
 
 // 值类型，表示数据使用
 type Value struct {
+	NameSpace string `json:"namespace,omitempty" yaml:"namespace"`
+
 	// 类型
 	Type DataType `json:"type,omitempty" yaml:"type"`
 
@@ -1285,8 +1297,10 @@ type RuntimeStatus struct {
 	FinishAt *Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
+
 	//增加一个参数0hzy
 	Waiting            bool   `json:"waiting,omitempty" yaml:"waiting"`
+	Starting           bool   `json:"starting,omitempty" yaml:"starting"`
 	Initing            bool   `json:"initing,omitempty" yaml:"initing"`
 	KeyStatus          string `json:"key_status,omitempty" yaml:"key_status"`
 	CopyStatus         string `json:"copy_status,omitempty" yaml:"copy_status"`
@@ -1709,4 +1723,9 @@ const (
 	DataDependency     conditionType = "DataDependency"
 	ResourceDependency conditionType = "ResourceDependency"
 	ProgramDependency  conditionType = "ProgramDependency"
+)
+
+const (
+	// 文件的存储位置,暂时位于 adaptive-scheduling-framework/test/tmp/data
+	FileFolder  string = "../tmp/data"
 )

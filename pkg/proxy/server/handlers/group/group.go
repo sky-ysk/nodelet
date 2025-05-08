@@ -131,16 +131,34 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
-	// 创建group
-	result, err := h.manager.CreateGroup(ew.Spec, nil, namespace, UUID, "")
-	if err != nil {
-		err1 := response.WriteError(http.StatusInternalServerError, err)
-		if err1 != nil {
-			logs.Errorf("failed to return a status code ,error: %v", err1)
+	var result *apis.Group
+
+	// 创建group without label
+	if ew.Labels == nil {
+		// 创建group
+		result, err = h.manager.CreateGroup(ew.Spec, nil, namespace, UUID, "")
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create group fail ,failed write it to database , error: %v", err)
 			return
 		}
-		logs.Errorf("Create group fail ,failed write it to database , error: %v", err)
-		return
+	} else {
+		// 创建group with label
+		result, err = h.manager.CreateGroupWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create group  with label  fail ,failed write it to database , error: %v", err)
+			return
+		}
+
 	}
 
 	// 返回结果
@@ -160,7 +178,7 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 		return
 	}
 
-	logs.Debugf("Create group %v unsupport", result)
+	logs.Debugf("Create group %v ", result)
 }
 
 func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.Response) {

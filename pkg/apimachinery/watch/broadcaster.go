@@ -275,7 +275,7 @@ func (m *Broadcaster) loop() {
 
 // distribute sends event to all watchers. Blocking.
 func (m *Broadcaster) distribute(event Event) {
-	// logs.Info("broadcaster在事件队列incoming中发现新event，将其分发给监听的watcher")
+	logs.Trace("broadcaster在incoming队列中发现新event,将其分发到watcher")
 	if m.fullChannelBehavior == DropIfChannelFull {
 		for _, w := range m.watchers {
 			select {

@@ -90,6 +90,87 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	return fg, nil
 }
 
+// 创建带有label的Group
+func (m *Manager) CreateGroupWithLabels(gs apis.GroupSpec, t *apis.Task, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Group, error) {
+	// 临时创建一个Group对象
+	g := apis.Group{}
+	// 构造名称
+	if t != nil {
+		g.Name = prefix + gs.Name + "-" + uuid
+		prefix = prefix + gs.Name + "."
+	} else {
+		g.Name = gs.Name + "-" + uuid
+		prefix = gs.Name + "."
+	}
+
+	// 构造Namespace
+	if namespace == "" {
+		g.Namespace = apis.NamespaceDefault
+	} else {
+		g.Namespace = namespace
+	}
+
+	g.Kind = "Group"
+	g.APIVersion = "resources/v1"
+
+	// 构造Labels
+	g.Labels = labels
+
+	// 复制Spec
+	g.Spec = gs
+
+	// 构造Status
+	g.Status = apis.GroupStatus{}
+
+	// 记录Create时间
+	g.Status.CreateAt = &apis.Time{Time: time.Now()}
+
+	// 初始化状态
+	g.Status.Phase = apis.Unknown
+	g.Status.Actions = map[string]apis.ObjectReference{}
+
+	// 打上Label, 当前任务属于哪个Group和uuid域
+	if t != nil {
+		g.Status.Belong = &apis.ObjectReference{
+			Name:            t.Name,
+			Namespace:       t.Namespace,
+			Kind:            t.Kind,
+			ResourceVersion: t.ResourceVersion,
+			UID:             apis.UID(uuid),
+		}
+		g.Labels["belong"] = t.Name
+	}
+	g.Labels["uuid"] = uuid
+
+	// 根据Spec创建Actions
+	actions, err := m.CreateActions(&g, namespace, uuid, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据生成的Runtime修改Group.Status.Actions
+	for _, r := range actions {
+		g.Status.Actions[r.Spec.Name] = apis.ObjectReference{
+			Name:            r.Name,
+			Namespace:       r.Namespace,
+			Kind:            r.Kind,
+			ResourceVersion: r.ResourceVersion,
+			UID:             apis.UID(r.UID),
+		}
+	}
+	// 写入Client-Go中, 返回实际的Runtime
+	c := m.GetGroupClient(g.Namespace)
+
+	fg, err := c.Client.Create(context.TODO(), &g, metav1.CreateOptions{})
+	if err != nil {
+		logs.Errorf("Failed to create group: %v", err)
+		return nil, err
+	}
+
+	logs.Debugf("Created group: %v", fg)
+	return fg, nil
+}
+
 // 填充Group的Actions
 func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 	// 根据当前Group的Name来获取Prefix
@@ -164,7 +245,7 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	g.Status.CreateAt = &apis.Time{time.Now()}
 
 	// 初始化状态
-	g.Status.Phase = apis.Pending
+	g.Status.Phase = apis.Unknown
 	g.Status.Actions = map[string]apis.ObjectReference{}
 
 	// 打上Label, 当前任务属于哪个Group和uuid域
@@ -233,6 +314,28 @@ func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
 	return g, nil
 }
 
+// 根据Label查询Groups
+func (m *Manager) FilterGroups(namespace string, labelSelector string) (*apis.GroupList, error) {
+	//labelSelector := ""
+	//for i, l := range label {
+	//	if i == 0 {
+	//		labelSelector = l
+	//	} else {
+	//		labelSelector += "," + l
+	//	}
+	//}
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
+	c := m.GetGroupClient(namespace)
+	d, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		return nil, err
+	}
+	return d, nil
+}
 func (m *Manager) UpdateGroup(name string, namespace string, a *apis.Group) (*apis.Group, error) {
 	c := m.GetGroupClient(namespace)
 

@@ -2,9 +2,13 @@ package runtime
 
 import (
 	"fmt"
+	"sync"
+
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
+	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device"
 	"hit.edu/framework/pkg/utils/value"
 	"sync"
@@ -40,10 +44,11 @@ type RuntimeManager struct {
 	mu             sync.Mutex
 	pool           *pool.ConnectionPool
 	engine         *value.Engine
+	NodeName       string
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, engine *value.Engine) *RuntimeManager {
 
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, nodeName string, engine *value.Engine) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
@@ -54,6 +59,7 @@ func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, 
 		clientsManager: clientsManager,
 		engine:         engine,
 		pool:           pool.NewConnectionPool(),
+		NodeName:       nodeName,
 	}
 }
 
@@ -75,14 +81,14 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			break
 		case apis.ByK8s: //k8s-Pod\k8s-deployment\k8s-service
 			//TODO
-			//runtime = k8s.NewK8sRuntime(rm.eventbus, rm.recorder, rm.pool)
+			runtime = k8s.NewK8sRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool, rm.NodeName)
 			break
 		case apis.ByWasm:
 			//TODO
-			//runtime = wasm.NewWasmRuntime()
+			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus)
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.eventbus, rm.recorder, rm.pool)
+			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime()

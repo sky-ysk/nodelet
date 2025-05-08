@@ -119,8 +119,8 @@ func (p *PriorityQueue) AddToPending(ctx context.Context, group *apis.Group) {
 	defer p.lock.Unlock()
 	gInfo := p.newQueuedGroupInfo(group)
 	if added := p.moveToPendingQ(ctx, gInfo); added {
-		msg := fmt.Sprintf("group %s now in pending queue", gInfo.Group.ObjectMeta.Name)
-		logs.Info(msg)
+		//msg := fmt.Sprintf("group %s now in pending queue", gInfo.Group.ObjectMeta.Name)
+		//logs.Info(msg)
 		p.readyQ.broadcast()
 	}
 }
@@ -137,7 +137,7 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 	removeGroupss := make([]*config.QueuedGroupInfo, 0)
 	//logs.Debug("now run the flush method")
 	//fmt.Println("now run the flush method")
-	for k, v := range p.pendingQueue.groupInfoMap {
+	for _, v := range p.pendingQueue.groupInfoMap {
 		readyRes, err := p.checkGroupReady(ctx, v)
 		if err != nil {
 			logs.Error(err.Error())
@@ -147,17 +147,16 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 			removeGroupss = append(removeGroupss, v)
 			p.moveToActiveQ(ctx, v)
 			p.readyQ.cond.Signal()
-			logs.Infof("group %s is ready , move to active queue", k)
-		} else if readyRes == apis.False {
-			removeGroupss = append(removeGroupss, v)
-			logs.Infof("group %s condition is false, group will be removed", k)
+			//msg := fmt.Sprintf("group %s is ready , move to active queue", k)
+			//fmt.Println(msg)
+			//logs.Info(msg)
 		}
 	}
 	for _, group := range removeGroupss {
 		p.pendingQueue.underLockDelete(group)
-		msg := fmt.Sprintf("group %s is removed from pending queue", group.Group.Spec.Name)
-		fmt.Println(msg)
-		logs.Info(msg)
+		//msg := fmt.Sprintf("group %s is removed from pending queue", group.Group.Name)
+		//fmt.Println(msg)
+		//logs.Info(msg)
 	}
 }
 
@@ -178,16 +177,8 @@ func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.Queue
 			return apis.False, err
 		}
 
-		//TODO 特判逻辑 后续移出
-
-		if parentValue.Value == string(apis.Successed) {
-			logs.Infof("parent group is succeess %s, Phase : %s, dont need child", par, parentValue.Value)
-			return apis.False, nil
-		} else if parentValue.Value == string(apis.Failed) {
-			logs.Infof("parent group is fail %s, Phase : %s, need child", par, parentValue.Value)
-			return apis.True, nil
-		} else {
-			logs.Infof("parent group  %s is notready, Phase : %s,  n", par, parentValue)
+		if parentValue.Value != string(apis.Successed) {
+			//logs.Infof("parent group is not ready %s, Phase : %s", par, parentValue.Value)
 			return apis.NotReady, nil
 		}
 

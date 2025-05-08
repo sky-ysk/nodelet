@@ -2,66 +2,62 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
+	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
 	"os"
 	"time"
 )
+
+// 适配从debian1 迁移到 ubuntu2
+// 修改1：
+// 调度器代码: 触发debian1资源不足事件,从Debian1迁移到ubuntu2
+//if strings.Contains(group.ObjectMeta.Name, "G1") {
+//host = "debian1"
+//}
+//if strings.Contains(group.ObjectMeta.Name, "copy") {
+//host = "ubuntu2"
+//}
+//if strings.Contains(group.ObjectMeta.Name, "G2") {
+//host = "ubuntu2"
+//}
+// 修改2：调度器关闭score插件
+// 修改3：const NodeName = "debian1"
+
+var scheme = runtime.NewScheme()
+
+const NodeName = "debian1"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
 func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
-	scheme := runtime.NewScheme()
-	apis.AddToScheme(scheme)
-	logs.Info(scheme)
-	//参数配置
-	// TODO: 填写参数
-	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
-	c := &rest.Config{
-		Host:    "http://localhost:10000", //http://suda801.wangwanu.com:11006
-		APIPath: "/apis/resources/v1",
-		ContentConfig: rest.ContentConfig{
-			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
-			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
-			GroupVersion: &schema.GroupVersion{
-				Group:   "resources",
-				Version: "v1",
-			},
-			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
-		},
-		UserAgent: "defaultUserAgent",
-		Transport: &http.Transport{
-			MaxIdleConns:        100,              // 最大空闲连接数
-			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
-			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
-		},
-		Timeout: 10 * time.Second,
-	}
 
 	//创建ClientSet
-	clientSet, err := clients.NewForConfig(c)
-	if err != nil {
-		panic(err)
-	}
+	clientSet := initClientSet(scheme)
 
+	eventclient := clientSet.Core().Events("test")
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{0, 0}
+	group1_1Replicas := []int32{0, 1}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -69,16 +65,18 @@ func main() {
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
-	runtime1_1_1_1FineGrainedControl := false
+	runtime1_1_1_1FineGrainedControl := true
+	runtime1_1_1_1FineGrainedControlPort := "5123"
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
+			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -119,14 +117,15 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                     runtime1_1_1_1Name,
-						Type:                     apis.ByCommand,
-						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/workspace/heongtong_yolo_linux/train.py"}, //20s
-						Parents:                  make([]string, 0),                                                // 加入Parents
-						Conditions:               &runtime1_1_1_1Condition,
-						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
+						Name:                         runtime1_1_1_1Name,
+						Type:                         apis.ByCommand,
+						Command:                      []string{"python"},
+						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s
+						Parents:                      make([]string, 0),                                                // 加入Parents
+						Conditions:                   &runtime1_1_1_1Condition,
+						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
+						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
+						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
 					},
 				},
 			},
@@ -151,11 +150,16 @@ func main() {
 		return
 	}
 	fmt.Println(str)
+
+	prompt()
+	postEventForMigrate(eventclient)
+	prompt()
+
 }
 
 // From K8s
 func prompt() {
-	fmt.Printf("-> Press Return key to continue.")
+	fmt.Printf("-> Press Return key to continue.发送一个迁移事件")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		break
@@ -186,4 +190,54 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 		Join:   "",
 		Result: apis.False,
 	}
+}
+
+var node = &apis.Node{
+	ObjectMeta: meta.ObjectMeta{Name: NodeName, Namespace: "test"},
+	TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "resources/v1"},
+	Spec:       apis.NodeSpec{NodeName: NodeName},
+}
+
+func postEventForMigrate(client core.EventInterface) {
+	// 这些配置实际在组件初始化时就已经完成
+	ctx := context.Background()
+	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
+	defer eventBroadcaster.Shutdown()
+	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: client})
+	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
+
+	// 通过 recorder.Event或 recorder.Eventf可以生成事件
+	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
+	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
+}
+
+func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
+	apis.AddToScheme(scheme)
+	logs.Info(scheme)
+	// 创建ClientSet
+	c := &rest.Config{
+		Host:    "http://127.0.0.1:10000",
+		APIPath: "/apis/resources/v1",
+		ContentConfig: rest.ContentConfig{
+			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
+			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
+			GroupVersion: &schema.GroupVersion{
+				Group:   "resources",
+				Version: "v1",
+			},
+			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
+		},
+		UserAgent: "defaultUserAgent",
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
+		},
+		Timeout: 10 * time.Second,
+	}
+	clientSet, err := clients.NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+	return clientSet
 }
