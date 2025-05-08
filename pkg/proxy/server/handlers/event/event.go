@@ -221,7 +221,7 @@ func (h *EventHandler) CreateEvent(request *restful.Request, response *restful.R
 			logs.Errorf("failed to return a status code")
 			return
 		}
-		// return
+		return
 	}
 
 	// TODO：为Event分配ID

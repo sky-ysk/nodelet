@@ -37,6 +37,9 @@ const NodeName = "debian1"
 // if strings.Contains(group.ObjectMeta.Name, "copy") {
 // host = "ubuntu2"
 // }
+// if strings.Contains(group.ObjectMeta.Name, "G2") {
+// host = "ubuntu2"
+// }
 // 修改2：调度器关闭score插件
 // 修改3：const NodeName = "debian1"
 func main() {

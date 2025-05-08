@@ -32,6 +32,9 @@ import (
 //if strings.Contains(group.ObjectMeta.Name, "copy") {
 //host = "ubuntu2"
 //}
+//if strings.Contains(group.ObjectMeta.Name, "G2") {
+//host = "ubuntu2"
+//}
 // 修改2：调度器关闭score插件
 // 修改3：const NodeName = "debian1"
 
@@ -54,7 +57,7 @@ func main() {
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{1, 0}
+	group1_1Replicas := []int32{0, 1}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -67,6 +70,7 @@ func main() {
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
 			Name:      "ProgramDependency",

@@ -15,7 +15,6 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
-	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
@@ -167,19 +166,19 @@ func main() {
 			gs1, gs2,
 		},
 	}
+	m := manager.NewManager(clientSet)
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
-	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	_, err := m.CreateTask(ts, nil, "test", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	str, err := analyzer.SerializeToJson(task)
-	if err != nil {
-		return
-	}
-	fmt.Println(str)
-
+	logs.Info("Create task successfully======")
+	//str, err := analyzer.SerializeToJson(task)
+	//if err != nil {
+	//	return
+	//}
+	//fmt.Println(str)
 	prompt()
 	postEventForMigrate(eventclient)
 	prompt()
@@ -214,6 +213,7 @@ func postEventForMigrate(client core.EventInterface) {
 	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
+	time.Sleep(10 * time.Millisecond)
 	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("Node Name:\t %s is shortage", node.Name), "")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }

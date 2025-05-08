@@ -124,16 +124,31 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	UUID := timestamp + "-" + randomStr
 	logs.Debugf("Create workflow  success, workflow id : %s ", UUID)
 
-	// 创建Workflow
-	result, err := h.manager.CreateWorkflow(ew.Spec, namespace, UUID)
-	if err != nil {
-		err1 := response.WriteError(http.StatusInternalServerError, err)
-		if err1 != nil {
-			logs.Errorf("failed to return a status code ,error: %v", err1)
+	var result *apis.Workflow
+	if ew.Labels == nil {
+		// 创建Workflow without labels
+		result, err = h.manager.CreateWorkflow(ew.Spec, namespace, UUID)
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create workflow fail ,failed write it to database , error: %v", err)
 			return
 		}
-		logs.Errorf("Create workflow fail ,failed write it to database , error: %v", err)
-		return
+	} else {
+		// 创建Workflow with labels
+		result, err = h.manager.CreateWorkflowWithLabels(ew.Spec, namespace, UUID, ew.Labels)
+		if err != nil {
+			err1 := response.WriteError(http.StatusInternalServerError, err)
+			if err1 != nil {
+				logs.Errorf("failed to return a status code ,error: %v", err1)
+				return
+			}
+			logs.Errorf("Create workflow with labels fail ,failed write it to database , error: %v", err)
+			return
+		}
 	}
 
 	// 返回结果
@@ -321,7 +336,7 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 		}
 	}
 
-	patchedWorkflow, err := h.manager.PatchWorkflow(namespace, name, patchWorkflow)
+	patchedWorkflow, err := h.manager.PatchWorkflow(namespace, name, []byte(patchWorkflow))
 	if err != nil {
 		logs.Error(err)
 		err := response.WriteError(http.StatusInternalServerError, err)

@@ -15,7 +15,6 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
-	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
@@ -136,18 +135,14 @@ func main() {
 		},
 	}
 	// 生成UUID
-	u := uuid.Must(uuid.NewV7())
 	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	u := uuid.Must(uuid.NewV7())
+	_, err := m.CreateTask(ts, nil, "test", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	str, err := analyzer.SerializeToJson(task)
-	if err != nil {
-		return
-	}
-	fmt.Println(str)
 
+	logs.Info("下发一个任务======")
 	prompt()
 	postEventForMigrate(eventclient)
 	prompt()
@@ -174,6 +169,7 @@ var node = &apis.Node{
 }
 
 func postEventForMigrate(client core.EventInterface) {
+	logs.Info("发送跨域迁移事件======")
 	// 这些配置实际在组件初始化时就已经完成
 	ctx := context.Background()
 	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
@@ -182,6 +178,7 @@ func postEventForMigrate(client core.EventInterface) {
 	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
+	time.Sleep(10 * time.Millisecond)
 	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }

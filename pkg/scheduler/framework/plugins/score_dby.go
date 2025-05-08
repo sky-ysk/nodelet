@@ -26,6 +26,7 @@ type ScorePluginDBY struct {
 	pluginClient ScorePluginClient
 	clientSet    *clients.ClientSet
 	taskClient   core.TaskInterface
+	nodeClient   core.NodeInterface
 	valueEngine  *value.Engine
 	r            *rand.Rand
 }
@@ -129,8 +130,7 @@ func (sp *ScorePluginDBY) Name() string {
 //}
 
 func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
-	//TODO 没测过
-	//logs.Infof("use DTS plugin to generate a score on %s", nodeName)
+	logs.Infof("use DTS plugin to generate a score on %s", nodeName)
 	taskName := group.Status.Belong.Name
 	randScore := int64(sp.r.Intn(3))
 	request := transport.ScoreRequest{
@@ -153,6 +153,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Error(err.Error())
 		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
+	//logs.Infof("first time raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
 		logs.Error(err.Error())
@@ -163,7 +164,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		return resp.Score, framework.NewStatus(framework.Success, "")
 	}
 
-	//理论上第二次才能收到分数
+	//理论上第二次才能收到分数 --5.7更新 理论上100%的请求在第二次发送拿到结果
 	time.Sleep(8 * time.Second)
 	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
@@ -177,10 +178,11 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	}
 	logs.Infof("raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
 	if resp.GroupID == group.ObjectMeta.Name {
+		logs.Infof("score by dts is %d ,\n group : %s, node %s\"", resp.Score, group.Name, nodeName)
 		return resp.Score, framework.NewStatus(framework.Success, "")
 	}
 
-	//大约20%的请求会走到这里
+	//大约20%的请求会走到这里 -- 5.7更新 ： DTS插件已修复，理论上不会有任何请求走到这里
 	logs.Warnf("group %s get schedule fail, node %s", group.Name, nodeName)
 	for {
 		time.Sleep(5 * time.Second)
@@ -189,6 +191,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 			logs.Error(err.Error())
 			return randScore, framework.NewStatus(framework.Error, err.Error())
 		}
+		logs.Infof("loop raw result given by dts is %s ,\n group : %s, node %s\"", string(data), group.Name, nodeName)
 		err = json.Unmarshal(data, &resp)
 		if err != nil {
 			logs.Error(err.Error())
@@ -242,12 +245,14 @@ func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugi
 		panic(err)
 	}
 
-	tc := cs.Core().Tasks("test")
+	tc := cs.Core().Tasks(apis.NamespaceTest)
+	nc := cs.Core().Nodes(apis.NamespaceTest)
 	return &ScorePluginDBY{
 		clientSet:    cs,
 		taskClient:   tc,
 		pluginClient: NewScorePluginClient(),
 		r:            rand.New(rand.NewSource(time.Now().UnixNano())),
+		nodeClient:   nc,
 	}, nil
 }
 
