@@ -185,6 +185,13 @@ func (sched *Scheduler) bindingCycle(
 	//TODO @linbohai 资源预留
 
 	status := fwk.RunBindPlugins(ctx, state, scheduleResult.Group, scheduleResult.SuggestedHost)
+
+	//TODO 绑定失败说明下层资源加锁失败，放弃调度，把Group重新Pending队列（后续可以放回Backoff队列）
+	if status.IsRejected() {
+		logs.Warnf("Node %s binding fail, Group : %s, Reason %s", scheduleResult.SuggestedHost,
+			scheduleResult.Group.Name, status.Message())
+		sched.SchedulingQueue.Add(ctx, scheduleResult.Group)
+	}
 	// {
 	// 	return status
 	// }
