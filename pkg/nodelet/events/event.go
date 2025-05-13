@@ -122,4 +122,5 @@ const (
 	SelectOtherDomain      = "SelectDomain"
 	GroupRunError          = "GroupRunError"
 	ScheduledToOtherDomain = "ScheduledToOtherDomain"
+	ExecuteDiscard         = "ExecuteDiscard"
 )
