@@ -328,6 +328,7 @@ const (
 	ReadyToKill   Phase = "ReadyToKill"
 	Killed        Phase = "Killed"
 	Terminated    Phase = "Terminated"
+	Discard       Phase = "Discard"
 	// 迁移相关状态
 	CopyPending Phase = "CopyPending" //副本就绪状态-B
 	Restoring   Phase = "Restoring"   //副本恢复任务状态-B
@@ -1720,5 +1721,5 @@ const (
 
 const (
 	// 文件的存储位置,暂时位于项目目录同级的tmp/data目录下
-	FileFolder  string = "../tmp/data"
+	FileFolder string = "../tmp/data"
 )

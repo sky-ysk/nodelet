@@ -1245,7 +1245,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 // 注意：新增逻辑：如果是副本任务，那么这块对于Task状态的修改，直接跳过
 // EndUpdate方法：一个runtime的状态为Failed，则上层Action的状态为Failed，如果说一个runtime的状态为Successed，则上层的的Action状态还不一定是Successed
 // TODO 有一个问题，比如一个group的Phase为Migrated，还得查group的副本的状态是否为succeed（目前只适配了本域迁移）
-// 收到的Phase为：Successed or Failed or Unknown（Failed、Migrated）,Killed(新增)
+// 收到的Phase为：Successed or Failed or Unknown（Failed、Migrated）,Killed(新增)，Discard（新增） 丢弃状态只针对于Runtime和Action
 // 处理Runtime运行时结束,如果runtime是最后一个执行完成的，还得同时标记action的phase   总结：所有临时变量赋值时都得使用&
 func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEvent1) {
 	logs.Info("Handling runtime end status update")
@@ -1285,7 +1285,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 	var task *apis.Task
 	var action *apis.Action
 	var runtime *apis.Runtime
-	for aSpecName, actionReference := range groupStatus.Actions { // 预先锁定action和Runtime
+	for aSpecName, actionReference := range groupStatus.Actions { // 预先锁定当前的action和当前的Runtime
 		if aSpecName != actionSpecName { // 判断是否是当前处理的Action
 			continue // 不是的话跳过
 		}
@@ -1471,7 +1471,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		groupStatus.FinishAt = &finshTime
 		groupStatus.LastTime = &lastTime
 		if !finalGroupIsKilled && !finalGroupIsFailed {
-			groupStatus.Phase = phase //Group的状态等于当前Action执行完成的状态  Succeed
+			groupStatus.Phase = apis.Successed //Group的状态等于当前Action执行完成的状态  Succeed
 			gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
 		}
 		nowGroupCompleted = true
