@@ -61,10 +61,10 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 		return
 	}
 
-	result, err := h.manager.GetTask(name, namespace)
+	result, code, err := h.manager.GetTask(name, namespace)
 	if err != nil {
 		logs.Errorf("Get task %s error: %v , task not exist! ", name, err)
-		err := response.WriteError(http.StatusNotFound, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -133,13 +133,14 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 	UUID := timestamp + "-" + randomStr
 
 	var result *apis.Task
+	var code int
 
 	// 查看是否创建自定义的labels , 不创建自定义label
 	if et.Labels == nil {
 		// 将 Task写入数据库中
-		result, err = h.manager.CreateTask(et.Spec, nil, namespace, UUID, "")
+		result, code, err = h.manager.CreateTask(et.Spec, nil, namespace, UUID, "")
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error : %v ", err1)
 				return
@@ -149,9 +150,9 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 		}
 	} else {
 		// 创建自定义label
-		result, err = h.manager.CreateTaskWithLabels(et.Spec, nil, namespace, UUID, "", et.Labels)
+		result, code, err = h.manager.CreateTaskWithLabels(et.Spec, nil, namespace, UUID, "", et.Labels)
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error : %v ", err1)
 				return
@@ -246,10 +247,10 @@ func (h *TaskHandler) DeleteTask(request *restful.Request, response *restful.Res
 	}
 
 	// 删除task
-	err := h.manager.DeleteTask(name, namespace)
+	code, err := h.manager.DeleteTask(name, namespace)
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
@@ -311,10 +312,10 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 	}
 
 	// 更新task
-	updatedTask, updateErr := h.manager.UpdateTask(name, namespace, ew)
+	updatedTask, code, updateErr := h.manager.UpdateTask(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update task %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -383,10 +384,10 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 		}
 	}
 
-	patchedTask, err := h.manager.PatchTask(namespace, name, []byte(patchTask))
+	patchedTask, code, err := h.manager.PatchTask(namespace, name, []byte(patchTask))
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return

@@ -6,11 +6,12 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"net/http"
 	"time"
 )
 
 // 创建带有label的task
-func (m *Manager) CreateRuntimeWithLabels(rs apis.RuntimeSpec, a *apis.Action, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Runtime, error) {
+func (m *Manager) CreateRuntimeWithLabels(rs apis.RuntimeSpec, a *apis.Action, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Runtime, int, error) {
 	// 临时创建一个Runtime对象
 	r := apis.Runtime{}
 
@@ -69,30 +70,30 @@ func (m *Manager) CreateRuntimeWithLabels(rs apis.RuntimeSpec, a *apis.Action, n
 	fr, err := c.Client.Create(context.TODO(), &r, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create runtime: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 	logs.Debugf("Created runtime: %v", fr)
 
 	//
-	return fr, nil
+	return fr, http.StatusOK, nil
 }
 
 // CreateRuntimes 根据ActionSpec创建Runtime
-func (m *Manager) CreateRuntimes(a *apis.Action, namespace string, uuid string, prefix string) ([]*apis.Runtime, error) {
+func (m *Manager) CreateRuntimes(a *apis.Action, namespace string, uuid string, prefix string) ([]*apis.Runtime, int, error) {
 	var runtimes []*apis.Runtime
 	// 遍历所有的Runtime Spec
 	for _, rs := range a.Spec.Runtimes {
-		r, err := m.CreateRuntime(rs, a, namespace, uuid, prefix)
+		r, code, err := m.CreateRuntime(rs, a, namespace, uuid, prefix)
 		if err != nil {
-			return nil, err
+			return nil, code, err
 		}
 		runtimes = append(runtimes, r)
 	}
-	return runtimes, nil
+	return runtimes, http.StatusOK, nil
 }
 
 // CreateRuntime 创建单个Runtime
-func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace string, uuid string, prefix string) (*apis.Runtime, error) {
+func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace string, uuid string, prefix string) (*apis.Runtime, int, error) {
 	// 临时创建一个Runtime对象
 	r := apis.Runtime{}
 
@@ -151,105 +152,105 @@ func (m *Manager) CreateRuntime(rs apis.RuntimeSpec, a *apis.Action, namespace s
 	fr, err := c.Client.Create(context.TODO(), &r, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create runtime: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 	logs.Debugf("Created runtime: %v", fr)
 
 	//
-	return fr, nil
+	return fr, http.StatusOK, nil
 }
 
-func (m *Manager) GetRuntime(name string, namespace string) (*apis.Runtime, error) {
+func (m *Manager) GetRuntime(name string, namespace string) (*apis.Runtime, int, error) {
 	c := m.GetRuntimeClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get runtime: %v", err)
-		return nil, err
+		return nil, http.StatusNotFound, err
 	}
 
 	//
 	logs.Debugf("Get runtime: %v", a)
-	return a, nil
+	return a, http.StatusOK, nil
 }
 
-func (m *Manager) GetRuntimes(namespace string) (*apis.RuntimeList, error) {
+func (m *Manager) GetRuntimes(namespace string) (*apis.RuntimeList, int, error) {
 	c := m.GetRuntimeClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get runtime: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Get runtimes success.")
-	return g, nil
+	return g, http.StatusOK, nil
 }
 
-func (m *Manager) UpdateRuntime(name string, namespace string, a *apis.Runtime) (*apis.Runtime, error) {
+func (m *Manager) UpdateRuntime(name string, namespace string, a *apis.Runtime) (*apis.Runtime, int, error) {
 	c := m.GetRuntimeClient(namespace)
 
 	// 检查runtime是否存在
-	_, err := m.GetRuntime(name, namespace)
+	_, code, err := m.GetRuntime(name, namespace)
 	if err != nil {
 		logs.Errorf("Get runtime %s error: %v , runtime not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 存在更新runtime
 	updatedRuntime, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update runtime %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, http.StatusInternalServerError, updateErr
 	}
 
 	logs.Debugf("Update runtime: %v", updatedRuntime)
-	return updatedRuntime, nil
+	return updatedRuntime, http.StatusOK, nil
 
 }
 
-func (m *Manager) PatchRuntime(name string, namespace string, patchRuntime []byte) (*apis.Runtime, error) {
+func (m *Manager) PatchRuntime(name string, namespace string, patchRuntime []byte) (*apis.Runtime, int, error) {
 	c := m.GetRuntimeClient(namespace)
 
 	// 检查runtime是否存在
-	_, err := m.GetRuntime(name, namespace)
+	_, code, err := m.GetRuntime(name, namespace)
 	if err != nil {
 		logs.Errorf("Get runtime %s error: %v , runtime not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 部分更新runtime
 	patchedRuntime, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchRuntime, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch runtime %s error: %v", name, err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Patch runtime: %v", patchedRuntime)
-	return patchedRuntime, nil
+	return patchedRuntime, http.StatusOK, nil
 }
 
-func (m *Manager) DeleteRuntime(name string, namespace string) error {
+func (m *Manager) DeleteRuntime(name string, namespace string) (int, error) {
 	c := m.GetRuntimeClient(namespace)
 
 	// 检查runtime是否存在
-	_, err := m.GetRuntime(name, namespace)
+	_, code, err := m.GetRuntime(name, namespace)
 	if err != nil {
 		logs.Errorf("get runtime %s error: %v , runtime not exist ", name, err)
-		return err
+		return code, err
 	}
 
 	// 存在，删除
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("delete runtime %s error: %v", name, err)
-		return err
+		return http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Delete runtime: %v", name)
-	return nil
+	return http.StatusOK, nil
 }
 
 // 根据Label查询Runtimes
-func (m *Manager) FilterRuntimes(namespace string, labelSelector string) (*apis.RuntimeList, error) {
+func (m *Manager) FilterRuntimes(namespace string, labelSelector string) (*apis.RuntimeList, int, error) {
 	//labelSelector := ""
 	//for i, l := range label {
 	//	if i == 0 {
@@ -266,7 +267,7 @@ func (m *Manager) FilterRuntimes(namespace string, labelSelector string) (*apis.
 	c := m.GetRuntimeClient(namespace)
 	d, err := c.Client.List(context.TODO(), listOptions)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
-	return d, nil
+	return d, http.StatusOK, nil
 }

@@ -61,10 +61,10 @@ func (h *ActionHandler) GetAction(request *restful.Request, response *restful.Re
 		return
 	}
 
-	result, err := h.manager.GetAction(name, namespace)
+	result, code, err := h.manager.GetAction(name, namespace)
 	if err != nil {
 		logs.Errorf("Get action %s error: %v , action not exist! ", name, err)
-		err := response.WriteError(http.StatusNotFound, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -132,12 +132,13 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 	UUID := timestamp + "-" + randomStr
 
 	var result *apis.Action
+	var code int
 
 	// 创建action without labels
 	if ew.Labels == nil {
-		result, err = h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
+		result, code, err = h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error: %v", err1)
 				return
@@ -147,9 +148,9 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 		}
 	} else {
 		// 创建action with labels
-		result, err = h.manager.CreateActionWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+		result, code, err = h.manager.CreateActionWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error: %v", err1)
 				return
@@ -224,10 +225,10 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 	//}
 
 	// 更新action
-	updatedAction, updateErr := h.manager.UpdateAction(name, namespace, ew)
+	updatedAction, code, updateErr := h.manager.UpdateAction(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update action %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -277,10 +278,10 @@ func (h *ActionHandler) DeleteAction(request *restful.Request, response *restful
 	}
 
 	// 删除action
-	err := h.manager.DeleteAction(namespace, name)
+	code, err := h.manager.DeleteAction(namespace, name)
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
@@ -346,10 +347,10 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 		}
 	}
 
-	patchedAction, err := h.manager.PatchAction(namespace, name, []byte(patchAction))
+	patchedAction, code, err := h.manager.PatchAction(namespace, name, []byte(patchAction))
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return

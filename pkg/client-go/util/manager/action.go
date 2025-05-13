@@ -6,24 +6,25 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"net/http"
 	"time"
 )
 
 // 根据GroupSpec创建Action
-func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, prefix string) ([]*apis.Action, error) {
+func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, prefix string) ([]*apis.Action, int, error) {
 	var actions []*apis.Action
 	for _, as := range g.Spec.Actions {
-		a, err := m.CreateAction(as, g, namespace, uuid, prefix)
+		a, code, err := m.CreateAction(as, g, namespace, uuid, prefix)
 		if err != nil {
-			return nil, err
+			return nil, code, err
 		}
 		actions = append(actions, a)
 	}
-	return actions, nil
+	return actions, http.StatusOK, nil
 }
 
 // 创建带有label的Action
-func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Action, error) {
+func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Action, int, error) {
 	// 临时创建一个Action对象
 	a := apis.Action{}
 
@@ -78,9 +79,9 @@ func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, name
 	a.Labels["uuid"] = uuid
 
 	// 根据Spec创建Runtimes
-	runtimes, err := m.CreateRuntimes(&a, namespace, uuid, prefix)
+	runtimes, code, err := m.CreateRuntimes(&a, namespace, uuid, prefix)
 	if err != nil {
-		return nil, err
+		return nil, code, err
 	}
 
 	// 根据生成的Runtime修改Action.Status.Runtimes
@@ -100,15 +101,15 @@ func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, name
 	fa, err := c.Client.Create(context.TODO(), &a, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create action: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	//
 	logs.Debugf("Created action: %v", fa)
-	return fa, nil
+	return fa, http.StatusOK, nil
 }
 
-func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string) (*apis.Action, error) {
+func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string) (*apis.Action, int, error) {
 	// 临时创建一个Action对象
 	a := apis.Action{}
 
@@ -163,9 +164,9 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 	a.Labels["uuid"] = uuid
 
 	// 根据Spec创建Runtimes
-	runtimes, err := m.CreateRuntimes(&a, namespace, uuid, prefix)
+	runtimes, code, err := m.CreateRuntimes(&a, namespace, uuid, prefix)
 	if err != nil {
-		return nil, err
+		return nil, code, err
 	}
 
 	// 根据生成的Runtime修改Action.Status.Runtimes
@@ -185,42 +186,42 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 	fa, err := c.Client.Create(context.TODO(), &a, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create action: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	//
 	logs.Debugf("Created action: %v", fa)
-	return fa, nil
+	return fa, http.StatusOK, nil
 }
 
-func (m *Manager) GetAction(name string, namespace string) (*apis.Action, error) {
+func (m *Manager) GetAction(name string, namespace string) (*apis.Action, int, error) {
 	c := m.GetActionClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get action: %v", err)
-		return nil, err
+		return nil, http.StatusNotFound, err
 	}
 
 	//
 	logs.Debugf("Get action: %v", a)
-	return a, nil
+	return a, http.StatusOK, nil
 }
 
-func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
+func (m *Manager) GetActions(namespace string) (*apis.ActionList, int, error) {
 	c := m.GetActionClient(namespace)
 	a, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get actions: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	//
 	logs.Debugf("Get actions success.")
-	return a, nil
+	return a, http.StatusOK, nil
 }
 
 // 根据Label查询Actions
-func (m *Manager) FilterActions(namespace string, labelSelector string) (*apis.ActionList, error) {
+func (m *Manager) FilterActions(namespace string, labelSelector string) (*apis.ActionList, int, error) {
 	//labelSelector := ""
 	//for i, l := range label {
 	//	if i == 0 {
@@ -240,73 +241,73 @@ func (m *Manager) FilterActions(namespace string, labelSelector string) (*apis.A
 	d, err := c.Client.List(context.TODO(), listOptions)
 	if err != nil {
 		logs.Errorf("Failed to get actions with labelselector: %s , error %v ", labelSelector, err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 	logs.Infof("Get actionslist : %v", d)
 	logs.Infof("Get actions with label success.")
-	return d, nil
+	return d, http.StatusOK, nil
 }
 
-func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*apis.Action, error) {
+func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*apis.Action, int, error) {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
-	_, err := m.GetAction(name, namespace)
+	_, code, err := m.GetAction(name, namespace)
 	if err != nil {
 		logs.Errorf("Get action %s error: %v , action not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 存在更新action
 	updatedAction, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update action %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, http.StatusInternalServerError, updateErr
 	}
 
 	//
 	logs.Debugf("Update action: %v", updatedAction)
-	return updatedAction, nil
+	return updatedAction, http.StatusOK, nil
 
 }
 
-func (m *Manager) PatchAction(name string, namespace string, patchAction []byte) (*apis.Action, error) {
+func (m *Manager) PatchAction(name string, namespace string, patchAction []byte) (*apis.Action, int, error) {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
-	_, err := m.GetAction(name, namespace)
+	_, code, err := m.GetAction(name, namespace)
 	if err != nil {
 		logs.Errorf("Get action %s error: %v , action not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 部分更新action
 	patchedAction, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchAction, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch action %s error: %v", name, err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	//
 	logs.Debugf("patched action : %v ", patchedAction)
-	return patchedAction, nil
+	return patchedAction, http.StatusOK, nil
 }
 
-func (m *Manager) DeleteAction(name string, namespace string) error {
+func (m *Manager) DeleteAction(name string, namespace string) (int, error) {
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
-	action, err := m.GetAction(name, namespace)
+	action, code, err := m.GetAction(name, namespace)
 	if err != nil {
 		logs.Errorf("get action %s error: %v , action not exist ", name, err)
-		return err
+		return code, err
 	}
 
 	// 删除action里面的所有group
 	for _, v := range action.Status.Runtimes {
-		err := m.DeleteRuntime(v.Name, v.Namespace)
+		code, err := m.DeleteRuntime(v.Name, v.Namespace)
 		if err != nil {
-			return err
+			return code, err
 		}
 	}
 
@@ -314,10 +315,10 @@ func (m *Manager) DeleteAction(name string, namespace string) error {
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("delete action %s error: %v", name, err)
-		return err
+		return http.StatusInternalServerError, err
 	}
 
 	//
 	logs.Debugf("Delete action %v ", err)
-	return nil
+	return http.StatusOK, nil
 }

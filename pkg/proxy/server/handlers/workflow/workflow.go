@@ -63,7 +63,7 @@ func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restfu
 		return
 	}
 
-	result, err := h.manager.GetWorkflow(name, namespace)
+	result, _, err := h.manager.GetWorkflow(name, namespace)
 	if err != nil {
 		logs.Errorf("Get workflow %s error: %v , workflow not exist! ", name, err)
 		err := response.WriteError(http.StatusNotFound, err)
@@ -127,7 +127,7 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	var result *apis.Workflow
 	if ew.Labels == nil {
 		// 创建Workflow without labels
-		result, err = h.manager.CreateWorkflow(ew.Spec, namespace, UUID)
+		result, _, err = h.manager.CreateWorkflow(ew.Spec, namespace, UUID)
 		if err != nil {
 			err1 := response.WriteError(http.StatusInternalServerError, err)
 			if err1 != nil {
@@ -139,7 +139,7 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 		}
 	} else {
 		// 创建Workflow with labels
-		result, err = h.manager.CreateWorkflowWithLabels(ew.Spec, namespace, UUID, ew.Labels)
+		result, _, err = h.manager.CreateWorkflowWithLabels(ew.Spec, namespace, UUID, ew.Labels)
 		if err != nil {
 			err1 := response.WriteError(http.StatusInternalServerError, err)
 			if err1 != nil {
@@ -215,10 +215,10 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 	}
 
 	// 更新workflow
-	updatedWorkflow, updateErr := h.manager.UpdateWorkflow(name, namespace, ew)
+	updatedWorkflow, code, updateErr := h.manager.UpdateWorkflow(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update workflow %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -267,10 +267,10 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 	}
 
 	// 删除workflow
-	err := h.manager.DeleteWorkflow(name, namespace)
+	code, err := h.manager.DeleteWorkflow(name, namespace)
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
@@ -336,10 +336,10 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 		}
 	}
 
-	patchedWorkflow, err := h.manager.PatchWorkflow(namespace, name, []byte(patchWorkflow))
+	patchedWorkflow, code, err := h.manager.PatchWorkflow(namespace, name, []byte(patchWorkflow))
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return

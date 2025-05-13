@@ -6,24 +6,25 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"net/http"
 	"time"
 )
 
 // CreateTasks 根据TaskSpec创建Group
-func (m *Manager) CreateTasks(w *apis.Workflow, namespace string, uuid string, prefix string) ([]*apis.Task, error) {
+func (m *Manager) CreateTasks(w *apis.Workflow, namespace string, uuid string, prefix string) ([]*apis.Task, int, error) {
 	var groups []*apis.Task
 	for _, as := range w.Spec.Tasks {
-		a, err := m.CreateTask(as, w, namespace, uuid, prefix)
+		a, code, err := m.CreateTask(as, w, namespace, uuid, prefix)
 		if err != nil {
-			return nil, err
+			return nil, code, err
 		}
 		groups = append(groups, a)
 	}
 
-	return groups, nil
+	return groups, http.StatusOK, nil
 }
 
-func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string) (*apis.Task, error) {
+func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string) (*apis.Task, int, error) {
 	// 临时创建一个Task对象
 	t := apis.Task{}
 	// 构造名称
@@ -75,9 +76,9 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	t.Labels["uuid"] = uuid
 
 	// 根据Spec创建Runtimes
-	groups, err := m.CreateGroups(&t, namespace, uuid, prefix)
+	groups, code, err := m.CreateGroups(&t, namespace, uuid, prefix)
 	if err != nil {
-		return nil, err
+		return nil, code, err
 	}
 
 	// 根据生成的Runtime修改Task.Status.Groups
@@ -96,15 +97,15 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	ft, err := c.Client.Create(context.TODO(), &t, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Created task: %v", ft)
-	return ft, nil
+	return ft, http.StatusOK, nil
 }
 
 // 创建带有label的task
-func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Task, error) {
+func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Task, int, error) {
 	// 临时创建一个Task对象
 	t := apis.Task{}
 	// 构造名称
@@ -156,9 +157,9 @@ func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, names
 	t.Labels["uuid"] = uuid
 
 	// 根据Spec创建Runtimes
-	groups, err := m.CreateGroups(&t, namespace, uuid, prefix)
+	groups, code, err := m.CreateGroups(&t, namespace, uuid, prefix)
 	if err != nil {
-		return nil, err
+		return nil, code, err
 	}
 
 	// 根据生成的Runtime修改Task.Status.Groups
@@ -177,27 +178,27 @@ func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, names
 	ft, err := c.Client.Create(context.TODO(), &t, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create task: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Created task: %v", ft)
-	return ft, nil
+	return ft, http.StatusOK, nil
 }
 
-func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
+func (m *Manager) GetTask(name string, namespace string) (*apis.Task, int, error) {
 	c := m.GetTaskClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get task: %v", err)
-		return nil, err
+		return nil, http.StatusNotFound, err
 	}
 
 	logs.Debugf("Get task: %v", a)
-	return a, nil
+	return a, http.StatusOK, nil
 }
 
 // 根据Label查询Tasks
-func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.TaskList, error) {
+func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.TaskList, int, error) {
 	//labelSelector := ""
 	//for i, l := range label {
 	//	if i == 0 {
@@ -214,81 +215,81 @@ func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.Tas
 	c := m.GetTaskClient(namespace)
 	d, err := c.Client.List(context.TODO(), listOptions)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
-	return d, nil
+	return d, http.StatusOK, nil
 }
 
-func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
+func (m *Manager) GetTasks(namespace string) (*apis.TaskList, int, error) {
 	c := m.GetTaskClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get tasks: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Get tasks success.")
-	return g, nil
+	return g, http.StatusOK, nil
 }
 
-func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis.Task, error) {
+func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis.Task, int, error) {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
-	_, err := m.GetTask(name, namespace)
+	_, code, err := m.GetTask(name, namespace)
 	if err != nil {
 		logs.Errorf("Get task %s error: %v , task not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 存在更新task
 	updatedTask, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update task %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, http.StatusInternalServerError, updateErr
 	}
 
 	logs.Debugf("Update task: %v", updatedTask)
-	return updatedTask, nil
+	return updatedTask, http.StatusOK, nil
 
 }
 
-func (m *Manager) PatchTask(name string, namespace string, patchTask []byte) (*apis.Task, error) {
+func (m *Manager) PatchTask(name string, namespace string, patchTask []byte) (*apis.Task, int, error) {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
-	_, err := m.GetTask(name, namespace)
+	_, code, err := m.GetTask(name, namespace)
 	if err != nil {
 		logs.Errorf("Get task %s error: %v , task not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 部分更新task
 	patchedTask, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch task %s error: %v", name, err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Patch task: %v", patchedTask)
-	return patchedTask, nil
+	return patchedTask, http.StatusOK, nil
 }
 
-func (m *Manager) DeleteTask(name string, namespace string) error {
+func (m *Manager) DeleteTask(name string, namespace string) (int, error) {
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
-	task, err := m.GetTask(name, namespace)
+	task, code, err := m.GetTask(name, namespace)
 	if err != nil {
 		logs.Errorf("get task %s error: %v , task not exist ", name, err)
-		return err
+		return code, err
 	}
 
 	// 删除task里面的所有group
 	for _, v := range task.Status.Groups {
-		err := m.DeleteGroup(v.Name, v.Namespace)
+		code, err := m.DeleteGroup(v.Name, v.Namespace)
 		if err != nil {
-			return err
+			return code, err
 		}
 	}
 
@@ -296,9 +297,9 @@ func (m *Manager) DeleteTask(name string, namespace string) error {
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("delete task %s error: %v", name, err)
-		return err
+		return http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Delete task: %v", name)
-	return nil
+	return http.StatusOK, nil
 }

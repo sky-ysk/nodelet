@@ -6,11 +6,12 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"net/http"
 	"time"
 )
 
 // 创建带有label的task
-func (m *Manager) CreateWorkflowWithLabels(ts apis.WorkflowSpec, namespace string, uuid string, labels map[string]string) (*apis.Workflow, error) {
+func (m *Manager) CreateWorkflowWithLabels(ts apis.WorkflowSpec, namespace string, uuid string, labels map[string]string) (*apis.Workflow, int, error) {
 	// 临时创建一个Workflow对象
 	w := apis.Workflow{}
 	// 构造名称
@@ -47,9 +48,9 @@ func (m *Manager) CreateWorkflowWithLabels(ts apis.WorkflowSpec, namespace strin
 	w.Labels["uuid"] = uuid
 
 	// 根据Spec创建Runtimes
-	tasks, err := m.CreateTasks(&w, namespace, uuid, prefix)
+	tasks, code, err := m.CreateTasks(&w, namespace, uuid, prefix)
 	if err != nil {
-		return nil, err
+		return nil, code, err
 	}
 
 	// 根据生成的Runtime修改Workflow.Status.Tasks
@@ -68,14 +69,14 @@ func (m *Manager) CreateWorkflowWithLabels(ts apis.WorkflowSpec, namespace strin
 	fw, err := c.Client.Create(context.TODO(), &w, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create workflow: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Created workflow: %v", fw)
-	return fw, nil
+	return fw, http.StatusOK, nil
 }
 
-func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid string) (*apis.Workflow, error) {
+func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid string) (*apis.Workflow, int, error) {
 	// 临时创建一个Workflow对象
 	w := apis.Workflow{}
 	// 构造名称
@@ -112,9 +113,9 @@ func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid st
 	w.Labels["uuid"] = uuid
 
 	// 根据Spec创建Runtimes
-	tasks, err := m.CreateTasks(&w, namespace, uuid, prefix)
+	tasks, code, err := m.CreateTasks(&w, namespace, uuid, prefix)
 	if err != nil {
-		return nil, err
+		return nil, code, err
 	}
 
 	// 根据生成的Runtime修改Workflow.Status.Tasks
@@ -133,95 +134,95 @@ func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid st
 	fw, err := c.Client.Create(context.TODO(), &w, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create workflow: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Created workflow: %v", fw)
-	return fw, nil
+	return fw, http.StatusOK, nil
 }
 
-func (m *Manager) GetWorkflow(name string, namespace string) (*apis.Workflow, error) {
+func (m *Manager) GetWorkflow(name string, namespace string) (*apis.Workflow, int, error) {
 	c := m.GetWorkflowClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get workflow: %v", err)
-		return nil, err
+		return nil, http.StatusNotFound, err
 	}
 
 	logs.Debugf("Get workflow: %v", a)
-	return a, nil
+	return a, http.StatusOK, nil
 }
 
-func (m *Manager) GetWorkflows(namespace string) (*apis.WorkflowList, error) {
+func (m *Manager) GetWorkflows(namespace string) (*apis.WorkflowList, int, error) {
 	c := m.GetWorkflowClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get workflows: %v", err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Get workflows success. ")
-	return g, nil
+	return g, http.StatusOK, nil
 }
 
-func (m *Manager) UpdateWorkflow(name string, namespace string, a *apis.Workflow) (*apis.Workflow, error) {
+func (m *Manager) UpdateWorkflow(name string, namespace string, a *apis.Workflow) (*apis.Workflow, int, error) {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
-	_, err := m.GetWorkflow(name, namespace)
+	_, code, err := m.GetWorkflow(name, namespace)
 	if err != nil {
 		logs.Errorf("Get workflow %s error: %v , workflow not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 存在更新workflow
 	updatedWorkflow, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update workflow %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, http.StatusInternalServerError, updateErr
 	}
 
 	logs.Debugf("Update workflow: %v", updatedWorkflow)
-	return updatedWorkflow, nil
+	return updatedWorkflow, http.StatusOK, nil
 
 }
 
-func (m *Manager) PatchWorkflow(name string, namespace string, patchWorkflow []byte) (*apis.Workflow, error) {
+func (m *Manager) PatchWorkflow(name string, namespace string, patchWorkflow []byte) (*apis.Workflow, int, error) {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
-	_, err := m.GetWorkflow(name, namespace)
+	_, code, err := m.GetWorkflow(name, namespace)
 	if err != nil {
 		logs.Errorf("Get workflow %s error: %v , workflow not exist !", name, err)
-		return nil, err
+		return nil, code, err
 	}
 
 	// 部分更新workflow
 	patchedWorkflow, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchWorkflow), metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("Patch workflow %s error: %v", name, err)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Patch workflow: %v", patchedWorkflow)
-	return patchedWorkflow, nil
+	return patchedWorkflow, http.StatusOK, nil
 }
 
-func (m *Manager) DeleteWorkflow(name string, namespace string) error {
+func (m *Manager) DeleteWorkflow(name string, namespace string) (int, error) {
 	c := m.GetWorkflowClient(namespace)
 
 	// 检查workflow是否存在
-	workflow, err := m.GetWorkflow(name, namespace)
+	workflow, code, err := m.GetWorkflow(name, namespace)
 	if err != nil {
 		logs.Errorf("get workflow %s error: %v , workflow not exist ", name, err)
-		return err
+		return code, err
 	}
 
 	// 删除workflow里面的所有task
 	for _, v := range workflow.Status.Tasks {
-		err := m.DeleteTask(v.Name, v.Namespace)
+		code, err := m.DeleteTask(v.Name, v.Namespace)
 		if err != nil {
-			return err
+			return code, err
 		}
 	}
 
@@ -229,14 +230,14 @@ func (m *Manager) DeleteWorkflow(name string, namespace string) error {
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("delete workflow %s error: %v", name, err)
-		return err
+		return http.StatusInternalServerError, err
 	}
 
 	logs.Debugf("Delete workflow: %v", name)
-	return nil
+	return http.StatusOK, nil
 }
 
-func (m *Manager) DeleteWorkflows(namespace string) error {
+func (m *Manager) DeleteWorkflows(namespace string) (int, error) {
 	// c := m.GetWorkflowClient(namespace)
 
 	// 不知道怎么调用，示例只给了用Name
@@ -252,23 +253,23 @@ func (m *Manager) DeleteWorkflows(namespace string) error {
 	//}
 
 	// 获取 workflows
-	list, err := m.GetWorkflows(namespace)
+	list, code, err := m.GetWorkflows(namespace)
 	if err != nil {
-		return err
+		return code, err
 	}
 	for _, v := range list.Items {
-		err := m.DeleteWorkflow(v.Name, v.Namespace)
+		code, err := m.DeleteWorkflow(v.Name, v.Namespace)
 		if err != nil {
-			return err
+			return code, err
 		}
 	}
 
 	logs.Debugf("Delete workflows in %s success.", namespace)
-	return nil
+	return http.StatusOK, nil
 }
 
 // FilterWorkflows 根据Label查询Workflows
-func (m *Manager) FilterWorkflows(namespace string, labelSelector string) (*apis.WorkflowList, error) {
+func (m *Manager) FilterWorkflows(namespace string, labelSelector string) (*apis.WorkflowList, int, error) {
 	//labelSelector := ""
 	//for i, l := range label {
 	//	if i == 0 {
@@ -285,7 +286,7 @@ func (m *Manager) FilterWorkflows(namespace string, labelSelector string) (*apis
 	c := m.GetWorkflowClient(namespace)
 	d, err := c.Client.List(context.TODO(), listOptions)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
-	return d, nil
+	return d, http.StatusOK, nil
 }

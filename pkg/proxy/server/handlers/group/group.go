@@ -61,10 +61,10 @@ func (h *GroupHandler) GetGroup(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	result, err := h.manager.GetGroup(name, namespace)
+	result, code, err := h.manager.GetGroup(name, namespace)
 	if err != nil {
 		logs.Errorf("Get group %s error: %v , group not exist! ", name, err)
-		err := response.WriteError(http.StatusNotFound, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -132,13 +132,14 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 	UUID := timestamp + "-" + randomStr
 
 	var result *apis.Group
+	var code int
 
 	// 创建group without label
 	if ew.Labels == nil {
 		// 创建group
-		result, err = h.manager.CreateGroup(ew.Spec, nil, namespace, UUID, "")
+		result, code, err = h.manager.CreateGroup(ew.Spec, nil, namespace, UUID, "")
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error: %v", err1)
 				return
@@ -148,9 +149,9 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 		}
 	} else {
 		// 创建group with label
-		result, err = h.manager.CreateGroupWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+		result, code, err = h.manager.CreateGroupWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error: %v", err1)
 				return
@@ -225,10 +226,10 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 	}
 
 	// 更新group
-	updatedGroup, updateErr := h.manager.UpdateGroup(name, namespace, ew)
+	updatedGroup, code, updateErr := h.manager.UpdateGroup(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update group %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -277,10 +278,10 @@ func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.R
 	}
 
 	// 删除group
-	err := h.manager.DeleteGroup(name, namespace)
+	code, err := h.manager.DeleteGroup(name, namespace)
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
@@ -346,10 +347,10 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 		}
 	}
 
-	patchedGroup, err := h.manager.PatchGroup(namespace, name, []byte(patchGroup))
+	patchedGroup, code, err := h.manager.PatchGroup(namespace, name, []byte(patchGroup))
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return

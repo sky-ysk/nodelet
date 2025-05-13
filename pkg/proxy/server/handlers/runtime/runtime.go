@@ -62,10 +62,10 @@ func (h *RuntimeHandler) GetRuntime(request *restful.Request, response *restful.
 		return
 	}
 
-	result, err := h.manager.GetRuntime(name, namespace)
+	result, code, err := h.manager.GetRuntime(name, namespace)
 	if err != nil {
 		logs.Errorf("Get runtime %s error: %v , runtime not exist! ", name, err)
-		err := response.WriteError(http.StatusNotFound, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -133,11 +133,12 @@ func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restf
 	UUID := timestamp + "-" + randomStr
 
 	var result *apis.Runtime
+	var code int
 	if ew.Labels == nil {
 		// 创建runtime without label
-		result, err = h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
+		result, code, err = h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error: %v", err1)
 				return
@@ -147,9 +148,9 @@ func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restf
 		}
 	} else {
 		// 创建runtime with label
-		result, err = h.manager.CreateRuntimeWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+		result, code, err = h.manager.CreateRuntimeWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
 		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
+			err1 := response.WriteError(code, err)
 			if err1 != nil {
 				logs.Errorf("failed to return a status code ,error: %v", err1)
 				return
@@ -223,10 +224,10 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 	}
 
 	// 更新runtime
-	updatedRuntime, updateErr := h.manager.UpdateRuntime(name, namespace, ew)
+	updatedRuntime, code, updateErr := h.manager.UpdateRuntime(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update runtime %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -275,10 +276,10 @@ func (h *RuntimeHandler) DeleteRuntime(request *restful.Request, response *restf
 	}
 
 	// 删除runtime
-	err := h.manager.DeleteRuntime(name, namespace)
+	code, err := h.manager.DeleteRuntime(name, namespace)
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
@@ -355,10 +356,10 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	//	}
 	//}
 
-	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, []byte(jsonStr))
+	patchedRuntime, code, err := h.manager.PatchRuntime(namespace, name, []byte(jsonStr))
 	if err != nil {
 		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
