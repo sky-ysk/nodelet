@@ -197,8 +197,8 @@ func main() {
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
 						Args:                     []string{"wine.py"},          //8s
-						// Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
-						Parents:                  []string{}, // 加入Parents
+						Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
+						// Parents:                  []string{}, // 加入Parents
 						Data:                     []apis.DataSpec{apis.DataSpec{Name: "wine.py"}, apis.DataSpec{Name: "wine_data.csv"}, apis.DataSpec{Name: "requirements.txt"}},
 						Conditions:               &runtime1_1_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},

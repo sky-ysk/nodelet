@@ -2,7 +2,12 @@ package value
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -13,11 +18,9 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"testing"
-	"time"
 )
 
+// 创建Task
 func TestCreateTask(t *testing.T) {
 	clientset, err := CreateClientSet()
 	if err != nil {
@@ -25,9 +28,9 @@ func TestCreateTask(t *testing.T) {
 	}
 	// 构造Manager
 	m := manager.NewManager(clientset)
-	
+
 	logs.Init("main")
-	
+
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	rs1 := apis.RuntimeSpec{
@@ -40,7 +43,7 @@ func TestCreateTask(t *testing.T) {
 		Type:  apis.ByDevice,
 		Image: "xxxxx",
 	}
-	
+
 	as1 := apis.ActionSpec{
 		Name: "A1",
 		Runtimes: []apis.RuntimeSpec{
@@ -48,12 +51,12 @@ func TestCreateTask(t *testing.T) {
 			rs2,
 		},
 	}
-	
+
 	as2 := apis.ActionSpec{
 		Name:     "A2",
 		Runtimes: []apis.RuntimeSpec{},
 	}
-	
+
 	gs1 := apis.GroupSpec{
 		Name: "G1",
 		Actions: []apis.ActionSpec{
@@ -61,12 +64,12 @@ func TestCreateTask(t *testing.T) {
 			as2,
 		},
 	}
-	
+
 	gs2 := apis.GroupSpec{
 		Name:    "G2",
 		Actions: []apis.ActionSpec{},
 	}
-	
+
 	ts := apis.TaskSpec{
 		Name: "T1",
 		Groups: []apis.GroupSpec{
@@ -74,48 +77,48 @@ func TestCreateTask(t *testing.T) {
 			gs2,
 		},
 	}
-	
+
 	task, err := m.CreateTask(ts, nil, "Guochuang", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	
+
 	fmt.Println(task)
-	
+
 }
 
-//测试发现问题是status里面的reference信息必须填完整才能从Task Group Action Runtime中获取到信息，否则找不到
-//但是在创建Task的时候并没有填充这些Status的信息
+// 测试发现问题是status里面的reference信息必须填完整才能从Task Group Action Runtime中获取到信息，否则找不到
+// 但是在创建Task的时候并没有填充这些Status的信息
 func TestValueExtract(t *testing.T) {
 	clientSet, err := CreateClientSet()
 	if err != nil {
 		panic(err)
 	}
-	
+
 	engine := NewEngine(clientSet)
-	
+
 	name := "T1-01966742-ab54-7c2f-a89c-0c53a655c66b"
 	namespace := "Guochuang"
-	
+
 	g, err := engine.manager.GetTask(name, namespace)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	// value := apis.Value{
 	// 	Name:      "Test",
 	// 	Type:      apis.LocalData,
 	// 	From:      "Group{G1}.Action{A1}.Status{phase}",
 	// 	ValueType: apis.StringType,
 	// }
-	
+
 	// v, err := engine.ExtractLocalValue(&value, *g)
 	// if err != nil {
 	// 	panic(err)
 	// }
 	// fmt.Println("-----------")
 	// fmt.Println(v)
-	
+
 	value := apis.Value{
 		NameSpace: "Guochuang",
 		Name:      "Test",
@@ -123,14 +126,14 @@ func TestValueExtract(t *testing.T) {
 		From:      "Task{T1}.Group{G1}.Status{phase}",
 		ValueType: apis.StringType,
 	}
-	
+
 	v, err := engine.ExtractLocalValue(&value, *g)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("-----------")
 	fmt.Println(v)
-	
+
 }
 
 func CreateClientSet() (*clients.ClientSet, error) {
@@ -159,7 +162,7 @@ func CreateClientSet() (*clients.ClientSet, error) {
 		},
 		Timeout: 1000 * time.Second,
 	}
-	
+
 	//创建ClientSet
 	clientSet, err := clients.NewForConfig(c)
 	if err != nil {
@@ -173,7 +176,7 @@ func TestCreateDevice(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	ip := "127.0.0.1"
 	inter := "api/control/start_task"
 	port := "2387"
@@ -202,7 +205,7 @@ func TestCreateDevice(t *testing.T) {
 		Spec:   spec,
 		Status: status,
 	}
-	
+
 	client := clientset.Core().Devices(device.Namespace)
 	client.Create(context.TODO(), &device, metav1.CreateOptions{})
 }
@@ -212,17 +215,124 @@ func TestGetDeviceImage(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	engine := NewEngine(clientSet)
-	
+
 	namespace := "Guochuang"
 
 	from := "Device{Robot}.Ability{Move}.Service{Start}"
-	
+
 	v, err := engine.ExtractDeviceValue(from, namespace)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("-----------")
 	fmt.Println(v)
+}
+
+func TestCreateTaskForOutput(t *testing.T) {
+	clientset, err := CreateClientSet()
+	if err != nil {
+		panic(err)
+	}
+	// 构造Manager
+	m := manager.NewManager(clientset)
+	engine := NewEngine(clientset)
+
+	logs.Init("main")
+
+	// 生成UUID
+	u := uuid.Must(uuid.NewV7())
+	namespace := "sky-test"
+	rs1 := apis.RuntimeSpec{
+		Name:  "R1",
+		Type:  apis.ByDevice,
+		Image: "xxxxx",
+	}
+	as1 := apis.ActionSpec{
+		Name: "A1",
+		Runtimes: []apis.RuntimeSpec{
+			rs1,
+		},
+	}
+
+	action, err := m.CreateAction(as1, nil, namespace, u.String(), "")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(action)
+
+	actionName := action.Name
+	a, err := engine.manager.GetAction(actionName, namespace)
+	if err != nil {
+		panic(err)
+	}
+	runtimeref := a.Status.Runtimes["R1"]
+	runtimeName := runtimeref.Name
+	runtime, err := m.GetRuntime(runtimeName, namespace)
+	runtimeOutputs := map[string]apis.Value{
+		"Output1": {
+			Value: "123",
+		},
+		"Output2": {
+			Value: "456",
+		},
+	}
+	patchRuntime, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"outputs": &runtimeOutputs,
+		},
+	})
+	_, err = m.PatchRuntime(runtime.Name, namespace, patchRuntime)
+	if err != nil {
+		logs.Errorf("Patch runtime error-2:%v", err)
+	}
+
+	actionOutputs := map[string]apis.Value{
+		"Output1": {
+			Value: "789",
+		},
+		"Output2": {
+			Value: "10 11 12",
+		},
+	}
+	patchAction, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"outputs": &actionOutputs,
+		},
+	})
+	_, err = m.PatchAction(actionName, namespace, patchAction)
+	if err != nil {
+		logs.Errorf("Patch action error-2:%v", err)
+	}
+
+	// 睡眠三秒
+	time.Sleep(time.Duration(time.Second * 1))
+	actionNew, _ := engine.manager.GetAction(actionName, namespace)
+	runtimeNew, _ := engine.manager.GetRuntime(runtime.Name, namespace)
+	fmt.Println("==========")
+	fmt.Println(actionNew.Status.Outputs)
+	fmt.Println("==========")
+	fmt.Println(runtimeNew.Status.Outputs)
+
+	actionfrom := "Action{A1}.Outputs{Output1}"
+	runtimefrom := "Runtime{R1}.Outputs{Output1}"
+	ActionRefValue := apis.Value{
+		From:  actionfrom,
+		Value: "success!",
+	}
+	RuntimeRefValue := apis.Value{
+		From:  runtimefrom,
+		Value: "success!",
+	}
+	ActionValue, err := engine.ExtractLocalValue(&ActionRefValue, *actionNew)
+
+	fmt.Println("++++++++")
+	fmt.Println(ActionValue)
+
+	RuntimeValue, err := engine.ExtractLocalValue(&RuntimeRefValue, *runtimeNew)
+	fmt.Println("-----------------")
+	fmt.Println(RuntimeValue)
+
 }

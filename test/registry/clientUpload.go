@@ -30,7 +30,7 @@ func main() {
 	// }
 
 	url := "http://localhost:8888/upload"
-	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/test.txt"
+	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
 	err := utils.UploadFile(filePath, "v1.0.0", url)
 	if err != nil {
 		fmt.Println("Upload failed:", err)

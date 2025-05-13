@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
 	ty "hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -14,11 +17,11 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
+	fileManager "hit.edu/framework/pkg/nodelet/registry"
 	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/types"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
-	"time"
 )
 
 type GroupHandler struct {
@@ -38,6 +41,7 @@ type GroupHandler struct {
 	// eventRecorder 记录事件
 	recorder    recorder.EventRecorder
 	eventClient core.EventInterface
+	fileManager *fileManager.FileManager
 
 	stopCh chan struct{}
 	// 跨域
@@ -46,7 +50,10 @@ type GroupHandler struct {
 	runtimeTarget map[string]cross_core.RuntimeInterface
 }
 
-func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, clientsManager *manager.Manager, recorder recorder.EventRecorder, eventClient core.EventInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupHandler {
+func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, clientsManager *manager.Manager,
+	recorder recorder.EventRecorder, eventClient core.EventInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface,
+	runtimeTarget map[string]cross_core.RuntimeInterface, fileManager *fileManager.FileManager) *GroupHandler {
+
 	return &GroupHandler{
 		groupManager: groupManager,
 		groupWorkers: groupWorkers,
@@ -57,6 +64,7 @@ func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers
 		clientsManager: clientsManager,
 		recorder:       recorder,
 		eventClient:    eventClient,
+		fileManager:    fileManager,
 		stopCh:         make(chan struct{}),
 		groupTarget:    groupTarget,
 		actionTarget:   actionTarget,
@@ -148,47 +156,70 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 		return
 	}
 
-	// TODO：3、fileDownload协程，只执行一次，如果没有才下载。目录依据task.Spec.Name来创建，不带后缀
-// // 4-30 runtime第一次被准备启动，在检查依赖等之前，创建runtime专属的文件目录，并且下载其Data[]里面填入的所有文件===暂时只考虑到单个文件
-// 							// 后续还需要考虑到这些目录的删除。例如在运行完成之后，生成的结果要么直接上传到etcd，要么直接上传到文件仓库。在这些操作完成之后，考虑删除这些已完成的任务的文件夹
-// 							dir := apis.FileFolder + "/" + runtime.Name
-// 							if _, err := os.Stat(dir); os.IsNotExist(err) {
-// 								// 目录不存在，创建目录
-// 								err := os.Mkdir(dir, os.ModePerm) // 权限
-// 								if err != nil {
-// 									logs.Errorf("monitor创建目录时发生错误: %v\n", err)
-// 								}
-// 								logs.Tracef("monitor创建目录完成,runtime:%v, namaspace:%v", runtime.Name, runtime.Namespace)
-// 							} else if err != nil {
-// 								// 其他错误
-// 								logs.Errorf("检查目录时发生错误: %v\n", err)
-// 								return
-// 							} else {
-// 								// 目录已存在
-// 								// logs.Tracef("创建目录时目录已存在: %v\n", err)
-// 							}
-// 							// TODO检查完目录之后，准备使用fileManager下载文件，并更新文件下载状态。使用协程下载
-// 							logs.Infof("runtime Data[]:%v", runtime.Spec.Data)
-// 							for _, filedata := range runtime.Spec.Data {
-// 								gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.NotDownloaded
-// 							}
+	// TODO：3、fileDownload协程，只执行一次，如果没有才下载。目录依据group.Spec.Name来创建，不带后缀
+	// 4-30 runtime第一次被准备启动，在检查依赖等之前，创建runtime专属的文件目录，并且下载其Data[]里面填入的所有文件===暂时只考虑到单个文件
+	// 后续还需要考虑到这些目录的删除。例如在运行完成之后，生成的结果要么直接上传到etcd，要么直接上传到文件仓库。在这些操作完成之后，考虑删除这些已完成的任务的文件夹
+	// 1、尝试创建group专属的目录，需要先检查前置的目录apis.FileFolder = "../tmp/data"目录是否存在，然后再开始创建group专属目录
 
-// 							for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
-// 								// 下载日志
+	// groupdir := apis.FileFolder + "/" + gr.Spec.Name
+	groupdir := apis.FileFolder + "/" + gr.Name
+	if _, err := os.Stat(groupdir); os.IsNotExist(err) {
+		// 目录不存在，创建目录
+		err := os.Mkdir(groupdir, os.ModePerm) // 权限
+		if err != nil {
+			logs.Errorf("monitor创建目录时发生错误: %v\n", err)
+		}
+		logs.Tracef("monitor创建目录完成,runtime:%v, namaspace:%v", gr.Name, gr.Namespace)
+	} else if err != nil {
+		// 其他错误
+		logs.Errorf("检查目录时发生未知错误: %v\n", err)
+		return
+	}
+	// TODO检查完目录之后，准备使用fileManager下载文件，并更新文件下载状态。使用协程下载
+	for _, actionReference := range gr.Status.Actions {
+		action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
+		if err != nil {
+			logs.Errorf("Etcd get action error-4:%v", err)
+		}
+		for _, runtimeReference := range action.Status.Runtimes {
+			runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+			patchRuntime, err := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"directory": groupdir, // 设置工作目录
+				},
+			})
+			_, err = gh.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+			if err != nil {
+				logs.Errorf("Patch runtime error-8:%v", err)
+			}
 
-// 								if gmo.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloaded { // 说明已经下载过了
-// 									logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
-// 									continue
-// 								} else if gmo.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloading { // 说明正在下载
-// 									logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
-// 									continue
-// 								}
-// 								if gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloading || gmo.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloaded { // 说明没有下载过
-// 									gmo.fileManager.DownloadStatus[filedata.Name] = fileManager.Downloading
-// 									logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, dir)
-// 									go gmo.fileManager.DownloadFile(filedata.Name, dir)
-// 								}
-// 							}
+			if err != nil {
+				logs.Errorf("Get runtime error-3:%v", err)
+			}
+			logs.Tracef("runtime Data[]:%v", runtime.Spec.Data)
+			for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
+				// 检查DownloadStatus[]是否存在
+				if _, ok := gh.fileManager.DownloadStatus[filedata.Name]; !ok { // 说明没有下载过
+					gh.fileManager.DownloadStatus[filedata.Name] = fileManager.NotDownloaded
+					logs.Tracef("file not downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+				}
+				if gh.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloaded { // 说明已经下载过了
+					logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+					continue
+				} else if gh.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloading { // 说明正在下载
+					logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+					continue
+				}
+				if gh.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloading && gh.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloaded { // 说明没有下载过
+					gh.fileManager.DownloadStatus[filedata.Name] = fileManager.Downloading
+					logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+					go gh.fileManager.DownloadFile(filedata.Name, groupdir)
+				}
+			}
+		}
+
+	}
+
 	// 4、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
 	var copiesInDomain, copiesInOtherDomain int32 = 0, 0
 	// 安全处理逻辑

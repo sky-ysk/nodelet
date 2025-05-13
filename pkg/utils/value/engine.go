@@ -103,7 +103,7 @@ func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, erro
 		namespace := namespace
 		ability := parts[2]
 		service := parts[3]
-		fmt.Println(name, namespace, ability, service)
+		// fmt.Println(name, namespace, ability, service)
 		s, err := e.ExtractDeviceService(name, namespace, ability, service)
 		if err == nil {
 			// fmt.Println("success", s)
@@ -113,6 +113,7 @@ func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, erro
 	return "", errors.New("Unsupported kind " + kind)
 }
 
+// o传入的是值，不能是指针
 func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	kind := reflect.TypeOf(o).Name()
 	typeName, parts, err := e.comparor.Match(kind, value.From)
@@ -166,7 +167,8 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 	switch kindType {
 	case "Runtime":
 		v, err := e.ExtractRuntimeValue(name, namespace, from, fromKey, value)
-		if err != nil {
+
+		if err == nil {
 			return v, nil
 		}
 	case "Action":
@@ -542,6 +544,17 @@ func (e *Engine) ExtractActionValue(action string, namespace string, target stri
 		// 目前只支持Status.Phase
 		// TODO: 增加更多类型
 		value.Value = string(a.Status.Phase)
+		return value, nil
+	case "Outputs":
+		// 检查
+
+		v, ok := a.Status.Outputs[subTarget]
+
+		if !ok {
+			return nil, errors.New(string("SubTarget is not existed" + subTarget))
+		}
+		value.Value = v.Value
+		value.ValueType = v.ValueType
 		return value, nil
 	}
 	return nil, errors.New(string("Unsupported Target " + target))

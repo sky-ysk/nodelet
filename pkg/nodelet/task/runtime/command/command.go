@@ -113,7 +113,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	CMD.Stderr = os.Stderr
 	// CMD.Env = append(CMD.Env, )
 
-	CMD.Dir = apis.FileFolder + "/" + runtime.Name
+	CMD.Dir = runtime.Spec.Directory
 	// 检查工作目录，如果不存在说明数据出问题了
 	if _, err := os.Stat(CMD.Dir); os.IsNotExist(err) {
 		logs.Errorf("Directory %s does not exist: %v", CMD.Dir, err)

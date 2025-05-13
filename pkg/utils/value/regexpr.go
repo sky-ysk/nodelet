@@ -11,7 +11,7 @@ const (
 	WorkflowExpr = `^Workflow{([^}]+)}\.(Status){([^}]+)}$`
 	TaskExpr     = `^Task{([^}]+)}\.(Status){([^}]+)}$`
 	GroupExpr    = `^Group{([^}]+)}\.(Status){([^}]+)}$`
-	ActionExpr   = `^Action{([^}]+)}\.(Status){([^}]+)}$`
+	ActionExpr   = `^Action{([^}]+)}\.(Status|Outputs){([^}]+)}$`
 	RuntimeExpr  = `^Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
 	
 	// 用于父子节点之间的相互引用

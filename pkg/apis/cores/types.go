@@ -1247,7 +1247,8 @@ type ActionStatus struct {
 	Runtimes map[string]ObjectReference `json:"runtimes,omitempty" yaml:"runtimes"` // TODO: 修改为Map
 	// 任务实际的执行结果
 	// TODO: 后续增加单独字段定义，使用Results来替代该部分内容
-	Outputs map[string]Value `json:"results,omitempty" yaml:"results"`
+	// Outputs map[string]Value `json:"results,omitempty" yaml:"results"`
+	Outputs map[string]Value `json:"outputs,omitempty" yaml:"outputs"`
 	// TODO: Events定义
 	CreateAt *Time `json:"create,omitempty" yaml:"create"`
 	// 执行时间
