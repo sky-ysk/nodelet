@@ -108,6 +108,7 @@ func (gmo *GroupMonitor) Start(ctx context.Context) {
 	//启动环境的依赖检查与更新
 	depenUpdateDone := make(chan struct{})
 	go func() {
+		// TODO:如果检测到机器没有conda环境，则直接return，不继续更新机器的conda环境
 		gmo.dependencyManager.UpdateEnvs()
 		gmo.dependencyManager.UpdateEnvPackages()
 		defer close(depenUpdateDone)

@@ -91,7 +91,9 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	}
 
 	envVars := runtime.Spec.EnvVar
+	logs.Infof("command.go: EnvVar:%v", envVars)
 	// 处理cmd
+	logs.Infof("command.go: cmd:%v", cmd)
 	if cmd == "python" {
 		for _, value := range envVars {
 			if value.Name == "" {
@@ -101,6 +103,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 			cmd = value.Value
 		}
 	}
+	logs.Infof("after cmd:%v", cmd)
 
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
