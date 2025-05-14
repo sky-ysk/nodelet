@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"hit.edu/framework/"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/device"
 	"hit.edu/framework/pkg/scheduler/utils"
 	"io"
 	"net/http"
@@ -1776,7 +1778,7 @@ func TestCreateJson1(t *testing.T) {
 			Name:    "R6",
 			Type:    apis.ByCommand,
 			Command: []string{"python"},
-			Args:    []string{"/home/public/workspace/heongtong_yolo_linux/recheck.py", "which_device"},
+			Args:    []string{"/home/public/workspace/recheck1.py"},
 			Parents: make([]string, 0),
 		},
 	}
@@ -1969,7 +1971,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "{which_device}",
+							Value: "device1",
 						},
 					},
 					Abilities: []string{
@@ -2001,7 +2003,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "{which_device}",
+							Value: "device1",
 						},
 					},
 					Abilities: []string{
@@ -2033,7 +2035,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "{which_device}",
+							Value: "device1",
 						},
 					},
 					Abilities: []string{
@@ -2065,7 +2067,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "{which_device}",
+							Value: "device1",
 						},
 					},
 					Abilities: []string{
@@ -2097,7 +2099,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "{which_device}",
+							Value: "device1",
 						},
 					},
 					Abilities: []string{
@@ -2128,7 +2130,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "{which_device}",
+							Value: "device1",
 						},
 					},
 					Abilities: []string{
@@ -2260,7 +2262,7 @@ func TestCreateJson2(t *testing.T) {
 					},
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "{which_device}",
+							Value: "device1",
 						},
 					},
 				},
@@ -2299,4 +2301,110 @@ func TestCreateJson2(t *testing.T) {
 	}
 	b, _ := json.Marshal(task1)
 	fmt.Printf("%s", string(b))
+}
+
+func TestCreateRecheck(t *testing.T) {
+	runtime1 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:    "R1",
+			Type:    apis.ByCommand,
+			Command: []string{"python"},
+			Args:    []string{"/home/public/workspace/recheck1.py"},
+			Parents: make([]string, 0),
+		},
+	}
+
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "检测",
+			},
+			Name: "A1",
+			Runtimes: []apis.RuntimeSpec{
+				runtime1.Spec,
+			},
+			Parents: []string{"A2"},
+		},
+	}
+
+	group1 := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "G1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+
+		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "Robot1",
+					Abilities: []string{
+						"Turn", "Grab", "Detect", "Put",
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "场景三的初检group",
+			},
+			Name: "G1",
+			Actions: []apis.ActionSpec{
+				action1.Spec,
+			},
+			Replicas: []int32{0, 0},
+		},
+	}
+
+	task1 := &apis.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "T1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "星海图&乐聚的检测和抓取",
+			},
+			Name: "T1",
+			Groups: []apis.GroupSpec{
+				group1.Spec,
+			},
+		},
+	}
+	clientSet, _ := device.InitClient()
+	m := manager.NewManager()
+	m.CreateTask(task1.Spec, nil, task1.Namespace, "", "")
 }

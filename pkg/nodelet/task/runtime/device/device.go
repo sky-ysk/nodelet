@@ -32,7 +32,7 @@ func NewDeviceRuntime(eventBus *eventbus.EventBus, clientManager *manager.Manage
 }
 
 func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Runtime, actionSpecName, runtimeSpecName string) error {
-
+	logs.Infof("[DEVICE RUNTIME] ")
 	// 获取runtime
 	runtime, err := dr.clientManager.GetRuntime(r.Name, r.Namespace)
 	if err != nil {
