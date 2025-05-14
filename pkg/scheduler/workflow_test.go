@@ -1773,8 +1773,11 @@ func TestCreateJson1(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R6",
-			Type: apis.ByCommand,
+			Name:    "R6",
+			Type:    apis.ByCommand,
+			Command: []string{"python"},
+			Args:    []string{"/home/public/workspace/heongtong_yolo_linux/recheck.py", "which_device"},
+			Parents: make([]string, 0),
 		},
 	}
 
@@ -1966,7 +1969,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "device1",
+							Value: "{which_device}",
 						},
 					},
 					Abilities: []string{
@@ -1998,7 +2001,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "device1",
+							Value: "{which_device}",
 						},
 					},
 					Abilities: []string{
@@ -2030,7 +2033,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "device1",
+							Value: "{which_device}",
 						},
 					},
 					Abilities: []string{
@@ -2062,7 +2065,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "device1",
+							Value: "{which_device}",
 						},
 					},
 					Abilities: []string{
@@ -2094,7 +2097,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "device1",
+							Value: "{which_device}",
 						},
 					},
 					Abilities: []string{
@@ -2125,7 +2128,7 @@ func TestCreateJson2(t *testing.T) {
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "device1",
+							Value: "{which_device}",
 						},
 					},
 					Abilities: []string{
@@ -2151,7 +2154,7 @@ func TestCreateJson2(t *testing.T) {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "抓取物品",
+				Docs: "转身",
 			},
 			Name: "A1",
 			Runtimes: []apis.RuntimeSpec{
@@ -2175,7 +2178,7 @@ func TestCreateJson2(t *testing.T) {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "转身",
+				Docs: "抓取物品",
 			},
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
@@ -2255,6 +2258,11 @@ func TestCreateJson2(t *testing.T) {
 					Abilities: []string{
 						"Turn", "Grab", "Detect", "Put",
 					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "{which_device}",
+						},
+					},
 				},
 			},
 			Desc: &apis.Description{
@@ -2267,6 +2275,28 @@ func TestCreateJson2(t *testing.T) {
 			Replicas: []int32{0, 0},
 		},
 	}
-	b, _ := json.Marshal(group1)
+	task1 := &apis.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "T1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "复检task",
+			},
+			Name: "T1",
+			Groups: []apis.GroupSpec{
+				group1.Spec,
+			},
+		},
+	}
+	b, _ := json.Marshal(task1)
 	fmt.Printf("%s", string(b))
 }
