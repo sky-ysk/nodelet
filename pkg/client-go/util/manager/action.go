@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -198,7 +199,7 @@ func (m *Manager) GetAction(name string, namespace string) (*apis.Action, error)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get action: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", NotFound, err)
 	}
 
 	//

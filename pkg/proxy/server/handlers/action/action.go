@@ -1,6 +1,7 @@
 package action
 
 import (
+	"errors"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
@@ -227,7 +228,12 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 	updatedAction, updateErr := h.manager.UpdateAction(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update action %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		var err error
+		if errors.Is(updateErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -277,12 +283,17 @@ func (h *ActionHandler) DeleteAction(request *restful.Request, response *restful
 	}
 
 	// 删除action
-	err := h.manager.DeleteAction(namespace, name)
+	var err error
+	err = h.manager.DeleteAction(namespace, name)
 	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		logs.Errorf("delete action %s error: %v", name, err)
+		if errors.Is(err, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return
@@ -346,12 +357,17 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 		}
 	}
 
-	patchedAction, err := h.manager.PatchAction(namespace, name, []byte(patchAction))
-	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	patchedAction, patchedErr := h.manager.PatchAction(namespace, name, []byte(patchAction))
+	if patchedErr != nil {
+		logs.Errorf("patched action %s error: %v", name, err)
+		var err error
+		if errors.Is(patchedErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return

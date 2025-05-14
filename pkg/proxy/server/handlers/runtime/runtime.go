@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"errors"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
@@ -226,7 +227,12 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 	updatedRuntime, updateErr := h.manager.UpdateRuntime(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update runtime %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		var err error
+		if errors.Is(updateErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -275,12 +281,17 @@ func (h *RuntimeHandler) DeleteRuntime(request *restful.Request, response *restf
 	}
 
 	// 删除runtime
-	err := h.manager.DeleteRuntime(name, namespace)
+	var err error
+	err = h.manager.DeleteRuntime(name, namespace)
 	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		logs.Errorf("delete runtime %s error: %v", name, err)
+		if errors.Is(err, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return
@@ -355,12 +366,17 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	//	}
 	//}
 
-	patchedRuntime, err := h.manager.PatchRuntime(namespace, name, []byte(jsonStr))
-	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	patchedRuntime, patchedErr := h.manager.PatchRuntime(namespace, name, []byte(jsonStr))
+	if patchedErr != nil {
+		logs.Errorf("patched runtime %s error: %v", name, err)
+		var err error
+		if errors.Is(patchedErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return

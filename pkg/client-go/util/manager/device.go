@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -39,7 +40,7 @@ func (m *Manager) GetDevice(name string, namespace string) (*apis.Device, error)
 	c := m.GetDeviceClient(namespace)
 	d, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", NotFound, err)
 	}
 	return d, nil
 }

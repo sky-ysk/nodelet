@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -157,7 +158,7 @@ func (m *Manager) GetWorkflows(namespace string) (*apis.WorkflowList, error) {
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get workflows: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", NotFound, err)
 	}
 
 	logs.Debugf("Get workflows success. ")

@@ -2,12 +2,17 @@ package manager
 
 import (
 	"context"
+	"errors"
 	scheme "hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"sync"
+)
+
+var (
+	NotFound = errors.New("404 Not Found")
 )
 
 type Manager struct {

@@ -1,6 +1,7 @@
 package group
 
 import (
+	"errors"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
@@ -228,7 +229,12 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 	updatedGroup, updateErr := h.manager.UpdateGroup(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update group %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		var err error
+		if errors.Is(updateErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -277,12 +283,17 @@ func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.R
 	}
 
 	// 删除group
-	err := h.manager.DeleteGroup(name, namespace)
+	var err error
+	err = h.manager.DeleteGroup(name, namespace)
 	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		logs.Errorf("delete group %s error: %v", name, err)
+		if errors.Is(err, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return
@@ -346,12 +357,17 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 		}
 	}
 
-	patchedGroup, err := h.manager.PatchGroup(namespace, name, []byte(patchGroup))
-	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	patchedGroup, patchedErr := h.manager.PatchGroup(namespace, name, []byte(patchGroup))
+	if patchedErr != nil {
+		logs.Errorf("patched group %s error: %v", name, err)
+		var err error
+		if errors.Is(patchedErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return
