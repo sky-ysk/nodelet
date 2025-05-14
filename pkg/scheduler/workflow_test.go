@@ -1601,7 +1601,46 @@ func TestAddDevice(t *testing.T) {
 }
 
 func TestCreateJson1(t *testing.T) {
-	// 抓取
+	// 手臂初始化
+	runtime0 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R0",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R0",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Value:     "up",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"init",
+					},
+				},
+			},
+		},
+	}
+
+	// 抓取流水线工件
 	runtime1 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R1",
@@ -1617,6 +1656,13 @@ func TestCreateJson1(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R1",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Value:     "belt",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1633,7 +1679,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
-	// 转身
+	// 转向复检台
 	runtime2 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R2",
@@ -1649,6 +1695,13 @@ func TestCreateJson1(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R2",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Value:     "table",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1679,8 +1732,9 @@ func TestCreateJson1(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R3",
-			Type: apis.ByDevice,
+			Name:    "R3",
+			Type:    apis.ByDevice,
+			Outputs: []apis.Value{},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1697,7 +1751,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
-	// 放入盒子中
+	// 放入合格框
 	runtime4 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R4",
@@ -1713,6 +1767,13 @@ func TestCreateJson1(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R4",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Value:     "finished_bin",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1729,10 +1790,10 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
-	// 提交复检任务
+	// 放置到复检台
 	runtime5 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "R4",
+			Name:      "R5",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -1745,6 +1806,13 @@ func TestCreateJson1(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R5",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Value:     "table",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1761,6 +1829,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
+	//提交复检任务
 	runtime6 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R5",
@@ -1782,6 +1851,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
+	// 转向流水线
 	runtime7 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R4",
@@ -1797,6 +1867,13 @@ func TestCreateJson1(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R7",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Value:     "belt",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1832,7 +1909,7 @@ func TestCreateJson1(t *testing.T) {
 			},
 			Name: "A1",
 			Runtimes: []apis.RuntimeSpec{
-				runtime1.Spec,
+				runtime0.Spec, runtime1.Spec,
 			},
 		},
 	}
@@ -1852,7 +1929,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "转身",
+				Docs: "转身复检台",
 			},
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
@@ -1877,7 +1954,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "检测",
+				Docs: "检测/提交复检任务",
 			},
 			Name: "A3",
 			Runtimes: []apis.RuntimeSpec{
@@ -1902,7 +1979,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "放入盒子中",
+				Docs: "转向流水线",
 			},
 			Name: "A4",
 			Runtimes: []apis.RuntimeSpec{
@@ -1924,7 +2001,6 @@ func TestCreateJson1(t *testing.T) {
 			Kind:       "Group",
 			APIVersion: "resources/v1",
 		},
-
 		Spec: apis.GroupSpec{
 			Devices: []apis.DeviceSpec{
 				{
@@ -1944,15 +2020,39 @@ func TestCreateJson1(t *testing.T) {
 			Replicas: []int32{0, 0},
 		},
 	}
-	b, _ := json.Marshal(group1)
+	task1 := &apis.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "T1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "初检任务task",
+			},
+			Name: "T1",
+			Groups: []apis.GroupSpec{
+				group1.Spec,
+			},
+		},
+	}
+	b, _ := json.Marshal(task1)
 	fmt.Printf("%s", string(b))
 }
 
+// 复检
 func TestCreateJson2(t *testing.T) {
-	// 抓取
-	runtime1 := &apis.Runtime{
+
+	// 转向table
+	runtime0 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "R1",
+			Name:      "R0",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -1963,8 +2063,15 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R1",
+			Name: "R0",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Type:      apis.ConstData,
+					Value:     "table",
+					ValueType: apis.StringType,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1981,7 +2088,46 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
-	// 转身
+	// 初始化
+	runtime1 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R1",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Type:      apis.ConstData,
+					Value:     "up",
+					ValueType: apis.StringType,
+				},
+			},
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Init",
+					},
+				},
+			},
+		},
+	}
+
+	// 抓取
 	runtime2 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R2",
@@ -1997,6 +2143,13 @@ func TestCreateJson2(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R2",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Type:      apis.ConstData,
+					Value:     "table",
+					ValueType: apis.StringType,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2027,8 +2180,9 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R3",
-			Type: apis.ByDevice,
+			Name:    "R3",
+			Type:    apis.ByDevice,
+			Outputs: []apis.Value{},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2045,7 +2199,7 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
-	// 放入盒子中
+	// 放入合格框
 	runtime4 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R4",
@@ -2061,6 +2215,13 @@ func TestCreateJson2(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R4",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Type:      apis.ConstData,
+					Value:     "finished_bin",
+					ValueType: apis.StringType,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2077,7 +2238,7 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
-	// 提交复检任务
+	// 放到废品框
 	runtime5 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R4",
@@ -2093,6 +2254,13 @@ func TestCreateJson2(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R5",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Type:      apis.ConstData,
+					Value:     "reject_bin",
+					ValueType: apis.StringType,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2124,6 +2292,13 @@ func TestCreateJson2(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R7",
 			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Type:      apis.ConstData,
+					Value:     "belt",
+					ValueType: apis.StringType,
+				},
+			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2159,7 +2334,7 @@ func TestCreateJson2(t *testing.T) {
 			},
 			Name: "A1",
 			Runtimes: []apis.RuntimeSpec{
-				runtime1.Spec,
+				runtime0.Spec,
 			},
 		},
 	}
@@ -2183,7 +2358,7 @@ func TestCreateJson2(t *testing.T) {
 			},
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
-				runtime2.Spec,
+				runtime1.Spec, runtime2.Spec,
 			},
 			Parents: []string{"A1"},
 		},
@@ -2229,7 +2404,7 @@ func TestCreateJson2(t *testing.T) {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "放入盒子中",
+				Docs: "转向流水线",
 			},
 			Name: "A4",
 			Runtimes: []apis.RuntimeSpec{

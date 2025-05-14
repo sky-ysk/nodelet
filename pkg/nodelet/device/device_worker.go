@@ -179,6 +179,7 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 			logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
 			return false, nil
 		}
+		logs.Infof("[DEVICE WORKER] LOCK device:%s successfully", device.Name)
 	}
 
 	// 更新group

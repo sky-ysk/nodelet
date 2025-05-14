@@ -424,3 +424,31 @@ func Test1(t *testing.T) {
 	b, _ := json.Marshal(group)
 	fmt.Printf("%s", string(b))
 }
+
+func TestReleaseAllLocks(t *testing.T) {
+	dw := GetDeviceWorker()
+	dw.updateMap()
+	for dn, device := range dw.MapTable {
+		device.Status.Lock.IsLocked = false
+		device.Status.Lock.Ref = 0
+		for an, ability := range device.Status.Abilities {
+			ability.Lock.IsLocked = false
+			ability.Lock.Ref = 0
+			device.Status.Abilities[an] = ability
+		}
+
+		patchDevice, _ := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"lock":      device.Status.Lock,
+				"abilities": device.Status.Abilities,
+			},
+		})
+		_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("Patch device %s failed", device.Name)
+			return
+		}
+		logs.Infof("release device:%s successfully", dn)
+		//dw.Manager.PatchDevice()
+	}
+}

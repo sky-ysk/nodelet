@@ -84,9 +84,10 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 	// 对能力进行加锁
 	dw := worker.GetDeviceWorker()
 	if !dw.LockAbility(executor, da) {
-		logs.Warnf("[DEVICE RUNTIME] Lock ability:%s fail", da)
+		logs.Errorf("[DEVICE RUNTIME] Lock ability:%s fail", da)
 		return fmt.Errorf("lock ability error")
 	}
+	logs.Infof("[DEVICE RUNTIME] Lock ability %s successfully", da)
 	params := runtime.Spec.Inputs
 	// executor 发布指令
 	if executor.Spec.AccessMethod.Type == apis.AccessByAbility {
@@ -374,10 +375,11 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 				logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 				return err
 			}
-			if !dw.LockAbility(executor, da) {
-				logs.Warnf("[DEVICE RUNTIME] Lock ability:%s fail", da)
+			if !dw.ReleaseAbility(executor, da) {
+				logs.Errorf("[DEVICE RUNTIME] release ability:%s lock fail", da)
 				return fmt.Errorf("lock ability error")
 			}
+			logs.Infof("[DEVICE RUNTIME] release ability:%s lock successfully", da)
 			return nil
 		}
 	}

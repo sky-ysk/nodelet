@@ -111,6 +111,7 @@ func UpdateDeviceFinished(deviceMap map[string]*apis.Device, clientManager *mana
 			logs.Errorf("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED], err:%s", device.Name, err)
 			return err
 		}
+
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] successfully stage [FINISHED]\n", device.Name)
 	}
 
