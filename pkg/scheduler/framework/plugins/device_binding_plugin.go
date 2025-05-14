@@ -65,5 +65,6 @@ func (db *DeviceBinder) Bind(ctx context.Context, state *framework.CycleState, g
 		return framework.NewStatus(framework.Error, err.Error())
 	}
 
+	logs.Infof("[Device Binder] bind group %s on node %s", groupNew.Name, nodeName)
 	return nil
 }

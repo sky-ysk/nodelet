@@ -21,7 +21,7 @@ func TestDeviceWorker(t *testing.T) {
 	//}
 	g := CreateGroup()
 
-	flag, deviceTable := dw.ChooseDevices(&g.Spec)
+	flag, deviceTable, _ := dw.ChooseDevices(&g.Spec)
 	go func() {
 		if flag {
 			logs.Infof("ChooseDevices successfully")

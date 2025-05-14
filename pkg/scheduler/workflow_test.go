@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"hit.edu/framework/"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/util/manager"
@@ -2320,7 +2319,7 @@ func TestCreateRecheck(t *testing.T) {
 			Name:    "R1",
 			Type:    apis.ByCommand,
 			Command: []string{"python"},
-			Args:    []string{"/home/public/workspace/recheck1.py"},
+			Args:    []string{"/home/weland/workspace/recheck.py", "device1"},
 			Parents: make([]string, 0),
 		},
 	}
@@ -2345,7 +2344,6 @@ func TestCreateRecheck(t *testing.T) {
 			Runtimes: []apis.RuntimeSpec{
 				runtime1.Spec,
 			},
-			Parents: []string{"A2"},
 		},
 	}
 
@@ -2363,14 +2361,6 @@ func TestCreateRecheck(t *testing.T) {
 		},
 
 		Spec: apis.GroupSpec{
-			Devices: []apis.DeviceSpec{
-				{
-					Name: "Robot1",
-					Abilities: []string{
-						"Turn", "Grab", "Detect", "Put",
-					},
-				},
-			},
 			Desc: &apis.Description{
 				Docs: "场景三的初检group",
 			},
@@ -2405,6 +2395,10 @@ func TestCreateRecheck(t *testing.T) {
 		},
 	}
 	clientSet, _ := device.InitClient()
-	m := manager.NewManager()
+	m := manager.NewManager(clientSet)
 	m.CreateTask(task1.Spec, nil, task1.Namespace, "", "")
+}
+
+func TestDeviceForScene3(t *testing.T) {
+
 }

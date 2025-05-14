@@ -272,6 +272,7 @@ func TestClearEtcd(t *testing.T) {
 		}
 	}
 
+	//删除device
 	deviceClient := cs.Core().Devices("test")
 	devices, err := deviceClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -317,21 +318,21 @@ func TestClearEtcd(t *testing.T) {
 	}
 
 	//删node
-	nc := cs.Core().Nodes(apis.NamespaceTest)
-	nodes, err := nc.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return
-	}
-	for _, t := range nodes.Items {
-		logs.Infof("delete task %s ", t.Name)
-		err := nc.Delete(ctx, t.Name, metav1.DeleteOptions{})
-		if err != nil {
-			logs.Error(err)
-			return
-		}
-	}
+	//nc := cs.Core().Nodes(apis.NamespaceTest)
+	//nodes, err := nc.List(ctx, metav1.ListOptions{})
+	//if err != nil {
+	//	return
+	//}
+	//for _, t := range nodes.Items {
+	//	logs.Infof("delete task %s ", t.Name)
+	//	err := nc.Delete(ctx, t.Name, metav1.DeleteOptions{})
+	//	if err != nil {
+	//		logs.Error(err)
+	//		return
+	//	}
+	//}
 
-	//删node
+	//删runtime
 	rc := cs.Core().Runtimes(apis.NamespaceTest)
 	runtimes, err := rc.List(ctx, metav1.ListOptions{})
 	if err != nil {

@@ -20,6 +20,8 @@ func NewInTreeRegistry() runtime.Registry {
 		"ScorePluginForDBY": NewScorePluginDBY,
 
 		"DefaultBindPlugin": NewDefaultBindPlugin,
+
+		"DeviceBinder": NewDeviceBinder,
 	}
 	return registry
 }

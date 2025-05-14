@@ -183,15 +183,15 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 
 	// 更新group
 
-	groupSpecStr, err := json.Marshal(group.Spec)
-	if err != nil {
-		logs.Errorf("[DEVICE WORKER] Marshal Group Spec failed: %s", err.Error())
-		return false, nil
-	}
-	patchGroup, _ := json.Marshal(map[string]interface{}{
-		"spec": string(groupSpecStr),
-	})
-	_, err = dw.Manager.PatchGroup(group.Name, apis.NamespaceTest, patchGroup)
+	//groupSpecStr, err := json.Marshal(group.Spec)
+	//if err != nil {
+	//	logs.Errorf("[DEVICE WORKER] Marshal Group Spec failed: %s", err.Error())
+	//	return false, nil
+	//}
+	//patchGroup, _ := json.Marshal(map[string]interface{}{
+	//	"spec": string(groupSpecStr),
+	//})
+	_, err := dw.Manager.UpdateGroup(group.Name, apis.NamespaceTest, group)
 	if err != nil {
 		logs.Errorf("[DEVICE WORKER] Patch group %s failed", group.Name)
 		return false, nil
