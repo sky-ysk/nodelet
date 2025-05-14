@@ -71,7 +71,7 @@ func NewConditionEngine() *ConditionEngine {
 }
 
 // o传入的是一个对象，可能是workflow、task、group、action、runtime等
-// 目前o传入的是指针，在考虑是否改成传入值
+// o传入的是传入值,而不是指针
 func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interface{}) (apis.ResultType, error) {
 	if conditions == nil {
 		logs.Error("condition is nil")
@@ -172,18 +172,26 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 	// logs.Infof("checkNodeDependency val : %v", val)
 	// logs.Infof("checkNodeDependency after val : %v", val)
 	// logs.Infof("checkNodeDependency Name : %v, kind:%v", Name, kind)
-	leftValue := formula.LeftValue
+	leftValue := &formula.LeftValue
+	rightValue := &formula.RightValue
 	Datatype := formula.LeftValue.Type
 	switch Datatype {
 	case apis.ConstData:
 
 	case apis.LocalData:
 		// newLeftValue为更新后的leftValue，更改的方式是指针引用
-		newLeftValue, err := ce.engine.ExtractLocalValue(&leftValue, val)
+		newLeftValue, err := ce.engine.ExtractLocalValue(leftValue, o)
 		if err != nil {
 			logs.Errorf("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
+			return apis.NotReady, errors.New("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
 		}
-		fmt.Println("get LocalData:", newLeftValue)
+		if newLeftValue.Value == "" {
+			return apis.NotReady, nil
+		}
+		if newLeftValue.Value != rightValue.Value {
+			return apis.False, errors.New("Local data check: get leftValue != expect rightValue.Get leftValue:" + newLeftValue.Value)
+		}
+		return apis.True, nil
 
 	case apis.DeviceData:
 
