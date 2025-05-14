@@ -43,22 +43,21 @@ func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restfu
 	labels := request.QueryParameter("Label")
 	var results *apis.RuntimeList
 	var err error
-	var code int
 	if labels == "" {
-		results, code, err = h.manager.GetRuntimes(namespace)
+		results, err = h.manager.GetRuntimes(namespace)
 		if err != nil {
 			logs.Errorf("Get runtimes failed: %v", err)
-			err := response.WriteError(code, err)
+			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
 			}
 		}
 	} else {
-		results, code, err = h.manager.FilterRuntimes(namespace, labels)
+		results, err = h.manager.FilterRuntimes(namespace, labels)
 		if err != nil {
 			logs.Errorf("Get runtimes failed: %v", err)
-			err := response.WriteError(code, err)
+			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return

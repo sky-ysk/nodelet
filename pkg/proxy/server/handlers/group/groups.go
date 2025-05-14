@@ -43,22 +43,21 @@ func (h *GroupsHandler) GetGroups(request *restful.Request, response *restful.Re
 	labels := request.QueryParameter("Label")
 	var results *apis.GroupList
 	var err error
-	var code int
 	if labels == "" {
-		results, code, err = h.manager.GetGroups(namespace)
+		results, err = h.manager.GetGroups(namespace)
 		if err != nil {
 			logs.Errorf("Get groups with labels failed: %v", err)
-			err := response.WriteError(code, err)
+			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
 			}
 		}
 	} else {
-		results, code, err = h.manager.FilterGroups(namespace, labels)
+		results, err = h.manager.FilterGroups(namespace, labels)
 		if err != nil {
 			logs.Errorf("Get groups failed: %v", err)
-			err := response.WriteError(code, err)
+			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return

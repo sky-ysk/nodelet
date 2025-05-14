@@ -43,22 +43,21 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 	labels := request.QueryParameter("Label")
 	var results *apis.ActionList
 	var err error
-	var code int
 	if labels == "" {
-		results, code, err = h.manager.GetActions(namespace)
+		results, err = h.manager.GetActions(namespace)
 		if err != nil {
 			logs.Errorf("Get actions failed: %v", err)
-			err := response.WriteError(code, err)
+			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
 			}
 		}
 	} else {
-		results, code, err = h.manager.FilterActions(namespace, labels)
+		results, err = h.manager.FilterActions(namespace, labels)
 		if err != nil {
 			logs.Errorf("Get actions with labels failed: %v", err)
-			err := response.WriteError(code, err)
+			err := response.WriteError(http.StatusInternalServerError, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
