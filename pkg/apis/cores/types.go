@@ -607,8 +607,6 @@ type GroupSpec struct {
 
 	//亲和节点，如果该字段不为空的话，那么group就必须放在这些节点上执行
 	AffinityNodes []string `json:"affinity_nodes,omitempty" yaml:"affinity_nodes"`
-
-	DeviceRequirements []DeviceSpec `json:"device_requirements,omitempty" yaml:"device_requirements"`
 }
 
 type ResourceRequirement struct {

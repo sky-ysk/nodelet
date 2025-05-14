@@ -2,6 +2,7 @@ package device
 
 import (
 	"encoding/json"
+	"errors"
 	apis "hit.edu/framework/pkg/apis/cores"
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -51,7 +52,7 @@ func (dw *DeviceWorker) updateMap() {
 }
 
 // ChooseDevices 用来筛选Group需要的设备
-func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*apis.Device) {
+func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*apis.Device, error) {
 
 	deviceTable := make(map[string]*apis.Device, len(group.Devices))
 	dw.mu.Lock()
@@ -59,24 +60,61 @@ func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*
 	dw.updateMap()
 	// 遍历device需求表
 	for _, ds := range group.Devices {
-		flag := false // 定义一个标志位，标识这个device需求是否满足
-		for _, device := range dw.MapTable {
-			// 找到满足能力需求的device
-			if device.Status.Lock.IsLocked != true { // 没有上锁的设备
-				if contains(device.Spec.Abilities, ds.Abilities) {
-					// 将device存入deviceTable中
-					deviceTable[ds.Name] = device
-					delete(dw.MapTable, device.Name)
-					flag = true // 满足设置为true
-					break
+		//区分filter策略和Nominate策略, 默认是filter策略
+		strategy := ""
+		strategyVal, exists := ds.ExpectedProperties["strategy"]
+		if !exists || strategyVal.Value == "" {
+			strategy = "filter"
+		} else {
+			strategy = strategyVal.Value
+		}
+		switch strategy {
+		case "filter":
+			flag := false // 定义一个标志位，标识这个device需求是否满足
+			for _, device := range dw.MapTable {
+				// 找到满足能力需求的device
+				if device.Status.Lock.IsLocked != true { // 没有上锁的设备
+					if _, ok := deviceTable[device.Name]; ok {
+						continue
+					}
+					if contains(device.Spec.Abilities, ds.Abilities) {
+						// 将device存入deviceTable中
+						deviceTable[ds.Name] = device
+						//delete(dw.MapTable, device.Name)
+						flag = true // 满足设置为true
+						break
+					}
 				}
 			}
+			if !flag { // device需求未满足，返回false
+				logs.Warnf("no device statisfied for group %s", group.Name)
+				return false, nil, nil
+			}
+		//最好不要有一些是nominate有一些是filter ，单个Group中的DeviceSpec中的strategy最好保持一致，要不然可能会出错
+		case "nominate":
+			deviceName, ok := ds.ExpectedProperties["name"]
+			if !ok || deviceName.Value == "" {
+				logs.Errorf("strategy is nominate but no device name ! group %s, device spec %s", group.Name, ds.Name)
+				return false, nil, errors.New("strategy is nominate but no device name")
+			}
+			device, ok := dw.MapTable[ds.Name]
+			if !ok || device == nil {
+				logs.Errorf("nominated device %s not exist", ds.Name)
+				return false, nil, errors.New("nominated device not exist")
+			}
+			if device.Status.Lock.IsLocked {
+				logs.Warnf("nominated device %s is locked", ds.Name)
+				return false, nil, nil
+			}
+			deviceTable[ds.Name] = device
+
+		default:
+			logs.Errorf("invalid strtegy %s", strategy)
+			return false, nil, errors.New("invalid strategy")
 		}
-		if !flag { // device需求未满足，返回false
-			return false, nil
-		}
+
 	}
-	return true, deviceTable
+	return true, deviceTable, nil
 }
 
 // LockDevices 对device进行上锁
@@ -139,6 +177,21 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 		if err != nil {
 			logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
 		}
+	}
+
+	// 更新group
+
+	groupSpecStr, err := json.Marshal(group.Spec)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Marshal Group Spec failed: %s", err.Error())
+		return false, nil
+	}
+	patchGroup, _ := json.Marshal(map[string]interface{}{
+		"spec": string(groupSpecStr),
+	})
+	_, err = dw.Manager.PatchGroup(group.Name, apis.NamespaceTest, patchGroup)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch group %s failed", group.Name)
 	}
 	return true, group
 }
