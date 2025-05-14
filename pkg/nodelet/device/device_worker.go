@@ -29,19 +29,9 @@ func GetDeviceWorker() *DeviceWorker {
 			Manager:  m.NewManager(clientSet),
 			errChan:  make(chan error, 1),
 		}
-		instance.updateMap()
+
 	})
 	return instance
-}
-
-// hasDevice 用来判断是否有某个设备
-func (dw *DeviceWorker) hasDevice(deviceName string) bool {
-	for name := range dw.MapTable {
-		if name == deviceName {
-			return true
-		}
-	}
-	return false
 }
 
 // updateMapCycle 负责更新一下内存中的map
@@ -53,115 +43,169 @@ func (dw *DeviceWorker) updateMap() {
 		return
 	}
 	logs.Infof("[DEVICE WORKER] HAS %d devices", len(deviceList.Items))
-	dw.mu.Lock()
+
 	for _, device := range deviceList.Items {
 		dw.MapTable[device.Name] = &device
 	}
-	dw.mu.Unlock()
+
 }
 
-// CheckSatisfaction 用来检查
-func (dw *DeviceWorker) CheckSatisfaction(abilities []string) (bool, map[string]*apis.Device) {
+// ChooseDevices 用来筛选Group需要的设备
+func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*apis.Device) {
 
-	deviceTable := make(map[string]*apis.Device, 1)
-	dw.updateMap()
+	deviceTable := make(map[string]*apis.Device, len(group.Devices))
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
-	// 遍历传进来的能力表
-	for _, ability := range abilities {
-		// 定义一个标志位
-		flag := false
+	dw.updateMap()
+	// 遍历device需求表
+	for _, ds := range group.Devices {
+		flag := false // 定义一个标志位，标识这个device需求是否满足
 		for _, device := range dw.MapTable {
-			// 当有这个能力 并且 设备没有上锁时
-			if device.Status.Phase != apis.DeviceFrozen && contains(device.Spec.Abilities, ability) {
-				if device.Status.Lock.IsLocked == false {
-					flag = true
-					deviceTable[ability] = device
+			// 找到满足能力需求的device
+			if device.Status.Lock.IsLocked != true { // 没有上锁的设备
+				if contains(device.Spec.Abilities, ds.Abilities) {
+					// 将device存入deviceTable中
+					deviceTable[ds.Name] = device
+					delete(dw.MapTable, device.Name)
+					flag = true // 满足设置为true
 					break
 				}
 			}
 		}
-		if !flag {
-			return flag, nil
+		if !flag { // device需求未满足，返回false
+			return false, nil
 		}
 	}
-	for _, device := range deviceTable {
-		patchDevice, _ := json.Marshal(map[string]interface{}{
-			"status": map[string]interface{}{
-				"phase": apis.DeviceFrozen,
-			},
-		})
-		_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
-		if err != nil {
-			logs.Infof("[DEVICE WORKER] PATCH FAIL")
-		}
-	}
-
 	return true, deviceTable
 }
 
 // LockDevices 对device进行上锁
-func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*apis.Device) *apis.Group {
-	dw.updateMap()
+func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*apis.Device) (bool, *apis.Group) {
+
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
-	for ai, ac := range group.Spec.Actions {
-		for ri, runtime := range ac.Runtimes {
-			for di, ds := range runtime.Devices { // 遍历到runtime的device这一层
-				for _, ab := range ds.Abilities { // 寻找runtime中的每一个ability
-					device := deviceTable[ab]        // 根据ability找到device
-					a := device.Status.Abilities[ab] // 找到对应能力
-
-					// 修改能力
-					if !device.Status.Abilities[ab].Lock.IsLocked { // 对应的能力加锁
-						a.Lock.IsLocked = true
-					}
-					a.Status = apis.AbilityReadyStartUp // FIXME 这里暂定为准备拉起状态
-					a.Lock.Ref += 1
-
-					// 修改device
-					if !device.Status.Lock.IsLocked {
-						device.Status.Lock.IsLocked = true
-					}
-					device.Status.Lock.Ref += 1
-					device.Status.Abilities[ab] = a
-
-					deviceTable[ab] = device
-
-					ds.ExpectedProperties["name"] = apis.Property{
-						Value: deviceTable[ab].Name,
-					}
-				}
-				runtime.Devices[di] = ds // 把填完的DeviceSpec放入Device中
-			}
-			ac.Runtimes[ri] = runtime
+	dw.updateMap()
+	// 首先检查所需的设备有没有被占用
+	for _, device := range deviceTable {
+		if dw.MapTable[device.Name].Status.Lock.IsLocked != false {
+			return false, nil
 		}
-		group.Spec.Actions[ai] = ac
 	}
 
+	// 对所有设备上锁
+	for name, device := range deviceTable {
+		device.Status.Lock.IsLocked = true
+		deviceTable[name] = device
+	}
+	// 填写group的devices字段
+	for index, deviceSpec := range group.Spec.Devices {
+		deviceSpec.ExpectedProperties["name"] = apis.Property{
+			Value: deviceTable[deviceSpec.Name].Name,
+		}
+		group.Spec.Devices[index] = deviceSpec
+	}
+
+	// 遍历Group的actions
+	for ai, a := range group.Spec.Actions {
+		for ri, r := range a.Runtimes {
+			for di, ds := range r.Devices {
+				ds.ExpectedProperties["name"] = apis.Property{
+					Value: deviceTable[ds.Name].Name,
+				}
+				for _, ab := range ds.Abilities {
+					deviceTable[ds.Name].Status.Lock.Ref += 1
+					ability := deviceTable[ds.Name].Status.Abilities[ab]
+					ability.Lock.Ref += 1
+					deviceTable[ds.Name].Status.Abilities[ab] = ability
+				}
+				r.Devices[di] = ds
+			}
+
+			a.Runtimes[ri] = r
+		}
+		group.Spec.Actions[ai] = a
+	}
+
+	// 更新设备
 	for _, device := range deviceTable {
-		// 更新能力状态
-		patchDevice, err := json.Marshal(map[string]interface{}{
+		patchDevice, _ := json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
-				"abilities": device.Status.Abilities,
 				"lock":      device.Status.Lock,
+				"abilities": device.Status.Abilities,
+				"group":     group.Name,
 			},
 		})
-		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
 		if err != nil {
-			logs.Errorf("[DEVICE WORKER] Patch device:%s fail", device.Name)
-			return nil
+			logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
 		}
-		dw.MapTable[device.Name] = device
 	}
-	return group
+	return true, group
 }
 
-func contains(slice []string, target string) bool {
-	for _, value := range slice {
-		if value == target {
-			return true
+func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.updateMap()
+	d := dw.MapTable[device.Name]
+	if d.Status.Abilities[ability].Lock.IsLocked != false {
+		return false
+	} else {
+		a := d.Status.Abilities[ability]
+		a.Lock.IsLocked = true
+		d.Status.Abilities[ability] = a
+	}
+	patchDevice, _ := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"abilities": d.Status.Abilities,
+		},
+	})
+	_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
+		return false
+	}
+	return true
+}
+
+func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.updateMap()
+	d := dw.MapTable[device.Name]
+	if d.Status.Abilities[ability].Lock.IsLocked != true {
+		return false
+	} else {
+		a := d.Status.Abilities[ability]
+		a.Lock.IsLocked = false // 解锁
+		a.Lock.Ref -= 1         // 减引用
+		d.Status.Abilities[ability] = a
+	}
+	patchDevice, _ := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"abilities": d.Status.Abilities,
+		},
+	})
+	_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
+		return false
+	}
+	return true
+
+}
+func contains(slice []string, target []string) bool {
+	for _, t := range target {
+		found := false
+		for _, s := range slice {
+			if s == t {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
 		}
 	}
-	return false
+	return true
 }

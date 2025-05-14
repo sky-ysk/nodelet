@@ -3,9 +3,11 @@ package device
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
+	worker "hit.edu/framework/pkg/nodelet/device"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability"
@@ -67,19 +69,24 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 	}
 	//TODO 改runtime的map
 	// 构造参数
-	dn, _, ds, err := dr.engine.ExtractDeviceImage(runtime.Spec.Image)
+	dn, da, ds, err := dr.engine.ExtractDeviceImage(runtime.Spec.Image)
 	logs.Infof("ds is %s, image %s", ds, runtime.Spec.Image)
 	if err != nil {
 		logs.Errorf("[DEVICE RUNTIME] Extract Device Value error: %s", err.Error())
 		return err
 	}
-
+	// 获取执行者
 	executor = deviceMap[dn]
 	if executor == nil {
 		logs.Errorf("[DEVICE RUNTIME] Device %s not exist", dn)
 		return err
 	}
-
+	// 对能力进行加锁
+	dw := worker.GetDeviceWorker()
+	if !dw.LockAbility(executor, da) {
+		logs.Warnf("[DEVICE RUNTIME] Lock ability:%s fail", da)
+		return fmt.Errorf("lock ability error")
+	}
 	params := runtime.Spec.Inputs
 	// executor 发布指令
 	if executor.Spec.AccessMethod.Type == apis.AccessByAbility {
@@ -100,7 +107,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 		err = utils.UpdateDeviceRunning(deviceMap, dr.clientManager)
 
 		// 监听任务执行状况
-		err = dr.monitorDeviceAbility(group.Namespace, taskId, executor, ds, runtime, group.Name, action.Spec.Name, dr.clientManager, deviceMap)
+		err = dr.monitorDeviceAbility(group.Namespace, taskId, executor, ds, runtime, group.Name, action.Spec.Name, dr.clientManager, deviceMap, dw, da)
 		if err != nil {
 			logs.Errorf("[DEVICE RUNTIME] Monitor Ability error: %s", err.Error())
 			return err
@@ -295,7 +302,7 @@ func (dr *DeviceRuntime) StopRuntime(group *apis.Group, action *apis.Action, run
 }
 
 // monitorDeviceAbility 监测业务的执行状态
-func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, executor *apis.Device, inst string, runtime *apis.Runtime, groupName string, actionName string, clientManager *manager.Manager, deviceMap map[string]*apis.Device) error {
+func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, executor *apis.Device, inst string, runtime *apis.Runtime, groupName string, actionName string, clientManager *manager.Manager, deviceMap map[string]*apis.Device, dw *worker.DeviceWorker, da string) error {
 	// 构造URL
 	url := executor.Spec.AccessMethod.URL
 	logs.Infof("[DEVICE RUNTIME] url: %s", url)
@@ -305,6 +312,10 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 		if err != nil {
 			logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 			return err
+		}
+		if !dw.LockAbility(executor, da) {
+			logs.Warnf("[DEVICE RUNTIME] Lock ability:%s fail", da)
+			return fmt.Errorf("lock ability error")
 		}
 		return nil
 	}
@@ -362,6 +373,10 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			if err != nil {
 				logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 				return err
+			}
+			if !dw.LockAbility(executor, da) {
+				logs.Warnf("[DEVICE RUNTIME] Lock ability:%s fail", da)
+				return fmt.Errorf("lock ability error")
 			}
 			return nil
 		}

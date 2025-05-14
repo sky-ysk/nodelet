@@ -54,7 +54,6 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m 
 					}
 				}
 			}
-
 		}
 
 	}
@@ -89,9 +88,7 @@ func UpdateDeviceRunning(deviceMap map[string]*apis.Device, clientManager *manag
 
 // UpdateDeviceFinished 用于在已经获得任务的执行状态 更新device的状态
 func UpdateDeviceFinished(deviceMap map[string]*apis.Device, clientManager *manager.Manager) error {
-
 	for name, device := range deviceMap {
-
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
 		device.Status.Lock.Ref -= 1
 		if device.Status.Lock.Ref == 0 {

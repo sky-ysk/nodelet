@@ -560,6 +560,8 @@ type GroupSpec struct {
 	// Group Name
 	Name string `json:"name,omitempty" yaml:"name"`
 
+	// Device 需求
+	Devices []DeviceSpec `json:"devices,omitempty" yaml:"devices"`
 	// +Optional
 	SchedulerName *string `json:"scheduler_name,omitempty" yaml:"name"`
 
