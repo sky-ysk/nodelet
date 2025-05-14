@@ -1,0 +1,189 @@
+{
+    "kind": "Task",
+    "apiVersion": "resources/v1",
+    "name": "T1",
+    "namespace": "test",
+    "creationTimestamp": null,
+    "labels": {
+        "environment": "dev"
+    },
+    "spec": {
+        "name": "T1",
+        "desc": {
+            "docs": "复检task"
+        },
+        "groups": [
+            {
+                "name": "G1",
+                "devices": [
+                    {
+                        "name": "Robot1",
+                        "expected_properties": {
+                            "name": {
+                                "value": "{which_device}"
+                            }
+                        },
+                        "abilities": [
+                            "Test"
+                        ]
+                    }
+                ],
+                "desc": {
+                    "docs": "场景三的复检group"
+                },
+                "actions": [
+                    {
+                        "name": "A1",
+                        "desc": {
+                            "docs": "转身"
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R1",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+                                                "value": "{which_device}"
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Turn"
+                                        ]
+                                    }
+                                ],
+                                "type": "device"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "A2",
+                        "parents": [
+                            "A1"
+                        ],
+                        "desc": {
+                            "docs": "抓取物品"
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R2",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+                                                "value": "{which_device}"
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Test"
+                                        ]
+                                    }
+                                ],
+                                "type": "device"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "A3",
+                        "parents": [
+                            "A2"
+                        ],
+                        "desc": {
+                            "docs": "检测"
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R3",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+                                                "value": "{which_device}"
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Detect"
+                                        ]
+                                    }
+                                ],
+                                "type": "device"
+                            },
+                            {
+                                "name": "R4",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+                                                "value": "{which_device}"
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Put"
+                                        ]
+                                    }
+                                ],
+                                "type": "device"
+                            },
+                            {
+                                "name": "R5",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+                                                "value": "{which_device}"
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Put"
+                                        ]
+                                    }
+                                ],
+                                "type": "device"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "A4",
+                        "parents": [
+                            "A3"
+                        ],
+                        "desc": {
+                            "docs": "转身"
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R7",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+                                                "value": "{which_device}"
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Turn"
+                                        ]
+                                    }
+                                ],
+                                "type": "device"
+                            }
+                        ]
+                    }
+                ],
+                "replicas": [
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    "status": {
+
+    }
+}

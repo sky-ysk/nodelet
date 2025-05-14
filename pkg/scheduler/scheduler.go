@@ -229,7 +229,6 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
-	fmt.Println(scheme)
 	//参数配置
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充

@@ -2319,7 +2319,10 @@ func TestCreateRecheck(t *testing.T) {
 			Name:    "R1",
 			Type:    apis.ByCommand,
 			Command: []string{"python"},
-			Args:    []string{"/home/weland/workspace/recheck.py", "device1"},
+			Args: []string{"" +
+				"/home/weland/workspace/Resource-Based-Framework/adaptive-scheduling-framework/test/scene3/recheck1.py",
+				"/home/weland/workspace/Resource-Based-Framework/adaptive-scheduling-framework/test/scene3/data.txt",
+				"device1"},
 			Parents: make([]string, 0),
 		},
 	}
@@ -2396,7 +2399,10 @@ func TestCreateRecheck(t *testing.T) {
 	}
 	clientSet, _ := device.InitClient()
 	m := manager.NewManager(clientSet)
-	m.CreateTask(task1.Spec, nil, task1.Namespace, "", "")
+	timestamp := time.Now().Format("20060102T150405")
+	randomStr := uuid.New().String()[:5]
+	UUID := timestamp + "-" + randomStr
+	m.CreateTask(task1.Spec, nil, task1.Namespace, UUID, "")
 }
 
 func TestDeviceForScene3(t *testing.T) {
