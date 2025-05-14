@@ -88,6 +88,10 @@ func (bp *DefaultBindPlugin) Name() string {
 }
 
 func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) (status *framework.Status) {
+	if len(group.Spec.DeviceRequirements) != 0 {
+		logs.Infof("group %s have device spec, skip default binding plugin", group.Name)
+		return framework.NewStatus(framework.Skip, "group %s have device spec, skip default binding plugin", group.Name)
+	}
 	logs.Info("binding", group.ObjectMeta.Name, nodeName)
 	//patch group
 	patchGroup, err := json.Marshal(map[string]interface{}{
