@@ -43,21 +43,22 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 	labels := request.QueryParameter("Label")
 	var results *apis.TaskList
 	var err error
+	var code int
 	if labels == "" {
-		results, err = h.manager.GetTasks(namespace)
+		results, code, err = h.manager.GetTasks(namespace)
 		if err != nil {
 			logs.Errorf("Get tasks with labels failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
+			err := response.WriteError(code, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
 			}
 		}
 	} else {
-		results, err = h.manager.FilterTasks(namespace, labels)
+		results, code, err = h.manager.FilterTasks(namespace, labels)
 		if err != nil {
 			logs.Errorf("Get tasks with labels failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
+			err := response.WriteError(code, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return

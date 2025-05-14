@@ -42,12 +42,13 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 
 	var results *apis.WorkflowList
 	var err error
+	var code int
 	labels := request.QueryParameter("Label")
 	if labels == "" {
-		results, err = h.manager.GetWorkflows(namespace)
+		results, code, err = h.manager.GetWorkflows(namespace)
 		if err != nil {
 			logs.Errorf("Get workflows failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
+			err := response.WriteError(code, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
@@ -55,10 +56,10 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 			return
 		}
 	} else {
-		results, err = h.manager.FilterWorkflows(namespace, labels)
+		results, code, err = h.manager.FilterWorkflows(namespace, labels)
 		if err != nil {
 			logs.Errorf("Get workflows failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
+			err := response.WriteError(code, err)
 			if err != nil {
 				logs.Errorf("failed to return a status code")
 				return
@@ -92,10 +93,10 @@ func (h *WorkflowsHandler) DeleteAllWorkflow(request *restful.Request, response 
 		return
 	}
 
-	err := h.manager.DeleteWorkflows(namespace)
+	code, err := h.manager.DeleteWorkflows(namespace)
 	if err != nil {
 		logs.Errorf("Delete workflows failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		err := response.WriteError(code, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
