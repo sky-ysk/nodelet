@@ -126,6 +126,7 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 	// 首先检查所需的设备有没有被占用
 	for _, device := range deviceTable {
 		if dw.MapTable[device.Name].Status.Lock.IsLocked != false {
+			logs.Warnf("device %s is locked, group %s", device.Name, group.Name)
 			return false, nil
 		}
 	}
@@ -176,6 +177,7 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 		_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
 		if err != nil {
 			logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
+			return false, nil
 		}
 	}
 
@@ -192,6 +194,7 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 	_, err = dw.Manager.PatchGroup(group.Name, apis.NamespaceTest, patchGroup)
 	if err != nil {
 		logs.Errorf("[DEVICE WORKER] Patch group %s failed", group.Name)
+		return false, nil
 	}
 	return true, group
 }

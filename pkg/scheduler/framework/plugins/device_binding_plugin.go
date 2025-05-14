@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
 	apis "hit.edu/framework/pkg/apis/cores"
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -37,10 +38,31 @@ func (db *DeviceBinder) Bind(ctx context.Context, state *framework.CycleState, g
 		return framework.NewStatus(framework.Skip, "group %s have no device spec, skip device binding plugin", group.Name)
 	}
 
-	//TODO
-
-	for _, device := range group.Spec.Devices {
-
+	ok, deviceMap, err := db.deviceWorker.ChooseDevices(&group.Spec)
+	if err != nil {
+		return framework.NewStatus(framework.Error, err.Error())
+	}
+	if !ok {
+		return framework.NewStatus(framework.Unschedulable)
+	}
+	ok, groupNew := db.deviceWorker.LockDevices(group, deviceMap)
+	if !ok {
+		return framework.NewStatus(framework.Unschedulable)
+	}
+	patchGroup, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase": apis.ReadyToDeploy,
+			"node":  nodeName,
+		},
+	})
+	if err != nil {
+		logs.Error(err.Error())
+		return framework.NewStatus(framework.Error, err.Error())
+	}
+	_, err = db.manager.PatchGroup(groupNew.Name, apis.NamespaceTest, patchGroup)
+	if err != nil {
+		logs.Error(err.Error())
+		return framework.NewStatus(framework.Error, err.Error())
 	}
 
 	return nil
