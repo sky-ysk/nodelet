@@ -328,6 +328,7 @@ const (
 	ReadyToKill   Phase = "ReadyToKill"
 	Killed        Phase = "Killed"
 	Terminated    Phase = "Terminated"
+	Discard       Phase = "Discard"
 	// 迁移相关状态
 	CopyPending Phase = "CopyPending" //副本就绪状态-B
 	Restoring   Phase = "Restoring"   //副本恢复任务状态-B
@@ -830,7 +831,6 @@ type DevicePhase string
 const (
 	DeviceInit         DevicePhase = "Init"
 	DeviceRunning      DevicePhase = "Running"
-	DeviceFrozen       DevicePhase = "Frozen"
 	DeviceIdle         DevicePhase = "Idle"
 	DeviceError        DevicePhase = "Error"
 	DeviceDisconnected DevicePhase = "Disconnected"
@@ -1256,7 +1256,8 @@ type ActionStatus struct {
 	Runtimes map[string]ObjectReference `json:"runtimes,omitempty" yaml:"runtimes"` // TODO: 修改为Map
 	// 任务实际的执行结果
 	// TODO: 后续增加单独字段定义，使用Results来替代该部分内容
-	Outputs map[string]Value `json:"results,omitempty" yaml:"results"`
+	// Outputs map[string]Value `json:"results,omitempty" yaml:"results"`
+	Outputs map[string]Value `json:"outputs,omitempty" yaml:"outputs"`
 	// TODO: Events定义
 	CreateAt *Time `json:"create,omitempty" yaml:"create"`
 	// 执行时间
@@ -1728,6 +1729,6 @@ const (
 )
 
 const (
-	// 文件的存储位置,暂时位于 adaptive-scheduling-framework/test/tmp/data
+	// 文件的存储位置,暂时位于项目目录同级的tmp/data目录下
 	FileFolder string = "../tmp/data"
 )

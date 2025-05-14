@@ -4,6 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -15,9 +19,7 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
-	"net/http"
-	"os"
-	"time"
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
 // 测试部署-123-12
@@ -88,7 +90,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
+			From:      "requirements.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -102,15 +104,54 @@ func main() {
 		Result: apis.False,
 	}
 
+	// 数据依赖（../tmp/testFolder）
+	DataDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.DataDependency,
+		LeftValue: apis.Value{
+			Type:      apis.FileData,
+			Name:      "asdasd",
+			Value:     "0",
+			ValueType: "string",
+			From:      "",
+		},
+		RightValue: apis.Value{
+			Type:      apis.ConstData,
+			Name:      "asdasd",
+			Value:     "1",
+			ValueType: "string",
+			From:      "",
+		},
+		Signal: apis.Equal,
+		Join:   "",
+		Result: apis.False,
+	}
+
+	NodeDependencyConditionFormula := GetNodeDepencyConditionFormula(runtime1_1_1_1Name)
+
+	//上传文件，runtime的Data[]里面的每一个文件都需要上传
+	//filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/upload.py"
+	//filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/test.txt"
+	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
+	UploadFile(filePath)
+	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/upload.py"
+	UploadFile(filePath)
+	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/wine.py"
+	UploadFile(filePath)
+	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/wine_data.csv"
+	UploadFile(filePath)
+	filePath = "/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/task_exporter/dependency/requirements.txt"
+	UploadFile(filePath)
+
 	runtime1_1_1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			ProgramDependencyConditionFormula,
+			DataDependencyConditionFormula,
 		},
 	}
 	runtime1_1_1_2Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
-			GetNodeDepencyConditionFormula(runtime1_1_1_1Name),
 			ProgramDependencyConditionFormula,
+			DataDependencyConditionFormula,
+			NodeDependencyConditionFormula,
 		},
 	}
 
@@ -143,8 +184,10 @@ func main() {
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"train.py"}, //20s
-						Parents:                  make([]string, 0),                                                // 加入Parents
+						Args:                     []string{"upload.py", "test.txt", "uotput.txt"}, // 10s
+						// Inputs:                   []apis.Value{apis.Value{Value: "test.txt"}},                                        //20s
+						Parents:                  make([]string, 0),                                                                  // 加入Parents
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "upload.py"}, apis.DataSpec{Name: "test.txt"}}, // 依赖文件
 						Conditions:               &runtime1_1_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
@@ -153,8 +196,10 @@ func main() {
 						Name:                     runtime1_1_1_2Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"wine.py"}, //8s
-						Parents:                  []string{runtime1_1_1_1Name},                                                 // 加入Parents
+						Args:                     []string{"wine.py"},          //8s
+						Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
+						// Parents:                  []string{}, // 加入Parents
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "wine.py"}, apis.DataSpec{Name: "wine_data.csv"}, apis.DataSpec{Name: "requirements.txt"}},
 						Conditions:               &runtime1_1_1_2Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
@@ -280,7 +325,7 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 			Name:      "NodeDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "runtime{" + parentName +"}",
+			From:      "runtime{" + parentName + "}",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -292,5 +337,21 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 		Signal: apis.Equal,
 		Join:   "",
 		Result: apis.False,
+	}
+}
+
+// 上传文件
+func UploadFile(filePath string) (string, error) {
+	// 调用 utils.UploadFile 函数上传文件
+	// 这里的 filePath 是要上传的文件路径
+	// 返回上传结果和错误信息
+	url := "http://localhost:8888/upload"
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+		return "", err
+	} else {
+		fmt.Println("Upload successful!")
+		return "Upload successful!", nil
 	}
 }
