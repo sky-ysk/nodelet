@@ -77,12 +77,12 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 		return resultValue, nil
 	case apis.DeviceData:
 		// 对Device进行寻址
-		result, err := e.ExtractDeviceValue(value.From, value.NameSpace)
-		if err != nil {
-			return nil, err
-		}
-		value.Value = result
-		value.ValueType = apis.StringType
+		//result, err := e.ExtractDeviceValue( , value.From, value.NameSpace)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//value.Value = result
+		//value.ValueType = apis.StringType
 		return value, nil
 	case apis.ResultsData:
 		return value, nil

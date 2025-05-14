@@ -560,6 +560,8 @@ type GroupSpec struct {
 	// Group Name
 	Name string `json:"name,omitempty" yaml:"name"`
 
+	// Device 需求
+	Devices []DeviceSpec `json:"devices,omitempty" yaml:"devices"`
 	// +Optional
 	SchedulerName *string `json:"scheduler_name,omitempty" yaml:"name"`
 
@@ -1727,5 +1729,5 @@ const (
 
 const (
 	// 文件的存储位置,暂时位于 adaptive-scheduling-framework/test/tmp/data
-	FileFolder  string = "../tmp/data"
+	FileFolder string = "../tmp/data"
 )

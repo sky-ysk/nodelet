@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -1596,4 +1597,676 @@ func TestAddDevice(t *testing.T) {
 		return
 	}
 
+}
+
+func TestCreateJson1(t *testing.T) {
+	// 抓取
+	runtime1 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R1",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+		},
+	}
+
+	// 转身
+	runtime2 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R2",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Turn",
+					},
+				},
+			},
+		},
+	}
+
+	// 检测
+	runtime3 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R3",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Detect",
+					},
+				},
+			},
+		},
+	}
+
+	// 放入盒子中
+	runtime4 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R4",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Put",
+					},
+				},
+			},
+		},
+	}
+
+	// 提交复检任务
+	runtime5 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R5",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Put",
+					},
+				},
+			},
+		},
+	}
+
+	runtime6 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R5",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R6",
+			Type: apis.ByCommand,
+		},
+	}
+
+	runtime7 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R7",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Turn",
+					},
+				},
+			},
+		},
+	}
+
+	// 星海图检测
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "抓取物品",
+			},
+			Name: "A1",
+			Runtimes: []apis.RuntimeSpec{
+				runtime1.Spec,
+			},
+		},
+	}
+
+	// 乐聚检测
+	action2 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "转身",
+			},
+			Name: "A2",
+			Runtimes: []apis.RuntimeSpec{
+				runtime2.Spec,
+			},
+			Parents: []string{"A1"},
+		},
+	}
+
+	// 星海图抓取
+	action3 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "检测",
+			},
+			Name: "A3",
+			Runtimes: []apis.RuntimeSpec{
+				runtime3.Spec, runtime4.Spec, runtime5.Spec, runtime6.Spec,
+			},
+			Parents: []string{"A2"},
+		},
+	}
+
+	// 乐聚抓取
+	action4 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "放入盒子中",
+			},
+			Name: "A4",
+			Runtimes: []apis.RuntimeSpec{
+				runtime7.Spec,
+			},
+			Parents: []string{"A3"},
+		},
+	}
+
+	group1 := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "G1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+
+		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "Robot1",
+					Abilities: []string{
+						"Turn", "Grab", "Detect", "Put",
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "场景三的初检group",
+			},
+			Name: "G1",
+			Actions: []apis.ActionSpec{
+				action1.Spec, action2.Spec, action3.Spec, action4.Spec,
+			},
+			Replicas: []int32{0, 0},
+		},
+	}
+	b, _ := json.Marshal(group1)
+	fmt.Printf("%s", string(b))
+}
+
+func TestCreateJson2(t *testing.T) {
+	// 抓取
+	runtime1 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R1",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Turn",
+					},
+				},
+			},
+		},
+	}
+
+	// 转身
+	runtime2 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R2",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+		},
+	}
+
+	// 检测
+	runtime3 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R3",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Detect",
+					},
+				},
+			},
+		},
+	}
+
+	// 放入盒子中
+	runtime4 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R4",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Put",
+					},
+				},
+			},
+		},
+	}
+
+	// 提交复检任务
+	runtime5 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R5",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Put",
+					},
+				},
+			},
+		},
+	}
+
+	runtime6 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R7",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+					},
+					Abilities: []string{
+						"Turn",
+					},
+				},
+			},
+		},
+	}
+
+	// 星海图检测
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "抓取物品",
+			},
+			Name: "A1",
+			Runtimes: []apis.RuntimeSpec{
+				runtime1.Spec,
+			},
+		},
+	}
+
+	// 乐聚检测
+	action2 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "转身",
+			},
+			Name: "A2",
+			Runtimes: []apis.RuntimeSpec{
+				runtime2.Spec,
+			},
+			Parents: []string{"A1"},
+		},
+	}
+
+	// 星海图抓取
+	action3 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "检测",
+			},
+			Name: "A3",
+			Runtimes: []apis.RuntimeSpec{
+				runtime3.Spec, runtime4.Spec, runtime5.Spec,
+			},
+			Parents: []string{"A2"},
+		},
+	}
+
+	// 乐聚抓取
+	action4 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "放入盒子中",
+			},
+			Name: "A4",
+			Runtimes: []apis.RuntimeSpec{
+				runtime6.Spec,
+			},
+			Parents: []string{"A3"},
+		},
+	}
+
+	group1 := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "G1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+
+		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "Robot1",
+					Abilities: []string{
+						"Turn", "Grab", "Detect", "Put",
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "场景三的复检group",
+			},
+			Name: "G1",
+			Actions: []apis.ActionSpec{
+				action1.Spec, action2.Spec, action3.Spec, action4.Spec,
+			},
+			Replicas: []int32{0, 0},
+		},
+	}
+	b, _ := json.Marshal(group1)
+	fmt.Printf("%s", string(b))
 }

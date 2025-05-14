@@ -1,6 +1,8 @@
 package device
 
 import (
+	"fmt"
+	json "github.com/json-iterator/go"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/util/manager"
@@ -17,18 +19,92 @@ func TestDeviceWorker(t *testing.T) {
 	//if dw1 == dw {
 	//	logs.Infof("single!")
 	//}
+	g := CreateGroup()
 
-	/* demo1 */
-	flag, devices := dw.CheckSatisfaction([]string{"A", "B", "E"})
-	if flag {
-		logs.Infof("CheckSatisfaction successfully device is %v", devices)
-		//g := CreateGroup()
-		//g1 := dw.LockDevices(g, devices)
-		//dw.Manager.CreateGroup(g1.Spec, nil, "test", "", "")
-	} else {
-		logs.Infof("CheckSatisfaction unsuccessfully device is %v", devices)
-	}
+	flag, deviceTable := dw.ChooseDevices(&g.Spec)
+	go func() {
+		if flag {
+			logs.Infof("ChooseDevices successfully")
+			logs.Infof("deviceTable is %v", deviceTable)
+			flag, g = dw.LockDevices(g, deviceTable)
+			if flag {
+				logs.Infof("lock device successfully")
+				task1 := &apis.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "T1",
+						Namespace: "test",
+						Labels: map[string]string{
+							"environment": "dev",
+						},
+					},
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Task",
+						APIVersion: "resources/v1",
+					},
+					Spec: apis.TaskSpec{
+						Desc: &apis.Description{
+							Docs: "星海图&乐聚的检测和抓取",
+						},
+						Name: "T1",
+						Groups: []apis.GroupSpec{
+							g.Spec,
+						},
+					},
+				}
+				_, err := dw.Manager.CreateTask(task1.Spec, nil, task1.Namespace, "", "")
+				if err != nil {
+					logs.Errorf("create task fail")
+				}
+			} else {
+				logs.Errorf("lock device unsuccessfully")
+			}
+		} else {
+			logs.Errorf("ChooseDevices unsuccessfully")
+		}
+	}()
 
+	go func() {
+		if flag {
+			logs.Infof("ChooseDevices successfully")
+			logs.Infof("deviceTable is %v", deviceTable)
+			flag, g = dw.LockDevices(g, deviceTable)
+			if flag {
+				logs.Infof("lock device successfully")
+				task1 := &apis.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "T1",
+						Namespace: "test",
+						Labels: map[string]string{
+							"environment": "dev",
+						},
+					},
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Task",
+						APIVersion: "resources/v1",
+					},
+					Spec: apis.TaskSpec{
+						Desc: &apis.Description{
+							Docs: "星海图&乐聚的检测和抓取",
+						},
+						Name: "T1",
+						Groups: []apis.GroupSpec{
+							g.Spec,
+						},
+					},
+				}
+				_, err := dw.Manager.CreateTask(task1.Spec, nil, task1.Namespace, "", "")
+				if err != nil {
+					logs.Errorf("create task fail")
+				}
+			} else {
+				logs.Errorf("lock device unsuccessfully")
+			}
+		} else {
+			logs.Errorf("ChooseDevices unsuccessfully")
+		}
+	}()
+
+	select {}
 }
 
 func TestDevice(t *testing.T) {
@@ -57,35 +133,16 @@ func TestDevice(t *testing.T) {
 				URL:  "http://192.168.8.197:8080",
 			},
 			Abilities: []string{
-				"A", "B", "C",
+				"Test",
 			},
 		},
 		Status: apis.DeviceStatus{
+			Lock: apis.Lock{
+				IsLocked: false,
+			},
 			Abilities: map[string]apis.Ability{
-				"A": {
-					Name: "test",
-					Services: map[string]apis.AbilityService{
-						"test": apis.AbilityService{
-							Ip:        new(string),
-							Interface: new(string),
-							Port:      new(string),
-						},
-					},
-					Status: apis.AbilityRunning,
-				},
-				"B": {
-					Name: "test",
-					Services: map[string]apis.AbilityService{
-						"test": apis.AbilityService{
-							Ip:        new(string),
-							Interface: new(string),
-							Port:      new(string),
-						},
-					},
-					Status: apis.AbilityRunning,
-				},
-				"C": {
-					Name: "test",
+				"Test": {
+					Name: "TEST",
 					Services: map[string]apis.AbilityService{
 						"test": apis.AbilityService{
 							Ip:        new(string),
@@ -119,35 +176,16 @@ func TestDevice(t *testing.T) {
 				URL:  "http://192.168.8.197:8080",
 			},
 			Abilities: []string{
-				"A", "D", "C",
+				"Test",
 			},
 		},
 		Status: apis.DeviceStatus{
+			Lock: apis.Lock{
+				IsLocked: false,
+			},
 			Abilities: map[string]apis.Ability{
-				"A": {
-					Name: "test",
-					Services: map[string]apis.AbilityService{
-						"test": apis.AbilityService{
-							Ip:        new(string),
-							Interface: new(string),
-							Port:      new(string),
-						},
-					},
-					Status: apis.AbilityRunning,
-				},
-				"D": {
-					Name: "test",
-					Services: map[string]apis.AbilityService{
-						"test": apis.AbilityService{
-							Ip:        new(string),
-							Interface: new(string),
-							Port:      new(string),
-						},
-					},
-					Status: apis.AbilityRunning,
-				},
-				"C": {
-					Name: "test",
+				"Test": {
+					Name: "TEST",
 					Services: map[string]apis.AbilityService{
 						"test": apis.AbilityService{
 							Ip:        new(string),
@@ -190,14 +228,16 @@ func CreateGroup() *apis.Group {
 			Type: apis.ByDevice,
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name:               "deviceLock",
-					ExpectedProperties: map[string]apis.Property{},
+					Name: "DEVICE_A",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
 					Abilities: []string{
-						"A",
+						"Test",
 					},
 				},
 			},
-			Image: "",
+			Image: "Device{DEVICE_A}.Ability{Test}.Skill{test}",
 		},
 	}
 
@@ -220,43 +260,16 @@ func CreateGroup() *apis.Group {
 
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name:               "deviceLock",
-					ExpectedProperties: map[string]apis.Property{},
+					Name: "DEVICE_B",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
 					Abilities: []string{
-						"D",
+						"Test",
 					},
 				},
 			},
-			Image: "",
-		},
-	}
-
-	// 星海图抓取
-	runtime3 := &apis.Runtime{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "R3",
-			Namespace: "test",
-			Labels: map[string]string{
-				"environment": "dev",
-			},
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Runtime",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.RuntimeSpec{
-			Name: "R3",
-			Type: apis.ByDevice,
-			Devices: []apis.DeviceSpec{
-				apis.DeviceSpec{
-					Name:               "deviceLock",
-					ExpectedProperties: map[string]apis.Property{},
-					Abilities: []string{
-						"C",
-					},
-				},
-			},
-			Image: "",
+			Image: "Device{DEVICE_B}.Ability{Test}.Skill{test}",
 		},
 	}
 
@@ -275,7 +288,7 @@ func CreateGroup() *apis.Group {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "启始任务",
+				Docs: "",
 			},
 			Name: "A1",
 			Runtimes: []apis.RuntimeSpec{
@@ -299,35 +312,11 @@ func CreateGroup() *apis.Group {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "并行任务1",
+				Docs: "",
 			},
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
 				runtime2.Spec,
-			},
-		},
-	}
-
-	// 星海图抓取
-	action3 := &apis.Action{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "A3",
-			Namespace: "test",
-			Labels: map[string]string{
-				"environment": "dev",
-			},
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Action",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.ActionSpec{
-			Desc: &apis.Description{
-				Docs: "并行任务2",
-			},
-			Name: "A3",
-			Runtimes: []apis.RuntimeSpec{
-				runtime3.Spec,
 			},
 		},
 	}
@@ -345,16 +334,93 @@ func CreateGroup() *apis.Group {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "DEVICE_A",
+					Abilities: []string{
+						"Test",
+					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+				},
+				{
+					Name: "DEVICE_B",
+					Abilities: []string{
+						"Test",
+					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+				},
+			},
 			Desc: &apis.Description{
 				Docs: "测试Group",
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
-				action1.Spec, action2.Spec, action3.Spec,
+				action1.Spec, action2.Spec,
 			},
 			Replicas: []int32{0, 0},
 		},
 	}
 
 	return group1
+}
+
+func Test1(t *testing.T) {
+	group := &apis.GroupSpec{
+		Devices: []apis.DeviceSpec{
+			{
+				Name: "DEVICE_A",
+				Abilities: []string{
+					"A",
+				},
+			},
+			{
+				Name: "DEVICE_B",
+				Abilities: []string{
+					"B",
+				},
+			},
+		},
+	}
+
+	//runtime1 := &apis.Runtime{
+	//	Spec: apis.RuntimeSpec{
+	//		Name: "runtime1",
+	//		Type: apis.ByDevice,
+	//		Devices: []apis.DeviceSpec{
+	//			apis.DeviceSpec{
+	//				Name:               "DEVICE_A",
+	//				ExpectedProperties: map[string]apis.Property{},
+	//				Abilities: []string{
+	//					"A",
+	//				},
+	//			},
+	//		},
+	//		Image: "Device{DEVICE_A}.Ability{A}.Service{TEST}",
+	//	},
+	//}
+	//
+	//runtime2 := &apis.Runtime{
+	//	Spec: apis.RuntimeSpec{
+	//		Name: "runtime2",
+	//		Type: apis.ByDevice,
+	//
+	//		Devices: []apis.DeviceSpec{
+	//			apis.DeviceSpec{
+	//				Name:               "DEVICE_B",
+	//				ExpectedProperties: map[string]apis.Property{},
+	//				Abilities: []string{
+	//					"B",
+	//				},
+	//			},
+	//		},
+	//		Image: "Device{DEVICE_B}.Ability{B}.Service{TEST}",
+	//	},
+	//}
+	//runtimeList := []*apis.Runtime{runtime1, runtime2}
+	b, _ := json.Marshal(group)
+	fmt.Printf("%s", string(b))
 }
