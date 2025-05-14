@@ -11,6 +11,7 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/proxy/server/handlers/util"
 	"net/http"
 	"sync"
 	"time"
@@ -94,6 +95,18 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 	if err != nil {
 		logs.Errorf("Failed to deserialize json data, error: %v", err)
 		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
+	// TODO：循环依赖检查
+	// 增加一个简易版的依赖检查，无法检查a1->a2->a3->a1这种
+	dependencyErr := util.CheckRuntimeCircularDependency(ew.Spec)
+	if dependencyErr != nil {
+		err := response.WriteError(http.StatusBadRequest, dependencyErr)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return

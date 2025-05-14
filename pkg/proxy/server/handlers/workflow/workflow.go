@@ -11,6 +11,7 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/proxy/server/handlers/util"
 	"net/http"
 	"sync"
 	"time"
@@ -103,6 +104,18 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 		return
 	}
 	logs.Info(*ew)
+
+	// TODO：循环依赖检查
+	// 增加一个简易版的依赖检查，无法检查a1->a2->a3->a1这种
+	dependencyErr := util.CheckTaskCircularDependency(ew.Spec)
+	if dependencyErr != nil {
+		err := response.WriteError(http.StatusBadRequest, dependencyErr)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
 
 	// 获取namespace
 	namespace := ew.Namespace
