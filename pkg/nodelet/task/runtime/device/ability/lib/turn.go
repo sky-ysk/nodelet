@@ -3,161 +3,48 @@ package lib
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 )
 
 /*
 	这个文件实现了机器人进行躯干转动的策略
-
 */
 
-type TurnLeftStrategy struct{}
-
-func (tls *TurnLeftStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
-
-	// 创建 HTTP GET 请求
-	resp, err := http.Get(url)
-	if err != nil {
-		logs.Errorf("发送请求失败: %v", err)
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	// 检查 HTTP 响应状态码
-	if resp.StatusCode != http.StatusOK {
-		logs.Errorf("Turn Left response: %d", resp.StatusCode)
-		return "", fmt.Errorf("turn left response: %d", resp.StatusCode)
-	}
-	// 读取并解析响应体
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("读取响应体失败: %v", err)
-	}
-
-	var taskResponse AbilityInstResponse
-	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
-		return "", fmt.Errorf("解析响应体失败: %v", err)
-	}
-
-	// 返回任务 ID
-	return taskResponse.TaskId, nil
-}
-
-type TurnRightStrategy struct{}
-
-func (trs *TurnRightStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
-
-	// 创建 HTTP GET 请求
-	resp, err := http.Get(url)
-	if err != nil {
-		logs.Errorf("发送请求失败: %v", err)
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	// 检查 HTTP 响应状态码
-	if resp.StatusCode != http.StatusOK {
-		logs.Errorf("Turn Right response: %d", resp.StatusCode)
-		return "", fmt.Errorf("turn right response: %d", resp.StatusCode)
-	}
-	// 读取并解析响应体
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("读取响应体失败: %v", err)
-	}
-
-	var taskResponse AbilityInstResponse
-	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
-		return "", fmt.Errorf("解析响应体失败: %v", err)
-	}
-
-	// 返回任务 ID
-	return taskResponse.TaskId, nil
+type TurnLabel struct {
+	Label string `json:"label"`
 }
 
 type TurnStrategy struct{}
 
 func (ts *TurnStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
-	var torsoAngle []float64
+	var label string
 	for _, param := range params {
-		logs.Infof("[DEVICE RUNTIME] param is %v, name %s, type%s", param, param.Name, param.Type)
-		if param.Name == "worldPoints" {
-			if param.Type == apis.ConstData {
-				torsoAngle = getTorsoAngle(param)
-			} else if param.Type == apis.LocalData {
-				torsoAngleValue, err := engine.ExtractLocalValue(&param, *action)
-				if err != nil {
-					logs.Errorf("[DEVICE RUNTIME] Engine ExtractLocalValue fail")
-					return "", err
-				}
-				torsoAngle = getTorsoAngle(*torsoAngleValue)
-			}
+		if param.Name == "label" {
+			label = param.Value
+			logs.Infof("[DEVICE RUNTIME] get param: label")
 		}
 	}
-
-	taskId, err := PublishTurnAngleInst(torsoAngle, url)
+	taskId, err := PublishTurnInst(label, url)
 	if err != nil {
-		logs.Errorf("[DEVICE RUNTIME] PublishTurnAngleInst fail")
+		logs.Errorf("[DEVICE RUNTIME] PublishTurnInst fail, err:%v", err)
 		return "", err
 	}
-	logs.Infof("[DEVICE RUNTIME] Task ID is %s", taskId)
 	return taskId, nil
 }
 
-// TorsoAngle 描述躯干转动角度的数据类型
-type TorsoAngle struct {
-	Angle []float64 `json:"angle"`
-}
+// PublishTurnInst 使用PublishPredictByUrl接口进行预测
+func PublishTurnInst(label string, url string) (string, error) {
 
-// getTorsoAngle 从param中获取躯干转动的角度
-func getTorsoAngle(param apis.Value) []float64 {
-
-	if param.Name == "torsoAngle" {
-		result, err := parseTorsoAngle(param.Value)
-		if err != nil {
-			logs.Error("Parse world points failed: %v", err.Error())
-			return nil
-		}
-		return result
-	}
-
-	return nil
-}
-
-// parseTorsoAngle 将string类型的数据进行解析，转换为TorsoAngle类型
-func parseTorsoAngle(value string) ([]float64, error) {
-	var result []float64
-	coords := strings.Split(value, ",")
-	if len(coords) < 2 {
-		return nil, errors.New("invalid input format")
-	}
-	for _, coord := range coords {
-		if coord == "" {
-			return nil, errors.New("invalid input format")
-		}
-		f, err := strconv.ParseFloat(coord, 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse coordinate %s: %v", coord, err)
-		}
-		result = append(result, f)
-	}
-	return result, nil
-}
-
-// PublishTurnAngleInst 向指定的 API 发送转动躯体（指定角度）的任务请求
-func PublishTurnAngleInst(torsoAngle []float64, url string) (string, error) {
 	// 构建请求体
-	requestBody := TorsoAngle{
-		torsoAngle,
+	requestBody := TurnLabel{
+		label,
 	}
+
 	// 将请求体编码为 JSON
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
@@ -201,3 +88,7 @@ func PublishTurnAngleInst(torsoAngle []float64, url string) (string, error) {
 	// 返回任务 ID
 	return taskResponse.TaskId, nil
 }
+
+// todo 以角度为参数的接口
+
+type TurnAngleStrategy struct{}
