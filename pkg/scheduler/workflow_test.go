@@ -1624,7 +1624,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
-			Image: "Device{Robot1}.Ability{Grab}.Service{Init}",
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1664,7 +1664,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
-			Image: "Device{Robot1}.Ability{Grab}.Service{}",
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1704,6 +1704,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Turn}.Service{Turn}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1737,6 +1738,7 @@ func TestCreateJson1(t *testing.T) {
 			Name:    "R3",
 			Type:    apis.ByDevice,
 			Outputs: []apis.Value{},
+			Image:   "Device{Robot1}.Ability{Detect}.Service{DetectWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1776,6 +1778,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1815,6 +1818,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1834,7 +1838,7 @@ func TestCreateJson1(t *testing.T) {
 	//提交复检任务
 	runtime6 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "R5",
+			Name:      "R6",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -1847,8 +1851,17 @@ func TestCreateJson1(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name:    "R6",
 			Type:    apis.ByCommand,
-			Command: []string{"python"},
-			Args:    []string{"/home/public/workspace/recheck1.py"},
+			Command: []string{"python3"}, // 801的机器 要用python3
+			Args: []string{"" +
+				"/home/smj/adaptive-scheduling-framework/test/scene3/recheck1.py",
+				"/home/smj/adaptive-scheduling-framework/test/scene3/data.txt",
+				"device1"},
+			// 这个是smj
+			//Args: []string{"" +
+			//	"/home/public/lock_test/test/scene3/recheck1.py",
+			//	"/home/public/lock_test/test/scene3/data.txt",
+			//	"device1"},
+			// 这个是801的路径
 			Parents: make([]string, 0),
 		},
 	}
@@ -1856,7 +1869,7 @@ func TestCreateJson1(t *testing.T) {
 	// 转向流水线
 	runtime7 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "R4",
+			Name:      "R7",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -1876,6 +1889,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Turn}.Service{Turn}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2074,6 +2088,7 @@ func TestCreateJson2(t *testing.T) {
 					ValueType: apis.StringType,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Turn}.Service{Turn}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2113,6 +2128,7 @@ func TestCreateJson2(t *testing.T) {
 					ValueType: apis.StringType,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2122,7 +2138,7 @@ func TestCreateJson2(t *testing.T) {
 						},
 					},
 					Abilities: []string{
-						"Init",
+						"Grab",
 					},
 				},
 			},
@@ -2152,6 +2168,7 @@ func TestCreateJson2(t *testing.T) {
 					ValueType: apis.StringType,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2185,6 +2202,7 @@ func TestCreateJson2(t *testing.T) {
 			Name:    "R3",
 			Type:    apis.ByDevice,
 			Outputs: []apis.Value{},
+			Image:   "Device{Robot1}.Ability{Detect}.Service{DetectWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2224,6 +2242,7 @@ func TestCreateJson2(t *testing.T) {
 					ValueType: apis.StringType,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2243,7 +2262,7 @@ func TestCreateJson2(t *testing.T) {
 	// 放到废品框
 	runtime5 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "R4",
+			Name:      "R5",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -2263,6 +2282,7 @@ func TestCreateJson2(t *testing.T) {
 					ValueType: apis.StringType,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2281,7 +2301,7 @@ func TestCreateJson2(t *testing.T) {
 
 	runtime6 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "R4",
+			Name:      "R6",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -2292,7 +2312,7 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R7",
+			Name: "R6",
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
@@ -2301,6 +2321,7 @@ func TestCreateJson2(t *testing.T) {
 					ValueType: apis.StringType,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Turn}.Service{Turn}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
