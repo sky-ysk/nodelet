@@ -911,13 +911,13 @@ const (
 // 设备资源锁
 type Lock struct {
 	// 锁类型
-	Type LockType `json:"type,omitempty" yaml:"type"`
+	Type LockType `json:"type" yaml:"type"`
 
 	// 调度时 ref为0时释放
-	IsLocked bool `json:"is_locked,omitempty" yaml:"is_locked"`
+	IsLocked bool `json:"is_locked" yaml:"is_locked"`
 
 	// 资源引用数 部署时
-	Ref int `json:"ref,omitempty" yaml:"ref"`
+	Ref int `json:"ref" yaml:"ref"`
 }
 
 // 设备事件描述
@@ -970,7 +970,7 @@ type Ability struct {
 	InstanceID *string                   `json:"instance_id,omitempty" yaml:"instance_id"`
 	State      *AbilityState             `json:"state,omitempty" yaml:"state"`
 	Status     AbilityStatus             `json:"status,omitempty" yaml:"status"`
-	Lock       Lock                      `json:"lock,omitempty" yaml:"lock"`
+	Lock       Lock                      `json:"lock" yaml:"lock"`
 }
 
 // AbilityService 描述一个能力的具体业务（技能）

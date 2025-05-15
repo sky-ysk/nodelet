@@ -92,12 +92,14 @@ func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*
 			}
 		//最好不要有一些是nominate有一些是filter ，单个Group中的DeviceSpec中的strategy最好保持一致，要不然可能会出错
 		case "nominate":
+			// 获取真实的名字
 			deviceName, ok := ds.ExpectedProperties["name"]
 			if !ok || deviceName.Value == "" {
 				logs.Errorf("strategy is nominate but no device name ! group %s, device spec %s", group.Name, ds.Name)
 				return false, nil, errors.New("strategy is nominate but no device name")
 			}
-			device, ok := dw.MapTable[ds.Name]
+			// 查看table中的数据，能不能根据真实的名字找到这个device
+			device, ok := dw.MapTable[deviceName.Value]
 			if !ok || device == nil {
 				logs.Errorf("nominated device %s not exist", ds.Name)
 				return false, nil, errors.New("nominated device not exist")
@@ -146,22 +148,61 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 
 	// 遍历Group的actions
 	for ai, a := range group.Spec.Actions {
+		// 获取action的真实信息
+		aRealName := group.Status.Actions[a.Name].Name
+		aNamespace := group.Status.Actions[a.Name].Namespace
+		action, err := dw.Manager.GetAction(aRealName, aNamespace)
+		if err != nil {
+			logs.Errorf("[DEVICE RUNTIME] GET action fail")
+			return false, nil
+		}
+		// 遍历runtime
 		for ri, r := range a.Runtimes {
+			// 获取runtime的真实信息
+			rRealName := action.Status.Runtimes[r.Name].Name
+			rNamespace := action.Status.Runtimes[r.Name].Namespace
 			for di, ds := range r.Devices {
+				// 对runtime的device字段进行操作
 				ds.ExpectedProperties["name"] = apis.Property{
 					Value: deviceTable[ds.Name].Name,
 				}
+				// 对设备加锁
 				for _, ab := range ds.Abilities {
 					deviceTable[ds.Name].Status.Lock.Ref += 1
 					ability := deviceTable[ds.Name].Status.Abilities[ab]
 					ability.Lock.Ref += 1
 					deviceTable[ds.Name].Status.Abilities[ab] = ability
 				}
+
 				r.Devices[di] = ds
 			}
 
+			// 更新runtime
+			patchRuntime, _ := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"devices": r.Devices,
+				},
+			})
+			_, err = dw.Manager.PatchRuntime(rRealName, rNamespace, patchRuntime)
+			if err != nil {
+				logs.Errorf("[DEVICE WORKER] Patch runtime %s failed", rRealName)
+				return false, nil
+			}
+			logs.Infof("[DEVICE WORKER] Patch runtime:%s successfully", rRealName)
 			a.Runtimes[ri] = r
 		}
+		// 更新runtime
+		patchAction, _ := json.Marshal(map[string]interface{}{
+			"spec": map[string]interface{}{
+				"runtimes": a.Runtimes,
+			},
+		})
+		_, err = dw.Manager.PatchAction(aRealName, aNamespace, patchAction)
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Patch action %s failed", aRealName)
+			return false, nil
+		}
+		logs.Infof("[DEVICE WORKER] Patch action:%s successfully", aRealName)
 		group.Spec.Actions[ai] = a
 	}
 
@@ -192,11 +233,14 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 	//patchGroup, _ := json.Marshal(map[string]interface{}{
 	//	"spec": string(groupSpecStr),
 	//})
+	logs.Infof("group is %s", group.Spec.Actions[0].Runtimes[0].Devices[0].ExpectedProperties["name"].Value)
+	logs.Infof("action is %v", group.Spec.Actions[0])
 	_, err := dw.Manager.UpdateGroup(group.Name, apis.NamespaceTest, group)
 	if err != nil {
-		logs.Errorf("[DEVICE WORKER] Patch group %s failed", group.Name)
+		logs.Errorf("[DEVICE WORKER] update group %s failed", group.Name)
 		return false, nil
 	}
+	logs.Infof("[DEVICE RUNTIME] update group successfully")
 	return true, group
 }
 
@@ -230,24 +274,31 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 	defer dw.mu.Unlock()
 	dw.updateMap()
 	d := dw.MapTable[device.Name]
+	aByte, err := json.Marshal(d.Status.Abilities)
+	logs.Infof(" ability is %s", string(aByte))
 	if d.Status.Abilities[ability].Lock.IsLocked != true {
 		return false
-	} else {
-		a := d.Status.Abilities[ability]
-		a.Lock.IsLocked = false // 解锁
-		a.Lock.Ref -= 1         // 减引用
-		d.Status.Abilities[ability] = a
 	}
-	patchDevice, _ := json.Marshal(map[string]interface{}{
+	a := d.Status.Abilities[ability]
+	a.Lock.IsLocked = false // 解锁
+	a.Lock.Ref -= 1         // 减引用
+	d.Status.Abilities[ability] = a
+
+	aByte, err = json.Marshal(d.Status.Abilities)
+	patchDevice, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
-			"abilities": d.Status.Abilities,
+			"abilities": json.RawMessage(aByte),
 		},
 	})
-	_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
 	if err != nil {
-		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
+		logs.Errorf("json marshal fail err：%s", err.Error())
+	}
+	_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch device %s failed, err:%s", device.Name, err.Error())
 		return false
 	}
+	logs.Infof("[DEVICE RUNTIME] RELEASE device:%s ability:%s successfully", device.Name, ability)
 	return true
 
 }

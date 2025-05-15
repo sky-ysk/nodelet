@@ -314,7 +314,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 			return err
 		}
-		if !dw.LockAbility(executor, da) {
+		if !dw.ReleaseAbility(executor, da) {
 			logs.Warnf("[DEVICE RUNTIME] Lock ability:%s fail", da)
 			return fmt.Errorf("lock ability error")
 		}

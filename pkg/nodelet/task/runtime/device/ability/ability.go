@@ -33,6 +33,7 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 	url := fmt.Sprintf("http://%s:%s%s", *ip, *port, *api)
 
 	var strategy AbilityStrategy
+	// 每一个服务
 	switch inst {
 	case "DetectPosition":
 		strategy = &lib.DetectPositionStrategy{}
@@ -46,10 +47,8 @@ func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, e
 		strategy = &lib.TestStrategy{}
 	case "Turn":
 		strategy = &lib.TurnStrategy{}
-	case "TurnLeft":
-		strategy = &lib.TurnLeftStrategy{}
-	case "TurnRight":
-		strategy = &lib.TurnRightStrategy{}
+	case "Init":
+		strategy = &lib.GrabInitStrategy{}
 	default:
 		logs.Errorf("[DEVICE RUNTIME] Unknown Ability")
 		return "", fmt.Errorf("unknow ability")

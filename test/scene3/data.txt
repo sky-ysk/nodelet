@@ -24,7 +24,7 @@
                             }
                         },
                         "abilities": [
-                            "Test"
+                            "Test", "Grab"
                         ]
                     }
                 ],

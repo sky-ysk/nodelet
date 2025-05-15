@@ -15,16 +15,16 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m 
 		logs.Tracef("[DEVICE RUNTIME] Check Device[%s] ", name)
 		// 检查device的GroupID phase
 		if device.Status.Phase != apis.DeviceIdle {
-			logs.Errorf("[DEVICE RUNTIME] Device[%s] is not IDLE", name)
+			logs.Errorf("[DEVICE RUNTIME] Device[%s] is not IDLE", device.Name)
 			return fmt.Errorf("error! Device[%s] is not IDLE", name)
 		}
 		logs.Tracef("[DEVICE RUNTIME] Check Device[%s] Phase is NORMAL", device.Name)
 		// 检查是否上锁
 		if device.Status.Lock.IsLocked != true {
-			logs.Errorf("[DEVICE RUNTIME] Device[%s] is not locked", name)
-			return fmt.Errorf("error! Device[%s] is not locked", name)
+			logs.Errorf("[DEVICE RUNTIME] Device[%s] is not locked", device.Name)
+			return fmt.Errorf("error! Device[%s] is not locked", device.Name)
 		}
-		logs.Tracef("[DEVICE RUNTIME] Check Device[%s] Lock is NORMAL", name)
+		logs.Tracef("[DEVICE RUNTIME] Check Device[%s] Lock is NORMAL", device.Name)
 		// 检查能力的状态
 		for _, spec := range specs {
 			for _, abilityName := range spec.Abilities {

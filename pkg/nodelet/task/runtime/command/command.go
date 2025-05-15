@@ -127,6 +127,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	logs.Infof("runtime Name:\t %s is Running", runtime.Name)
 
 	if err := CMD.Start(); err != nil {
+		logs.Errorf("error is %s", err.Error())
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		cr.recorder.Event(runtime, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s start failed", runtime.Name))

@@ -1624,6 +1624,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Grab}.Service{Init}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -1633,7 +1634,7 @@ func TestCreateJson1(t *testing.T) {
 						},
 					},
 					Abilities: []string{
-						"init",
+						"Grab",
 					},
 				},
 			},
@@ -1663,6 +1664,7 @@ func TestCreateJson1(t *testing.T) {
 					Type:      apis.ConstData,
 				},
 			},
+			Image: "Device{Robot1}.Ability{Grab}.Service{}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2580,6 +2582,227 @@ func TestCreateRecheck(t *testing.T) {
 	m.CreateTask(task1.Spec, nil, task1.Namespace, UUID, "")
 }
 
-func TestDeviceForScene3(t *testing.T) {
+func TestCreateTwoTaskForLock(t *testing.T) {
+	runtime1 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R1",
+			Type: apis.ByDevice,
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "DEVICE_A",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Test",
+					},
+				},
+			},
+			Image: "Device{DEVICE_A}.Ability{Test}.Service{test}",
+		},
+	}
 
+	runtime2 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:    "R2",
+			Type:    apis.ByCommand,
+			Command: []string{"python3"}, // 801的机器 要用python3
+			Args: []string{"" +
+				"/home/public/lock_test/test/scene3/recheck1.py",
+				"/home/public/lock_test/test/scene3/data.txt",
+				"device1"},
+			Parents: make([]string, 0),
+		},
+	}
+
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "",
+			},
+			Name: "A1",
+			Runtimes: []apis.RuntimeSpec{
+				runtime1.Spec, runtime2.Spec,
+			},
+		},
+	}
+
+	group1 := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "G1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "DEVICE_A",
+					Abilities: []string{
+						"Test",
+					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "测试Group",
+			},
+			Name: "G1",
+			Actions: []apis.ActionSpec{
+				action1.Spec,
+			},
+			Replicas: []int32{0, 0},
+		},
+	}
+
+	group2 := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "G2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "DEVICE_A",
+					Abilities: []string{
+						"Test",
+					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "测试Group",
+			},
+			Name: "G1",
+			Actions: []apis.ActionSpec{
+				action1.Spec,
+			},
+			Replicas: []int32{0, 0},
+		},
+	}
+
+	task1 := &apis.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "T1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "test",
+			},
+			Name: "T1",
+			Groups: []apis.GroupSpec{
+				group1.Spec,
+			},
+		},
+	}
+
+	task2 := &apis.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "T2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "test",
+			},
+			Name: "T2",
+			Groups: []apis.GroupSpec{
+				group2.Spec,
+			},
+		},
+	}
+
+	clientSet, _ := device.InitClient()
+	m := manager.NewManager(clientSet)
+	timestamp := time.Now().Format("20060102T150405")
+	randomStr := uuid.New().String()[:5]
+
+	UUID := timestamp + "-" + randomStr
+
+	_, err := m.CreateTask(task1.Spec, nil, apis.NamespaceTest, UUID, "")
+	if err != nil {
+		logs.Errorf("create task1 fail")
+	}
+
+	timestamp1 := time.Now().Format("20060102T150405")
+	randomStr1 := uuid.New().String()[:5]
+	UUID1 := timestamp1 + "-" + randomStr1
+	_, err = m.CreateTask(task2.Spec, nil, apis.NamespaceTest, UUID1, "")
+	if err != nil {
+		logs.Errorf("create task2 fail")
+	}
 }
