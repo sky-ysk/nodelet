@@ -34,7 +34,7 @@ func main() {
 				URL:  "http://192.168.8.197:8080",
 			},
 			Abilities: []string{
-				"Test",
+				"Grab", "Turn", "Detect", "Put",
 			},
 		},
 		Status: apis.DeviceStatus{
@@ -77,7 +77,7 @@ func main() {
 				URL:  "http://192.168.8.197:8080",
 			},
 			Abilities: []string{
-				"Test",
+				"Grab", "Turn", "Detect", "Put",
 			},
 		},
 		Status: apis.DeviceStatus{
@@ -85,7 +85,7 @@ func main() {
 				IsLocked: false,
 			},
 			Abilities: map[string]apis.Ability{
-				"Test": {
+				"Grab": {
 					Name: "TEST",
 					Services: map[string]apis.AbilityService{
 						"test": apis.AbilityService{
