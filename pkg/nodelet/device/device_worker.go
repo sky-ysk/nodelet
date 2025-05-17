@@ -344,7 +344,8 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 }
 
 func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
-	eventClient := dw.Manager.EventClients[apis.NamespaceTest]
+	//eventClient := dw.Manager.EventClients[apis.NamespaceTest]
+	eventClient := dw.Manager.ClientSet.Core().Events(apis.NamespaceTest)
 	if eventClient == nil {
 		logs.Error("No such event client!")
 		return
