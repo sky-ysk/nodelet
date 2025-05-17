@@ -91,6 +91,7 @@ func UpdateDeviceFinished(deviceMap map[string]*apis.Device, clientManager *mana
 	for name, device := range deviceMap {
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
 		device.Status.Lock.Ref -= 1
+		logs.Infof("[DEVICE RUNTIME] REF IS %d", device.Status.Lock.Ref)
 		if device.Status.Lock.Ref == 0 {
 			device.Status.Lock.IsLocked = false
 		}

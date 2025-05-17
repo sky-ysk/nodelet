@@ -181,10 +181,12 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 				}
 				// 对设备加锁
 				for _, ab := range ds.Abilities {
+
 					deviceTable[ds.Name].Status.Lock.Ref += 1
 					ability := deviceTable[ds.Name].Status.Abilities[ab]
 					ability.Lock.Ref += 1
 					deviceTable[ds.Name].Status.Abilities[ab] = ability
+					logs.Infof("Group:%s Device:%s Ref:%d", group.Name, deviceTable[ds.Name].Name, deviceTable[ds.Name].Status.Lock.Ref)
 				}
 
 				r.Devices[di] = ds
