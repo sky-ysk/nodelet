@@ -154,6 +154,22 @@ func main() {
 			Phase: apis.DeviceIdle,
 		},
 	}
+
+	// 放置工件
+	*device2.Status.Abilities["Put"].Services["PutWorkpiece"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Put"].Services["PutWorkpiece"].Interface = "/api/task/put"
+	// 抓取工件
+	*device2.Status.Abilities["Grab"].Services["GrabWorkpiece"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Grab"].Services["GrabWorkpiece"].Interface = "/api/task/grab"
+	// 转身
+	*device2.Status.Abilities["Turn"].Services["Turn"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Turn"].Services["Turn"].Interface = "/api/task/turn"
+	// 初始化
+	*device2.Status.Abilities["Grab"].Services["GrabInit"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Grab"].Services["GrabInit"].Interface = "/api/task/init"
+	// 检测
+	*device2.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Detect"].Services["DetectWorkpiece"].Interface = "/api/task/detect"
 	_, err = m.CreateDevice(device1, "test")
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", device1.Name, err.Error())
