@@ -128,7 +128,7 @@ func main() {
 			Name: "device2",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
-				URL:  "http://192.168.8.197:8080",
+				URL:  "http://172.130.0.59:8080",
 			},
 			Abilities: []string{
 				"Grab", "Turn", "Detect", "Put",
@@ -140,15 +140,54 @@ func main() {
 			},
 			Abilities: map[string]apis.Ability{
 				"Grab": {
-					Name: "TEST",
+					Name: "GrabObject.Leju.801",
 					Services: map[string]apis.AbilityService{
-						"test": apis.AbilityService{
+						"GrabWorkpiece": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+						"GrabInit": apis.AbilityService{
 							Ip:        new(string),
 							Interface: new(string),
 							Port:      new(string),
 						},
 					},
-					Status: apis.AbilityRunning,
+
+					Status: apis.AbilityReadyStartUp,
+				},
+				"Turn": {
+					Name: "Turn.Leju.801",
+					Services: map[string]apis.AbilityService{
+						"Turn": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityReadyStartUp,
+				},
+				"Detect": {
+					Name: "DetectObject.Leju.801",
+					Services: map[string]apis.AbilityService{
+						"DetectWorkpiece": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityReadyStartUp,
+				},
+				"Put": {
+					Name: "PutObject.Leju.801",
+					Services: map[string]apis.AbilityService{
+						"PutWorkpiece": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityReadyStartUp,
 				},
 			},
 			Phase: apis.DeviceIdle,
