@@ -356,7 +356,10 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 		logs.Error("No such event client!")
 		return
 	}
-	watch, err := eventClient.Watch(ctx, metav1.ListOptions{})
+	var timeOut int64 = 3600
+	watch, err := eventClient.Watch(ctx, metav1.ListOptions{
+		TimeoutSeconds: &timeOut,
+	})
 	watchChan := watch.ResultChan()
 	if err != nil {
 		return
