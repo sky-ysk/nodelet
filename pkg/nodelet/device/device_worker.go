@@ -10,6 +10,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/utils"
 	"sync"
+	"time"
 )
 
 var instance *DeviceWorker
@@ -56,6 +57,7 @@ func (dw *DeviceWorker) updateMap() {
 
 	for _, device := range deviceList.Items {
 		dw.MapTable[device.Name] = &device
+		logs.Warnf("[DEVICE WORKER] Device %s has been updated, ref is %d", device.Name, device.Status.Lock.Ref)
 	}
 
 }
@@ -285,7 +287,7 @@ func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
 }
 
 // ReleaseAbilityRef 在非正常情况下减少引用
-func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string) error {
+func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime *apis.Runtime) error {
 
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
@@ -295,15 +297,18 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string) error {
 	d := dw.MapTable[device]
 	// 获取ability
 	a := d.Status.Abilities[ability]
-	a.Lock.Ref -= 1        // 减引用
+	a.Lock.Ref -= 1 // 减引用
+	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s(before)", d.Status.Lock.Ref, runtime.Name)
 	d.Status.Lock.Ref -= 1 // 减引用
+
 	d.Status.Abilities[ability] = a
 
 	aByte, err := json.Marshal(d.Status.Abilities)
+	lByte, err := json.Marshal(d.Status.Lock)
 	patchDevice, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
 			"abilities": json.RawMessage(aByte),
-			"lock":      d.Status.Lock,
+			"lock":      json.RawMessage(lByte),
 		},
 	})
 	if err != nil {
@@ -315,6 +320,11 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string) error {
 		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device)
 		return err
 	}
+	d1, err := dw.Manager.GetDevice(device, d.Namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Get device %s failed", device)
+	}
+	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s(after)", d1.Status.Lock.Ref, runtime.Name)
 	return nil
 }
 
@@ -323,6 +333,7 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
 	dw.updateMap()
+
 	d := dw.MapTable[device.Name]
 	if d.Status.Abilities[ability].Lock.IsLocked != true {
 		return false
@@ -405,13 +416,82 @@ func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *ap
 	for _, ds := range runtime.Spec.Devices {
 		dname := ds.ExpectedProperties["name"].Value
 		for _, ability := range ds.Abilities {
-			err = dw.ReleaseAbilityRef(dname, ability)
+			err = dw.ReleaseAbilityRef(dname, ability, runtime)
 			if err != nil {
 				logs.Errorf("[DEVICE WORKER] ReleaseAbilityRef %s failed, err is %s", dname, err.Error())
 				return
 			}
 		}
 	}
+}
+
+func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, runtime *apis.Runtime) error {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.updateMap()
+
+	for _, d := range deviceMap {
+		device := dw.MapTable[d.Name]
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", device.Name)
+		logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s(before)", device.Status.Lock.Ref, runtime.Name)
+		device.Status.Lock.Ref -= 1
+
+		if device.Status.Lock.Ref == 0 {
+			device.Status.Lock.IsLocked = false
+		}
+		// 将phase更改为running
+		device.Status.Phase = apis.DeviceIdle
+		// 设置更新时间
+		device.Status.LastTime = apis.Time{Time: time.Now()}
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"lock":      device.Status.Lock,
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
+
+		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE Worker] Update Device[%s] stage[FINISHED], err:%s", device.Name, err)
+			return err
+		}
+		d1, err := dw.Manager.GetDevice(device.Name, device.Namespace)
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Get device %s failed", device.Name)
+		}
+		logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s(after)", d1.Status.Lock.Ref, runtime.Name)
+		logs.Infof("[DEVICE Worker] Update Device[%s] successfully stage [FINISHED]\n", device.Name)
+	}
+
+	return nil
+}
+
+func (dw *DeviceWorker) UpdateDeviceRunning(deviceMap map[string]*apis.Device) error {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.updateMap()
+	for name, device := range deviceMap {
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[RUNNING]", name)
+		// 将phase更改为running
+		device.Status.Phase = apis.DeviceRunning
+		// 设置更新时间
+		device.Status.LastTime = apis.Time{Time: time.Now()}
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
+		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Update Device[%s] Failed stage [RUNNING], err:%s", device.Name, err.Error())
+			return err
+		}
+		logs.Infof("[DEVICE WORKER] Update Device[%s] Successfully stage [RUNNING]\n", device.Name)
+	}
+
+	return nil
 }
 
 func contains(slice []string, target []string) bool {
