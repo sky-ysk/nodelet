@@ -2159,8 +2159,9 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R2",
-			Type: apis.ByDevice,
+			Parents: []string{"R1"},
+			Name:    "R2",
+			Type:    apis.ByDevice,
 			Inputs: []apis.Value{
 				{
 					Type:      apis.ConstData,
@@ -2233,13 +2234,33 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R4",
-			Type: apis.ByDevice,
+			Parents: []string{"R3"},
+			Name:    "R4",
+			Type:    apis.ByDevice,
 			Inputs: []apis.Value{
 				{
 					Type:      apis.ConstData,
 					Value:     "finished_bin",
 					ValueType: apis.StringType,
+				},
+			},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "true",
+							ValueType: apis.BoolType,
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "Runtime{R3}.Outputs{isQualified}",
+							ValueType: apis.BoolType,
+						},
+					},
 				},
 			},
 			Image: "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
@@ -2273,6 +2294,26 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
+			Parents: []string{"R3"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "Runtime{R3}.Outputs{isQualified}",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Name: "R5",
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{

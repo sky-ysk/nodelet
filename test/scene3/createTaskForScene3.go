@@ -63,8 +63,9 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R1",
-			Type: apis.ByDevice,
+			Parents: []string{"R0"},
+			Name:    "R1",
+			Type:    apis.ByDevice,
 			Inputs: []apis.Value{
 				{
 					Value:     "belt",
@@ -171,6 +172,26 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
+			Parents: []string{"R3"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "true",
+							ValueType: apis.BoolType,
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "Runtime{R3}.Outputs{isQualified}",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Name: "R4",
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
@@ -209,6 +230,26 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
+			Parents: []string{"R3"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "Runtime{R3}.Outputs{isQualified}",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Name: "R5",
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
@@ -247,20 +288,19 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
+			Parents: []string{"R5"},
 			Name:    "R6",
 			Type:    apis.ByCommand,
 			Command: []string{"python3"}, // 801的机器 要用python3
 			Args: []string{"" +
-				"/home/smj/adaptive-scheduling-framework/test/scene3/recheck1.py",
-				"/home/smj/adaptive-scheduling-framework/test/scene3/data.txt",
-				"device1"},
+				"/home/public/adaptive-scheduling-framework/test/scene3/recheck1.py",
+				"/home/public/adaptive-scheduling-framework/test/scene3/data.txt"},
 			// 这个是smj
 			//Args: []string{"" +
 			//	"/home/public/lock_test/test/scene3/recheck1.py",
 			//	"/home/public/lock_test/test/scene3/data.txt",
 			//	"device1"},
 			// 这个是801的路径
-			Parents: make([]string, 0),
 		},
 	}
 

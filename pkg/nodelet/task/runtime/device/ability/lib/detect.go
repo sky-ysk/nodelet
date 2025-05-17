@@ -251,7 +251,7 @@ func (dwps *DetectWorkpieceParseStrategy) Execute(payload interface{}) ([]apis.V
 		}
 	} else if isQualified == "unqualified" {
 		outputs[0] = apis.Value{
-			Value:     "true",
+			Value:     "false",
 			Name:      "isQualified",
 			Type:      apis.LocalData,
 			ValueType: apis.BoolType,
