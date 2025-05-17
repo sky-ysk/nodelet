@@ -1,14 +1,14 @@
 {
     "kind": "Task",
     "apiVersion": "resources/v1",
-    "name": "T1",
+    "name": "T2",
     "namespace": "test",
     "creationTimestamp": null,
     "labels": {
         "environment": "dev"
     },
     "spec": {
-        "name": "T1",
+        "name": "T2",
         "desc": {
             "docs": "复检task"
         },
