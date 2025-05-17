@@ -8,6 +8,7 @@ import (
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"sync"
 )
 
@@ -26,7 +27,12 @@ type DeviceWorker struct {
 // GetDeviceWorker 获取DeviceWorker的单例实例
 func GetDeviceWorker() *DeviceWorker {
 	once.Do(func() {
-		clientSet, _ := InitClient()
+
+		//clientSet, _ := InitClient()
+		clientSet, err := utils.CreateClientSetWithTimeOut(3600)
+		if err != nil {
+			logs.Fatalf("create client set failed, err:%v", err)
+		}
 		instance = &DeviceWorker{
 			MapTable: make(map[string]*apis.Device),
 			Manager:  m.NewManager(clientSet),
