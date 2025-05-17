@@ -286,7 +286,7 @@ func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
 }
 
 // ReleaseAbilityRef 在非正常情况下减少引用
-func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string) error {
+func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime *apis.Runtime) error {
 
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
@@ -296,9 +296,10 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string) error {
 	d := dw.MapTable[device]
 	// 获取ability
 	a := d.Status.Abilities[ability]
-	a.Lock.Ref -= 1        // 减引用
+	a.Lock.Ref -= 1 // 减引用
+
 	d.Status.Lock.Ref -= 1 // 减引用
-	logs.Warnf("[DEVICE WORKER] REF IS %d", d.Status.Lock.Ref)
+	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s", d.Status.Lock.Ref, runtime.Name)
 	d.Status.Abilities[ability] = a
 
 	aByte, err := json.Marshal(d.Status.Abilities)
@@ -407,7 +408,7 @@ func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *ap
 	for _, ds := range runtime.Spec.Devices {
 		dname := ds.ExpectedProperties["name"].Value
 		for _, ability := range ds.Abilities {
-			err = dw.ReleaseAbilityRef(dname, ability)
+			err = dw.ReleaseAbilityRef(dname, ability, runtime)
 			if err != nil {
 				logs.Errorf("[DEVICE WORKER] ReleaseAbilityRef %s failed, err is %s", dname, err.Error())
 				return
@@ -416,14 +417,15 @@ func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *ap
 	}
 }
 
-func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device) error {
+func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, runtime *apis.Runtime) error {
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
 	dw.updateMap()
+
 	for name, device := range deviceMap {
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
 		device.Status.Lock.Ref -= 1
-		logs.Warnf("[DEVICE RUNTIME] REF IS %d", device.Status.Lock.Ref)
+		logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s", device.Status.Lock.Ref, runtime.Name)
 		if device.Status.Lock.Ref == 0 {
 			device.Status.Lock.IsLocked = false
 		}

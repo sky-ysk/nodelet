@@ -309,7 +309,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 	logs.Infof("[DEVICE RUNTIME] url: %s", url)
 	if taskId == "test" {
 		dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Successed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
-		err := dw.UpdateDeviceFinished(deviceMap)
+		err := dw.UpdateDeviceFinished(deviceMap, runtime)
 		if err != nil {
 			logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 			return err
@@ -371,7 +371,8 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Successed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
 			// 2.处理device
 			//err = utils.UpdateDeviceFinished(deviceMap, dr.clientManager)
-			err = dw.UpdateDeviceFinished(deviceMap)
+			logs.Warnf("[DEVICE RUNTIME] RUNTIME IS %s, ref is %d (before)", runtime.Name, executor.Status.Lock.Ref)
+			err = dw.UpdateDeviceFinished(deviceMap, runtime)
 			if err != nil {
 				logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 				return err
