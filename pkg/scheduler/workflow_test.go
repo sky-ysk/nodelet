@@ -2247,6 +2247,7 @@ func TestCreateJson2(t *testing.T) {
 			Conditions: &apis.Conditions{
 				Formulas: []apis.ConditionFormula{
 					{
+						Signal:        apis.Equal,
 						ConditionType: apis.DataDependency,
 						LeftValue: apis.Value{
 							NameSpace: apis.NamespaceTest,
@@ -2298,6 +2299,7 @@ func TestCreateJson2(t *testing.T) {
 			Conditions: &apis.Conditions{
 				Formulas: []apis.ConditionFormula{
 					{
+						Signal:        apis.Equal,
 						ConditionType: apis.DataDependency,
 						LeftValue: apis.Value{
 							NameSpace: apis.NamespaceTest,

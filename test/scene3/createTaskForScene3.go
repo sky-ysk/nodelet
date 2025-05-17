@@ -176,6 +176,7 @@ func main() {
 			Conditions: &apis.Conditions{
 				Formulas: []apis.ConditionFormula{
 					{
+						Signal:        apis.Equal,
 						ConditionType: apis.DataDependency,
 						LeftValue: apis.Value{
 							NameSpace: apis.NamespaceTest,
@@ -234,6 +235,7 @@ func main() {
 			Conditions: &apis.Conditions{
 				Formulas: []apis.ConditionFormula{
 					{
+						Signal:        apis.Equal,
 						ConditionType: apis.DataDependency,
 						LeftValue: apis.Value{
 							NameSpace: apis.NamespaceTest,

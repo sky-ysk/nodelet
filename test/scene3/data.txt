@@ -1,14 +1,14 @@
 {
     "kind": "Task",
     "apiVersion": "resources/v1",
-    "name": "T2",
+    "name": "T1",
     "namespace": "test",
     "creationTimestamp": null,
     "labels": {
         "environment": "dev"
     },
     "spec": {
-        "name": "T2",
+        "name": "T1",
         "desc": {
             "docs": "复检task"
         },
@@ -197,7 +197,8 @@
                                                 "type": "local",
                                                 "value": "Runtime{R3}.Outputs{isQualified}",
                                                 "value_type": "bool"
-                                            }
+                                            },
+                                            "signal": "=="
                                         }
                                     ]
                                 },
@@ -244,7 +245,8 @@
                                                 "type": "local",
                                                 "value": "Runtime{R3}.Outputs{isQualified}",
                                                 "value_type": "bool"
-                                            }
+                                            },
+                                            "signal": "=="
                                         }
                                     ]
                                 },
