@@ -233,6 +233,7 @@ func worldPointsToString(worldPoints [][]float64) string {
 type DetectWorkpieceParseStrategy struct{}
 
 func (dwps *DetectWorkpieceParseStrategy) Execute(payload interface{}) ([]apis.Value, error) {
+	logs.Infof("")
 	// 使用对应的函数进行解析
 	isQualified, err := parseQualified(payload)
 	if err != nil {
@@ -269,6 +270,7 @@ func (dwps *DetectWorkpieceParseStrategy) Execute(payload interface{}) ([]apis.V
 func parseQualified(payload interface{}) (string, error) {
 	// 将 payload 转换为 map[string]interface{}
 	payloadMap, ok := payload.(map[string]interface{})
+	logs.Infof("this is payload :%v!!!!!!!!", payload)
 	if !ok {
 		return "", fmt.Errorf("payload is not a map[string]interface{}")
 	}

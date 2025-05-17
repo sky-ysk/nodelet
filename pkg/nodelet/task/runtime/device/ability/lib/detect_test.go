@@ -9,7 +9,7 @@ import (
 
 func TestPublishDetectWorkpieceInst(t *testing.T) {
 	logs.Init("test")
-	ip := "http://172.130.0.61:48227"
+	ip := "http://172.130.0.61:45671"
 	api := "/api/task/detect"
 	url := fmt.Sprintf("%s%s", ip, api)
 	taskId, err := PublishDetectWorkpieceInst(url)
@@ -17,7 +17,7 @@ func TestPublishDetectWorkpieceInst(t *testing.T) {
 		logs.Errorf("err is %v", err)
 	}
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 2)
 	tr, err := GetTaskStatus(taskId, "http://172.130.0.61:8080")
 	if err != nil {
 		logs.Errorf("tr is %v", tr)
