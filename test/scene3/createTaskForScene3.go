@@ -454,6 +454,7 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
+
 			Devices: []apis.DeviceSpec{
 				{
 					Name: "Robot1",
@@ -463,7 +464,8 @@ func main() {
 				},
 			},
 			Desc: &apis.Description{
-				Docs: "场景三的初检group",
+				Docs:  "场景三的初检group",
+				Label: []string{"scene3"},
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
