@@ -273,13 +273,25 @@ func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
 	return true
 }
 
+//// ReleaseAbilityRef 在非正常情况下减少引用
+//func (dw *DeviceWorker) ReleaseAbilityRef(device *apis.Device, ability string) bool {
+//	dw.mu.Lock()
+//	defer dw.mu.Unlock()
+//	dw.updateMap()
+//	d := dw.MapTable[device.Name]
+//	a := d.Status.Abilities[ability]
+//	a.Lock.Ref -= 1 // 减引用
+//	d.Status.Abilities[ability] = a
+//	d.Status.Lock.Ref -= 1 // 减引用
+//	d.Status.Abilities[ability] = a
+//}
+
+// ReleaseAbility 正常释放能力锁
 func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool {
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
 	dw.updateMap()
 	d := dw.MapTable[device.Name]
-	aByte, err := json.Marshal(d.Status.Abilities)
-	logs.Infof(" ability is %s", string(aByte))
 	if d.Status.Abilities[ability].Lock.IsLocked != true {
 		return false
 	}
@@ -288,7 +300,7 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 	a.Lock.Ref -= 1         // 减引用
 	d.Status.Abilities[ability] = a
 
-	aByte, err = json.Marshal(d.Status.Abilities)
+	aByte, err := json.Marshal(d.Status.Abilities)
 	patchDevice, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
 			"abilities": json.RawMessage(aByte),

@@ -188,14 +188,14 @@
                                             "condition_type": "DataDependency",
                                             "left_value": {
                                                 "namespace": "test",
-                                                "type": "constants",
-                                                "value": "true",
-                                                "value_type": "bool"
+                                                "type": "local",
+                                                "value_type": "bool",
+                                                "from": "Runtime{R3}.Outputs{isQualified}"
                                             },
                                             "right_value": {
                                                 "namespace": "test",
-                                                "type": "local",
-                                                "value": "Runtime{R3}.Outputs{isQualified}",
+                                                "type": "constants",
+                                                "value": "true",
                                                 "value_type": "bool"
                                             },
                                             "signal": "=="
@@ -236,14 +236,14 @@
                                             "condition_type": "DataDependency",
                                             "left_value": {
                                                 "namespace": "test",
-                                                "type": "constants",
-                                                "value": "false",
-                                                "value_type": "bool"
+                                                "type": "local",
+                                                "value_type": "bool",
+                                                "from": "Runtime{R3}.Outputs{isQualified}"
                                             },
                                             "right_value": {
                                                 "namespace": "test",
-                                                "type": "local",
-                                                "value": "Runtime{R3}.Outputs{isQualified}",
+                                                "type": "constants",
+                                                "value": "false",
                                                 "value_type": "bool"
                                             },
                                             "signal": "=="
