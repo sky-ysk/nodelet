@@ -1686,13 +1686,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Group) bool {
 	actionSpec := &action.Spec
-	//检查conditions是否是空指针
-	if actionSpec.Conditions == nil {
-		return true
-	}
-	if len(actionSpec.Conditions.Formulas) == 0 {
-		return true
-	}
+	
 	if len(action.Spec.Parents) == 0 {
 		// 没有父节点，直接去检查后续的依赖
 	} else {
@@ -1709,6 +1703,13 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 		}
 	}
 	// 其他依赖
+	//检查conditions是否是空指针
+	if actionSpec.Conditions == nil {
+		return true
+	}
+	if len(actionSpec.Conditions.Formulas) == 0 {
+		return true
+	}
 	res, err := gmo.conditionEngine.CheckConditions(actionSpec.Conditions, *action)
 	if err != nil {
 		logs.Errorf("Check action conditions error:%v", err)
@@ -1735,12 +1736,6 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 	logs.Tracef("runtime %v's conditions is Chekingggggggggggggggggg", runtime.Name)
 	runtimeStatus := &runtime.Status
 	if runtimeStatus.IsDependencySatisf {
-		return true
-	}
-	if runtime.Spec.Conditions == nil {
-		return true
-	}
-	if len(runtime.Spec.Conditions.Formulas) == 0 {
 		return true
 	}
 
@@ -1777,6 +1772,12 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 	}
 
 	// 其他依赖
+	if runtime.Spec.Conditions == nil {
+		return true
+	}
+	if len(runtime.Spec.Conditions.Formulas) == 0 {
+		return true
+	}
 	for _, i := range runtime.Spec.Conditions.Formulas {
 		// ProgramDependency暂时不方便直接使用ConditionEngine
 		result, err := gmo.conditionEngine.CheckConditions(runtime.Spec.Conditions, *runtime)
