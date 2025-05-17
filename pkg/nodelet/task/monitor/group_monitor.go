@@ -1359,6 +1359,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			runtimeStatus := &allRuntime.Status
 			if runtimeStatus.Phase == apis.Successed {
 				runtimeHasSucceed = true // 遍历了所有的Runtime，包括当前Runtime新增5.13
+				logs.Infof("=======================runtimeHasSucceed:%v", runtimeHasSucceed)
 			}
 			if rSpecName == runtimeSpecName {
 				runtimeStatus.Phase = phase
@@ -1412,14 +1413,19 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			actionStatus.LastTime = &lastTime
 			// 还得发送Action执行完成的事件，同时将etcd当中的Action资源状态进行修改
 			if !finalActionIsKilled && !finalActionIsFailed {
+				logs.Infof("-----------------------------runtimeHasSucceed:%v", runtimeHasSucceed)
 				if runtimeHasSucceed {
 					actionStatus.Phase = apis.Successed
 					action.Status.Phase = apis.Successed
 					gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
-				} else {
+				} else { // 排除当前Runtime的所有Runtime当中，没有一个Runtime是Succeed状态，那么这里要进行一个判断，如果当前Runtime是成功的，则Action发送Succeed事件，如果当前Runtime是丢弃的，则Action发送Discard事件
 					actionStatus.Phase = phase
-					action.Status.Phase = phase // 方便最终End 显示状态
-					gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+					action.Status.Phase = phase  // 方便最终End 显示状态
+					if phase == apis.Successed { //当前Runtime是Successed，则Action发送Succeed完成事件
+						gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+					} else {
+						gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+					}
 				}
 			}
 			nowActionCompleted = true //当前Action已经完成
@@ -1452,9 +1458,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			if actionHasSucceed {
 				groupStatus.Phase = apis.Successed //Group的状态等于当前Action执行完成的状态  Succeed
 				gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
-			} else {
+			} else { // 排除当前Action的所有Action当中，没有一个Action是Succeed状态，那么这里要进行一个判断，如果当前Action是成功的，则Group发送Succeed事件，如果当前Action是丢弃的，则Group发送Discard事件
 				groupStatus.Phase = phase
-				gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Group name:\t %s is discard", get.Name))
+				if phase == apis.Successed { //当前Action是Successed，则Group发送Succeed完成事件
+					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
+				} else {
+					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Group name:\t %s is discard", get.Name))
+				}
 			}
 		}
 		nowGroupCompleted = true
@@ -1494,7 +1504,11 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 					gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
 				} else {
 					task.Status.Phase = phase //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，如果为Succeed，则Task也为Succeed，反正为Failed
-					gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Task Name:\t %s is discard", task.Name))
+					if phase == apis.Successed {
+						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+					} else {
+						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Task Name:\t %s is discard", task.Name))
+					}
 				}
 			}
 		}
@@ -1687,7 +1701,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Group) bool {
 	actionSpec := &action.Spec
-	
+
 	if len(action.Spec.Parents) == 0 {
 		// 没有父节点，直接去检查后续的依赖
 	} else {
