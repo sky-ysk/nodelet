@@ -1,9 +1,11 @@
 package device
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	apis "hit.edu/framework/pkg/apis/cores"
+	metav1 "hit.edu/framework/pkg/apis/meta"
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"sync"
@@ -30,7 +32,8 @@ func GetDeviceWorker() *DeviceWorker {
 			Manager:  m.NewManager(clientSet),
 			errChan:  make(chan error, 1),
 		}
-
+		ctx := context.Background()
+		go instance.monitorDiscardRuntimes(ctx)
 	})
 	return instance
 }
@@ -332,6 +335,39 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 	return true
 
 }
+
+func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
+	eventClient := dw.Manager.EventClients[apis.NamespaceTest]
+	if eventClient == nil {
+		logs.Error("No such event client!")
+		return
+	}
+	watch, err := eventClient.Watch(ctx, metav1.ListOptions{})
+	watchChan := watch.ResultChan()
+	if err != nil {
+		return
+	}
+	select {
+	case <-ctx.Done():
+		logs.Errorf("[device worker] ctx is done")
+	case e, ok := <-watchChan:
+		if !ok {
+			logs.Error("[device worker] watch channel closed")
+			return
+		}
+
+		if event, ok := e.Object.(*apis.Event); ok {
+			dw.handleRuntimeDiscardEvent(ctx, event)
+		} else {
+			logs.Errorf("[device worker] cannot tranform to event")
+		}
+	}
+}
+
+func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *apis.Event) {
+
+}
+
 func contains(slice []string, target []string) bool {
 	for _, t := range target {
 		found := false
