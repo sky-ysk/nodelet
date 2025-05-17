@@ -57,6 +57,7 @@ func (dw *DeviceWorker) updateMap() {
 
 	for _, device := range deviceList.Items {
 		dw.MapTable[device.Name] = &device
+		logs.Warnf("[DEVICE WORKER] Device %s has been updated, ref is %d", device.Name, device.Status.Lock.Ref)
 	}
 
 }
