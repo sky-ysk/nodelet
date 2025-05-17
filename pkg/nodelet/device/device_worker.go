@@ -297,16 +297,17 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime
 	// 获取ability
 	a := d.Status.Abilities[ability]
 	a.Lock.Ref -= 1 // 减引用
-
+	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s(before)", d.Status.Lock.Ref, runtime.Name)
 	d.Status.Lock.Ref -= 1 // 减引用
-	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s", d.Status.Lock.Ref, runtime.Name)
+
 	d.Status.Abilities[ability] = a
 
 	aByte, err := json.Marshal(d.Status.Abilities)
+	lByte, err := json.Marshal(d.Status.Lock)
 	patchDevice, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
 			"abilities": json.RawMessage(aByte),
-			"lock":      d.Status.Lock,
+			"lock":      json.RawMessage(lByte),
 		},
 	})
 	if err != nil {
@@ -318,6 +319,11 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime
 		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device)
 		return err
 	}
+	d1, err := dw.Manager.GetDevice(device, d.Namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Get device %s failed", device)
+	}
+	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s(after)", d1.Status.Lock.Ref, runtime.Name)
 	return nil
 }
 
@@ -424,8 +430,9 @@ func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, 
 
 	for name, device := range deviceMap {
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
+		logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s(before)", device.Status.Lock.Ref, runtime.Name)
 		device.Status.Lock.Ref -= 1
-		logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s", device.Status.Lock.Ref, runtime.Name)
+
 		if device.Status.Lock.Ref == 0 {
 			device.Status.Lock.IsLocked = false
 		}
@@ -446,7 +453,11 @@ func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, 
 			logs.Errorf("[DEVICE Worker] Update Device[%s] stage[FINISHED], err:%s", device.Name, err)
 			return err
 		}
-
+		d1, err := dw.Manager.GetDevice(device.Name, device.Namespace)
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Get device %s failed", device.Name)
+		}
+		logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s(after)", d1.Status.Lock.Ref, runtime.Name)
 		logs.Infof("[DEVICE Worker] Update Device[%s] successfully stage [FINISHED]\n", device.Name)
 	}
 
