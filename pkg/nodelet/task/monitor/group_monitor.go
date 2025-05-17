@@ -628,6 +628,9 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							if runtimeStatus.Phase != apis.Successed && runtimeStatus.Phase != apis.Discard {
 								allRuntimeIsSuccessed = false
 							}
+							if runtimeStatus.Phase == apis.Discard {
+								continue
+							}
 							if !gmo.runtimeDepenSatisfy(group, runtime, action) {
 								//logs.Infof("Runtime %s depends on parent runtime", r.Name)
 								//r.Waiting = true  // 这里不需要再标记了，因为在DeployCheck阶段就遍历了所有的runtime并标记了
@@ -1366,6 +1369,10 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				runtime.Status.Phase = phase // 方便最终End 显示状态
 				runtimeStatus.FinishAt = &finshTime
 				runtimeStatus.LastTime = &lastTime
+				// 5.17新增：加一个发送Runtime的Discard的事件
+				if phase == apis.Discard {
+					gmo.recorder.Event(allRuntime, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Runtime Name: %s is discard", allRuntime.Name))
+				}
 				// 如果说该group有副本，并且该副本group是提前部署副本的，那么这里除了修改源runtime的状态，还得修改副本runtime的状态
 				gmo.updateCopyIngfoForRuntime(get, phase, actionSpecName, runtimeSpecName)
 				// 更新一下etcd当中的Runtime的Status
