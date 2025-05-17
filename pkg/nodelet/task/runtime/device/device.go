@@ -105,7 +105,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 		// 更新runtime的phase
 		dr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 		// 更新device的状态
-		err = utils.UpdateDeviceRunning(deviceMap, dr.clientManager)
+		err = dw.UpdateDeviceRunning(deviceMap)
 
 		// 监听任务执行状况
 		err = dr.monitorDeviceAbility(group.Namespace, taskId, executor, ds, runtime, group.Name, action.Spec.Name, dr.clientManager, deviceMap, dw, da)
@@ -309,7 +309,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 	logs.Infof("[DEVICE RUNTIME] url: %s", url)
 	if taskId == "test" {
 		dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Successed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
-		err := utils.UpdateDeviceFinished(deviceMap, dr.clientManager)
+		err := dw.UpdateDeviceFinished(deviceMap)
 		if err != nil {
 			logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 			return err
@@ -370,7 +370,8 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			}
 			dr.notifyRuntimeEndPhase(groupName, groupNamespace, actionName, runtime.Spec.Name, apis.Successed, apis.Time{Time: time.Now()}, apis.Time{Time: time.Now()})
 			// 2.处理device
-			err = utils.UpdateDeviceFinished(deviceMap, dr.clientManager)
+			//err = utils.UpdateDeviceFinished(deviceMap, dr.clientManager)
+			err = dw.UpdateDeviceFinished(deviceMap)
 			if err != nil {
 				logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
 				return err

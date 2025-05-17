@@ -10,6 +10,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/utils"
 	"sync"
+	"time"
 )
 
 var instance *DeviceWorker
@@ -409,6 +410,68 @@ func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *ap
 			}
 		}
 	}
+}
+
+func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device) error {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.updateMap()
+	for name, device := range deviceMap {
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
+		device.Status.Lock.Ref -= 1
+		logs.Infof("[DEVICE RUNTIME] REF IS %d", device.Status.Lock.Ref)
+		if device.Status.Lock.Ref == 0 {
+			device.Status.Lock.IsLocked = false
+		}
+		// 将phase更改为running
+		device.Status.Phase = apis.DeviceIdle
+		// 设置更新时间
+		device.Status.LastTime = apis.Time{Time: time.Now()}
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"lock":      device.Status.Lock,
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
+
+		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE Worker] Update Device[%s] stage[FINISHED], err:%s", device.Name, err)
+			return err
+		}
+
+		logs.Infof("[DEVICE Worker] Update Device[%s] successfully stage [FINISHED]\n", device.Name)
+	}
+
+	return nil
+}
+
+func (dw *DeviceWorker) UpdateDeviceRunning(deviceMap map[string]*apis.Device) error {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.updateMap()
+	for name, device := range deviceMap {
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[RUNNING]", name)
+		// 将phase更改为running
+		device.Status.Phase = apis.DeviceRunning
+		// 设置更新时间
+		device.Status.LastTime = apis.Time{Time: time.Now()}
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
+		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Update Device[%s] Failed stage [RUNNING], err:%s", device.Name, err.Error())
+			return err
+		}
+		logs.Infof("[DEVICE WORKER] Update Device[%s] Successfully stage [RUNNING]\n", device.Name)
+	}
+
+	return nil
 }
 
 func contains(slice []string, target []string) bool {
