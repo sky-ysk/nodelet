@@ -2093,9 +2093,7 @@ func TestCreateJson2(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Turn",
@@ -2133,9 +2131,7 @@ func TestCreateJson2(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Grab",
@@ -2174,9 +2170,7 @@ func TestCreateJson2(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Grab",
@@ -2208,9 +2202,7 @@ func TestCreateJson2(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Detect",
@@ -2269,9 +2261,7 @@ func TestCreateJson2(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Put",
@@ -2330,9 +2320,7 @@ func TestCreateJson2(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Put",
@@ -2369,9 +2357,7 @@ func TestCreateJson2(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Turn",
@@ -2502,7 +2488,7 @@ func TestCreateJson2(t *testing.T) {
 					},
 					ExpectedProperties: map[string]apis.Property{
 						"name": apis.Property{
-							Value: "device1",
+							Value: "{which_device}",
 						},
 						"strategy": apis.Property{
 							Value: "nominate",
@@ -2522,7 +2508,7 @@ func TestCreateJson2(t *testing.T) {
 	}
 	task1 := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "T1",
+			Name:      "T2",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -2536,7 +2522,7 @@ func TestCreateJson2(t *testing.T) {
 			Desc: &apis.Description{
 				Docs: "复检task",
 			},
-			Name: "T1",
+			Name: "T2",
 			Groups: []apis.GroupSpec{
 				group1.Spec,
 			},

@@ -1,14 +1,14 @@
 {
     "kind": "Task",
     "apiVersion": "resources/v1",
-    "name": "T1",
+    "name": "T2",
     "namespace": "test",
     "creationTimestamp": null,
     "labels": {
         "environment": "dev"
     },
     "spec": {
-        "name": "T1",
+        "name": "T2",
         "desc": {
             "docs": "复检task"
         },
@@ -20,7 +20,7 @@
                         "name": "Robot1",
                         "expected_properties": {
                             "name": {
-                                "value": "device1"
+                                "value": "{which_device}"
                             },
                             "strategy": {
                                 "value": "nominate"
@@ -51,7 +51,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "device1"
+
                                             }
                                         },
                                         "abilities": [
@@ -87,7 +87,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "device1"
+
                                             }
                                         },
                                         "abilities": [
@@ -115,7 +115,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "device1"
+
                                             }
                                         },
                                         "abilities": [
@@ -151,7 +151,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "device1"
+
                                             }
                                         },
                                         "abilities": [
@@ -172,7 +172,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "device1"
+
                                             }
                                         },
                                         "abilities": [
@@ -220,7 +220,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "device1"
+
                                             }
                                         },
                                         "abilities": [
@@ -276,7 +276,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "device1"
+
                                             }
                                         },
                                         "abilities": [
