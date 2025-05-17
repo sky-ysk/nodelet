@@ -376,7 +376,7 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 
 			if event, ok := e.Object.(*apis.Event); ok {
 				//logs.Infof("[DEVICE RUNTIME] EVENT IS %v", event)
-				logs.Infof("[DEVICE RUNTIME] Receive event:%s ", event.Name)
+				//logs.Infof("[DEVICE RUNTIME] Receive event:%s ", event.Name)
 				if event.InvolvedObject.Kind != "Runtime" || event.Reason != "ExecuteDiscard" {
 					continue
 				}
