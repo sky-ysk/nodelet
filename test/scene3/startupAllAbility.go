@@ -17,15 +17,17 @@ func main() {
 
 	nameList := []string{name1, name2, name3, name4}
 	for _, name := range nameList {
+
 		abilityManager := manager.NewAbilityManager(url1, name)
 		err := abilityManager.BindUUID()
 		if err != nil {
 			logs.Errorf("bind uuid fail")
 		}
-		err = abilityManager.TerminateAbility()
+		hb, err := abilityManager.StartupAbility()
 		if err != nil {
 			logs.Errorf("terminate ability fail")
 		}
+		logs.Infof("hb is %v", hb)
 	}
 
 }

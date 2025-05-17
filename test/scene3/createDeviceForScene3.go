@@ -31,7 +31,7 @@ func main() {
 			Name: "device1",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
-				URL:  "http://192.168.8.197:8080",
+				URL:  "http://172.130.0.61:8080",
 			},
 			Abilities: []string{
 				"Grab", "Turn", "Detect", "Put",
@@ -42,21 +42,75 @@ func main() {
 				IsLocked: false,
 			},
 			Abilities: map[string]apis.Ability{
-				"Test": {
-					Name: "TEST",
+				"Grab": {
+					Name: "GrabObject.Leju.801",
 					Services: map[string]apis.AbilityService{
-						"test": apis.AbilityService{
+						"GrabWorkpiece": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+						"GrabInit": apis.AbilityService{
 							Ip:        new(string),
 							Interface: new(string),
 							Port:      new(string),
 						},
 					},
-					Status: apis.AbilityRunning,
+
+					Status: apis.AbilityReadyStartUp,
+				},
+				"Turn": {
+					Name: "Turn.Leju.801",
+					Services: map[string]apis.AbilityService{
+						"Turn": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityReadyStartUp,
+				},
+				"Detect": {
+					Name: "DetectObject.Leju.801",
+					Services: map[string]apis.AbilityService{
+						"DetectWorkpiece": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityReadyStartUp,
+				},
+				"Put": {
+					Name: "PutObject.Leju.801",
+					Services: map[string]apis.AbilityService{
+						"PutWorkpiece": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
+					},
+					Status: apis.AbilityReadyStartUp,
 				},
 			},
 			Phase: apis.DeviceIdle,
 		},
 	}
+	// 放置工件
+	*device1.Status.Abilities["Put"].Services["PutWorkpiece"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Put"].Services["PutWorkpiece"].Interface = "/api/task/put"
+	// 抓取工件
+	*device1.Status.Abilities["Grab"].Services["GrabWorkpiece"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Grab"].Services["GrabWorkpiece"].Interface = "/api/task/grab"
+	// 转身
+	*device1.Status.Abilities["Turn"].Services["Turn"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Turn"].Services["Turn"].Interface = "/api/task/turn"
+	// 初始化
+	*device1.Status.Abilities["Grab"].Services["GrabInit"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Grab"].Services["GrabInit"].Interface = "/api/task/init"
+	// 检测
+	*device1.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Detect"].Services["DetectWorkpiece"].Interface = "/api/task/detect"
 
 	device2 := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{

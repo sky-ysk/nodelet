@@ -43,7 +43,7 @@ func (gws *GrabWorkpieceStrategy) Execute(url string, params []apis.Value, engin
 }
 func PublishGrabWorkpieceInst(label string, url string) (string, error) {
 	// 构建请求体
-	requestBody := TurnLabel{
+	requestBody := GrabWorkpieceLabel{
 		label,
 	}
 
