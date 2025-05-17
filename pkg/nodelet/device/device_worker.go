@@ -364,6 +364,8 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 		}
 
 		if event, ok := e.Object.(*apis.Event); ok {
+			logs.Infof("[DEVICE RUNTIME] EVENT IS %v", event)
+			logs.Infof("[DEVICE RUNTIME] Receive event:%s ", event.Name)
 			dw.handleRuntimeDiscardEvent(ctx, event)
 		} else {
 			logs.Errorf("[device worker] cannot tranform to event")
@@ -374,6 +376,7 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *apis.Event) {
 	name := event.InvolvedObject.Name
 	namespace := event.InvolvedObject.Namespace
+	logs.Infof("[DEVICE RUNTIME] handleRuntimeDiscardEvent runtime IS %v", name)
 	// 获取runtime
 	runtime, err := dw.Manager.GetRuntime(name, namespace)
 	if err != nil {
