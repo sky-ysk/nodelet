@@ -35,7 +35,7 @@ type FileManager struct {
 	UploadURL    string
 	ForwardURL   string
 	DownloadURL  string
-	// 记录本地的runtime的文件下载情况：未下载、正在下载、下载完成、下载失败。key是带后缀的runtime.Name，value是data[]里面所有文件的下载状态
+	// 记录本地的runtime的文件下载情况：未下载、正在下载、下载完成、下载失败。key是带后缀的runtime.Name-文件名（例如R1-xxxxx...-test.txt），value是文件的下载状态
 	DownloadStatus map[string]string
 	// 记录本地的runtime的文件上传情况：未上传、正在上传、上传完成、上传失败。key是带后缀的runtime.Name，value是data[]里面所有文件的上传状态
 	UploadStatus map[string]string

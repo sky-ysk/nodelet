@@ -126,13 +126,7 @@ func main() {
 	//上传文件，runtime的Data[]里面的每一个文件都需要上传
 	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
 	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/upload.py"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/wine.py"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/wine_data.csv"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/task_exporter/dependency/requirements.txt"
+	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/bash.sh"
 	UploadFile(filePath)
 
 	runtime1_1_1_1Condition := apis.Conditions{
@@ -169,11 +163,11 @@ func main() {
 					apis.RuntimeSpec{
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
-						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/upload.py", "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt", "uotput.txt"}, // 10s
-						Inputs:                   []apis.Value{apis.Value{Value: "test.txt"}},                                        //20s
+						Command:                  []string{"sh"},
+						Args:                     []string{"bash.sh"}, // 10s
+						Inputs:                   []apis.Value{apis.Value{}},                                        //20s
 						Parents:                  make([]string, 0),                                                                  // 加入Parents
-						Data:                     []apis.DataSpec{apis.DataSpec{Name: "upload.py"}, apis.DataSpec{Name: "test.txt"}}, // 依赖文件
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "bash.sh"}, apis.DataSpec{Name: "test.txt"}}, // 依赖文件
 						Conditions:               &runtime1_1_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,

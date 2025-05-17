@@ -228,6 +228,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 			return v, nil
 		}
 	}
+	fmt.Println("unsuported kindType:", kindType)
 	return nil, errors.New("Failed to extract local value")
 }
 

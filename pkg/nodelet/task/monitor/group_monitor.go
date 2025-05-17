@@ -331,7 +331,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 								runtimeStatus := &runtime.Status
 								if runtimeStatus.CopyStatus == "Running" { //说明源任务当中的该runtime已经Running了
 									// 这里将副本group中的该runtime进行判断，如果是细粒度控制的，就进行init
-									if runtime.Spec.EnableFineGrainedControl && !runtimeStatus.Initing && gmo.runtimeDepenSatisfy(runtime, action) { //细粒度控制 且 还未Init初始化过
+									if runtime.Spec.EnableFineGrainedControl && !runtimeStatus.Initing && gmo.runtimeDepenSatisfy(group, runtime, action) { //细粒度控制 且 还未Init初始化过
 										// 启动runtimeStatus的Init方法  --TODO 这里为啥不用依赖检查呢？因为源任务能Running，说明这个runtime是依赖是满足的，所以默认副本对应的runtime依赖也是满足的（所以这里得加一点，就是在init阶段，检查一下依赖再init也OK---最好是这样）
 										logs.Info("#############################Init#######################################")
 										go gmo.runtimeManager.InitRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // TODO init方法当中最好也能发送一个事件
@@ -540,7 +540,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							// 后续还需要考虑到这些目录的删除。例如在运行完成之后，生成的结果要么直接上传到etcd，要么直接上传到文件仓库。在这些操作完成之后，考虑删除这些已完成的任务的文件夹
 
 							if runtimeStatus.Waiting == true { // 说明是第二次遍历到这个runtime，第一次遍历到该runtime的时候，其依赖没有满足（判断Runtime是否处于等待）
-								if !gmo.runtimeDepenSatisfy(runtime, action) { // runtime 依赖不满足
+								if !gmo.runtimeDepenSatisfy(group, runtime, action) { // runtime 依赖不满足
 									continue
 								}
 								patchRuntime, err := json.Marshal(map[string]interface{}{
@@ -554,7 +554,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								}
 								//grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = false //runtime依赖已经满足，此时设置为false，就不会继续往下执行，去启动任务了，这里的设置很关键
 							} else {
-								if !gmo.runtimeDepenSatisfy(runtime, action) { // runtime 依赖不满足
+								if !gmo.runtimeDepenSatisfy(group, runtime, action) { // runtime 依赖不满足
 									patchRuntime, err := json.Marshal(map[string]interface{}{
 										"status": map[string]interface{}{
 											"waiting": true, //runtime依赖已经满足，此时设置为false，就不会继续往下执行，去启动任务了，这里的设置很关键
@@ -628,7 +628,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							if runtimeStatus.Phase != apis.Successed && runtimeStatus.Phase != apis.Discard {
 								allRuntimeIsSuccessed = false
 							}
-							if !gmo.runtimeDepenSatisfy(runtime, action) {
+							if !gmo.runtimeDepenSatisfy(group, runtime, action) {
 								//logs.Infof("Runtime %s depends on parent runtime", r.Name)
 								//r.Waiting = true  // 这里不需要再标记了，因为在DeployCheck阶段就遍历了所有的runtime并标记了
 								continue
@@ -696,7 +696,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							}
 							runtimeStatus := &runtime.Status
 							//logs.Info("========================================Init----grou")
-							if !gmo.runtimeDepenSatisfy(runtime, action) { // 这里需要runtime的父亲节点的状态也为Successed，所以源runtime成功后，同样需要将副本runtime的Phase设置为Succeed，这个很关键
+							if !gmo.runtimeDepenSatisfy(group, runtime, action) { // 这里需要runtime的父亲节点的状态也为Successed，所以源runtime成功后，同样需要将副本runtime的Phase设置为Succeed，这个很关键
 								//grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true
 								patchRuntime, err := json.Marshal(map[string]interface{}{
 									"status": map[string]interface{}{
@@ -1687,13 +1687,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 // 检查Action的依赖是否满足
 func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Group) bool {
 	actionSpec := &action.Spec
-	//检查conditions是否是空指针
-	if actionSpec.Conditions == nil {
-		return true
-	}
-	if len(actionSpec.Conditions.Formulas) == 0 {
-		return true
-	}
+	
 	if len(action.Spec.Parents) == 0 {
 		// 没有父节点，直接去检查后续的依赖
 	} else {
@@ -1710,6 +1704,13 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 		}
 	}
 	// 其他依赖
+	//检查conditions是否是空指针
+	if actionSpec.Conditions == nil {
+		return true
+	}
+	if len(actionSpec.Conditions.Formulas) == 0 {
+		return true
+	}
 	res, err := gmo.conditionEngine.CheckConditions(actionSpec.Conditions, *action)
 	if err != nil {
 		logs.Errorf("Check action conditions error:%v", err)
@@ -1731,17 +1732,11 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 }
 
 // 检查Runtime的依赖是否满足
-func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis.Action) bool {
+func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Runtime, action *apis.Action) bool {
 	//TODO runtime运行之前，需要检查parent的runtime是否正常执行完成
 	logs.Tracef("runtime %v's conditions is Chekingggggggggggggggggg", runtime.Name)
 	runtimeStatus := &runtime.Status
 	if runtimeStatus.IsDependencySatisf {
-		return true
-	}
-	if runtime.Spec.Conditions == nil {
-		return true
-	}
-	if len(runtime.Spec.Conditions.Formulas) == 0 {
 		return true
 	}
 
@@ -1756,6 +1751,21 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 				logs.Errorf("Failed to get parent runtime:%v form etcd, err:%v", parentName, err)
 			}
 			if parentRuntime.Status.Phase != apis.Successed { // 如果父亲Runtime不是Succeed，直接返回依赖不满足，就算是父亲Runtime是Discard，也返回依赖不满足
+				if parentRuntime.Status.Phase == apis.Discard {
+					// TODO:父节点被丢弃，因此子节点直接通知为丢弃状态
+					discardEvent := events.RuntimeEndPhaseEvent1{
+						GroupName:       group.Name,
+						GroupNamespace:  group.Namespace,
+						ActionSpecName:  action.Spec.Name,
+						RuntimeSpecName: runtime.Spec.Name,
+						Phase:           apis.Discard,
+						FinishAt:        apis.Time{time.Now()},
+						LastTime:        apis.Time{time.Now()},
+					}
+					gmo.handleRuntimeEndUpdate(discardEvent)
+					logs.Trace("runtime %v's parent:%v is discarded!", runtime.Name, parentName)
+					return false
+				}
 				logs.Trace("runtime %v's parent:%v is not completed", runtime.Name, parentName)
 				return false
 			}
@@ -1763,6 +1773,12 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 	}
 
 	// 其他依赖
+	if runtime.Spec.Conditions == nil {
+		return true
+	}
+	if len(runtime.Spec.Conditions.Formulas) == 0 {
+		return true
+	}
 	for _, i := range runtime.Spec.Conditions.Formulas {
 		// ProgramDependency暂时不方便直接使用ConditionEngine
 		result, err := gmo.conditionEngine.CheckConditions(runtime.Spec.Conditions, *runtime)
@@ -1771,9 +1787,23 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(runtime *apis.Runtime, action *apis
 			return false
 		}
 		if result != apis.True {
+			if result == apis.False {
+				// TODO:说明是被丢弃等状态返回的不是notready，因此通知queue这个runtime所在的整个group需要变成丢弃状态
+				discardEvent := events.RuntimeEndPhaseEvent1{
+					GroupName:       group.Name,
+					GroupNamespace:  group.Namespace,
+					ActionSpecName:  action.Spec.Name,
+					RuntimeSpecName: runtime.Spec.Name,
+					Phase:           apis.Discard,
+					FinishAt:        apis.Time{time.Now()},
+					LastTime:        apis.Time{time.Now()},
+				}
+				gmo.handleRuntimeEndUpdate(discardEvent)
+			}
 			logs.Tracef("runtime %v's conditions is not satisfy", runtime.Name)
 			return false
 		}
+
 		// 这里需要判断这个条件的类型，如果是ProgramDependency类型的条件，则需要进行特殊处理(nodelet这里直接使用Parents来处理，暂时不使用ConditionEngine)
 		if i.ConditionType == apis.ProgramDependency {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；

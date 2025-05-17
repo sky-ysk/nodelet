@@ -199,20 +199,24 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			logs.Tracef("runtime Data[]:%v", runtime.Spec.Data)
 			for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
 				// 检查DownloadStatus[]是否存在
-				if _, ok := gh.fileManager.DownloadStatus[filedata.Name]; !ok { // 说明没有下载过
-					gh.fileManager.DownloadStatus[filedata.Name] = fileManager.NotDownloaded
-					logs.Tracef("file not downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+				// FIXME: 5-15测试发现有bug，fileManager针对的是文件名，那么多个runtime使用到同名文件的时候会出错，导致文件不再被下载
+				// 修改建议：1、当一个文件下载完成之后，立刻删除filaManager里面的记录，保证能再次下载（这里会不会有同步的问题？感觉会有）
+				// 2、fileManager对文件下载的记录增加针对runtime的记录，保证每个文件都与runtime联系，这样就不会导致不同的runtime下载直接相互冲突了
+				fileKey := runtime.Name + "-" + filedata.Name
+				if _, ok := gh.fileManager.DownloadStatus[fileKey]; !ok { // 说明没有下载过
+					gh.fileManager.DownloadStatus[fileKey] = fileManager.NotDownloaded
+					logs.Tracef("file not downloaded filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
 				}
-				if gh.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloaded { // 说明已经下载过了
-					logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+				if gh.fileManager.DownloadStatus[fileKey] == fileManager.Downloaded { // 说明已经下载过了
+					logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
 					continue
-				} else if gh.fileManager.DownloadStatus[filedata.Name] == fileManager.Downloading { // 说明正在下载
-					logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+				} else if gh.fileManager.DownloadStatus[fileKey] == fileManager.Downloading { // 说明正在下载
+					logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
 					continue
 				}
-				if gh.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloading && gh.fileManager.DownloadStatus[filedata.Name] != fileManager.Downloaded { // 说明没有下载过
-					gh.fileManager.DownloadStatus[filedata.Name] = fileManager.Downloading
-					logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+				if gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloading && gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloaded { // 说明没有下载过
+					gh.fileManager.DownloadStatus[fileKey] = fileManager.Downloading
+					logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
 					go gh.fileManager.DownloadFile(filedata.Name, groupdir)
 				}
 			}

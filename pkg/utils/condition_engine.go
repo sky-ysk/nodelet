@@ -71,7 +71,7 @@ func NewConditionEngine() *ConditionEngine {
 }
 
 // o传入的是一个对象，可能是workflow、task、group、action、runtime等
-// 目前o传入的是指针，在考虑是否改成传入值
+// o传入的是传入值,而不是指针
 func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interface{}) (apis.ResultType, error) {
 	if conditions == nil {
 		logs.Error("condition is nil")
@@ -138,12 +138,8 @@ func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o
 	Name := val.FieldByName("Name")
 
 	//debug日志
-	// logs.Infof("checkNodeDependency after val : %v", val)
-	// logs.Infof("checkNodeDependency Name : %v, kind:%v", Name, kind)
-	// logs.Infof("checkNodeDependency formula pointer : %v", &formula.LeftValue)
-	// logs.Infof("get value:::::::LeftValue:%v", formula.LeftValue)
 	// 解析parent的Phase的值
-	// TODO FIXME，调用engine就会报引用空指针的错，目前不清楚是为什么
+	// TODO FIXME，调用engine就会报引用空指针的错，目前不清楚是为什么====5-15找到原因：From和Value不完全符合正则表达式定义的规则
 	// panic: runtime error: invalid memory address or nil pointer dereference
 	value, err := ce.engine.GetValue(&(formula.LeftValue), val)
 
@@ -172,18 +168,26 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 	// logs.Infof("checkNodeDependency val : %v", val)
 	// logs.Infof("checkNodeDependency after val : %v", val)
 	// logs.Infof("checkNodeDependency Name : %v, kind:%v", Name, kind)
-	leftValue := formula.LeftValue
+	leftValue := &formula.LeftValue
+	rightValue := &formula.RightValue
 	Datatype := formula.LeftValue.Type
 	switch Datatype {
 	case apis.ConstData:
 
 	case apis.LocalData:
 		// newLeftValue为更新后的leftValue，更改的方式是指针引用
-		newLeftValue, err := ce.engine.ExtractLocalValue(&leftValue, val)
+		newLeftValue, err := ce.engine.ExtractLocalValue(leftValue, o)
 		if err != nil {
 			logs.Errorf("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
+			return apis.NotReady, errors.New("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
 		}
-		fmt.Println("get LocalData:", newLeftValue)
+		if newLeftValue.Value == "" {
+			return apis.NotReady, nil
+		}
+		if newLeftValue.Value != rightValue.Value {
+			return apis.False, errors.New("Local data check: get leftValue != expect rightValue.Get leftValue:" + newLeftValue.Value)
+		}
+		return apis.True, nil
 
 	case apis.DeviceData:
 
