@@ -2502,6 +2502,9 @@ func TestCreateJson2(t *testing.T) {
 						"name": apis.Property{
 							Value: "device1",
 						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
 					},
 				},
 			},

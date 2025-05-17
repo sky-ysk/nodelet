@@ -20,11 +20,17 @@
                         "name": "Robot1",
                         "expected_properties": {
                             "name": {
-                                "value": "{which_device}"
+                                "value": "device1"
+                            },
+                            "strategy": {
+                                "value": "nominate"
                             }
                         },
                         "abilities": [
-                            "Test", "Grab"
+                            "Turn",
+                            "Grab",
+                            "Detect",
+                            "Put"
                         ]
                     }
                 ],
@@ -39,13 +45,13 @@
                         },
                         "runtimes": [
                             {
-                                "name": "R1",
+                                "name": "R0",
                                 "devices": [
                                     {
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "{which_device}"
+                                                "value": "device1"
                                             }
                                         },
                                         "abilities": [
@@ -53,7 +59,15 @@
                                         ]
                                     }
                                 ],
-                                "type": "device"
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Turn}.Service{Turn}",
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "value": "table",
+                                        "value_type": "string"
+                                    }
+                                ]
                             }
                         ]
                     },
@@ -67,21 +81,57 @@
                         },
                         "runtimes": [
                             {
-                                "name": "R2",
+                                "name": "R1",
                                 "devices": [
                                     {
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "{which_device}"
+                                                "value": "device1"
                                             }
                                         },
                                         "abilities": [
-                                            "Test"
+                                            "Grab"
                                         ]
                                     }
                                 ],
-                                "type": "device"
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "value": "up",
+                                        "value_type": "string"
+                                    }
+                                ]
+                            },
+                            {
+                                "name": "R2",
+                                "parents": [
+                                    "R1"
+                                ],
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+                                                "value": "device1"
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Grab"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "value": "table",
+                                        "value_type": "string"
+                                    }
+                                ]
                             }
                         ]
                     },
@@ -101,7 +151,7 @@
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "{which_device}"
+                                                "value": "device1"
                                             }
                                         },
                                         "abilities": [
@@ -109,16 +159,20 @@
                                         ]
                                     }
                                 ],
-                                "type": "device"
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Detect}.Service{DetectWorkpiece}"
                             },
                             {
                                 "name": "R4",
+                                "parents": [
+                                    "R3"
+                                ],
                                 "devices": [
                                     {
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "{which_device}"
+                                                "value": "device1"
                                             }
                                         },
                                         "abilities": [
@@ -126,16 +180,46 @@
                                         ]
                                     }
                                 ],
-                                "type": "device"
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
+                                "conditions": {
+                                    "formulas": [
+                                        {
+                                            "condition_type": "DataDependency",
+                                            "left_value": {
+                                                "namespace": "test",
+                                                "type": "constants",
+                                                "value": "true",
+                                                "value_type": "bool"
+                                            },
+                                            "right_value": {
+                                                "namespace": "test",
+                                                "type": "local",
+                                                "value": "Runtime{R3}.Outputs{isQualified}",
+                                                "value_type": "bool"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "value": "finished_bin",
+                                        "value_type": "string"
+                                    }
+                                ]
                             },
                             {
                                 "name": "R5",
+                                "parents": [
+                                    "R3"
+                                ],
                                 "devices": [
                                     {
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "{which_device}"
+                                                "value": "device1"
                                             }
                                         },
                                         "abilities": [
@@ -143,7 +227,34 @@
                                         ]
                                     }
                                 ],
-                                "type": "device"
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
+                                "conditions": {
+                                    "formulas": [
+                                        {
+                                            "condition_type": "DataDependency",
+                                            "left_value": {
+                                                "namespace": "test",
+                                                "type": "constants",
+                                                "value": "false",
+                                                "value_type": "bool"
+                                            },
+                                            "right_value": {
+                                                "namespace": "test",
+                                                "type": "local",
+                                                "value": "Runtime{R3}.Outputs{isQualified}",
+                                                "value_type": "bool"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "value": "reject_bin",
+                                        "value_type": "string"
+                                    }
+                                ]
                             }
                         ]
                     },
@@ -153,17 +264,17 @@
                             "A3"
                         ],
                         "desc": {
-                            "docs": "转身"
+                            "docs": "转向流水线"
                         },
                         "runtimes": [
                             {
-                                "name": "R7",
+                                "name": "R6",
                                 "devices": [
                                     {
                                         "name": "Robot1",
                                         "expected_properties": {
                                             "name": {
-                                                "value": "{which_device}"
+                                                "value": "device1"
                                             }
                                         },
                                         "abilities": [
@@ -171,7 +282,15 @@
                                         ]
                                     }
                                 ],
-                                "type": "device"
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Turn}.Service{Turn}",
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "value": "belt",
+                                        "value_type": "string"
+                                    }
+                                ]
                             }
                         ]
                     }
