@@ -333,6 +333,7 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
 	dw.updateMap()
+
 	d := dw.MapTable[device.Name]
 	if d.Status.Abilities[ability].Lock.IsLocked != true {
 		return false
@@ -429,8 +430,9 @@ func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, 
 	defer dw.mu.Unlock()
 	dw.updateMap()
 
-	for name, device := range deviceMap {
-		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
+	for _, d := range deviceMap {
+		device := dw.MapTable[d.Name]
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", device.Name)
 		logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s(before)", device.Status.Lock.Ref, runtime.Name)
 		device.Status.Lock.Ref -= 1
 
