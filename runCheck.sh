@@ -5,5 +5,6 @@ do
     go run ./test/scene3/createTaskForScene3.go
 
     # 等待一分钟（60秒）
-    sleep 60
+    sleep 10
+
 done
