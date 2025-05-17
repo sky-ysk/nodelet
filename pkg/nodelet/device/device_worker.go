@@ -380,7 +380,7 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *apis.Event) {
 	name := event.InvolvedObject.Name
 	namespace := event.InvolvedObject.Namespace
-	logs.Infof("[DEVICE RUNTIME] handleRuntimeDiscardEvent runtime IS %v", name)
+	//logs.Infof("[DEVICE RUNTIME] handleRuntimeDiscardEvent runtime IS %v", name)
 	// 获取runtime
 	runtime, err := dw.Manager.GetRuntime(name, namespace)
 	if err != nil {
