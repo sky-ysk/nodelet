@@ -298,6 +298,7 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string) error {
 	a := d.Status.Abilities[ability]
 	a.Lock.Ref -= 1        // 减引用
 	d.Status.Lock.Ref -= 1 // 减引用
+	logs.Warnf("[DEVICE WORKER] REF IS %d", d.Status.Lock.Ref)
 	d.Status.Abilities[ability] = a
 
 	aByte, err := json.Marshal(d.Status.Abilities)
@@ -422,7 +423,7 @@ func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device) 
 	for name, device := range deviceMap {
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
 		device.Status.Lock.Ref -= 1
-		logs.Infof("[DEVICE RUNTIME] REF IS %d", device.Status.Lock.Ref)
+		logs.Warnf("[DEVICE RUNTIME] REF IS %d", device.Status.Lock.Ref)
 		if device.Status.Lock.Ref == 0 {
 			device.Status.Lock.IsLocked = false
 		}
