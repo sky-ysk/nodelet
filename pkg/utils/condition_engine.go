@@ -75,7 +75,7 @@ func NewConditionEngine() *ConditionEngine {
 func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interface{}) (apis.ResultType, error) {
 	if conditions == nil {
 		logs.Error("condition is nil")
-		return apis.False, errors.New("condition is nil")
+		return apis.True, errors.New("condition is nil")
 	}
 
 	if len(conditions.Formulas) == 0 {
@@ -97,11 +97,6 @@ func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interf
 func (ce *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
 	switch formula.ConditionType {
 	case apis.NodeDependency:
-		// res, err := ce.checkNodeDependency(formula, o)
-		// if err != nil {
-		// 	return apis.False, err
-		// }
-		// return res, nil
 		return apis.True, nil
 	case apis.DataDependency:
 		res, err := ce.checkDataDependency(formula, o)
@@ -179,13 +174,15 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 		newLeftValue, err := ce.engine.ExtractLocalValue(leftValue, o)
 		if err != nil {
 			logs.Errorf("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
-			return apis.NotReady, errors.New("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
+			return apis.NotReady, nil
 		}
 		if newLeftValue.Value == "" {
 			return apis.NotReady, nil
 		}
 		if newLeftValue.Value != rightValue.Value {
-			return apis.False, errors.New("Local data check: get leftValue != expect rightValue.Get leftValue:" + newLeftValue.Value)
+			// return apis.False, errors.New("Local data check: get leftValue != expect rightValue.Get leftValue:" + newLeftValue.Value)
+			logs.Tracef("checkDataDependency: %v %v's LocalData check failed, get leftValue %v != expect rightValue.Get leftValue:%v", kind, val.FieldByName("Name"), newLeftValue.Value, rightValue.Value)
+			return apis.False, nil
 		}
 		return apis.True, nil
 
