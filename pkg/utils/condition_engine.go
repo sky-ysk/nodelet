@@ -185,7 +185,8 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 			return apis.NotReady, nil
 		}
 		if newLeftValue.Value != rightValue.Value {
-			return apis.False, errors.New("Local data check: get leftValue != expect rightValue.Get leftValue:" + newLeftValue.Value)
+			return apis.False, nil
+			//return apis.False, errors.New("Local data check: get leftValue != expect rightValue.Get leftValue:" + newLeftValue.Value)
 		}
 		return apis.True, nil
 
