@@ -39,9 +39,7 @@ func main() {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Grab",
@@ -79,9 +77,7 @@ func main() {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Grab",
@@ -119,9 +115,7 @@ func main() {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Turn",
@@ -153,9 +147,7 @@ func main() {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Detect",
@@ -193,9 +185,7 @@ func main() {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Put",
@@ -233,9 +223,7 @@ func main() {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Put",
@@ -304,9 +292,7 @@ func main() {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Turn",

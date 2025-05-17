@@ -139,7 +139,11 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 		deviceTable[name] = device
 	}
 	// 填写group的devices字段
+
 	for index, deviceSpec := range group.Spec.Devices {
+		if deviceSpec.ExpectedProperties == nil {
+			deviceSpec.ExpectedProperties = make(map[string]apis.Property)
+		}
 		deviceSpec.ExpectedProperties["name"] = apis.Property{
 			Value: deviceTable[deviceSpec.Name].Name,
 		}
