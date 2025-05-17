@@ -277,31 +277,38 @@ func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
 }
 
 // ReleaseAbilityRef 在非正常情况下减少引用
-//func (dw *DeviceWorker) ReleaseAbilityRef(device *apis.Device, ability string) bool {
-//	dw.mu.Lock()
-//	defer dw.mu.Unlock()
-//	dw.updateMap()
-//	d := dw.MapTable[device.Name]
-//
-//	a := d.Status.Abilities[ability]
-//
-//	a.Lock.Ref -= 1 // 减引用
-//
-//	d.Status.Lock.Ref -= 1 // 减引用
-//
-//	d.Status.Abilities[ability] = a
-//	aByte, err := json.Marshal(d.Status.Abilities)
-//	patchDevice, err := json.Marshal(map[string]interface{}{
-//		"status": map[string]interface{}{
-//			"abilities": json.RawMessage(aByte),
-//		},
-//	})
-//	if err != nil {
-//		logs.Errorf("json marshal fail err：%s", err.Error())
-//	}
-//	_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
-//
-//}
+func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string) error {
+
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.updateMap()
+
+	// 获取device
+	d := dw.MapTable[device]
+	// 获取ability
+	a := d.Status.Abilities[ability]
+	a.Lock.Ref -= 1        // 减引用
+	d.Status.Lock.Ref -= 1 // 减引用
+	d.Status.Abilities[ability] = a
+
+	aByte, err := json.Marshal(d.Status.Abilities)
+	patchDevice, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"abilities": json.RawMessage(aByte),
+			"lock":      d.Status.Lock,
+		},
+	})
+	if err != nil {
+		logs.Errorf("json marshal fail err：%s", err.Error())
+		return err
+	}
+	_, err = dw.Manager.PatchDevice(device, d.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device)
+		return err
+	}
+	return nil
+}
 
 // ReleaseAbility 正常释放能力锁
 func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool {
@@ -365,7 +372,25 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 }
 
 func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *apis.Event) {
-
+	name := event.InvolvedObject.Name
+	namespace := event.InvolvedObject.Namespace
+	// 获取runtime
+	runtime, err := dw.Manager.GetRuntime(name, namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] get runtime %s failed", name)
+		return
+	}
+	// 释放不正常的引用
+	for _, ds := range runtime.Spec.Devices {
+		dname := ds.ExpectedProperties["name"].Value
+		for _, ability := range ds.Abilities {
+			err = dw.ReleaseAbilityRef(dname, ability)
+			if err != nil {
+				logs.Errorf("[DEVICE WORKER] ReleaseAbilityRef %s failed, err is %s", dname, err.Error())
+				return
+			}
+		}
+	}
 }
 
 func contains(slice []string, target []string) bool {
