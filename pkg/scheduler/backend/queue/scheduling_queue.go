@@ -8,6 +8,8 @@ import (
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	sutils "hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils/value"
+	"strconv"
+	"strings"
 
 	//scheutils "hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils"
@@ -231,6 +233,44 @@ type PodNominator interface {
 func groupInfoKeyFunc(gInfo *config.QueuedGroupInfo) string {
 	key := fmt.Sprintf("%s-%s", gInfo.GroupInfo.Group.Name, gInfo.GroupInfo.Group.ObjectMeta.Name)
 	return key
+}
+
+func groupInfoLessFunc(i, j *config.QueuedGroupInfo) bool {
+	if i == nil || j == nil || i.Group == nil || j.Group == nil {
+		return false
+	}
+	iScore := parseWeightFromQGroupInfo(i)
+	jScore := parseWeightFromQGroupInfo(j)
+	return iScore >= jScore
+}
+
+func parseWeightFromQGroupInfo(g *config.QueuedGroupInfo) int64 {
+	if g == nil || g.Group == nil {
+		return 0
+	}
+	if g.Group.Spec.Desc == nil || len(g.Group.Spec.Desc.Label) == 0 {
+		return 1
+	}
+
+	for _, label := range g.Group.Spec.Desc.Label {
+		if strings.Contains(label, "weight") {
+			parts := strings.SplitN(label, "=", 2)
+			if len(parts) != 2 {
+				logs.Warnf("weight string is not valid %s, group %s", label, g.Group.Name)
+				return 0
+			}
+			// 提取等号后的部分并去除首尾空格
+			valueStr := strings.TrimSpace(parts[1])
+			// 转换为整数
+			ret, err := strconv.ParseInt(valueStr, 10, 64)
+			if err != nil {
+				logs.Error(err.Error())
+				return 0
+			}
+			return ret
+		}
+	}
+	return 1
 }
 
 func groupKeyFunc(g *apis.Group) string {
