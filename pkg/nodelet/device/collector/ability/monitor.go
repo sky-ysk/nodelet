@@ -94,80 +94,62 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 	}
 	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Get All Devices Success!")
 	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] ETCD Has %d Devices", len(deviceList.Items))
-	// 并发同步控制
-	var wg sync.WaitGroup
+
+	// 外层并发同步控制（用于设备）
+	var deviceWG sync.WaitGroup
 	// 错误处理通道
 	errChan := make(chan error, 10)
 
 	// 遍历所有的Device
 	for _, d := range deviceList.Items {
 		device := d
-		if device.Name == "deviceLock" {
-			return nil
-		}
-		// Ability类型的device
-		//logs.Infof("device type is %v", device.Spec.AccessMethod.Type)
-		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
-			wg.Add(1)
-			// 每个Device单独开一个协程
-			go func() {
-				defer wg.Done()
-				devicePhase := device.Status.Phase
-				if devicePhase == apis.DeviceIdle { // 当phase为IDLE
-					url := device.Spec.AccessMethod.URL
-					for name, ability := range device.Status.Abilities {
-						logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Monitor Device[%s] Ability[%s]", device.Name, ability.Name)
-						if ability.Status == apis.AbilityReadyStartUp { // 如果ability需要被拉起就给他拉起
-							logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] is ReadyStartUp", device.Name, ability.Name)
-							am := NewAbilityManager(url, ability.Name)
-							err = am.BindUUID()
-							if err != nil {
-								logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Bind uuid failed, err:%s", device.Name, ability.Name, err.Error())
-								errChan <- err
-								return
-							}
-							var hb HeartBeat
-							hb, err = am.StartupAbility()
-							if err != nil {
-								logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup failed, err:%s", device.Name, ability.Name, err.Error())
-								errChan <- err
-								return
-							}
-							logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup Success!", device.Name, ability.Name)
-							ability.Status = apis.AbilityRunning
-							for sn, service := range ability.Services {
-								port := strconv.Itoa(hb.AbilityPort)
-								service.Port = &port
-								ability.Services[sn] = service
-							}
-							device.Status.Abilities[name] = ability
 
+		// Ability类型的device
+		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
+			deviceWG.Add(1)
+
+			go func(device apis.Device) {
+				defer deviceWG.Done()
+
+				// 内层并发同步控制（用于设备中的每个能力）
+				var abilityWG sync.WaitGroup
+				// 用于存储设备中所有能力的最终状态
+				updatedAbilities := make(map[string]apis.Ability)
+
+				// 遍历设备的所有能力
+				for name, ability := range device.Status.Abilities {
+					abilityWG.Add(1)
+
+					go func(name string, ability apis.Ability) {
+						defer abilityWG.Done()
+
+						// 处理单个能力
+						updatedAbility, err := processAbility(device, name, ability)
+						if err != nil {
+							errChan <- err
+							return
 						}
-					}
-					var patchDevice []byte
-					// 更新能力状态
-					patchDevice, err = json.Marshal(map[string]interface{}{
-						"status": map[string]interface{}{
-							"abilities": device.Status.Abilities,
-						},
-					})
-					_, err = clientManager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
-					if err != nil {
-						errChan <- err
-						logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Patch Device[%s] failed, err:%s", device.Name, err.Error())
-						return
-					}
-					logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Patch Device[%s] Success!", device.Name)
+						updatedAbilities[name] = updatedAbility
+					}(name, ability)
 				}
-			}()
+
+				// 等待所有能力处理完成
+				abilityWG.Wait()
+
+				// 更新设备状态
+				if err := patchDeviceStatus(clientManager, device, updatedAbilities); err != nil {
+					errChan <- err
+				}
+			}(device)
 		}
 	}
 
-	// 等待所有协程完成
+	// 等待所有设备处理完成
 	go func() {
-		wg.Wait()
+		deviceWG.Wait()
 		close(errChan)
 	}()
+
 	// 收集所有错误
 	var errs []error
 	for e := range errChan {
@@ -177,6 +159,61 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("device processing errors: %v", errs)
 	}
+	return nil
+}
+
+// processAbility 处理单个设备的单个能力
+func processAbility(device apis.Device, name string, ability apis.Ability) (apis.Ability, error) {
+	// 如果设备处于空闲状态
+	if device.Status.Phase == apis.DeviceIdle {
+		logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Monitor Device[%s] Ability[%s]", device.Name, ability.Name)
+		if ability.Status == apis.AbilityReadyStartUp { // 如果ability需要被拉起
+			logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] is ReadyStartUp", device.Name, ability.Name)
+			am := NewAbilityManager(device.Spec.AccessMethod.URL, ability.Name)
+			err := am.BindUUID()
+			if err != nil {
+				logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Bind uuid failed, err:%s", device.Name, ability.Name, err.Error())
+				return ability, err
+			}
+
+			var hb HeartBeat
+			hb, err = am.StartupAbility()
+			if err != nil {
+				logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup failed, err:%s", device.Name, ability.Name, err.Error())
+				return ability, err
+			}
+
+			logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup Success!", device.Name, ability.Name)
+			ability.Status = apis.AbilityRunning
+			for sn, service := range ability.Services {
+				port := strconv.Itoa(hb.AbilityPort)
+				service.Port = &port
+				ability.Services[sn] = service
+			}
+		}
+	}
+	return ability, nil
+}
+
+// patchDeviceStatus 更新设备状态
+func patchDeviceStatus(clientManager *m.Manager, device apis.Device, abilities map[string]apis.Ability) error {
+	device.Status.Abilities = abilities
+	patchDevice, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"abilities": device.Status.Abilities,
+		},
+	})
+	if err != nil {
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Marshal Device[%s] failed, err:%s", device.Name, err.Error())
+		return err
+	}
+
+	_, err = clientManager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Patch Device[%s] failed, err:%s", device.Name, err.Error())
+		return err
+	}
+	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Patch Device[%s] Success!", device.Name)
 	return nil
 }
 
