@@ -9,6 +9,9 @@ import (
 )
 
 func main() {
+
+	device1IP := "172.130.0.61"
+	device2IP := "172.130.0.59"
 	cs, err := utils.CreateClientSetWithTimeOut(2000)
 	if err != nil {
 		panic(err)
@@ -31,7 +34,7 @@ func main() {
 			Name: "device1",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
-				URL:  "http://172.130.0.61:8080",
+				URL:  "http://" + device1IP + ":8080",
 			},
 			Abilities: []string{
 				"Grab", "Turn", "Detect", "Put",
@@ -97,19 +100,19 @@ func main() {
 		},
 	}
 	// 放置工件
-	*device1.Status.Abilities["Put"].Services["PutWorkpiece"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Put"].Services["PutWorkpiece"].Ip = device1IP
 	*device1.Status.Abilities["Put"].Services["PutWorkpiece"].Interface = "/api/task/put"
 	// 抓取工件
-	*device1.Status.Abilities["Grab"].Services["GrabWorkpiece"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Grab"].Services["GrabWorkpiece"].Ip = device1IP
 	*device1.Status.Abilities["Grab"].Services["GrabWorkpiece"].Interface = "/api/task/grab"
 	// 转身
-	*device1.Status.Abilities["Turn"].Services["Turn"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Turn"].Services["Turn"].Ip = device1IP
 	*device1.Status.Abilities["Turn"].Services["Turn"].Interface = "/api/task/turn"
 	// 初始化
-	*device1.Status.Abilities["Grab"].Services["GrabInit"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Grab"].Services["GrabInit"].Ip = device1IP
 	*device1.Status.Abilities["Grab"].Services["GrabInit"].Interface = "/api/task/init"
 	// 检测
-	*device1.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = "172.130.0.61"
+	*device1.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = device1IP
 	*device1.Status.Abilities["Detect"].Services["DetectWorkpiece"].Interface = "/api/task/detect"
 
 	device2 := &apis.Device{
@@ -128,7 +131,7 @@ func main() {
 			Name: "device2",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
-				URL:  "http://172.130.0.59:8080",
+				URL:  "http://" + device2IP + ":8080",
 			},
 			Abilities: []string{
 				"Grab", "Turn", "Detect", "Put",
@@ -195,19 +198,19 @@ func main() {
 	}
 
 	// 放置工件
-	*device2.Status.Abilities["Put"].Services["PutWorkpiece"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Put"].Services["PutWorkpiece"].Ip = device2IP
 	*device2.Status.Abilities["Put"].Services["PutWorkpiece"].Interface = "/api/task/put"
 	// 抓取工件
-	*device2.Status.Abilities["Grab"].Services["GrabWorkpiece"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Grab"].Services["GrabWorkpiece"].Ip = device2IP
 	*device2.Status.Abilities["Grab"].Services["GrabWorkpiece"].Interface = "/api/task/grab"
 	// 转身
-	*device2.Status.Abilities["Turn"].Services["Turn"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Turn"].Services["Turn"].Ip = device2IP
 	*device2.Status.Abilities["Turn"].Services["Turn"].Interface = "/api/task/turn"
 	// 初始化
-	*device2.Status.Abilities["Grab"].Services["GrabInit"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Grab"].Services["GrabInit"].Ip = device2IP
 	*device2.Status.Abilities["Grab"].Services["GrabInit"].Interface = "/api/task/init"
 	// 检测
-	*device2.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = "172.130.0.59"
+	*device2.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = device2IP
 	*device2.Status.Abilities["Detect"].Services["DetectWorkpiece"].Interface = "/api/task/detect"
 	_, err = m.CreateDevice(device1, "test")
 	if err != nil {
