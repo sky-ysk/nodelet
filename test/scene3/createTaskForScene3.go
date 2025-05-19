@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	path := "/home/public"
 	// 手臂初始化
 	runtime0 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
@@ -297,8 +298,8 @@ func main() {
 			Type:    apis.ByCommand,
 			Command: []string{"python3"}, // 801的机器 要用python3
 			Args: []string{"" +
-				"/home/public/adaptive-scheduling-framework/test/scene3/recheck1.py",
-				"/home/public/adaptive-scheduling-framework/test/scene3/data.txt"},
+				path + "/adaptive-scheduling-framework/test/scene3/recheck1.py",
+				path + "/adaptive-scheduling-framework/test/scene3/data.txt"},
 			// 这个是smj
 			//Args: []string{"" +
 			//	"/home/public/lock_test/test/scene3/recheck1.py",
