@@ -115,6 +115,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 				var abilityWG sync.WaitGroup
 				// 用于存储设备中所有能力的最终状态
 				updatedAbilities := make(map[string]apis.Ability)
+				updatedAbilitiesMutex := &sync.Mutex{} // 用于保护updatedAbilities
 
 				// 遍历设备的所有能力
 				for name, ability := range device.Status.Abilities {
@@ -129,7 +130,9 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 							errChan <- err
 							return
 						}
+						updatedAbilitiesMutex.Lock()
 						updatedAbilities[name] = updatedAbility
+						updatedAbilitiesMutex.Unlock()
 					}(name, ability)
 				}
 
