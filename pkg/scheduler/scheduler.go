@@ -198,7 +198,7 @@ type ScheduleResult struct {
 func (sched *Scheduler) Run(ctx context.Context) {
 	// 初始化任务优先级队列
 	//TODO 做成调度器一个变量来控制
-	concurrency := 3
+	concurrency := 1
 	for i := 0; i < concurrency; i++ {
 		go wait.UntilWithContext(ctx, sched.ScheduleOne, 0)
 	}

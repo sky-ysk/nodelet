@@ -35,6 +35,9 @@
                     }
                 ],
                 "desc": {
+                    "label": [
+                        "weight=5"
+                    ],
                     "docs": "场景三的复检group"
                 },
                 "actions": [

@@ -2499,7 +2499,8 @@ func TestCreateJson2(t *testing.T) {
 				},
 			},
 			Desc: &apis.Description{
-				Docs: "场景三的复检group",
+				Docs:  "场景三的复检group",
+				Label: []string{"weight=5"},
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
