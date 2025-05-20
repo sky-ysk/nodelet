@@ -14,9 +14,9 @@ spec:
     image: registry.cn-hangzhou.aliyuncs.com/sudasuzhou/grpc_service:grpc-client-pod-v4.0
     env:
     - name: MY_IP
-      value: "172.110.0.104"  #"grpc-server-service.switch.svc.cluster.local"   "172.110.0.104" 
+      value: "172.150.0.24"  #"grpc-server-service.switch.svc.cluster.local"   "172.110.0.104"
     - name: MY_PORT
-      value: "30051"     #"50051" #serviceName必须得搭配Clust IP  "30051"
+      value: "30051"     # serviceName必须得搭配Clust IP:"50051"         "30051"--这个是Nodeport IP
     ports:
     - containerPort: 50052  # 容器实际监听端口
 ---
