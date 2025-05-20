@@ -493,7 +493,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				logs.Errorf("Patch group error:%v", err)
 			}
 			logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
-		} else { // 为跨域迁移
+		} else { // 还未部署副本// 为跨域迁移
 			//if nodeName != "" { // 跨域迁移，指定了别的域的目标节点 TODO:后面这块应该删了，跨域迁移时不指定节点，只指定域的
 			//	// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
 			//	// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
