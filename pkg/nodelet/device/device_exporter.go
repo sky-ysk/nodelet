@@ -11,7 +11,6 @@ import (
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/device/collector"
-	"hit.edu/framework/pkg/nodelet/device/collector/ability"
 	"net/http"
 	"time"
 )
@@ -72,7 +71,7 @@ func (n *DeviceExporter) Run() error {
 
 	go func() {
 		for {
-			err1 := manager.MonitorAllDevices(clientManager)
+			err1 := MonitorAllDevices(clientManager)
 			if err1 != nil {
 				logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
 			}
@@ -82,7 +81,7 @@ func (n *DeviceExporter) Run() error {
 
 	go func() {
 		for {
-			err2 := manager.MonitorAllAbilities(clientManager)
+			err2 := MonitorAllAbilities(clientManager)
 			if err2 != nil {
 				logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
 			}

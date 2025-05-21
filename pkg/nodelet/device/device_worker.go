@@ -474,7 +474,8 @@ func (dw *DeviceWorker) UpdateDeviceRunning(deviceMap map[string]*apis.Device) e
 	dw.Mu.Lock()
 	defer dw.Mu.Unlock()
 	dw.updateMap()
-	for name, device := range deviceMap {
+	for name, d := range deviceMap {
+		device := dw.MapTable[d.Name]
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[RUNNING]", name)
 		// 将phase更改为running
 		device.Status.Phase = apis.DeviceRunning

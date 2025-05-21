@@ -1,4 +1,4 @@
-package manager
+package device
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/device"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
 	"strconv"
 	"sync"
 )
@@ -26,10 +26,9 @@ func NewManagers() *Managers {
 
 // MonitorAllDevices 检测所有设备的在线情况
 func MonitorAllDevices(clientManager *m.Manager) error {
-	dw := device.GetDeviceWorker()
+	dw := GetDeviceWorker()
 	dw.Mu.Lock()
 	defer dw.Mu.Unlock()
-
 	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Try to Get All Devices")
 	deviceList, err := clientManager.GetDevices("", "test")
 	if err != nil {
@@ -90,7 +89,7 @@ func MonitorAllDevices(clientManager *m.Manager) error {
 }
 
 func MonitorAllAbilities(clientManager *m.Manager) error {
-	dw := device.GetDeviceWorker()
+	dw := GetDeviceWorker()
 	dw.Mu.Lock()
 	defer dw.Mu.Unlock()
 	// 首先获取所有的Devices
@@ -109,6 +108,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 	errChan := make(chan error, 10)
 
 	// 遍历所有的Device
+
 	for _, d := range deviceList.Items {
 
 		device := d
@@ -188,7 +188,7 @@ func processAbility(device apis.Device, name string, ability apis.Ability) (apis
 				return ability, err
 			}
 
-			var hb HeartBeat
+			var hb manager.HeartBeat
 			hb, err = am.StartupAbility()
 			if err != nil {
 				logs.Errorf("[DEVICE EXPORTER-ABILITY MONITOR] Device[%s] Ability[%s] Startup failed, err:%s", device.Name, ability.Name, err.Error())
@@ -235,7 +235,7 @@ func DeviceDisconnectedHandle(device apis.Device, clientManager *m.Manager, errC
 	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Try to Connect Device[%s]", device.Name)
 	url := device.Spec.AccessMethod.URL
 	// 尝试连接能力框架
-	_, err := GetAbilityInstances(url)
+	_, err := manager.GetAbilityInstances(url)
 	if err != nil {
 		// 连接失败依旧是Disconnected
 		logs.Errorf("[DEVICE EXPORTER-DEVICE MONITOR] Connect Device[%s] Failed", device.Name)
@@ -272,7 +272,7 @@ func DeviceDisconnectedHandle(device apis.Device, clientManager *m.Manager, errC
 func DeviceOnlineHandle(device apis.Device, clientManager *m.Manager, errChan chan error) {
 	logs.Infof("[DEVICE EXPORTER] Device[%s] is Online...", device.Name)
 	url := device.Spec.AccessMethod.URL
-	_, err := GetAbilityInstances(url)
+	_, err := manager.GetAbilityInstances(url)
 	if err != nil {
 		logs.Errorf("[DEVICE EXPORTER-DEVICE MONITOR] Connect Device[%s] Failed", device.Name)
 		logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Now Device[%s] is Disconnected...", device.Name)
