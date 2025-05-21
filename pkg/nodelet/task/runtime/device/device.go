@@ -105,7 +105,7 @@ func (dr *DeviceRuntime) Run(group *apis.Group, action *apis.Action, r *apis.Run
 		// 更新runtime的phase
 		dr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 		// 更新device的状态
-		err = dw.UpdateDeviceRunning(deviceMap)
+		//err = dw.UpdateDeviceRunning(deviceMap)
 
 		// 监听任务执行状况
 		err = dr.monitorDeviceAbility(group.Namespace, taskId, executor, ds, runtime, group.Name, action.Spec.Name, dr.clientManager, deviceMap, dw, da)
