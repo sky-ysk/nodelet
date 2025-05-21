@@ -11,7 +11,11 @@ import (
 )
 
 func main() {
-	path := "/home/public"
+	//path := "/home/public"
+
+	//场景三 服务器路径
+	path := "/home/smj"
+
 	// 手臂初始化
 	runtime0 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
