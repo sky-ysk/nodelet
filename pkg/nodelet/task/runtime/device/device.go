@@ -372,16 +372,16 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 			// 2.处理device
 			//err = utils.UpdateDeviceFinished(deviceMap, dr.clientManager)
 			logs.Warnf("[DEVICE RUNTIME] RUNTIME IS %s, ref is %d (before)", runtime.Name, executor.Status.Lock.Ref)
-			err = dw.UpdateDeviceFinished(deviceMap, runtime)
-			if err != nil {
-				logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
-				return err
-			}
 			if !dw.ReleaseAbility(executor, da) {
 				logs.Errorf("[DEVICE RUNTIME] release ability:%s lock fail", da)
 				return fmt.Errorf("lock ability error")
 			}
 			logs.Infof("[DEVICE RUNTIME] release ability:%s lock successfully", da)
+			err = dw.UpdateDeviceFinished(deviceMap, runtime)
+			if err != nil {
+				logs.Errorf("[DEVICE RUNTIME] Update Device Finished failed, %s", err.Error())
+				return err
+			}
 			return nil
 		}
 	}
