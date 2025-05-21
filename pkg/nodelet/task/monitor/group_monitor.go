@@ -1947,7 +1947,8 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 	// 将runtime的Phase从Running修改为Migrated
 	nowTime := apis.Time{time.Now()}
 	groupStatus := &group.Status
-
+	groupStatus.LastTime = &nowTime
+	groupStatus.FinishAt = &nowTime
 	// GroupStatus下面的ActionStatus、RuntimeStatus
 	action.Status.Phase = apis.Migrated
 	action.Status.LastTime = &nowTime

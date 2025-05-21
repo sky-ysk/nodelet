@@ -20,6 +20,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,7 @@ import (
 // 修改3：const NodeName = "CloudNode1"
 // 修改4：recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration
 var scheme = runtime.NewScheme()
+var group1_1Name = "G91"
 
 const NodeName = "CloudNode1"
 
@@ -53,7 +55,7 @@ func main() {
 	task1Name := "T1" // 第一个Task的Name
 
 	// group
-	group1_1Name := "G91" // 第一个Task下的第一个GroupName
+	// 第一个Task下的第一个GroupName
 	group1_1Replicas := []int32{1, 0}
 
 	// action
@@ -149,7 +151,7 @@ func main() {
 	fmt.Println(str)
 	logs.Info("下发一个任务======")
 	prompt()
-	postEventForMigrate(eventclient)
+	postEventForMigrate_ForGroup(eventclient)
 	prompt()
 
 }
@@ -185,6 +187,37 @@ func postEventForMigrate(client core.EventInterface) {
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
 	time.Sleep(10 * time.Millisecond)
 	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
+	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
+}
+func postEventForMigrate_ForGroup(client core.EventInterface) {
+	logs.Info("发送跨域迁移事件======")
+	// 这些配置实际在组件初始化时就已经完成
+	ctx := context.Background()
+	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
+	defer eventBroadcaster.Shutdown()
+	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: client})
+	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
+	clientSet := initClientSet(scheme)
+	m := manager.NewManager(clientSet)
+	groups, err := m.GetGroups("test")
+	if err != nil {
+		logs.Errorf("GetGroups err: %v", err)
+	}
+	var groupName string
+	for i := range groups.Items {
+		group := groups.Items[i]
+		if group.Spec.Name == group1_1Name && !strings.Contains(group.Name, "copy") && group.Status.Phase == apis.Running {
+			groupName = group.Name
+		}
+	}
+	group, err := m.GetGroup(groupName, "test")
+	if err != nil {
+		logs.Errorf("GetGroup err: %v", err)
+	}
+	// 通过 recorder.Event或 recorder.Eventf可以生成事件
+	time.Sleep(10 * time.Millisecond)
+
+	recorder.EventForMigration(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), "")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 
