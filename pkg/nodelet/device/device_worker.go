@@ -301,6 +301,7 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime
 	// 获取ability
 	a := d.Status.Abilities[ability]
 	a.Lock.Ref -= 1 // 减引用
+	logs.Warnf("[DEVICE RUNTIME] ABNORMAL")
 	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s(before)", d.Status.Lock.Ref, runtime.Name)
 	d.Status.Lock.Ref -= 1 // 减引用
 
@@ -336,12 +337,13 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 	dw.Mu.Lock()
 	defer dw.Mu.Unlock()
 	dw.updateMap()
-
+	logs.Warnf("[DEVICE RUNTIME] NORMAL")
 	d := dw.MapTable[device.Name]
 	if d.Status.Abilities[ability].Lock.IsLocked != true {
 		return false
 	}
 	a := d.Status.Abilities[ability]
+	logs.Warnf("[DEVICE WORKER] REF IS  ABILITY %s ref is %d(BEFORE)", ability, a.Lock.Ref)
 	a.Lock.IsLocked = false // 解锁
 	a.Lock.Ref -= 1         // 减引用
 	d.Status.Abilities[ability] = a
@@ -360,6 +362,11 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 		logs.Errorf("[DEVICE WORKER] Patch device %s failed, err:%s", device.Name, err.Error())
 		return false
 	}
+	dd, err := dw.Manager.GetDevice(device.Name, device.Namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Get device %s failed", device.Name)
+	}
+	logs.Warnf("[DEVICE WORKER] REF IS  ABILITY %s ref is %d(after)", ability, dd.Status.Abilities[ability].Lock.Ref)
 	logs.Infof("[DEVICE RUNTIME] RELEASE device:%s ability:%s successfully", device.Name, ability)
 	return true
 
