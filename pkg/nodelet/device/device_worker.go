@@ -30,7 +30,7 @@ func GetDeviceWorker() *DeviceWorker {
 	once.Do(func() {
 
 		//clientSet, _ := InitClient()
-		clientSet, err := utils.CreateClientSetWithTimeOut(3600)
+		clientSet, err := utils.CreateClientSetWithTimeOut(3600 * 3)
 		if err != nil {
 			logs.Fatalf("create client set failed, err:%v", err)
 		}
@@ -380,7 +380,7 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 		logs.Error("No such event client!")
 		return
 	}
-	var timeOut int64 = 3600
+	var timeOut int64 = 3600 * 3
 	watch, err := eventClient.Watch(ctx, metav1.ListOptions{
 		TimeoutSeconds: &timeOut,
 	})
