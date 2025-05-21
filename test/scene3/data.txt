@@ -44,42 +44,6 @@
                     {
                         "name": "A1",
                         "desc": {
-                            "docs": "转身"
-                        },
-                        "runtimes": [
-                            {
-                                "name": "R0",
-                                "devices": [
-                                    {
-                                        "name": "Robot1",
-                                        "expected_properties": {
-                                            "name": {
-
-                                            }
-                                        },
-                                        "abilities": [
-                                            "Turn"
-                                        ]
-                                    }
-                                ],
-                                "type": "device",
-                                "image": "Device{Robot1}.Ability{Turn}.Service{Turn}",
-                                "inputs": [
-                                    {
-                                        "type": "constants",
-                                        "value": "table",
-                                        "value_type": "string"
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "name": "A2",
-                        "parents": [
-                            "A1"
-                        ],
-                        "desc": {
                             "docs": "抓取物品"
                         },
                         "runtimes": [
@@ -139,9 +103,9 @@
                         ]
                     },
                     {
-                        "name": "A3",
+                        "name": "A2",
                         "parents": [
-                            "A2"
+                            "A1"
                         ],
                         "desc": {
                             "docs": "检测"
@@ -257,42 +221,6 @@
                                     {
                                         "type": "constants",
                                         "value": "reject_bin",
-                                        "value_type": "string"
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "name": "A4",
-                        "parents": [
-                            "A3"
-                        ],
-                        "desc": {
-                            "docs": "转向流水线"
-                        },
-                        "runtimes": [
-                            {
-                                "name": "R6",
-                                "devices": [
-                                    {
-                                        "name": "Robot1",
-                                        "expected_properties": {
-                                            "name": {
-
-                                            }
-                                        },
-                                        "abilities": [
-                                            "Turn"
-                                        ]
-                                    }
-                                ],
-                                "type": "device",
-                                "image": "Device{Robot1}.Ability{Turn}.Service{Turn}",
-                                "inputs": [
-                                    {
-                                        "type": "constants",
-                                        "value": "belt",
                                         "value_type": "string"
                                     }
                                 ]

@@ -22,7 +22,7 @@ type DeviceWorker struct {
 	Manager *m.Manager
 	errChan chan error
 	// 互斥锁
-	mu sync.Mutex
+	Mu sync.Mutex
 }
 
 // GetDeviceWorker 获取DeviceWorker的单例实例
@@ -58,6 +58,9 @@ func (dw *DeviceWorker) updateMap() {
 	for _, device := range deviceList.Items {
 		dw.MapTable[device.Name] = &device
 		logs.Warnf("[DEVICE WORKER] Device %s has been updated, ref is %d", device.Name, device.Status.Lock.Ref)
+		for name, ability := range device.Status.Abilities {
+			logs.Warnf("[DEVICE WORKER] Device %s ability %s ref is %d", device.Name, name, ability.Lock.Ref)
+		}
 	}
 
 }
@@ -66,8 +69,8 @@ func (dw *DeviceWorker) updateMap() {
 func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*apis.Device, error) {
 
 	deviceTable := make(map[string]*apis.Device, len(group.Devices))
-	dw.mu.Lock()
-	defer dw.mu.Unlock()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	dw.updateMap()
 	// 遍历device需求表
 	for _, ds := range group.Devices {
@@ -133,8 +136,8 @@ func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*
 // LockDevices 对device进行上锁
 func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*apis.Device) (bool, *apis.Group) {
 
-	dw.mu.Lock()
-	defer dw.mu.Unlock()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	dw.updateMap()
 	// 首先检查所需的设备有没有被占用
 	for _, device := range deviceTable {
@@ -262,8 +265,8 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 }
 
 func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
-	dw.mu.Lock()
-	defer dw.mu.Unlock()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	dw.updateMap()
 	d := dw.MapTable[device.Name]
 	if d.Status.Abilities[ability].Lock.IsLocked != false {
@@ -289,8 +292,8 @@ func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
 // ReleaseAbilityRef 在非正常情况下减少引用
 func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime *apis.Runtime) error {
 
-	dw.mu.Lock()
-	defer dw.mu.Unlock()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	dw.updateMap()
 
 	// 获取device
@@ -298,6 +301,7 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime
 	// 获取ability
 	a := d.Status.Abilities[ability]
 	a.Lock.Ref -= 1 // 减引用
+	logs.Warnf("[DEVICE worker] ABNORMAL")
 	logs.Warnf("[DEVICE WORKER] REF IS %d, runtime is %s(before)", d.Status.Lock.Ref, runtime.Name)
 	d.Status.Lock.Ref -= 1 // 减引用
 
@@ -330,15 +334,16 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime
 
 // ReleaseAbility 正常释放能力锁
 func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool {
-	dw.mu.Lock()
-	defer dw.mu.Unlock()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	dw.updateMap()
-
+	logs.Warnf("[DEVICE RUNTIME] NORMAL")
 	d := dw.MapTable[device.Name]
 	if d.Status.Abilities[ability].Lock.IsLocked != true {
 		return false
 	}
 	a := d.Status.Abilities[ability]
+	logs.Warnf("[DEVICE WORKER] REF IS  ABILITY %s ref is %d(BEFORE)", ability, a.Lock.Ref)
 	a.Lock.IsLocked = false // 解锁
 	a.Lock.Ref -= 1         // 减引用
 	d.Status.Abilities[ability] = a
@@ -357,6 +362,12 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 		logs.Errorf("[DEVICE WORKER] Patch device %s failed, err:%s", device.Name, err.Error())
 		return false
 	}
+	dd, err := dw.Manager.GetDevice(device.Name, device.Namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Get device %s failed", device.Name)
+		return false
+	}
+	logs.Warnf("[DEVICE WORKER] REF IS  ABILITY %s ref is %d(after)", ability, dd.Status.Abilities[ability].Lock.Ref)
 	logs.Infof("[DEVICE RUNTIME] RELEASE device:%s ability:%s successfully", device.Name, ability)
 	return true
 
@@ -426,10 +437,10 @@ func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *ap
 }
 
 func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, runtime *apis.Runtime) error {
-	dw.mu.Lock()
-	defer dw.mu.Unlock()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	dw.updateMap()
-
+	logs.Warnf("[DEVICE WORKER] NORMAL")
 	for _, d := range deviceMap {
 		device := dw.MapTable[d.Name]
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", device.Name)
@@ -468,10 +479,11 @@ func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, 
 }
 
 func (dw *DeviceWorker) UpdateDeviceRunning(deviceMap map[string]*apis.Device) error {
-	dw.mu.Lock()
-	defer dw.mu.Unlock()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	dw.updateMap()
-	for name, device := range deviceMap {
+	for name, d := range deviceMap {
+		device := dw.MapTable[d.Name]
 		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[RUNNING]", name)
 		// 将phase更改为running
 		device.Status.Phase = apis.DeviceRunning

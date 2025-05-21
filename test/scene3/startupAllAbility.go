@@ -2,7 +2,7 @@ package main
 
 import (
 	"hit.edu/framework/pkg/component-base/logs"
-	manager "hit.edu/framework/pkg/nodelet/device/collector/ability"
+	"hit.edu/framework/pkg/nodelet/device"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	nameList := []string{name1, name2, name3, name4}
 	for _, name := range nameList {
 
-		abilityManager := manager.NewAbilityManager(url1, name)
+		abilityManager := device.NewAbilityManager(url1, name)
 		err := abilityManager.BindUUID()
 		if err != nil {
 			logs.Errorf("bind uuid fail")
