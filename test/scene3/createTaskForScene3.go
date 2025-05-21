@@ -463,6 +463,14 @@ func main() {
 			Devices: []apis.DeviceSpec{
 				{
 					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
+					},
 					Abilities: []string{
 						"Turn", "Grab", "Detect", "Put",
 					},
