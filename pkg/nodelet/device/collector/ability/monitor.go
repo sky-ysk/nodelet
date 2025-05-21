@@ -6,6 +6,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/device"
 	"strconv"
 	"sync"
 )
@@ -25,6 +26,10 @@ func NewManagers() *Managers {
 
 // MonitorAllDevices 检测所有设备的在线情况
 func MonitorAllDevices(clientManager *m.Manager) error {
+	dw := device.GetDeviceWorker()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+
 	logs.Infof("[DEVICE EXPORTER-DEVICE MONITOR] Try to Get All Devices")
 	deviceList, err := clientManager.GetDevices("", "test")
 	if err != nil {
@@ -85,6 +90,9 @@ func MonitorAllDevices(clientManager *m.Manager) error {
 }
 
 func MonitorAllAbilities(clientManager *m.Manager) error {
+	dw := device.GetDeviceWorker()
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
 	// 首先获取所有的Devices
 	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Try to Get All Devices")
 	deviceList, err := clientManager.GetDevices("", "test")
@@ -102,6 +110,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 
 	// 遍历所有的Device
 	for _, d := range deviceList.Items {
+
 		device := d
 
 		// Ability类型的device
