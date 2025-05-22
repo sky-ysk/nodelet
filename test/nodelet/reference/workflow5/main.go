@@ -245,6 +245,11 @@ func main() {
 				Upperbound: "4",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Infer",
+			},
+		},
 		Replicas:   group1_1Replicas,
 		Name:       group1_1Name,
 		Parents:    make([]string, 0),
@@ -289,6 +294,11 @@ func main() {
 				Name:       "RAM",
 				Lowbound:   "0",
 				Upperbound: "2",
+			},
+		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
 			},
 		},
 		Replicas:   group1_2Replicas,
@@ -337,6 +347,11 @@ func main() {
 				Upperbound: "6",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
+			},
+		},
 		Replicas:   group1_3Replicas,
 		Name:       group1_3Name,
 		Parents:    []string{},
@@ -371,7 +386,6 @@ func main() {
 	}
 
 	gs4 := apis.GroupSpec{
-
 		ResourceRequirements: []apis.ResourceRequirement{
 			apis.ResourceRequirement{
 				Name:       "CPU",
@@ -382,6 +396,11 @@ func main() {
 				Name:       "RAM",
 				Lowbound:   "1",
 				Upperbound: "2",
+			},
+		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
 			},
 		},
 		Replicas:   group1_4Replicas,
@@ -430,6 +449,11 @@ func main() {
 				Upperbound: "3",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
+			},
+		},
 		Replicas:   group1_5Replicas,
 		Name:       group1_5Name,
 		Parents:    make([]string, 0),
@@ -474,6 +498,11 @@ func main() {
 				Name:       "RAM",
 				Lowbound:   "1",
 				Upperbound: "2",
+			},
+		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
 			},
 		},
 		Replicas:   group1_6Replicas,

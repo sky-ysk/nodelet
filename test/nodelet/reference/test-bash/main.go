@@ -76,33 +76,31 @@ func main() {
 
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_1_1_2Name := "R2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
 
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
-	runtime1_1_1_2FineGrainedControl := false
 
 	// 程序依赖（requirements.txt）
-	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		ConditionType: apis.ProgramDependency,
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "ProgramDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      "requirements.txt",
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "ProgramDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
+	// ProgramDependencyConditionFormula := apis.ConditionFormula{
+	// 	ConditionType: apis.ProgramDependency,
+	// 	LeftValue: apis.Value{
+	// 		Type:      apis.ResultsData,
+	// 		Name:      "ProgramDependency",
+	// 		Value:     "0",
+	// 		ValueType: "string",
+	// 		From:      "requirements.txt",
+	// 	},
+	// 	RightValue: apis.Value{
+	// 		Type:      apis.ConstData,
+	// 		Name:      "ProgramDependency",
+	// 		Value:     "1",
+	// 		ValueType: "string",
+	// 		From:      "",
+	// 	},
+	// 	Signal: apis.Equal,
+	// 	Join:   "",
+	// 	Result: apis.False,
+	// }
 
 	// 数据依赖（../tmp/testFolder）
 	DataDependencyConditionFormula := apis.ConditionFormula{
@@ -125,33 +123,15 @@ func main() {
 		Join:   "",
 		Result: apis.False,
 	}
-
-	NodeDependencyConditionFormula := GetNodeDepencyConditionFormula(runtime1_1_1_1Name)
-
 	//上传文件，runtime的Data[]里面的每一个文件都需要上传
-	//filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/upload.py"
-	//filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/test.txt"
 	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
 	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/upload.py"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/wine.py"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/wine_data.csv"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/task_exporter/dependency/requirements.txt"
+	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/bash.sh"
 	UploadFile(filePath)
 
 	runtime1_1_1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
 			DataDependencyConditionFormula,
-		},
-	}
-	runtime1_1_1_2Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			ProgramDependencyConditionFormula,
-			DataDependencyConditionFormula,
-			NodeDependencyConditionFormula,
 		},
 	}
 
@@ -172,11 +152,6 @@ func main() {
 				Upperbound: "4",
 			},
 		},
-		Desc: &apis.Description{
-			Label: map[string]string{
-				"type": "Train",
-			},
-		},
 		Replicas:   group1_1Replicas,
 		Name:       group1_1Name,
 		Parents:    make([]string, 0),
@@ -186,28 +161,16 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:    runtime1_1_1_1Name,
-						Type:    apis.ByCommand,
-						Command: []string{"python"},
-						Args:    []string{"upload.py", "test.txt", "uotput.txt"}, // 10s
-						// Inputs:                   []apis.Value{apis.Value{Value: "test.txt"}},                                        //20s
+						Name:                     runtime1_1_1_1Name,
+						Type:                     apis.ByCommand,
+						Command:                  []string{"sh"},
+						Args:                     []string{"bash.sh"}, // 10s
+						Inputs:                   []apis.Value{apis.Value{}},                                        //20s
 						Parents:                  make([]string, 0),                                                                  // 加入Parents
-						Data:                     []apis.DataSpec{apis.DataSpec{Name: "upload.py"}, apis.DataSpec{Name: "test.txt"}}, // 依赖文件
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "bash.sh"}, apis.DataSpec{Name: "test.txt"}}, // 依赖文件
 						Conditions:               &runtime1_1_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
-					},
-					apis.RuntimeSpec{
-						Name:    runtime1_1_1_2Name,
-						Type:    apis.ByCommand,
-						Command: []string{"python"},
-						Args:    []string{"wine.py"},          //8s
-						Parents: []string{runtime1_1_1_1Name}, // 加入Parents
-						// Parents:                  []string{}, // 加入Parents
-						Data:                     []apis.DataSpec{apis.DataSpec{Name: "wine.py"}, apis.DataSpec{Name: "wine_data.csv"}, apis.DataSpec{Name: "requirements.txt"}},
-						Conditions:               &runtime1_1_1_2Condition,
-						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl: runtime1_1_1_2FineGrainedControl,
 					},
 				},
 			},

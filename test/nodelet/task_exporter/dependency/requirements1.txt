@@ -1,1 +1,1 @@
-grpcio
+scikit-learn==l.5.1

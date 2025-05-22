@@ -91,6 +91,9 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	}
 
 	envVars := runtime.Spec.EnvVar
+	logs.Infof("command.go: EnvVar:%v", envVars)
+	// 处理cmd
+	logs.Infof("command.go: cmd:%v", cmd)
 	if cmd == "python" {
 		for _, value := range envVars {
 			if value.Name == "" {
@@ -100,6 +103,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 			cmd = value.Value
 		}
 	}
+	logs.Infof("after cmd:%v", cmd)
 
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
@@ -112,7 +116,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	CMD.Stderr = os.Stderr
 	// CMD.Env = append(CMD.Env, )
 
-	CMD.Dir = apis.FileFolder + "/" + runtime.Name
+	CMD.Dir = runtime.Spec.Directory
 	// 检查工作目录，如果不存在说明数据出问题了
 	if _, err := os.Stat(CMD.Dir); os.IsNotExist(err) {
 		logs.Errorf("Directory %s does not exist: %v", CMD.Dir, err)

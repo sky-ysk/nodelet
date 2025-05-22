@@ -123,8 +123,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap,),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
 		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),
 		nodeName:            nodeName,
@@ -144,6 +144,7 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	defer close(te.updateCh)
 	var wg sync.WaitGroup
 	wg.Add(3) //等待三个协程
+
 	go func() {
 		defer wg.Done()
 		te.groupHandler.Loop(ctx, te.updateCh) //主要监控上层发来的消息，主要是启动、停止任务

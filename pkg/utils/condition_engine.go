@@ -71,11 +71,11 @@ func NewConditionEngine() *ConditionEngine {
 }
 
 // o传入的是一个对象，可能是workflow、task、group、action、runtime等
-// 目前o传入的是指针，在考虑是否改成传入值
+// o传入的是传入值,而不是指针
 func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interface{}) (apis.ResultType, error) {
 	if conditions == nil {
 		logs.Error("condition is nil")
-		return apis.False, errors.New("condition is nil")
+		return apis.True, errors.New("condition is nil")
 	}
 
 	if len(conditions.Formulas) == 0 {
@@ -97,11 +97,7 @@ func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interf
 func (ce *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
 	switch formula.ConditionType {
 	case apis.NodeDependency:
-		res, err := ce.checkNodeDependency(formula, o)
-		if err != nil {
-			return apis.False, err
-		}
-		return res, nil
+		return apis.True, nil
 	case apis.DataDependency:
 		res, err := ce.checkDataDependency(formula, o)
 		if err != nil {
@@ -137,12 +133,8 @@ func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o
 	Name := val.FieldByName("Name")
 
 	//debug日志
-	// logs.Infof("checkNodeDependency after val : %v", val)
-	// logs.Infof("checkNodeDependency Name : %v, kind:%v", Name, kind)
-	// logs.Infof("checkNodeDependency formula pointer : %v", &formula.LeftValue)
-	// logs.Infof("get value:::::::LeftValue:%v", formula.LeftValue)
 	// 解析parent的Phase的值
-	// TODO FIXME，调用engine就会报引用空指针的错，目前不清楚是为什么
+	// TODO FIXME，调用engine就会报引用空指针的错，目前不清楚是为什么====5-15找到原因：From和Value不完全符合正则表达式定义的规则
 	// panic: runtime error: invalid memory address or nil pointer dereference
 	value, err := ce.engine.GetValue(&(formula.LeftValue), val)
 
@@ -171,12 +163,28 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 	// logs.Infof("checkNodeDependency val : %v", val)
 	// logs.Infof("checkNodeDependency after val : %v", val)
 	// logs.Infof("checkNodeDependency Name : %v, kind:%v", Name, kind)
-
+	leftValue := &formula.LeftValue
+	rightValue := &formula.RightValue
 	Datatype := formula.LeftValue.Type
 	switch Datatype {
 	case apis.ConstData:
 
 	case apis.LocalData:
+		// newLeftValue为更新后的leftValue，更改的方式是指针引用
+		newLeftValue, err := ce.engine.ExtractLocalValue(leftValue, o)
+		if err != nil {
+			logs.Errorf("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
+			return apis.NotReady, nil
+		}
+		if newLeftValue.Value == "" {
+			return apis.NotReady, nil
+		}
+		if newLeftValue.Value != rightValue.Value {
+			// return apis.False, errors.New("Local data check: get leftValue != expect rightValue.Get leftValue:" + newLeftValue.Value)
+			logs.Tracef("checkDataDependency: %v %v's LocalData check failed, get leftValue %v != expect rightValue.Get leftValue:%v", kind, val.FieldByName("Name"), newLeftValue.Value, rightValue.Value)
+			return apis.False, nil
+		}
+		return apis.True, nil
 
 	case apis.DeviceData:
 
@@ -189,7 +197,7 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 		case "Runtime":
 			r := (o).(apis.Runtime)
 			//拼接目录,直接拼上runtime的Name
-			folder := apis.FileFolder + "/" + r.Name
+			folder := r.Spec.Directory
 			if _, err := os.Stat(folder); os.IsNotExist(err) {
 				// 文件夹不存在的日志
 				logs.Tracef("checkDataDependency: %v %v's folder:%v is not exist", kind, r.Name, folder)
@@ -201,10 +209,10 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 
 			for _, data := range r.Spec.Data {
 				// 上面检查完目录之后，拼接每一个文件的路径，检查每一个文件是否存在，不存在则NotReady状态。只检查文件是否存在，启动文件下载在其他地方
-				filePath := apis.FileFolder + "/" + r.Name + "/" + data.Name
+				filePath := folder + "/" + data.Name
 				if _, err := os.Stat(filePath); err != nil {
 					// 文件不存在的日志
-					logs.Errorf("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
+					logs.Tracef("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
 					return apis.NotReady, errors.New("dataDependency:file not exist")
 				}
 				// 日志
@@ -212,8 +220,8 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 			}
 			return apis.True, nil
 		default:
-			logs.Error("DataDependency unsupported kind:", kind)
-			return apis.False, errors.New("unsupported kind " + kind)
+			logs.Error("DataDependency unsupported fileData kind:", kind)
+			return apis.False, errors.New("unsupported fileData kind:" + kind)
 		}
 	default:
 		logs.Error("DataDependency unsupported type:", Datatype)

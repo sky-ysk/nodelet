@@ -2,6 +2,7 @@ package fileManager
 
 import (
 	"fmt"
+	"os"
 
 	"hit.edu/framework/pkg/component-base/logs"
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
@@ -27,16 +28,17 @@ const (
 	//上传失败
 	UploadFailed string = "upload_failed"
 )
+
 type FileManager struct {
 	// 一些配置参数，例如上传和下载的URL、保存路径等
 	DataSavedDir string
 	UploadURL    string
 	ForwardURL   string
 	DownloadURL  string
-	// 记录本地的runtime的文件下载情况：未下载、正在下载、下载完成、下载失败。key是带后缀的runtime.Name，value是data[]里面所有文件的下载状态
+	// 记录本地的runtime的文件下载情况：未下载、正在下载、下载完成、下载失败。key是带后缀的runtime.Name-文件名（例如R1-xxxxx...-test.txt），value是文件的下载状态
 	DownloadStatus map[string]string
 	// 记录本地的runtime的文件上传情况：未上传、正在上传、上传完成、上传失败。key是带后缀的runtime.Name，value是data[]里面所有文件的上传状态
-	UploadStatus   map[string]string
+	UploadStatus map[string]string
 }
 
 // type FileHandler interface {
@@ -57,14 +59,44 @@ func NewFileManager() *FileManager {
 	downloadStatus := make(map[string]string)
 	uploadStatus := make(map[string]string)
 	// 初始化 FileManager
-	return &FileManager{
-		DataSavedDir: DataSavedDir,
-		UploadURL:    UploadURL,
-		ForwardURL:   ForwardURL,
-		DownloadURL:  DownloadURL,
+	FileManager := &FileManager{
+		DataSavedDir:   DataSavedDir,
+		UploadURL:      UploadURL,
+		ForwardURL:     ForwardURL,
+		DownloadURL:    DownloadURL,
 		DownloadStatus: downloadStatus,
 		UploadStatus:   uploadStatus,
 	}
+	err := FileManager.Init()
+	if err != nil {
+		logs.Errorf("NewFileManager Init Err!")
+	}
+	return FileManager
+}
+
+func (fm *FileManager) Init() error {
+	//这个协程用来检查和创建apis.FileFolder
+	tmpDir := "../tmp"
+	if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
+		// 目录不存在，创建目录
+		err := os.Mkdir(tmpDir, os.ModePerm) // 权限
+		if err != nil {
+			logs.Errorf("Handler创建目录时发生错误: %v\n", err)
+			return err
+		}
+	}
+	dataFir := "../tmp/data"
+	if _, err := os.Stat(dataFir); os.IsNotExist(err) {
+		err := os.Mkdir(dataFir, os.ModePerm)
+		if err != nil {
+			logs.Errorf("Handler创建目录时发生错误: %v\n", err)
+			return err
+		}
+	}
+
+	//TODO:后续可能会需要在这里进行group目录进行删除操作
+	
+	return nil
 }
 
 func (fm *FileManager) UploadFile(filePath string) (string, error) {
@@ -109,7 +141,7 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 		fmt.Println("Download successful!")
 		return "Download successful!", nil
 	}
-	// TODO 更新文件下载的状态 
+	// TODO 更新文件下载的状态
 }
 
 // func (fm *FileManager) DownloadDir(dirPath, savePath string) (string, error) {
