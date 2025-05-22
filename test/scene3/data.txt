@@ -67,6 +67,7 @@
                                 "inputs": [
                                     {
                                         "type": "constants",
+                                        "name": "label",
                                         "value": "up",
                                         "value_type": "string"
                                     }
@@ -95,6 +96,7 @@
                                 "inputs": [
                                     {
                                         "type": "constants",
+                                        "name": "label",
                                         "value": "table",
                                         "value_type": "string"
                                     }
@@ -172,6 +174,7 @@
                                 "inputs": [
                                     {
                                         "type": "constants",
+                                        "name": "label",
                                         "value": "finished_bin",
                                         "value_type": "string"
                                     }
@@ -220,6 +223,7 @@
                                 "inputs": [
                                     {
                                         "type": "constants",
+                                        "name": "label",
                                         "value": "reject_bin",
                                         "value_type": "string"
                                     }

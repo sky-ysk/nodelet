@@ -2083,6 +2083,7 @@ func TestCreateJson2(t *testing.T) {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Type:      apis.ConstData,
 					Value:     "up",
 					ValueType: apis.StringType,
@@ -2122,6 +2123,7 @@ func TestCreateJson2(t *testing.T) {
 			Type:    apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Type:      apis.ConstData,
 					Value:     "table",
 					ValueType: apis.StringType,
@@ -2193,6 +2195,7 @@ func TestCreateJson2(t *testing.T) {
 			Type:    apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Type:      apis.ConstData,
 					Value:     "finished_bin",
 					ValueType: apis.StringType,
@@ -2274,6 +2277,7 @@ func TestCreateJson2(t *testing.T) {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Type:      apis.ConstData,
 					Value:     "reject_bin",
 					ValueType: apis.StringType,

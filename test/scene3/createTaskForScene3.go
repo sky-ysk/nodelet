@@ -34,6 +34,7 @@ func main() {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "up",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -73,6 +74,7 @@ func main() {
 			Type:    apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "belt",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -111,6 +113,7 @@ func main() {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "table",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -203,6 +206,7 @@ func main() {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "finished_bin",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -263,6 +267,7 @@ func main() {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "table",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -331,6 +336,7 @@ func main() {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "belt",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
