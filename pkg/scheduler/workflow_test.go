@@ -2298,6 +2298,45 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
+	// 初始化
+	runtime6 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R6",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R6",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Type:      apis.ConstData,
+					Value:     "down",
+					ValueType: apis.StringType,
+				},
+			},
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+		},
+	}
+
 	// 乐聚检测
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2347,6 +2386,31 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
+	// 复检机器人
+	action3 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "复位",
+			},
+			Name: "A3",
+			Runtimes: []apis.RuntimeSpec{
+				runtime6.Spec,
+			},
+			Parents: []string{"A2"},
+		},
+	}
+
 	group1 := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "G1",
@@ -2383,7 +2447,7 @@ func TestCreateJson2(t *testing.T) {
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
-				action1.Spec, action2.Spec,
+				action1.Spec, action2.Spec, action3.Spec,
 			},
 			Replicas: []int32{0, 0},
 		},

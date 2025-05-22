@@ -230,6 +230,43 @@
                                 ]
                             }
                         ]
+                    },
+                    {
+                        "name": "A3",
+                        "parents": [
+                            "A2"
+                        ],
+                        "desc": {
+                            "docs": "复位"
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R6",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Grab"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "name": "label",
+                                        "value": "down",
+                                        "value_type": "string"
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ],
                 "replicas": [
