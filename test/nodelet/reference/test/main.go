@@ -172,6 +172,11 @@ func main() {
 				Upperbound: "4",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
+			},
+		},
 		Replicas:   group1_1Replicas,
 		Name:       group1_1Name,
 		Parents:    make([]string, 0),
@@ -181,10 +186,10 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                     runtime1_1_1_1Name,
-						Type:                     apis.ByCommand,
-						Command:                  []string{"python"},
-						Args:                     []string{"upload.py", "test.txt", "uotput.txt"}, // 10s
+						Name:    runtime1_1_1_1Name,
+						Type:    apis.ByCommand,
+						Command: []string{"python"},
+						Args:    []string{"upload.py", "test.txt", "uotput.txt"}, // 10s
 						// Inputs:                   []apis.Value{apis.Value{Value: "test.txt"}},                                        //20s
 						Parents:                  make([]string, 0),                                                                  // 加入Parents
 						Data:                     []apis.DataSpec{apis.DataSpec{Name: "upload.py"}, apis.DataSpec{Name: "test.txt"}}, // 依赖文件
@@ -193,11 +198,11 @@ func main() {
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
 					apis.RuntimeSpec{
-						Name:                     runtime1_1_1_2Name,
-						Type:                     apis.ByCommand,
-						Command:                  []string{"python"},
-						Args:                     []string{"wine.py"},          //8s
-						Parents:                  []string{runtime1_1_1_1Name}, // 加入Parents
+						Name:    runtime1_1_1_2Name,
+						Type:    apis.ByCommand,
+						Command: []string{"python"},
+						Args:    []string{"wine.py"},          //8s
+						Parents: []string{runtime1_1_1_1Name}, // 加入Parents
 						// Parents:                  []string{}, // 加入Parents
 						Data:                     []apis.DataSpec{apis.DataSpec{Name: "wine.py"}, apis.DataSpec{Name: "wine_data.csv"}, apis.DataSpec{Name: "requirements.txt"}},
 						Conditions:               &runtime1_1_1_2Condition,

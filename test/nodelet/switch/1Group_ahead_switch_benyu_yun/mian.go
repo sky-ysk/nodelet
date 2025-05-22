@@ -108,6 +108,11 @@ func main() {
 				Upperbound: "4",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Infer",
+			},
+		},
 		Replicas: group1_1Replicas,
 		Name:     group1_1Name,
 		Parents:  make([]string, 0),

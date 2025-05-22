@@ -15,6 +15,7 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
+	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
@@ -171,16 +172,16 @@ func main() {
 	m := manager.NewManager(clientSet)
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
-	_, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
 	logs.Info("Create task successfully======")
-	//str, err := analyzer.SerializeToJson(task)
-	//if err != nil {
-	//	return
-	//}
-	//fmt.Println(str)
+	str, err := analyzer.SerializeToJson(task)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
 	prompt()
 	postEventForMigrate(eventclient)
 	prompt()
