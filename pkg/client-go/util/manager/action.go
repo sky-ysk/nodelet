@@ -134,7 +134,11 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 	a.APIVersion = "resources/v1"
 
 	// 构造Labels
-	a.Labels = map[string]string{}
+	if len(as.Desc.Label) > 0 {
+		a.Labels = as.Desc.Label
+	} else {
+		a.Labels = map[string]string{}
+	}
 
 	// 复制Spec
 	a.Spec = as
