@@ -9,8 +9,14 @@ func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	var url1 string = "http://172.130.0.61:8080" // 更改ip和端口
-	var url2 string = "http://172.130.0.59:8080"
+	//长春现场机器人地址
+	//初检设备
+	url1 := "http://192.168.1.237:8080"
+	//复检设备
+	url2 := "http://192.168.1.234:8080"
+
+	//var url1 string = "http://172.130.0.61:8080" // 更改ip和端口
+	//var url2 string = "http://172.130.0.59:8080"
 	var name1 string = "GrabObject.Leju.801"   // 更改能力名字
 	var name2 string = "PutObject.Leju.801"    // 更改能力名字
 	var name3 string = "Turn.Leju.801"         // 更改能力名字
