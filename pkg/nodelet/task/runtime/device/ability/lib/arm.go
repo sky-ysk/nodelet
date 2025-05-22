@@ -188,6 +188,7 @@ func PublishGrabInitInst(label string, url string) (string, error) {
 	requestBody := TurnLabel{
 		label,
 	}
+	logs.Infof("grabinit label is %s , url is %s", label, url)
 
 	// 将请求体编码为 JSON
 	jsonData, err := json.Marshal(requestBody)
