@@ -80,7 +80,8 @@ func main() {
 					Type:      apis.ConstData,
 				},
 			},
-			Image: "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
+			Outputs: []apis.Value{},
+			Image:   "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -397,6 +398,76 @@ func main() {
 		},
 	}
 
+	// 复位
+	runtime9 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R9",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:  "R9",
+			Type:  apis.ByDevice,
+			Image: "Device{Robot1}.Ability{Grab}.Service{ReturnToLevel}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+		},
+	}
+	// 初始化
+	runtime10 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R10",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:  "R10",
+			Type:  apis.ByDevice,
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Value:     "down",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+			Parents: []string{"R9"},
+		},
+	}
+
 	// runtime0 和 runtime1
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -496,6 +567,31 @@ func main() {
 		},
 	}
 
+	//todo 补充condition
+	action5 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A5",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "复位 然后down",
+			},
+			Name: "A5",
+			Runtimes: []apis.RuntimeSpec{
+				runtime9.Spec, runtime10.Spec,
+			},
+			//Parents: []string{"A3"},
+		},
+	}
+
 	group1 := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "G1",
@@ -532,11 +628,12 @@ func main() {
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
-				action1.Spec, action2.Spec, action3.Spec, action4.Spec,
+				action1.Spec, action2.Spec, action3.Spec, action4.Spec, action5.Spec,
 			},
 			Replicas: []int32{0, 0},
 		},
 	}
+
 	task1 := &apis.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "T1",

@@ -234,6 +234,60 @@ func PublishGrabInitInst(label string, url string) (string, error) {
 	return taskResponse.TaskId, nil
 }
 
+// 4.复位
+
+type GrabReturnStrategy struct{}
+
+func (grs *GrabReturnStrategy) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
+	taskId, err := PublishGrabReturnLevelInst(url)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] PublishPutWorkpieceInst fail, err:%v", err)
+		return "", err
+	}
+	return taskId, nil
+}
+
+func PublishGrabReturnLevelInst(url string) (string, error) {
+	// 创建一个空请求体
+	body := bytes.NewBuffer([]byte{})
+	// 创建一个 POST 请求
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return "", fmt.Errorf("创建请求失败: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+
+	// 发起 HTTP 请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("发起请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 检查状态码
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("请求失败，状态码: %d，响应体: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// 读取并解析响应体
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取响应体失败: %v", err)
+	}
+
+	var taskResponse AbilityInstResponse
+	if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
+		return "", fmt.Errorf("解析响应体失败: %v", err)
+	}
+
+	// 返回任务 ID
+	return taskResponse.TaskId, nil
+}
+
 type ArmAngle struct {
 	Left  []float64 `json:"left"`
 	Right []float64 `json:"right"`
@@ -329,4 +383,53 @@ func PublishLeftArmDownInst(url string) error {
 
 	logs.Infof("left arm down successfully")
 	return nil
+}
+
+type GrabWorkpieceParseStrategy struct{}
+
+func (gwps *GrabWorkpieceParseStrategy) Execute(payload interface{}) ([]apis.Value, error) {
+	logs.Infof("")
+	// 使用对应的函数进行解析
+	result, err := parseGrabResult(payload)
+	if err != nil {
+		logs.Errorf("[DEVICE RUNTIME] parse world points fail: %s", err.Error())
+		return []apis.Value{}, err
+	}
+
+	var outputs = make([]apis.Value, 1)
+	// 放到Value中
+	if result == "success" {
+		outputs[0] = apis.Value{
+			Value:     "true",
+			Name:      "grabResult",
+			Type:      apis.LocalData,
+			ValueType: apis.BoolType,
+		}
+	} else {
+		outputs[0] = apis.Value{
+			Value:     "false",
+			Name:      "grabResult",
+			Type:      apis.LocalData,
+			ValueType: apis.BoolType,
+		}
+	}
+	return outputs, nil
+}
+
+// parseGrabResult 专门将 payload 中的label 解析为string类型
+func parseGrabResult(payload interface{}) (string, error) {
+	// 将 payload 转换为 map[string]interface{}
+	payloadMap, ok := payload.(map[string]interface{})
+	logs.Infof("this is payload :%v!!!!!!!!", payload)
+	if !ok {
+		return "", fmt.Errorf("payload is not a map[string]interface{}")
+	}
+
+	// 从 map 中提取 "label" 字段
+	label, ok := payloadMap["result"].(string)
+	if !ok {
+		return "", fmt.Errorf("result is not a string")
+	}
+
+	return label, nil
 }

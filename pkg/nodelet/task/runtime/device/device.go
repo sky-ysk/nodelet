@@ -342,6 +342,7 @@ func (dr *DeviceRuntime) monitorDeviceAbility(groupNamespace, taskId string, exe
 				return err
 			}
 			return errors.New(resp.Message)
+
 		case lib.Finished: // 处于完成状态
 			logs.Infof("[DEVICE RUNTIME] Task[%s] is Finished", taskId)
 			// 1.处理runtime

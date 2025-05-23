@@ -119,6 +119,8 @@ func ParsePayLoad(inst string, payload interface{}) ([]apis.Value, error) {
 
 	case "DetectWorkpiece":
 		parseStrategy = &DetectWorkpieceParseStrategy{}
+	case "GrabWorkpiece":
+		parseStrategy = &GrabWorkpieceParseStrategy{}
 	default:
 
 	}

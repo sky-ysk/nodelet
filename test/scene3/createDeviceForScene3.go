@@ -65,6 +65,11 @@ func main() {
 							Interface: new(string),
 							Port:      new(string),
 						},
+						"ReturnToLevel": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
 					},
 
 					Status: apis.AbilityReadyStartUp,
@@ -122,6 +127,10 @@ func main() {
 	*device1.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = device1IP
 	*device1.Status.Abilities["Detect"].Services["DetectWorkpiece"].Interface = "/api/task/detect"
 
+	// 复位
+	*device1.Status.Abilities["Grab"].Services["ReturnToLevel"].Ip = device1IP
+	*device1.Status.Abilities["Grab"].Services["ReturnToLevel"].Interface = "/api/task/return-to-level"
+
 	device2 := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "device2",
@@ -162,8 +171,12 @@ func main() {
 							Interface: new(string),
 							Port:      new(string),
 						},
+						"ReturnToLevel": apis.AbilityService{
+							Ip:        new(string),
+							Interface: new(string),
+							Port:      new(string),
+						},
 					},
-
 					Status: apis.AbilityReadyStartUp,
 				},
 				"Turn": {
@@ -219,6 +232,10 @@ func main() {
 	// 检测
 	*device2.Status.Abilities["Detect"].Services["DetectWorkpiece"].Ip = device2IP
 	*device2.Status.Abilities["Detect"].Services["DetectWorkpiece"].Interface = "/api/task/detect"
+
+	// 复位
+	*device2.Status.Abilities["Grab"].Services["ReturnToLevel"].Ip = device2IP
+	*device2.Status.Abilities["Grab"].Services["ReturnToLevel"].Interface = "/api/task/return-to-level"
 	_, err = m.CreateDevice(device1, "test")
 	if err != nil {
 		logs.Errorf("[TEST] Create Device[%s] err:%s", device1.Name, err.Error())

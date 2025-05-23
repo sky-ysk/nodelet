@@ -2425,6 +2425,74 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
+	runtime7 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R7",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:  "R7",
+			Type:  apis.ByDevice,
+			Image: "Device{Robot1}.Ability{Grab}.Service{ReturnToLevel}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+		},
+	}
+	runtime8 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R8",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:  "R8",
+			Type:  apis.ByDevice,
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Value:     "down",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+			Parents: []string{"R7"},
+		},
+	}
+
 	// 乐聚检测
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2499,6 +2567,29 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
+	// todo condition
+	action4 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "复位",
+			},
+			Name: "A4",
+			Runtimes: []apis.RuntimeSpec{
+				runtime7.Spec, runtime8.Spec,
+			},
+		},
+	}
 	group1 := &apis.Group{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "G1",
@@ -2535,7 +2626,7 @@ func TestCreateJson2(t *testing.T) {
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
-				action1.Spec, action2.Spec, action3.Spec,
+				action1.Spec, action2.Spec, action3.Spec, action4.Spec,
 			},
 			Replicas: []int32{0, 0},
 		},

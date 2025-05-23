@@ -41,6 +41,7 @@ func GetDeviceWorker() *DeviceWorker {
 		}
 		ctx := context.Background()
 		go instance.monitorDiscardRuntimes(ctx)
+		go instance.errorCycle()
 	})
 	return instance
 }
@@ -87,7 +88,7 @@ func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*
 			flag := false // 定义一个标志位，标识这个device需求是否满足
 			for _, device := range dw.MapTable {
 				// 找到满足能力需求的device
-				if device.Status.Lock.IsLocked != true { // 没有上锁的设备
+				if device.Status.Lock.IsLocked != true && device.Status.Phase == apis.DeviceIdle { // 没有上锁的设备
 					if _, ok := deviceTable[device.Name]; ok {
 						continue
 					}
@@ -122,6 +123,10 @@ func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*
 				logs.Warnf("nominated device %s is locked", ds.Name)
 				return false, nil, nil
 			}
+			if device.Status.Phase != apis.DeviceIdle {
+				logs.Warnf("nominated device %s is error", ds.Name)
+				return false, nil, nil
+			}
 			deviceTable[ds.Name] = device
 
 		default:
@@ -143,6 +148,10 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 	for _, device := range deviceTable {
 		if dw.MapTable[device.Name].Status.Lock.IsLocked != false {
 			logs.Warnf("device %s is locked, group %s", device.Name, group.Name)
+			return false, nil
+		}
+		if dw.MapTable[device.Name].Status.Phase != apis.DeviceIdle {
+			logs.Warnf("device %s is not idle, group %s", device.Name, group.Name)
 			return false, nil
 		}
 	}
@@ -264,6 +273,7 @@ func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*a
 	return true, group
 }
 
+// LockAbility 对能力进行上锁
 func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
 	dw.Mu.Lock()
 	defer dw.Mu.Unlock()
@@ -373,6 +383,7 @@ func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool
 
 }
 
+// monitorDiscardRuntimes 监听丢弃的runtime
 func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 	//eventClient := dw.Manager.EventClients[apis.NamespaceTest]
 	eventClient := dw.Manager.ClientSet.Core().Events(apis.NamespaceTest)
@@ -413,6 +424,7 @@ func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
 
 }
 
+// handleRuntimeDiscardEvent 处理丢弃事件
 func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *apis.Event) {
 	name := event.InvolvedObject.Name
 	namespace := event.InvolvedObject.Namespace
@@ -436,6 +448,7 @@ func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *ap
 	}
 }
 
+// UpdateDeviceFinished 任务完成阶段进行设备状态更新
 func (dw *DeviceWorker) UpdateDeviceFinished(deviceMap map[string]*apis.Device, runtime *apis.Runtime) error {
 	dw.Mu.Lock()
 	defer dw.Mu.Unlock()
@@ -504,6 +517,95 @@ func (dw *DeviceWorker) UpdateDeviceRunning(deviceMap map[string]*apis.Device) e
 	}
 
 	return nil
+}
+
+// UpdateDeviceError 任务执行失败阶段 更新设备状态
+func (dw *DeviceWorker) UpdateDeviceError(message string, d *apis.Device) error {
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	dw.updateMap()
+
+	logs.Infof("[DEVICE WORKER] Device:%s is Error, message: %s", d.Name, message)
+	device := dw.MapTable[d.Name]
+	errEvent := apis.DeviceEvent{
+		Desc: message,
+	}
+
+	// 填写错误信息
+	device.Status.Events = append(device.Status.Events, errEvent)
+
+	// 改写状态为error
+	device.Status.Phase = apis.DeviceError
+	device.Status.LastTime = apis.Time{Time: time.Now()}
+
+	// 清空每一个能力的锁信息
+	for name, ability := range device.Status.Abilities {
+		ability.Lock.IsLocked = false
+		ability.Lock.Ref = 0
+		device.Status.Abilities[name] = ability
+	}
+
+	// 清空设备的锁信息
+	device.Status.Lock.IsLocked = false
+	device.Status.Lock.Ref = 0
+	device.Status.Group = ""
+	aByte, err := json.Marshal(device.Status.Abilities)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Marshal device ability fail, err:%s", err.Error())
+		return err
+	}
+
+	var patchDevice []byte
+	patchDevice, err = json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"group":     device.Status.Group,
+			"events":    device.Status.Events,
+			"abilities": json.RawMessage(aByte),
+			"lock":      device.Status.Lock,
+			"phase":     device.Status.Phase,
+			"last_time": device.Status.LastTime,
+		},
+	})
+	_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE Worker] Update Device[%s] stage[ERROR], err:%s", device.Name, err)
+		return err
+	}
+	logs.Infof("[DEVICE WORKER] Patch Device%s Successfully\n", device.Name)
+	return nil
+}
+
+// 定时错误检测
+func (dw *DeviceWorker) errorCycle() {
+	for {
+		time.Sleep(5 * time.Second)
+		dw.checkError()
+	}
+}
+
+// 进行一次错误检查
+func (dw *DeviceWorker) checkError() {
+	dw.Mu.Lock()
+	// 获取这段时间中处于ERROR状态的device
+	dw.updateMap()
+	errDeviceList := make([]*apis.Device, 0)
+	for _, d := range dw.MapTable {
+		if d.Status.Phase == apis.DeviceError {
+			errDeviceList = append(errDeviceList, d)
+		}
+	}
+	dw.Mu.Unlock()
+	//
+	//// 进行错误处理
+	//for _, device := range errDeviceList {
+	//	errEvent :=
+	//}
+
+}
+
+// handleSimpleError 处理简单错误
+func (dw *DeviceWorker) handleSimpleError() {
+
 }
 
 func contains(slice []string, target []string) bool {
