@@ -41,7 +41,7 @@ func GetDeviceWorker() *DeviceWorker {
 		}
 		ctx := context.Background()
 		go instance.monitorDiscardRuntimes(ctx)
-		go instance.errorCycle()
+		//go instance.errorCycle()
 	})
 	return instance
 }
