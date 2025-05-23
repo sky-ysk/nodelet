@@ -17,6 +17,7 @@ func main() {
 	//path := "/home/smj"
 
 	// 手臂初始化
+	logs.Init("test")
 	runtime0 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R0",

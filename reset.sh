@@ -11,8 +11,8 @@ go run ./test/scene3/createDeviceForScene3.go
 # 关闭能力
 go run ./test/scene3/terminateAllAbility.go
 
-echo "sleep 5s to check the ability heartbeat"
-sleep 5
+echo "sleep 3s to check the ability heartbeat"
+sleep 3
 # 检查能力是否关闭
 
 # 定义目标 URL
