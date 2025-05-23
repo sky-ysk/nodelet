@@ -1672,6 +1672,23 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 			action.Status.Phase = apis.Successed // 方便最终End 显示状态
 			gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
 			nowActionCompleted = true //当前Action已经完成
+
+			// 修改当前Action下面的所有Runtime的状态为Discard
+			for _, runtimeReference := range actionStatus.Runtimes {
+				allRuntime, err := gmo.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+				if err != nil {
+					logs.Errorf("Get runtime error-88:%v", err)
+				}
+				runtimeStatus := &allRuntime.Status
+				runtimeStatus.Phase = phase
+				runtimeStatus.LastTime = &lastTime
+				runtimeStatus.FinishAt = &finshTime
+				logs.Infof("Action下的Runtime：%v,phase:%v", allRuntime.Name, allRuntime.Status.Phase)
+				err = gmo.UpdateRuntimeStatus(allRuntime.Namespace, runtimeStatus, allRuntime.Name)
+				if err != nil {
+					logs.Errorf("Update runtime status error-99:%v", err)
+				}
+			}
 		}
 		// 更新一下etcd当中的当前Action的Status
 		err = gmo.UpdateActionStatus(allAction.Namespace, actionStatus, allAction.Name) //这里======================
