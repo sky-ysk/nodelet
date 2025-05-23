@@ -1543,6 +1543,234 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		logs.Infof("Runtime END: groupStatus:%v, actionStatus:%v, runtimeStatus:%v", GroupStatusPhase, actionStatusPhase, runtimeStatusPhase)
 	}
 }
+
+// 5.23，适配Action层调用Discard
+func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1) {
+	logs.Info("Handling action end status update")
+	groupName := event.GroupName
+	get, err := gmo.clientsManager.GetGroup(groupName, event.GroupNamespace)
+	if err != nil {
+		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
+	}
+	groupSpec := &get.Spec
+	groupStatus := &get.Status
+
+	actionSpecName := event.ActionSpecName
+	phase := event.Phase //当前phase可能为Discard
+	logs.Infof("Get runtime finish event notify, the phase:%s", phase)
+	finshTime := event.FinishAt
+	lastTime := event.LastTime
+	// Task 信息
+	taskName := get.Status.Belong.Name
+
+	// 是否为副本任务
+	isCopyGroup := get.Spec.IsCopy
+
+	//修改group下面的groupSpec下面的Actions，Actions下面的ActionStatus
+	var otherActionCompleted = true // group下面的其他Action是否都已经完成
+	var nowActionCompleted = false  // group下面的当前Action是否已经完成
+
+	// 修改Task下面的TaskStatus下面的状态  从Task开始遍历的好处是可以修改Task下面的状态
+	var otherGroupCompleted = true // 标记其他Group的完成情况
+	var nowGroupCompleted = false  // 标记当前Group的完成情况
+
+	var finalGroupIsFailed = false // 仅针对当前group，看其下是否有Action执行失败，如果有，则Group状态必然是Failed
+	var finalTaskIsFailed = false  //  仅针对当前Task，看其下是否有Group执行失败，如果有，则Task状态必然是Failed
+
+	var finalGroupIsKilled = false
+	var finalTaskIsKilled = false
+	var task *apis.Task
+	var action *apis.Action
+
+	var actionHasSucceed = false                                  // 用于判断在group下面有多个action，如果其中一个action为Successed，那么不管最后完成的action是Succeed还是丢弃，group的状态需要设置为Successed
+	var groupHasSucceed = false                                   // 用于判断在task下面有多个group，如果其中一个group为Successed，那么不管最后完成的group是Succeed还是丢弃，task的状态需要设置为Successed
+	for aSpecName, actionReference := range groupStatus.Actions { // 预先锁定当前的action和当前的Runtime
+		if aSpecName != actionSpecName { // 判断是否是当前处理的Action
+			continue // 不是的话跳过
+		}
+		action, err = gmo.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
+		if err != nil {
+			logs.Errorf("Get action error from etcd:%v", err)
+		}
+	}
+
+	// 如果当前Group不是副本Group，需要修改其所属的Task的信息
+	if !isCopyGroup {
+		task, err = gmo.clientsManager.GetTask(taskName, get.Status.Belong.Namespace)
+		if err != nil {
+			logs.Errorf("Get task error from etcd-22:%v", err)
+		}
+		// 检查其他的group是否完成,修改Task的状态 ---需要适配迁移
+		for gSpecName, groupReference := range task.Status.Groups {
+			allgroup, err := gmo.clientsManager.GetGroup(groupReference.Name, groupReference.Namespace)
+			if err != nil {
+				logs.Errorf("Get group error from etcd-221:%v", err)
+			}
+			grStatus := &allgroup.Status          // for 循环遍历到的Group
+			if grStatus.Phase == apis.Successed { // 遍历了所有Group，包括当前Group新增5.13
+				groupHasSucceed = true
+			}
+			if gSpecName != groupSpec.Name { //遍历到的group的Spec.Name不等于当前处理的Group的Spec.Name,即遍历兄弟group
+				//logs.Infof("groupStatus.Phase:%v,groupID:%v", grStatus.Phase, grStatus.GroupID)
+				//if grStatus.Phase == apis.DeployCheck || grStatus.Phase == apis.Migrating || grStatus.Phase == apis.Running || grStatus.Phase == apis.Init || grStatus.Phase == apis.Unknown || grStatus.Phase == apis.ReadyToDeploy { // 说明其他Group还未执行或者还没迁移成功
+				//	otherGroupCompleted = false
+				//}
+				if grStatus.Phase != apis.Successed && grStatus.Phase != apis.Failed && grStatus.Phase != apis.Migrated && grStatus.Phase != apis.Discard { // 说明其他Group还未执行或者还没迁移成功
+					otherGroupCompleted = false
+					break
+				}
+				// 这里就不再检查兄弟group的killed的状态以及Failed状态，兄弟group他自己发现Failed和Killed，会自己修改其状态的
+				//if grStatus.Phase == apis.Failed { // 如果有一个Group的状态为Failed，则Task状态必定为Failed
+				//	finalTaskIsFailed = true
+				//}
+				//if grStatus.Phase == apis.Killed {
+				//	finalTaskIsKilled = true
+				//}
+				if grStatus.Phase == apis.Migrated { // 还得去查对应副本任务的状态，如果状态为Running（大概率是这个状态）或者是DeployChek（说明迁移过去的group依赖不满足，暂时还不能执行），那么otherGroupCompleted参数也是false
+					// 为了适配迁移，目前还是处理同域的迁移,这里怎么根据源任务找到副本任务，还是一个遗留的问题
+					if grStatus.CopyStatus == "" { // 副本任务只有Succeed和Failed才会修改源任务的copyStatus，如果说是空，说明副本任务还在运行，
+						otherGroupCompleted = false
+					}
+					//if grStatus.CopyStatus == "Failed" { //这里就不再根据兄弟group的状态来修改finalTaskIsFailed参数了，因为
+					//	finalTaskIsFailed = true
+					//}
+				}
+				continue
+			}
+		}
+	}
+
+	// 修改groupStatus的状态
+	for aSpecName, actionReference := range groupStatus.Actions { //Action
+		allAction, err := gmo.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
+		if err != nil {
+			logs.Errorf("Get action error from etcd:%v", err)
+		}
+		actionStatus := &allAction.Status         //ActionStatus
+		if actionStatus.Phase == apis.Successed { // 遍历了所有的Action，包括当前Action新增5.13
+			actionHasSucceed = true
+		}
+		if aSpecName != actionSpecName { //遍历到其他Action，可以顺带看一下别的Action是否都已经完成了
+			if actionStatus.Phase == apis.DeployCheck || actionStatus.Phase == apis.Running || actionStatus.Phase == apis.Init { //其他Action为checking状态，说明还有其他的Action没有被遍历到，Group状态为Running状态
+				otherActionCompleted = false
+			}
+			if actionStatus.Phase == apis.Failed {
+				finalGroupIsFailed = true
+			}
+			if actionStatus.Phase == apis.Killed {
+				finalGroupIsKilled = true
+			}
+			continue
+		}
+		// 修改Action的状态为Discard（丢弃）
+		if phase == apis.Discard { //如果说ActionStatus下面的RuntimeStatus都被执行了，还得修改ActionStatus的phase状态
+			//后续可能还要补充:Results
+			//actionStatus.Results = results
+			actionStatus.FinishAt = &finshTime
+			actionStatus.LastTime = &lastTime
+			actionStatus.Phase = apis.Discard
+			action.Status.Phase = apis.Successed // 方便最终End 显示状态
+			gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+			nowActionCompleted = true //当前Action已经完成
+		}
+		// 更新一下etcd当中的当前Action的Status
+		err = gmo.UpdateActionStatus(allAction.Namespace, actionStatus, allAction.Name) //这里======================
+		if err != nil {
+			logs.Errorf("Update action status err:%v", err)
+		}
+	}
+	// 得加一个逻辑：如果Group下有一个Action执行Failed或Killed，在这里得检查一下
+	if finalGroupIsFailed {
+		groupStatus.FinishAt = &finshTime
+		groupStatus.LastTime = &lastTime
+		groupStatus.Phase = apis.Failed
+		gmo.recorder.Event(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name))
+	}
+	if finalGroupIsKilled {
+		groupStatus.FinishAt = &finshTime
+		groupStatus.LastTime = &lastTime
+		groupStatus.Phase = apis.Killed
+		gmo.recorder.Event(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name))
+	}
+	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
+	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
+		groupStatus.FinishAt = &finshTime
+		groupStatus.LastTime = &lastTime
+		if !finalGroupIsKilled && !finalGroupIsFailed {
+			if actionHasSucceed {
+				groupStatus.Phase = apis.Successed //Group的状态等于当前Action执行完成的状态  Succeed
+				gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
+			} else { // 排除当前Action的所有Action当中，没有一个Action是Succeed状态，那么这里要进行一个判断，如果当前Action是成功的，则Group发送Succeed事件，如果当前Action是丢弃的，则Group发送Discard事件
+				groupStatus.Phase = phase
+				if phase == apis.Successed { //当前Action是Successed，则Group发送Succeed完成事件
+					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
+				} else {
+					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Group name:\t %s is discard", get.Name))
+				}
+			}
+		}
+		nowGroupCompleted = true
+	}
+
+	// 更新Group资源信息，同时还需要判断该group是否执行完成，需要发送事件
+	// 修改Update更新为Patch
+	// 更新一下etcd当中的Group的Status
+	err = gmo.UpdateGroupStatus(get.Namespace, groupStatus, get.Name)
+	if err != nil {
+		logs.Errorf("Update group err-222:%v", err)
+	}
+
+	//如果说TaskStatus下面的Group都被执行了，还得修改TaskStatus的phase的状态
+	//logs.Infof("otherGroupCompleted:%v", otherGroupCompleted)
+	//logs.Infof("nowGroupCompleted:%v", nowGroupCompleted)
+	if !isCopyGroup {
+		// 将修改后的Group状态值赋值给Task
+		if finalTaskIsFailed {
+			task.Status.FinishAt = &finshTime
+			task.Status.LastTime = &lastTime
+			task.Status.Phase = apis.Failed
+			gmo.recorder.Event(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name))
+		}
+		if finalTaskIsKilled {
+			task.Status.FinishAt = &finshTime
+			task.Status.LastTime = &lastTime
+			task.Status.Phase = apis.Killed
+			gmo.recorder.Event(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name))
+		}
+		if otherGroupCompleted && nowGroupCompleted {
+			task.Status.FinishAt = &finshTime
+			task.Status.LastTime = &lastTime
+			if !finalTaskIsFailed && !finalTaskIsKilled {
+				if groupHasSucceed {
+					task.Status.Phase = apis.Successed
+					gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+				} else {
+					task.Status.Phase = phase //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，如果为Succeed，则Task也为Succeed，反正为Failed
+					if phase == apis.Successed {
+						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+					} else {
+						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Task Name:\t %s is discard", task.Name))
+					}
+				}
+			}
+		}
+		// 更新一下etcd当中的Task的Status
+		err := gmo.updateTaskStatus(task.Namespace, &task.Status, task.Name)
+		if err != nil {
+			logs.Errorf("Update task err-333:%v", err)
+		}
+	}
+
+	//测试：
+	GroupStatusPhase := get.Status.Phase
+	actionStatusPhase := action.Status.Phase
+	if !isCopyGroup {
+		taskPhase := task.Status.Phase
+		logs.Infof("Action END: taskStatus:%v, groupStatus:%v, actionStatus:%v", taskPhase, GroupStatusPhase, actionStatusPhase)
+	} else {
+		logs.Infof("Action END: groupStatus:%v, actionStatus:%v", GroupStatusPhase, actionStatusPhase)
+	}
+}
 func (gmo *GroupMonitor) UpdateGroup(group *apis.Group, groupStatus *apis.GroupStatus, groupName string) error {
 	// 修改Group的update改为Patch
 	groupSpecPatch, err := json.Marshal(map[string]interface{}{
