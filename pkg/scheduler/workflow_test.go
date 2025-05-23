@@ -1602,6 +1602,8 @@ func TestAddDevice(t *testing.T) {
 
 func TestCreateJson1(t *testing.T) {
 	// 手臂初始化
+	path := "/home/smj"
+	// 手臂初始化
 	runtime0 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R0",
@@ -1619,6 +1621,7 @@ func TestCreateJson1(t *testing.T) {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "up",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -1629,9 +1632,7 @@ func TestCreateJson1(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Grab",
@@ -1655,10 +1656,12 @@ func TestCreateJson1(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R1",
-			Type: apis.ByDevice,
+			Parents: []string{"R0"},
+			Name:    "R1",
+			Type:    apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "belt",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -1669,9 +1672,7 @@ func TestCreateJson1(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Grab",
@@ -1699,6 +1700,7 @@ func TestCreateJson1(t *testing.T) {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "table",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -1709,9 +1711,7 @@ func TestCreateJson1(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Turn",
@@ -1743,9 +1743,7 @@ func TestCreateJson1(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Detect",
@@ -1769,10 +1767,33 @@ func TestCreateJson1(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
+			Parents: []string{"R3"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Runtime{R3}.Outputs{isQualified}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "true",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Name: "R4",
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "finished_bin",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -1783,9 +1804,7 @@ func TestCreateJson1(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Put",
@@ -1809,10 +1828,33 @@ func TestCreateJson1(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
+			Parents: []string{"R3"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Runtime{R3}.Outputs{isQualified}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Name: "R5",
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "table",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -1823,9 +1865,7 @@ func TestCreateJson1(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Put",
@@ -1849,20 +1889,19 @@ func TestCreateJson1(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
+			Parents: []string{"R5"},
 			Name:    "R6",
 			Type:    apis.ByCommand,
 			Command: []string{"python3"}, // 801的机器 要用python3
 			Args: []string{"" +
-				"/home/smj/adaptive-scheduling-framework/test/scene3/recheck1.py",
-				"/home/smj/adaptive-scheduling-framework/test/scene3/data.txt",
-				"device1"},
+				path + "/adaptive-scheduling-framework/test/scene3/recheck1.py",
+				path + "/adaptive-scheduling-framework/test/scene3/data.txt"},
 			// 这个是smj
 			//Args: []string{"" +
 			//	"/home/public/lock_test/test/scene3/recheck1.py",
 			//	"/home/public/lock_test/test/scene3/data.txt",
 			//	"device1"},
 			// 这个是801的路径
-			Parents: make([]string, 0),
 		},
 	}
 
@@ -1884,6 +1923,7 @@ func TestCreateJson1(t *testing.T) {
 			Type: apis.ByDevice,
 			Inputs: []apis.Value{
 				{
+					Name:      "label",
 					Value:     "belt",
 					ValueType: apis.StringType,
 					Type:      apis.ConstData,
@@ -1894,9 +1934,7 @@ func TestCreateJson1(t *testing.T) {
 				apis.DeviceSpec{
 					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "device1",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Turn",
@@ -1906,7 +1944,47 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
-	// 星海图检测
+	// 放手
+	runtime8 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R8",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R8",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Value:     "down",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
+			Image: "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+			Parents: []string{"R7"},
+		},
+	}
+
+	// runtime0 和 runtime1
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A1",
@@ -1930,7 +2008,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
-	// 乐聚检测
+	// runtime2
 	action2 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A2",
@@ -1955,7 +2033,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
-	// 星海图抓取
+	// runtime3 runtime4 runtime5 runtime6
 	action3 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A3",
@@ -1980,7 +2058,7 @@ func TestCreateJson1(t *testing.T) {
 		},
 	}
 
-	// 乐聚抓取
+	// runtime7 runtime8
 	action4 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A4",
@@ -1995,11 +2073,11 @@ func TestCreateJson1(t *testing.T) {
 		},
 		Spec: apis.ActionSpec{
 			Desc: &apis.Description{
-				Docs: "转向流水线",
+				Docs: "转向流水线，放手",
 			},
 			Name: "A4",
 			Runtimes: []apis.RuntimeSpec{
-				runtime7.Spec,
+				runtime7.Spec, runtime8.Spec,
 			},
 			Parents: []string{"A3"},
 		},
@@ -2018,16 +2096,26 @@ func TestCreateJson1(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
+
 			Devices: []apis.DeviceSpec{
 				{
 					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "device1",
+						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
+					},
 					Abilities: []string{
 						"Turn", "Grab", "Detect", "Put",
 					},
 				},
 			},
 			Desc: &apis.Description{
-				Docs: "场景三的初检group",
+				Docs:  "场景三的初检group",
+				Label: []string{"scene3"},
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
