@@ -492,7 +492,7 @@ func main() {
 		},
 	}
 
-	// runtime2
+	// todo condition
 	action2 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A2",

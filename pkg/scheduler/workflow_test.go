@@ -2217,7 +2217,8 @@ func TestCreateJson2(t *testing.T) {
 					ValueType: apis.StringType,
 				},
 			},
-			Image: "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
+			Outputs: []apis.Value{},
+			Image:   "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -2517,7 +2518,7 @@ func TestCreateJson2(t *testing.T) {
 		},
 	}
 
-	// 星海图抓取
+	// todo condition
 	action2 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A2",
