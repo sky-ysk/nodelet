@@ -2114,8 +2114,10 @@ func TestCreateJson1(t *testing.T) {
 				},
 			},
 			Desc: &apis.Description{
-				Docs:  "场景三的初检group",
-				Label: []string{"scene3"},
+				Docs: "场景三的初检group",
+				Label: map[string]string{
+					"scene": "scene3",
+				},
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
@@ -2547,7 +2549,7 @@ func TestCreateJson2(t *testing.T) {
 						RightValue: apis.Value{
 							NameSpace: apis.NamespaceTest,
 							Type:      apis.ConstData,
-							Value:     "false",
+							Value:     "true",
 							ValueType: apis.BoolType,
 						},
 					},
@@ -2664,8 +2666,10 @@ func TestCreateJson2(t *testing.T) {
 				},
 			},
 			Desc: &apis.Description{
-				Docs:  "场景三的复检group",
-				Label: []string{"weight=5"},
+				Docs: "场景三的复检group",
+				Label: map[string]string{
+					"weight": "5",
+				},
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{
