@@ -2532,6 +2532,27 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Action{A1}.Runtime{R2}.Outputs{grabResult}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Desc: &apis.Description{
 				Docs: "检测",
 			},
@@ -2582,6 +2603,27 @@ func TestCreateJson2(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Action{A1}.Runtime{R2}.Outputs{grabResult}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Desc: &apis.Description{
 				Docs: "复位",
 			},

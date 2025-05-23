@@ -492,7 +492,7 @@ func main() {
 		},
 	}
 
-	// todo condition
+	// runtime2 todo
 	action2 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A2",
@@ -506,6 +506,28 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Parents: []string{"A1"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Action{A1}.Runtime{R1}.Outputs{grabResult}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "true",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 			Desc: &apis.Description{
 				Docs: "转身复检台",
 			},
@@ -513,7 +535,6 @@ func main() {
 			Runtimes: []apis.RuntimeSpec{
 				runtime2.Spec,
 			},
-			Parents: []string{"A1"},
 		},
 	}
 
@@ -588,7 +609,28 @@ func main() {
 			Runtimes: []apis.RuntimeSpec{
 				runtime9.Spec, runtime10.Spec,
 			},
-			//Parents: []string{"A3"},
+			Parents: []string{"A1"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Action{A1}.Runtime{R1}.Outputs{grabResult}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
 		},
 	}
 
