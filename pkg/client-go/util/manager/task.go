@@ -48,7 +48,7 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	t.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(ts.Desc.Label) > 0 {
+	if ts.Desc != nil && ts.Desc.Label != nil && len(ts.Desc.Label) > 0 {
 		t.Labels = ts.Desc.Label
 	} else {
 		t.Labels = map[string]string{}

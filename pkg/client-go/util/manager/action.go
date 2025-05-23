@@ -134,7 +134,7 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 	a.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(as.Desc.Label) > 0 {
+	if as.Desc != nil && as.Desc.Label != nil && len(as.Desc.Label) > 0 {
 		a.Labels = as.Desc.Label
 	} else {
 		a.Labels = map[string]string{}

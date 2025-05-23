@@ -94,7 +94,7 @@ func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid st
 	w.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(ts.Desc.Label) > 0 {
+	if ts.Desc != nil && ts.Desc.Label != nil && len(ts.Desc.Label) > 0 {
 		w.Labels = ts.Desc.Label
 	} else {
 		w.Labels = map[string]string{}
