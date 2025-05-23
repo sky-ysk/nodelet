@@ -112,6 +112,26 @@
                         "desc": {
                             "docs": "检测"
                         },
+                        "conditions": {
+                            "formulas": [
+                                {
+                                    "condition_type": "DataDependency",
+                                    "left_value": {
+                                        "namespace": "test",
+                                        "type": "local",
+                                        "value_type": "bool",
+                                        "from": "Action{A1}.Runtime{R2}.Outputs{grabResult}"
+                                    },
+                                    "right_value": {
+                                        "namespace": "test",
+                                        "type": "constants",
+                                        "value": "false",
+                                        "value_type": "bool"
+                                    },
+                                    "signal": "=="
+                                }
+                            ]
+                        },
                         "runtimes": [
                             {
                                 "name": "R3",
@@ -242,6 +262,81 @@
                         "runtimes": [
                             {
                                 "name": "R6",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Grab"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Grab}.Service{GrabInit}",
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "name": "label",
+                                        "value": "down",
+                                        "value_type": "string"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "A4",
+                        "desc": {
+                            "docs": "复位"
+                        },
+                        "conditions": {
+                            "formulas": [
+                                {
+                                    "condition_type": "DataDependency",
+                                    "left_value": {
+                                        "namespace": "test",
+                                        "type": "local",
+                                        "value_type": "bool",
+                                        "from": "Action{A1}.Runtime{R2}.Outputs{grabResult}"
+                                    },
+                                    "right_value": {
+                                        "namespace": "test",
+                                        "type": "constants",
+                                        "value": "false",
+                                        "value_type": "bool"
+                                    },
+                                    "signal": "=="
+                                }
+                            ]
+                        },
+                        "runtimes": [
+                            {
+                                "name": "R7",
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Grab"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Grab}.Service{ReturnToLevel}"
+                            },
+                            {
+                                "name": "R8",
+                                "parents": [
+                                    "R7"
+                                ],
                                 "devices": [
                                     {
                                         "name": "Robot1",
