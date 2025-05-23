@@ -1966,8 +1966,22 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 			if err != nil {
 				logs.Errorf("Failed to get parent action:%v form etcd, err:%v", parentName, err)
 			}
-			if parentAction.Status.Phase != apis.Successed { // 如果父亲Actopm不是Succeed，直接返回依赖不满足，就算是父亲Action是Discard，也返回依赖不满足
-				logs.Trace("action %v's parent action:%v is not completed", action.Name, parentName)
+			if parentAction.Status.Phase != apis.Successed { // 如果父亲Action不是Succeed，直接返回依赖不满足，就算是父亲Action是Discard，也返回依赖不满足
+				if parentAction.Status.Phase == apis.Discard {
+					//父节点被丢弃，因此子节点直接通知为丢弃状态
+					discardEvent := events.ActionEndPhaseEvent1{
+						GroupName:      group.Name,
+						GroupNamespace: group.Namespace,
+						ActionSpecName: action.Spec.Name,
+						Phase:          apis.Discard,
+						FinishAt:       apis.Time{time.Now()},
+						LastTime:       apis.Time{time.Now()},
+					}
+					gmo.handleActionEndUpdate(discardEvent)
+					logs.Tracef("action %v's parent:%v is discarded!", action.Name, parentName)
+					return false
+				}
+				logs.Tracef("action %v's parent action:%v is not completed", action.Name, parentName)
 				return false
 			}
 		}
@@ -1987,10 +2001,20 @@ func (gmo *GroupMonitor) actionDepenSatisfy(action *apis.Action, group *apis.Gro
 	}
 	switch res {
 	case apis.True:
-		logs.Infof("action %v's conditions is satisfy", action.Name)
+		logs.Tracef("action %v's conditions is satisfy", action.Name)
 		return true
 	case apis.False:
-		logs.Tracef("action %v's conditions is not satisfy", action.Name)
+		// 说明被丢弃了（或者其他错误），通知这个action为丢弃
+		discardEvent := events.ActionEndPhaseEvent1{
+			GroupName:      group.Name,
+			GroupNamespace: group.Namespace,
+			ActionSpecName: action.Spec.Name,
+			Phase:          apis.Discard,
+			FinishAt:       apis.Time{time.Now()},
+			LastTime:       apis.Time{time.Now()},
+		}
+		gmo.handleActionEndUpdate(discardEvent)
+		logs.Tracef("action %v's conditions is not satisfy. this action has been discarded", action.Name)
 		return false
 	case apis.NotReady:
 		logs.Tracef("action %v's conditions is not ready", action.Name)
@@ -2032,10 +2056,10 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 						LastTime:        apis.Time{time.Now()},
 					}
 					gmo.handleRuntimeEndUpdate(discardEvent)
-					logs.Trace("runtime %v's parent:%v is discarded!", runtime.Name, parentName)
+					logs.Tracef("runtime %v's parent:%v is discarded!", runtime.Name, parentName)
 					return false
 				}
-				logs.Trace("runtime %v's parent:%v is not completed", runtime.Name, parentName)
+				logs.Tracef("runtime %v's parent:%v is not completed", runtime.Name, parentName)
 				return false
 			}
 		}
@@ -2048,43 +2072,41 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 	if len(runtime.Spec.Conditions.Formulas) == 0 {
 		return true
 	}
-	for _, i := range runtime.Spec.Conditions.Formulas {
-		// ProgramDependency暂时不方便直接使用ConditionEngine
-		result, err := gmo.conditionEngine.CheckConditions(runtime.Spec.Conditions, *runtime)
-		if err != nil {
-			logs.Errorf("Monitor:Check runtime conditions error:%v", err)
-			return false
-		}
-		if result != apis.True {
-			if result == apis.False {
-				// TODO:说明是被丢弃等状态返回的不是notready，因此通知queue这个runtime所在的整个group需要变成丢弃状态
-				discardEvent := events.RuntimeEndPhaseEvent1{
-					GroupName:       group.Name,
-					GroupNamespace:  group.Namespace,
-					ActionSpecName:  action.Spec.Name,
-					RuntimeSpecName: runtime.Spec.Name,
-					Phase:           apis.Discard,
-					FinishAt:        apis.Time{time.Now()},
-					LastTime:        apis.Time{time.Now()},
-				}
-				gmo.handleRuntimeEndUpdate(discardEvent)
-			}
-			logs.Tracef("runtime %v's conditions is not satisfy", runtime.Name)
-			return false
-		}
 
+	// ProgramDependency暂时不方便直接使用ConditionEngine
+	result, err := gmo.conditionEngine.CheckConditions(runtime.Spec.Conditions, *runtime)
+	if err != nil {
+		logs.Errorf("Monitor:Check runtime conditions error:%v", err)
+		return false
+	}
+	if result != apis.True {
+		if result == apis.False {
+			// TODO:说明是被丢弃等状态返回的不是notready，因此通知queue这个runtime所在的整个group需要变成丢弃状态
+			discardEvent := events.RuntimeEndPhaseEvent1{
+				GroupName:       group.Name,
+				GroupNamespace:  group.Namespace,
+				ActionSpecName:  action.Spec.Name,
+				RuntimeSpecName: runtime.Spec.Name,
+				Phase:           apis.Discard,
+				FinishAt:        apis.Time{time.Now()},
+				LastTime:        apis.Time{time.Now()},
+			}
+			gmo.handleRuntimeEndUpdate(discardEvent)
+		}
+		logs.Tracef("runtime %v's conditions is not satisfy", runtime.Name)
+		return false
+	}
+
+	for _, i := range runtime.Spec.Conditions.Formulas {
 		// 这里需要判断这个条件的类型，如果是ProgramDependency类型的条件，则需要进行特殊处理(nodelet这里直接使用Parents来处理，暂时不使用ConditionEngine)
 		if i.ConditionType == apis.ProgramDependency {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
 			//如果不满足则返回false，开启CMD创建新的程序依赖，等待monitor检查到依赖满足才拉起这个runtime
-			//TODO：后续和上面的condition合并进一起，可能是以单独写一个condition函数的形式，然后这里只需要调用统一的condition检查函数即可
-
 			// 首先判断这个程序依赖的condition是否已经是满足的，如果是满足的直接跳过
 			if i.Result == apis.True {
 				// logs.Tracef("runtime %v's program dependency is satisfy", runtime.Name)
 				continue
 			}
-
 			var dependencyFile = i.LeftValue.From
 			// 如果dependencyFile这个文件路径不包含/,说明是相对路径，需要拼接为绝对路径
 			if !strings.Contains(dependencyFile, "/") {
@@ -2096,7 +2118,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 				logs.Tracef("dependency file %v is not exist!", dependencyFile)
 				return false
 			}
-
+			// 检查依赖文件TXT是否已经被解析
 			if !runtimeStatus.IsParsed {
 				runtimeReqPackages, err := gmo.dependencyManager.ParseRequirements(dependencyFile)
 				if err != nil {
