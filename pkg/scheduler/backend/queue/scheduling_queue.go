@@ -252,25 +252,18 @@ func parseWeightFromQGroupInfo(g *config.QueuedGroupInfo) int64 {
 		return 1
 	}
 
-	for _, label := range g.Group.Spec.Desc.Label {
-		if strings.Contains(label, "weight") {
-			parts := strings.SplitN(label, "=", 2)
-			if len(parts) != 2 {
-				logs.Warnf("weight string is not valid %s, group %s", label, g.Group.Name)
-				return 0
-			}
-			// 提取等号后的部分并去除首尾空格
-			valueStr := strings.TrimSpace(parts[1])
-			// 转换为整数
-			ret, err := strconv.ParseInt(valueStr, 10, 64)
-			if err != nil {
-				logs.Error(err.Error())
-				return 0
-			}
-			return ret
-		}
+	val, ok := g.Group.Spec.Desc.Label["weight"]
+	if !ok {
+		return 1
 	}
-	return 1
+	valueStr := strings.TrimSpace(val)
+
+	ret, err := strconv.ParseInt(valueStr, 10, 64)
+	if err != nil {
+		logs.Error(err.Error())
+		return 1
+	}
+	return ret
 }
 
 func groupKeyFunc(g *apis.Group) string {
