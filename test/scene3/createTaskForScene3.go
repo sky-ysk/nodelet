@@ -665,8 +665,10 @@ func main() {
 				},
 			},
 			Desc: &apis.Description{
-				Docs:  "场景三的初检group",
-				Label: []string{"scene3"},
+				Docs: "场景三的初检group",
+				Label: map[string]string{
+					"scene": "scene3",
+				},
 			},
 			Name: "G1",
 			Actions: []apis.ActionSpec{

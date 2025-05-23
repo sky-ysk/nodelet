@@ -35,9 +35,9 @@
                     }
                 ],
                 "desc": {
-                    "label": [
-                        "weight=5"
-                    ],
+                    "label": {
+                        "weight": "5"
+                    },
                     "docs": "场景三的复检group"
                 },
                 "actions": [
@@ -125,7 +125,7 @@
                                     "right_value": {
                                         "namespace": "test",
                                         "type": "constants",
-                                        "value": "false",
+                                        "value": "true",
                                         "value_type": "bool"
                                     },
                                     "signal": "=="
