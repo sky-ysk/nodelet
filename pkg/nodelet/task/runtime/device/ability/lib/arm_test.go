@@ -25,6 +25,7 @@ func TestPublishGrabWorkpieceInst(t *testing.T) {
 		logs.Errorf("tr is %v", tr)
 	}
 }
+
 func TestPublishPutWorkpieceInst(t *testing.T) {
 	logs.Init("test")
 	ip := "http://172.130.0.61:55607"
