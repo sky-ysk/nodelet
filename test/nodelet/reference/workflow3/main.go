@@ -252,6 +252,11 @@ func main() {
 				Upperbound: "4",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Infer",
+			},
+		},
 		Replicas:   group1_1Replicas,
 		Name:       group1_1Name,
 		Parents:    []string{group1_2Name},
@@ -298,6 +303,11 @@ func main() {
 				Upperbound: "2",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
+			},
+		},
 		Replicas:   group1_2Replicas,
 		Name:       group1_2Name,
 		Parents:    make([]string, 0), // 加入Parents
@@ -342,6 +352,11 @@ func main() {
 				Name:       "RAM",
 				Lowbound:   "3",
 				Upperbound: "6",
+			},
+		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
 			},
 		},
 		Replicas:   group1_3Replicas,
@@ -391,6 +406,11 @@ func main() {
 				Upperbound: "2",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
+			},
+		},
 		Replicas:   group1_4Replicas,
 		Name:       group1_4Name,
 		Parents:    []string{group1_2Name}, // 加入Parents
@@ -437,6 +457,11 @@ func main() {
 				Upperbound: "3",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
+			},
+		},
 		Replicas:   group1_5Replicas,
 		Name:       group1_5Name,
 		Parents:    []string{group1_2Name},
@@ -481,6 +506,11 @@ func main() {
 				Name:       "RAM",
 				Lowbound:   "1",
 				Upperbound: "2",
+			},
+		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
 			},
 		},
 		Replicas:   group1_6Replicas,

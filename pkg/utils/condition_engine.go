@@ -174,7 +174,7 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 		newLeftValue, err := ce.engine.ExtractLocalValue(leftValue, o)
 		if err != nil {
 			logs.Errorf("checkDataDependency Err: ce.engine.ExtractLocalValue get value failed")
-			return apis.NotReady, nil
+			return apis.False, nil
 		}
 		if newLeftValue.Value == "" {
 			return apis.NotReady, nil

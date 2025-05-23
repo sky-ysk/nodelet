@@ -58,7 +58,7 @@ func Run(ctx context.Context, nl *nodelet.Nodelet) error {
 	logs.Info("Starting Resourcelet\t", "version\t", version.Get())
 
 	nl.Run(ctx)
-	logs.Error("Failed to start resourcelet")
+	logs.Error("Failed to start resourcelet-1")
 	return fmt.Errorf("")
 }
 

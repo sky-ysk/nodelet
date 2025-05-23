@@ -250,6 +250,8 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 			//groupCopyName := "Reason-Copy"                                               // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
 			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
+			// 新增操作--5.20--将Group写入到Task当中
+			gh.AddGroupCopyToTaskStatus(groupCopy)
 			// 遍历action和Runtime，依次创建
 			for _, actionReference := range gr.Status.Actions {
 				action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
@@ -463,4 +465,32 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 			}
 		}
 	}
+}
+
+// 将Task下面的status添加入副本Group信息
+func (gh *GroupHandler) AddGroupCopyToTaskStatus(gr *apis.Group) {
+	logs.Infof("====================AddGroupCopyToTaskStatus")
+	// 首先找到Group所属的Task（副本Group和原先的Group，目前本域迁移的话，所属的Group没有改动）
+	taskName := gr.Status.Belong.Name
+	taskNamespace := gr.Status.Belong.Namespace
+	task, err2 := gh.clientsManager.GetTask(taskName, taskNamespace)
+	if err2 != nil {
+		logs.Errorf("Get task error:%v", err2)
+	}
+	taskStatusGroups := task.Status.Groups
+	taskStatusGroups[gr.Spec.Name+"-copy"] = apis.ObjectReference{
+		Name:      gr.Name,
+		Namespace: gr.Namespace,
+		Kind:      gr.Kind,
+	}
+	patchTask, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"groups": &taskStatusGroups,
+		},
+	})
+	_, err = gh.clientsManager.PatchTask(taskName, taskNamespace, patchTask)
+	if err != nil {
+		logs.Errorf("Patch task error:%v", err2)
+	}
+
 }

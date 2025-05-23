@@ -24,6 +24,7 @@ func (m *Manager) CreateTasks(w *apis.Workflow, namespace string, uuid string, p
 }
 
 func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string) (*apis.Task, error) {
+	// TODO：需要检查一下Spec里面的东西 1.循环依赖  2.也不要允许创建空的任务？没有意义
 	// 临时创建一个Task对象
 	t := apis.Task{}
 	// 构造名称
@@ -35,6 +36,7 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 		prefix = ts.Name + "."
 	}
 
+	// TODO: 创建无需提供namespace ， 可以使用默认的namespace
 	// 构造Namespace
 	if namespace == "" {
 		t.Namespace = apis.NamespaceDefault
@@ -46,7 +48,11 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	t.APIVersion = "resources/v1"
 
 	// 构造Labels
-	t.Labels = map[string]string{}
+	if ts.Desc != nil && ts.Desc.Label != nil && len(ts.Desc.Label) > 0 {
+		t.Labels = ts.Desc.Label
+	} else {
+		t.Labels = map[string]string{}
+	}
 
 	// 复制Spec
 	t.Spec = ts

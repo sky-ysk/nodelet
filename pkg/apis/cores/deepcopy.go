@@ -585,8 +585,10 @@ func (in *Description) DeepCopyInto(out *Description) {
 	*out = *in
 	if in.Label != nil {
 		in, out := &in.Label, &out.Label
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 }
 
@@ -1384,6 +1386,11 @@ func (in *NodeSpec) DeepCopyInto(out *NodeSpec) {
 			}
 			(*out)[key] = outVal
 		}
+	}
+	if in.ClusterID != nil {
+		in, out := &in.ClusterID, &out.ClusterID
+		*out = new(string)
+		**out = **in
 	}
 }
 

@@ -182,6 +182,8 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 }
 
 func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.Response) {
+	// TODO：update方法也需要检查循环依赖的问题，可能出现本来没有循环依赖，更新之后出现循环依赖
+	// TODO：对不允许修改的信息检查？Update Patch
 	// 获取group
 	ew := &apis.Group{}
 	err := request.ReadEntity(&ew)

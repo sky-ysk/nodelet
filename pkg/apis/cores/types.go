@@ -297,7 +297,7 @@ type WasmImage struct {
 // 对工作流的描述
 type Description struct {
 	// TODO: Label单独字段
-	Label []string `json:"label,omitempty" yaml:"label"`
+	Label map[string]string `json:"label,omitempty" yaml:"label"`
 	// 用户对工作流行为的描述
 	// +Optional
 	Docs string `json:"docs,omitempty" yaml:"docs"`
