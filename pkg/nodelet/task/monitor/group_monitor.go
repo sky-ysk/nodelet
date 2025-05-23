@@ -1324,6 +1324,10 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 					//}
 				}
 				continue
+			} else if gSpecName == groupSpec.Name { //遍历到当前Runtime所属的Group
+				if grStatus.Phase == apis.Failed || grStatus.Phase == apis.Killed || grStatus.Phase == apis.Discard { // 如果说Group下面，多个Runtime已经开始执行了，这时候有一个Runtime状态为Failed，导致整个Group状态为Failed，但是可能有Runtime已经在执行了，那么等这个Runtime执行完成了，发现Group为Failed，直接不用再进行状态的更新了，直接退出即可
+					return
+				}
 			}
 		}
 	}
