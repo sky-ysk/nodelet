@@ -1692,6 +1692,8 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 				if err != nil {
 					logs.Errorf("Update runtime status error-99:%v", err)
 				}
+				//  send runtime discard event
+				gmo.recorder.Event(allRuntime, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Runtime Name:\t %s is discard", allRuntime.Name))
 			}
 		}
 		// 更新一下etcd当中的当前Action的Status
