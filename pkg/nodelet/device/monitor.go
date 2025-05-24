@@ -115,6 +115,16 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 
 		// Ability类型的device
 		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
+			flag := false
+			for _, ability := range device.Status.Abilities {
+				if ability.Status != apis.AbilityRunning {
+					flag = true
+					break
+				}
+			}
+			if !flag {
+				return nil
+			}
 			deviceWG.Add(1)
 
 			go func(device apis.Device) {
