@@ -325,6 +325,7 @@ func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime
 			"lock":      json.RawMessage(lByte),
 		},
 	})
+
 	if err != nil {
 		logs.Errorf("json marshal fail err：%s", err.Error())
 		return err
@@ -439,6 +440,7 @@ func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *ap
 	for _, ds := range runtime.Spec.Devices {
 		dname := ds.ExpectedProperties["name"].Value
 		for _, ability := range ds.Abilities {
+			logs.Errorf("runtime%s 被丢弃，不正常释放device%s的ability%s", runtime.Name, dname, ability)
 			err = dw.ReleaseAbilityRef(dname, ability, runtime)
 			if err != nil {
 				logs.Errorf("[DEVICE WORKER] ReleaseAbilityRef %s failed, err is %s", dname, err.Error())
