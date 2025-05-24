@@ -177,6 +177,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("device processing errors: %v", errs)
 	}
+	dw.updateMap()
 	return nil
 }
 

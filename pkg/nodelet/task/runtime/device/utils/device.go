@@ -60,65 +60,6 @@ func CheckDevices(deviceMap map[string]*apis.Device, specs []apis.DeviceSpec, m 
 	return nil
 }
 
-// UpdateDeviceRunning 用于在发布任务指令成功后(但是还不知道业务执行情况)时 更新device的状态
-func UpdateDeviceRunning(deviceMap map[string]*apis.Device, clientManager *manager.Manager) error {
-
-	for name, device := range deviceMap {
-		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[RUNNING]", name)
-		// 将phase更改为running
-		device.Status.Phase = apis.DeviceRunning
-		// 设置更新时间
-		device.Status.LastTime = apis.Time{Time: time.Now()}
-		patchDevice, err := json.Marshal(map[string]interface{}{
-			"status": map[string]interface{}{
-				"phase":     device.Status.Phase,
-				"last_time": device.Status.LastTime,
-			},
-		})
-		_, err = clientManager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
-		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] Update Device[%s] Failed stage [RUNNING], err:%s", device.Name, err.Error())
-			return err
-		}
-		logs.Infof("[DEVICE RUNTIME] Update Device[%s] Successfully stage [RUNNING]\n", device.Name)
-	}
-
-	return nil
-}
-
-// UpdateDeviceFinished 用于在已经获得任务的执行状态 更新device的状态
-func UpdateDeviceFinished(deviceMap map[string]*apis.Device, clientManager *manager.Manager) error {
-	for name, device := range deviceMap {
-		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED]", name)
-		device.Status.Lock.Ref -= 1
-		logs.Infof("[DEVICE RUNTIME] REF IS %d", device.Status.Lock.Ref)
-		if device.Status.Lock.Ref == 0 {
-			device.Status.Lock.IsLocked = false
-		}
-		// 将phase更改为running
-		device.Status.Phase = apis.DeviceIdle
-		// 设置更新时间
-		device.Status.LastTime = apis.Time{Time: time.Now()}
-		patchDevice, err := json.Marshal(map[string]interface{}{
-			"status": map[string]interface{}{
-				"lock":      device.Status.Lock,
-				"phase":     device.Status.Phase,
-				"last_time": device.Status.LastTime,
-			},
-		})
-
-		_, err = clientManager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
-		if err != nil {
-			logs.Errorf("[DEVICE RUNTIME] Update Device[%s] stage[FINISHED], err:%s", device.Name, err)
-			return err
-		}
-
-		logs.Infof("[DEVICE RUNTIME] Update Device[%s] successfully stage [FINISHED]\n", device.Name)
-	}
-
-	return nil
-}
-
 // UpdateDeviceError 用于在已经获得任务的执行状态 更新device的状态
 func UpdateDeviceError(deviceMap map[string]*apis.Device, clientManager *manager.Manager) error {
 
