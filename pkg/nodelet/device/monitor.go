@@ -93,14 +93,10 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 	dw.Mu.Lock()
 	defer dw.Mu.Unlock()
 	// 首先获取所有的Devices
-	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Try to Get All Devices")
-	deviceList, err := clientManager.GetDevices("", "test")
-	if err != nil {
-		logs.Errorf("[DEVICE EXPORTER] Get All Devices failed err: %s", err.Error())
-		return err
-	}
-	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] Get All Devices Success!")
-	logs.Tracef("[DEVICE EXPORTER-ABILITY MONITOR] ETCD Has %d Devices", len(deviceList.Items))
+	logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Try to Get All Devices")
+	dw.updateMap()
+	logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] Get All Devices Success!")
+	logs.Infof("[DEVICE EXPORTER-ABILITY MONITOR] ETCD Has %d Devices", len(dw.MapTable))
 
 	// 外层并发同步控制（用于设备）
 	var deviceWG sync.WaitGroup
@@ -109,7 +105,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 
 	// 遍历所有的Device
 
-	for _, d := range deviceList.Items {
+	for _, d := range dw.MapTable {
 
 		device := d
 
@@ -162,7 +158,7 @@ func MonitorAllAbilities(clientManager *m.Manager) error {
 				if err := patchDeviceStatus(clientManager, device, updatedAbilities); err != nil {
 					errChan <- err
 				}
-			}(device)
+			}(*device)
 		}
 	}
 
