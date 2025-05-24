@@ -16,15 +16,15 @@ sleep 3
 # 检查能力是否关闭
 
 # 定义目标 URL
-URL1="http://172.130.0.59:8080/api/ability-heartbeat"
-URL2="http://172.130.0.61:8080/api/ability-heartbeat"
+#URL1="http://172.130.0.59:8080/api/ability-heartbeat"
+#URL2="http://172.130.0.61:8080/api/ability-heartbeat"
 
 #长春现场机器人地址
 #初检设备
-#URL1 ="http://192.168.1.237:8080/api/ability-heartbeat"
-#
-##复检设备
-#URL2 ="http://192.168.1.234:8080/api/ability-heartbeat"
+URL1="http://192.168.1.237:8080/api/ability-heartbeat"
+
+#复检设备
+URL2="http://192.168.1.234:8080/api/ability-heartbeat"
 
 # 当前时间
 CURRENT_TIME=$(date +"%Y-%m-%d %H:%M:%S")

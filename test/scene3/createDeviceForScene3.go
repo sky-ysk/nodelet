@@ -11,14 +11,14 @@ import (
 func main() {
 
 	//长春现场机器人地址
-	////初检设备
-	//device1IP := "192.168.1.237"
-	////复检设备
-	//device2IP := "192.168.1.234"
+	//初检设备
+	device1IP := "192.168.1.237"
+	//复检设备
+	device2IP := "192.168.1.234"
 
-	//云服务器测试环境地址
-	device1IP := "172.130.0.61"
-	device2IP := "172.130.0.59"
+	////云服务器测试环境地址
+	//device1IP := "172.130.0.61"
+	//device2IP := "172.130.0.59"
 	cs, err := utils.CreateClientSetWithTimeOut(2000)
 	if err != nil {
 		panic(err)
