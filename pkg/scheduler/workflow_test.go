@@ -2704,6 +2704,518 @@ func TestCreateJson2(t *testing.T) {
 	fmt.Printf("%s", string(b))
 }
 
+func TestCreateJson3(t *testing.T) {
+
+	// 转向复检台
+	runtime1 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R1",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Value:     "table",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
+			Image: "Device{Robot1}.Ability{Turn}.Service{Turn}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Turn",
+					},
+				},
+			},
+		},
+	}
+
+	// 抓取
+	runtime2 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Parents: []string{"R1"},
+			Name:    "R2",
+			Type:    apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Type:      apis.ConstData,
+					Value:     "table",
+					ValueType: apis.StringType,
+				},
+			},
+			Outputs: []apis.Value{},
+			Image:   "Device{Robot1}.Ability{Grab}.Service{GrabWorkpiece}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+		},
+	}
+
+	// 检测
+	runtime3 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:    "R3",
+			Type:    apis.ByDevice,
+			Outputs: []apis.Value{},
+			Image:   "Device{Robot1}.Ability{Detect}.Service{DetectWorkpiece}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Detect",
+					},
+				},
+			},
+		},
+	}
+
+	// 放入合格框
+	runtime4 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Parents: []string{"R3"},
+			Name:    "R4",
+			Type:    apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Type:      apis.ConstData,
+					Value:     "finished_bin",
+					ValueType: apis.StringType,
+				},
+			},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Runtime{R3}.Outputs{isQualified}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "true",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
+			Image: "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Put",
+					},
+				},
+			},
+		},
+	}
+
+	// 放到废品框
+	runtime5 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R5",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Parents: []string{"R3"},
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Runtime{R3}.Outputs{isQualified}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
+			Name: "R5",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Type:      apis.ConstData,
+					Value:     "reject_bin",
+					ValueType: apis.StringType,
+				},
+			},
+			Image: "Device{Robot1}.Ability{Put}.Service{PutWorkpiece}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Put",
+					},
+				},
+			},
+		},
+	}
+
+	runtime6 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R6",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R6",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Value:     "belt",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
+			Image: "Device{Robot1}.Ability{Turn}.Service{Turn}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Turn",
+					},
+				},
+			},
+		},
+	}
+
+	runtime7 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R7",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name:  "R7",
+			Type:  apis.ByDevice,
+			Image: "Device{Robot1}.Ability{Grab}.Service{ReturnToLevel}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Grab",
+					},
+				},
+			},
+		},
+	}
+
+	// 乐聚检测
+	action1 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "抓取物品",
+			},
+			Name: "A1",
+			Runtimes: []apis.RuntimeSpec{
+				runtime1.Spec, runtime2.Spec,
+			},
+		},
+	}
+
+	// todo condition
+	action2 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Action{A1}.Runtime{R2}.Outputs{grabResult}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "true",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "检测",
+			},
+			Name: "A2",
+			Runtimes: []apis.RuntimeSpec{
+				runtime3.Spec, runtime4.Spec, runtime5.Spec,
+			},
+			Parents: []string{"A1"},
+		},
+	}
+
+	// 复检机器人
+	action3 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A3",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Desc: &apis.Description{
+				Docs: "复位",
+			},
+			Name: "A3",
+			Runtimes: []apis.RuntimeSpec{
+				runtime6.Spec,
+			},
+			Parents: []string{"A2"},
+		},
+	}
+
+	// todo condition
+	action4 := &apis.Action{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "A4",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Action",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.ActionSpec{
+			Conditions: &apis.Conditions{
+				Formulas: []apis.ConditionFormula{
+					{
+						Signal:        apis.Equal,
+						ConditionType: apis.DataDependency,
+						LeftValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.LocalData,
+							Value:     "",
+							ValueType: apis.BoolType,
+							From:      "Action{A1}.Runtime{R2}.Outputs{grabResult}",
+						},
+						RightValue: apis.Value{
+							NameSpace: apis.NamespaceTest,
+							Type:      apis.ConstData,
+							Value:     "false",
+							ValueType: apis.BoolType,
+						},
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "复位",
+			},
+			Name: "A4",
+			Runtimes: []apis.RuntimeSpec{
+				runtime7.Spec,
+			},
+		},
+	}
+	group1 := &apis.Group{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "G1",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: "resources/v1",
+		},
+
+		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "Robot1",
+					Abilities: []string{
+						"Turn", "Grab", "Detect", "Put",
+					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "{which_device}",
+						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
+					},
+				},
+			},
+			Desc: &apis.Description{
+				Docs: "场景三的复检group",
+				Label: map[string]string{
+					"weight": "5",
+				},
+			},
+			Name: "G1",
+			Actions: []apis.ActionSpec{
+				action1.Spec, action2.Spec, action3.Spec, action4.Spec,
+			},
+			Replicas: []int32{0, 0},
+		},
+	}
+	task1 := &apis.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "T2",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.TaskSpec{
+			Desc: &apis.Description{
+				Docs: "复检task",
+			},
+			Name: "T2",
+			Groups: []apis.GroupSpec{
+				group1.Spec,
+			},
+		},
+	}
+	b, _ := json.Marshal(task1)
+	fmt.Printf("%s", string(b))
+}
+
 func TestCreateRecheck(t *testing.T) {
 	runtime1 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
