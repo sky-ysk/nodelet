@@ -22,7 +22,7 @@ func NewRuntimeClient(port string, pool *pool.ConnectionPool) *RuntimeClient {
 	client := &RuntimeClient{ServerIPAndPort: "127.0.0.1:" + port, connPool: pool}
 	// 首次创建时尝试预连接
 	if ok := client.checkConnection1(); !ok {
-		logs.Errorf("初次连接 gRPC 服务端失败")
+		logs.Error("初次连接 gRPC 服务端失败")
 	}
 	//for {
 	//	success := client.checkConnection()
@@ -37,7 +37,7 @@ func NewRuntimeClient(port string, pool *pool.ConnectionPool) *RuntimeClient {
 func NewK8sRuntimeClient(service, port string, pool *pool.ConnectionPool) *RuntimeClient {
 	client := &RuntimeClient{ServerIPAndPort: service + ":" + port, connPool: pool}
 	if ok := client.checkConnection1(); !ok {
-		logs.Errorf("初次连接 gRPC 服务端失败")
+		logs.Error("初次连接 gRPC 服务端失败")
 	}
 	//for {
 	//	success := client.checkConnection()
@@ -68,15 +68,15 @@ func (c *RuntimeClient) checkConnection1() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// 从连接池获取或创建连接
-	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 100, 50*time.Millisecond)
+	// 直接连接（无需退避）
+	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 50) // 最多重试3次
 	if err != nil {
-		logs.Infof("failed to connect to grpc server:%v", err)
+		logs.Infof("Failed to connect to gRPC server: %v", err)
 		return false
 	}
 	if c.grpcClient == nil {
 		c.grpcClient = pb.NewRuntimeIntentClient(conn)
-		logs.Info("gRPC 客户端初始化成功")
+		logs.Info("gRPC client initialized")
 	}
 	return true
 }
@@ -89,7 +89,9 @@ func (c *RuntimeClient) RunAppInit() (result *pb.Result, err error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	logs.Info("==============Init=========1")
 	result, err = c.grpcClient.Init(ctx, &pb.InitIntent{})
+	logs.Info("==============Init=========2")
 	for err != nil {
 		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
 		logs.Debug("retry to runAppInit")
@@ -108,7 +110,9 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	logs.Info("==============Start=========1")
 	result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
+	logs.Info("==============Start=========2")
 	for err != nil {
 		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
 		logs.Info("retry to runAppStart")
@@ -126,7 +130,9 @@ func (c *RuntimeClient) RunAppStore() (answer int64, err error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	logs.Info("==============Store=========1")
 	result, err := c.grpcClient.Store(ctx, &pb.StoreIntent{})
+	logs.Info("==============Store=========2")
 	for err != nil {
 		logs.Debug("retry to runAppStore")
 		result, err = c.grpcClient.Store(ctx, &pb.StoreIntent{})
@@ -147,7 +153,9 @@ func (c *RuntimeClient) RunAppRestore(keyStatus string) (result *pb.Result, err 
 		Name: "restoreData",
 		Data: keyStatus,
 	}
+	logs.Info("==============Restore=========1")
 	result, err = c.grpcClient.Restore(ctx, &pb.RestoreIntent{Data: []*pb.Data{data}})
+	logs.Info("==============Restore=========2")
 	for err != nil {
 		logs.Debug("retry to runAppRestore")
 		result, err = c.grpcClient.Restore(ctx, &pb.RestoreIntent{Data: []*pb.Data{data}})
