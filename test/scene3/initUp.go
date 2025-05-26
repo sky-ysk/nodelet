@@ -26,7 +26,7 @@ func main() {
 		ip := device.Status.Abilities["Grab"].Services["GrabInit"].Ip
 		port := device.Status.Abilities["Grab"].Services["GrabInit"].Port
 		api := device.Status.Abilities["Grab"].Services["GrabInit"].Interface
-		url := fmt.Sprintf("http://%s:%d%s", ip, port, api)
+		url := fmt.Sprintf("http://%s:%s%s", *ip, *port, *api)
 
 		taskId := ""
 		taskId, err = lib.PublishGrabInitInst("up", url)
