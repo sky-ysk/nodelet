@@ -3117,6 +3117,7 @@ func TestCreateJson3(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.ActionSpec{
+			Parents: []string{"A1"},
 			Conditions: &apis.Conditions{
 				Formulas: []apis.ConditionFormula{
 					{
