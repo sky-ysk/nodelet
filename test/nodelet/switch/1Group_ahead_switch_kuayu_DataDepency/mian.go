@@ -17,12 +17,13 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 	"net/http"
 	"os"
 	"time"
 )
 
-// 适配从pve2 迁移到 broker -123
+// 适配从pve2 迁移到 broker
 // 修改1：
 // 调度器代码: 触发k8s-master节点资源不足事件,从k8s-master迁移到broker--k8s-master节点的调度器代码可能要修改一下，这里为了和2Group_SPod_ahead_switch_kuayu统一
 // k8s-master上的调度器修改成下面这样，broker下面的调度器不用修改代码，因为只有一个broker节点，不存在节点选择
@@ -78,7 +79,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
+			From:      "requirements1.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -92,9 +93,32 @@ func main() {
 		Result: apis.False,
 	}
 
+	// 数据依赖（../tmp/testFolder）
+	DataDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.DataDependency,
+		LeftValue: apis.Value{
+			Type:      apis.FileData,
+			Name:      "python",
+			Value:     "0",
+			ValueType: "string",
+			From:      "",
+		},
+		RightValue: apis.Value{
+			Type:      apis.ConstData,
+			Name:      "python",
+			Value:     "1",
+			ValueType: "string",
+			From:      "",
+		},
+		Signal: apis.Equal,
+		Join:   "",
+		Result: apis.False,
+	}
+
 	runtime1_1_1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
 			ProgramDependencyConditionFormula,
+			DataDependencyConditionFormula,
 		},
 	}
 
@@ -122,8 +146,9 @@ func main() {
 						Name:                         runtime1_1_1_1Name,
 						Type:                         apis.ByCommand,
 						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s
-						Parents:                      make([]string, 0),                                                // 加入Parents
+						Data:                         []apis.DataSpec{apis.DataSpec{Name: "yolo-runner1.py"}, apis.DataSpec{Name: "requirements1.txt"}},
+						Args:                         []string{"yolo-runner1.py"}, //20s
+						Parents:                      make([]string, 0),           // 加入Parents
 						Conditions:                   &runtime1_1_1_1Condition,
 						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
@@ -133,6 +158,11 @@ func main() {
 			},
 		},
 	}
+	// 首先上传文件到文件仓库
+	filePath := "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt"
+	UploadFile(filePath)
+	filePath = "/home/public/workspace/yolo_projects/yolo-runner1.py"
+	UploadFile(filePath)
 
 	ts := apis.TaskSpec{
 		Name: task1Name,
@@ -218,4 +248,20 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 		panic(err)
 	}
 	return clientSet
+}
+
+// 上传文件
+func UploadFile(filePath string) (string, error) {
+	// 调用 utils.UploadFile 函数上传文件
+	// 这里的 filePath 是要上传的文件路径
+	// 返回上传结果和错误信息
+	url := "http://localhost:8888/upload" //url := "http://localhost:8888/apis/resources/v1/upload"
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+		return "", err
+	} else {
+		fmt.Println("Upload successful!")
+		return "Upload successful!", nil
+	}
 }
