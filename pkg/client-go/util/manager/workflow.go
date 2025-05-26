@@ -94,7 +94,11 @@ func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid st
 	w.APIVersion = "resources/v1"
 
 	// 构造Labels
-	w.Labels = map[string]string{}
+	if ts.Desc != nil && ts.Desc.Label != nil && len(ts.Desc.Label) > 0 {
+		w.Labels = ts.Desc.Label
+	} else {
+		w.Labels = map[string]string{}
+	}
 
 	// 复制Spec
 	w.Spec = ts

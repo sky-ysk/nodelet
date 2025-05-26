@@ -494,7 +494,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				logs.Errorf("Patch group error-2:%v", err)
 			}
 			logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
-		} else { // 为跨域迁移
+		} else { // 还未部署副本// 为跨域迁移
 			//if nodeName != "" { // 跨域迁移，指定了别的域的目标节点 TODO:后面这块应该删了，跨域迁移时不指定节点，只指定域的
 			//	// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
 			//	// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
@@ -810,8 +810,8 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 	if runtimeCopy.Spec.Type == apis.ByPod {
 		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，
 		yamlFilePath := r.Spec.Inputs[0].From
-		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)       //yaml文件名加上-copy后缀
-		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.110.0.104") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
+		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)      //yaml文件名加上-copy后缀
+		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.150.0.24") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
 		runtimeCopy.Spec.EnableFineGrainedControlPort = StringPtr("30053")
 		// 2、接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
 		// 3、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名

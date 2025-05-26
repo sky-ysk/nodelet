@@ -50,7 +50,11 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	g.APIVersion = "resources/v1"
 
 	// 构造Labels
-	g.Labels = map[string]string{}
+	if gs.Desc != nil && gs.Desc.Label != nil && len(gs.Desc.Label) > 0 {
+		g.Labels = gs.Desc.Label
+	} else {
+		g.Labels = map[string]string{}
+	}
 
 	// 复制Spec
 	g.Spec = gs
@@ -233,7 +237,11 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	g.APIVersion = "resources/v1"
 
 	// 构造Labels
-	g.Labels = map[string]string{}
+	if len(gs.Desc.Label) > 0 {
+		g.Labels = gs.Desc.Label
+	} else {
+		g.Labels = map[string]string{}
+	}
 
 	// 复制Spec
 	g.Spec = gs
