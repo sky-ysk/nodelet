@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -277,13 +276,13 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	}
 
 	//前端演示页面特判逻辑
-	if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
-		if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
-			host = "EdgeNode1"
-		} else {
-			host = "CloudNode1"
-		}
-	}
+	//if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
+	//	if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
+	//		host = "EdgeNode1"
+	//	} else {
+	//		host = "CloudNode1"
+	//	}
+	//}
 	//if strings.Contains(group.ObjectMeta.Name, "Train") {
 	//	host = "CloudNode1"
 	//}
