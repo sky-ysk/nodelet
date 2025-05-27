@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -41,10 +43,18 @@ type Config struct {
 func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, wasmToolchainDir string, wasmRuntimePort string) *WasmRuntime {
 	// 请将地址修改到运行时二进制文件的位置，后续考虑将config作为wasm runtime的配置文件  ---是否是可以直接把地址配置到NewWasmRuntime当中，提前加载wasm运行时
 	config := Config{
-		wasmDir:         wasmToolchainDir,
-		runtimeExecfile: wasmToolchainDir + "/toolchain/server",
-		wasmLLVM:        wasmToolchainDir + "/toolchain/wa2xc",
-		rpcPort:         wasmRuntimePort, //在运行时里暂时写死了rpc端口，后续将rpc端口作为启动参数
+		wasmDir: wasmToolchainDir,
+		// runtimeExecfile: wasmToolchainDir + "/toolchain/server",
+		// wasmLLVM:        wasmToolchainDir + "/toolchain/wa2xc",
+		rpcPort: wasmRuntimePort, //在运行时里暂时写死了rpc端口，后续将rpc端口作为启动参数
+	}
+	switch runtime.GOOS {
+	case "linux":
+		config.runtimeExecfile = filepath.Join(config.runtimeExecfile, "toolchain", "server")
+		config.wasmLLVM = filepath.Join(config.wasmLLVM, "toolchain", "wa2xc")
+	case "windows":
+		config.runtimeExecfile = filepath.Join(config.runtimeExecfile, "toolchain", "server.exe")
+		config.wasmLLVM = filepath.Join(config.wasmLLVM, "toolchain", "wa2xc.exe")
 	}
 	wr := &WasmRuntime{
 		config:   config,
