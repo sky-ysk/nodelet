@@ -41,7 +41,7 @@ func GetDeviceWorker() *DeviceWorker {
 		}
 		ctx := context.Background()
 		go instance.monitorDiscardRuntimes(ctx)
-		//go instance.errorCycle()
+		go instance.errorCycle()
 	})
 	return instance
 }
@@ -66,7 +66,7 @@ func (dw *DeviceWorker) updateMap() {
 
 }
 
-// ChooseDevices 用来筛选Group需要的设备
+// ChooseDevices 根据group的设备需求筛选设备
 func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*apis.Device, error) {
 
 	deviceTable := make(map[string]*apis.Device, len(group.Devices))
@@ -574,14 +574,19 @@ func (dw *DeviceWorker) UpdateDeviceError(message string, d *apis.Device) error 
 // 定时错误检测
 func (dw *DeviceWorker) errorCycle() {
 	for {
-		time.Sleep(5 * time.Second)
-		dw.checkError()
+		time.Sleep(20 * time.Second)
+		err := dw.checkError()
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] checkError Failed, err:%s", err.Error())
+		}
 	}
 }
 
 // 进行一次错误检查
-func (dw *DeviceWorker) checkError() {
+func (dw *DeviceWorker) checkError() error {
 	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	logs.Warnf("[DEVICE WORKER] Call checkError")
 	// 获取这段时间中处于ERROR状态的device
 	dw.updateMap()
 	errDeviceList := make([]*apis.Device, 0)
@@ -590,13 +595,25 @@ func (dw *DeviceWorker) checkError() {
 			errDeviceList = append(errDeviceList, d)
 		}
 	}
-	dw.Mu.Unlock()
-	//
-	//// 进行错误处理
-	//for _, device := range errDeviceList {
-	//	errEvent :=
-	//}
 
+	// 进行错误处理
+	for _, device := range errDeviceList {
+		device.Status.Phase = apis.DeviceIdle
+	}
+	// 更新device
+	for _, device := range errDeviceList {
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"phase": device.Status.Phase,
+			},
+		})
+		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE Worker] Update Device[%s] stage[ERROR], err:%s", device.Name, err)
+			return err
+		}
+	}
+	return nil
 }
 
 // handleSimpleError 处理简单错误

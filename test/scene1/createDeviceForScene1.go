@@ -71,26 +71,22 @@ func main() {
 					Status: apis.AbilityReadyStartUp,
 				},
 			},
-			Lock: apis.Lock{
-				IsLocked: true,
-				Ref:      2,
-			},
 			Phase: apis.DeviceIdle,
 		},
 	}
-	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
-	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.197"
-	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
-	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.197"
+	*device3.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
+	*device3.Status.Abilities["Detect"].Services["DetectPosition"].Ip = device3IP
+	*device3.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
+	*device3.Status.Abilities["Grab"].Services["GrabBall"].Ip = device3IP
 
-	_, err = m.CreateDevice(deviceGalaxea, "test")
+	_, err = m.CreateDevice(device3, "test")
 	if err != nil {
-		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceGalaxea.Name, err.Error())
+		logs.Errorf("[TEST] Create Device[%s] err:%s", device3.Name, err.Error())
 	}
 
-	deviceLeju := &apis.Device{
+	device4 := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "deviceLeju",
+			Name:      "device4",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -101,10 +97,10 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DeviceSpec{
-			Name: "deviceLeju",
+			Name: "device4",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
-				URL:  "http://192.168.8.165:8080",
+				URL:  "http://" + device4IP + ":8080",
 			},
 			Abilities: []string{
 				"Detect", "Grab",
@@ -140,17 +136,19 @@ func main() {
 					Status: apis.AbilityReadyStartUp,
 				},
 			},
-			Lock: apis.Lock{
-				IsLocked: true,
-				Ref:      2,
-			},
 			Phase: apis.DeviceIdle,
 		},
 	}
-	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
-	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
-	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Ip = "192.168.8.165"
-	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
-	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
+	*device4.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
+	*device4.Status.Abilities["Detect"].Services["DetectPosition"].Ip = device4IP
+	*device4.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
+	*device4.Status.Abilities["Detect"].Services["Download"].Ip = device4IP
+	*device4.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
+	*device4.Status.Abilities["Grab"].Services["GrabBall"].Ip = device4IP
+
+	_, err = m.CreateDevice(device4, "test")
+	if err != nil {
+		logs.Errorf("[TEST] Create Device[%s] err:%s", device4.Name, err.Error())
+	}
+
 }
