@@ -575,7 +575,7 @@ func TestCreateWorkFlow(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	// 星海图检测
+	//星海图下载
 	runtime1 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R1",
@@ -591,46 +591,45 @@ func TestCreateWorkFlow(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R1",
 			Type: apis.ByDevice,
-			Conditions: &apis.Conditions{
-				Formulas: []apis.ConditionFormula{
-					{
-						LeftValue: apis.Value{
-							Type:      apis.ResultsData,
-							Name:      "NodeDependency",
-							Value:     "0",
-							ValueType: "string",
-							From:      "R6",
-						},
-						RightValue: apis.Value{
-							Type:      apis.ConstData,
-							Name:      "NodeDependency",
-							Value:     "1",
-							ValueType: "string",
-							From:      "R6",
-						},
-					},
-				},
-			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name: "Detector1",
+					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "deviceGalaxea",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Detect",
 					},
 				},
 			},
-			Image: "Device{Detector1}.Ability{Detect}.Service{DetectPosition}",
-			Outputs: []apis.Value{
+			Image: "Device{Robot1}.Ability{Detect}.Service{Download}",
+			Inputs: []apis.Value{
 				{
-					Name:      "worldPoints",
+					Name:      "user_id",
 					Type:      apis.ConstData,
-					ValueType: apis.ComposeType,
+					ValueType: apis.StringType,
+					Value:     "1",
 				},
+				{
+					Name:      "model_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "2",
+				},
+				{
+					Name:      "path",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "",
+				},
+				{
+					Name:      "filename",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "ball.onnx",
+				},
+			},
+			Outputs: []apis.Value{
 				{
 					Name:      "Success",
 					Type:      apis.LocalData,
@@ -638,18 +637,9 @@ func TestCreateWorkFlow(t *testing.T) {
 				},
 			},
 		},
-		Status: apis.RuntimeStatus{
-			Devices: map[string]apis.ObjectReference{
-				"deviceGalaxea": apis.ObjectReference{
-					Name:      "deviceGalaxea",
-					Namespace: "test",
-					Kind:      "Device",
-				},
-			},
-		},
 	}
 
-	// 乐聚检测
+	// 星海图检测
 	runtime2 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R2",
@@ -665,40 +655,18 @@ func TestCreateWorkFlow(t *testing.T) {
 		Spec: apis.RuntimeSpec{
 			Name: "R2",
 			Type: apis.ByDevice,
-			Conditions: &apis.Conditions{
-				Formulas: []apis.ConditionFormula{
-					{
-						LeftValue: apis.Value{
-							Type:      apis.ResultsData,
-							Name:      "NodeDependency",
-							Value:     "0",
-							ValueType: "string",
-							From:      "R5",
-						},
-						RightValue: apis.Value{
-							Type:      apis.ConstData,
-							Name:      "NodeDependency",
-							Value:     "1",
-							ValueType: "string",
-							From:      "R5",
-						},
-					},
-				},
-			},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name: "Detector2",
+					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "deviceLeju",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Detect",
 					},
 				},
 			},
-			Image: "Device{Detector2}.Ability{Detect}.Service{DetectPosition}",
+			Image: "Device{Robot1}.Ability{Detect}.Service{DetectPosition}",
 			Outputs: []apis.Value{
 				{
 					Name:      "worldPoints",
@@ -709,15 +677,6 @@ func TestCreateWorkFlow(t *testing.T) {
 					Name:      "Success",
 					Type:      apis.LocalData,
 					ValueType: apis.BoolType,
-				},
-			},
-		},
-		Status: apis.RuntimeStatus{
-			Devices: map[string]apis.ObjectReference{
-				"deviceLeju": apis.ObjectReference{
-					Name:      "deviceLeju",
-					Namespace: "test",
-					Kind:      "Device",
 				},
 			},
 		},
@@ -741,18 +700,16 @@ func TestCreateWorkFlow(t *testing.T) {
 			Type: apis.ByDevice,
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name: "deviceGalaxea",
+					Name: "Robot1",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "deviceGalaxea",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Grab",
 					},
 				},
 			},
-			Image: "Device{deviceGalaxea}.Ability{Grab}.Service{GrabBall}",
+			Image: "Device{Robot}.Ability{Grab}.Service{GrabBall}",
 			Inputs: []apis.Value{
 				apis.Value{
 					Name: "worldPoints",
@@ -761,18 +718,8 @@ func TestCreateWorkFlow(t *testing.T) {
 				},
 			},
 		},
-		Status: apis.RuntimeStatus{
-			Devices: map[string]apis.ObjectReference{
-				"deviceGalaxea": apis.ObjectReference{
-					Name:      "deviceGalaxea",
-					Namespace: "test",
-					Kind:      "Device",
-				},
-			},
-		},
 	}
 
-	// 乐聚抓取
 	runtime4 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R4",
@@ -790,38 +737,53 @@ func TestCreateWorkFlow(t *testing.T) {
 			Type: apis.ByDevice,
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name: "deviceLeju",
+					Name: "Robot2",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "deviceLeju",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
-						"Grab",
+						"Detect",
 					},
 				},
 			},
-			Image: "Device{deviceLeju}.Ability{Grab}.Service{GrabBall}",
+			Image: "Device{Robot2}.Ability{Detect}.Service{Download}",
 			Inputs: []apis.Value{
-				apis.Value{
-					Name: "worldPoints",
-					Type: apis.LocalData,
-					From: "Action{A2}.Runtime{R2}.Outputs{worldPoints}", // TODO
+				{
+					Name:      "user_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "1",
+				},
+				{
+					Name:      "model_id",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "2",
+				},
+				{
+					Name:      "path",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "",
+				},
+				{
+					Name:      "filename",
+					Type:      apis.ConstData,
+					ValueType: apis.StringType,
+					Value:     "ball.onnx",
 				},
 			},
-		},
-		Status: apis.RuntimeStatus{
-			Devices: map[string]apis.ObjectReference{
-				"deviceLeju": apis.ObjectReference{
-					Name:      "deviceLeju",
-					Namespace: "test",
-					Kind:      "Device",
+			Outputs: []apis.Value{
+				{
+					Name:      "Success",
+					Type:      apis.LocalData,
+					ValueType: apis.BoolType,
 				},
 			},
 		},
 	}
 
-	//乐聚下载
+	// 乐聚检测
 	runtime5 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R5",
@@ -839,45 +801,22 @@ func TestCreateWorkFlow(t *testing.T) {
 			Type: apis.ByDevice,
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name: "Detector2",
+					Name: "Robot2",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "deviceLeju",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
 						"Detect",
 					},
 				},
 			},
-			Image: "Device{Detector2}.Ability{Detect}.Service{Download}",
-			Inputs: []apis.Value{
-				{
-					Name:      "user_id",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "1",
-				},
-				{
-					Name:      "model_id",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "2",
-				},
-				{
-					Name:      "path",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "",
-				},
-				{
-					Name:      "filename",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "ball.onnx",
-				},
-			},
+			Image: "Device{Robot2}.Ability{Detect}.Service{DetectPosition}",
 			Outputs: []apis.Value{
+				{
+					Name:      "worldPoints",
+					Type:      apis.ConstData,
+					ValueType: apis.ComposeType,
+				},
 				{
 					Name:      "Success",
 					Type:      apis.LocalData,
@@ -885,18 +824,9 @@ func TestCreateWorkFlow(t *testing.T) {
 				},
 			},
 		},
-		Status: apis.RuntimeStatus{
-			Devices: map[string]apis.ObjectReference{
-				"deviceLeju": apis.ObjectReference{
-					Name:      "deviceLeju",
-					Namespace: "test",
-					Kind:      "Device",
-				},
-			},
-		},
 	}
 
-	//星海图下载
+	// 乐聚抓取
 	runtime6 := &apis.Runtime{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "R6",
@@ -914,58 +844,21 @@ func TestCreateWorkFlow(t *testing.T) {
 			Type: apis.ByDevice,
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
-					Name: "Detector1",
+					Name: "Robot2",
 					ExpectedProperties: map[string]apis.Property{
-						"name": apis.Property{
-							Value: "deviceGalaxea",
-						},
+						"name": apis.Property{},
 					},
 					Abilities: []string{
-						"Detect",
+						"Grab",
 					},
 				},
 			},
-			Image: "Device{Detector1}.Ability{Detect}.Service{Download}",
+			Image: "Device{Robot2}.Ability{Grab}.Service{GrabBall}",
 			Inputs: []apis.Value{
-				{
-					Name:      "user_id",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "1",
-				},
-				{
-					Name:      "model_id",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "2",
-				},
-				{
-					Name:      "path",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "",
-				},
-				{
-					Name:      "filename",
-					Type:      apis.ConstData,
-					ValueType: apis.StringType,
-					Value:     "ball.onnx",
-				},
-			},
-			Outputs: []apis.Value{
-				{
-					Name:      "Success",
-					Type:      apis.LocalData,
-					ValueType: apis.BoolType,
-				},
-			},
-		},
-		Status: apis.RuntimeStatus{
-			Devices: map[string]apis.ObjectReference{
-				"deviceGalaxea": apis.ObjectReference{
-					Name:      "deviceGalaxea",
-					Namespace: "test",
-					Kind:      "Device",
+				apis.Value{
+					Name: "worldPoints",
+					Type: apis.LocalData,
+					From: "Action{A2}.Runtime{R2}.Outputs{worldPoints}", // TODO
 				},
 			},
 		},
@@ -991,7 +884,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			Name: "A1",
 			Runtimes: []apis.RuntimeSpec{
 				runtime1.Spec,
-				runtime6.Spec,
+				runtime2.Spec,
 			},
 		},
 	}
@@ -1015,8 +908,8 @@ func TestCreateWorkFlow(t *testing.T) {
 			},
 			Name: "A2",
 			Runtimes: []apis.RuntimeSpec{
+				runtime4.Spec,
 				runtime5.Spec,
-				runtime2.Spec,
 			},
 		},
 	}
@@ -1043,26 +936,6 @@ func TestCreateWorkFlow(t *testing.T) {
 				runtime3.Spec,
 			},
 			Parents: []string{"A1"},
-			Conditions: &apis.Conditions{
-				Formulas: []apis.ConditionFormula{
-					{
-						LeftValue: apis.Value{
-							Type:      apis.ResultsData,
-							Name:      "NodeDependency",
-							Value:     "0",
-							ValueType: "string",
-							From:      "A1",
-						},
-						RightValue: apis.Value{
-							Type:      apis.ConstData,
-							Name:      "NodeDependency",
-							Value:     "1",
-							ValueType: "string",
-							From:      "A1",
-						},
-					},
-				},
-			},
 		},
 	}
 
@@ -1085,29 +958,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			},
 			Name: "A4",
 			Runtimes: []apis.RuntimeSpec{
-				runtime4.Spec,
+				runtime6.Spec,
 			},
 			Parents: []string{"A2"},
-			Conditions: &apis.Conditions{
-				Formulas: []apis.ConditionFormula{
-					{
-						LeftValue: apis.Value{
-							Type:      apis.ResultsData,
-							Name:      "NodeDependency",
-							Value:     "0",
-							ValueType: "string",
-							From:      "A2",
-						},
-						RightValue: apis.Value{
-							Type:      apis.ConstData,
-							Name:      "NodeDependency",
-							Value:     "1",
-							ValueType: "string",
-							From:      "A2",
-						},
-					},
-				},
-			},
 		},
 	}
 
@@ -1157,9 +1010,6 @@ func TestCreateWorkFlow(t *testing.T) {
 				action2.Spec, action4.Spec,
 			},
 			Replicas: []int32{0, 0},
-			//Parents: []string{
-			//	"G1",
-			//},
 		},
 	}
 
