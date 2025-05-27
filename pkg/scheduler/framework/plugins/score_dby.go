@@ -245,8 +245,8 @@ func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugi
 		panic(err)
 	}
 
-	tc := cs.Core().Tasks(apis.NamespaceTest)
-	nc := cs.Core().Nodes(apis.NamespaceTest)
+	tc := cs.Core().Tasks(apis.NamespaceAll)
+	nc := cs.Core().Nodes(apis.NamespaceAll)
 	return &ScorePluginDBY{
 		clientSet:    cs,
 		taskClient:   tc,

@@ -465,7 +465,7 @@ func getNodeFromApiServer() []*config.NodeInfo {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	nodesClient := clientSet.Core().Nodes(apis.NamespaceTest)
+	nodesClient := clientSet.Core().Nodes(apis.NamespaceAll)
 	lstOpts := metav1.ListOptions{}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {
