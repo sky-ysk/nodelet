@@ -3005,6 +3005,45 @@ func TestCreateJson3(t *testing.T) {
 		},
 	}
 
+	runtime8 := &apis.Runtime{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "R8",
+			Namespace: "test",
+			Labels: map[string]string{
+				"environment": "dev",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Runtime",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.RuntimeSpec{
+			Name: "R8",
+			Type: apis.ByDevice,
+			Inputs: []apis.Value{
+				{
+					Name:      "label",
+					Value:     "belt",
+					ValueType: apis.StringType,
+					Type:      apis.ConstData,
+				},
+			},
+			Parents: []string{"R7"},
+			Image:   "Device{Robot1}.Ability{Turn}.Service{Turn}",
+			Devices: []apis.DeviceSpec{
+				apis.DeviceSpec{
+					Name: "Robot1",
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{},
+					},
+					Abilities: []string{
+						"Turn",
+					},
+				},
+			},
+		},
+	}
+
 	// 乐聚检测
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3141,7 +3180,7 @@ func TestCreateJson3(t *testing.T) {
 			},
 			Name: "A4",
 			Runtimes: []apis.RuntimeSpec{
-				runtime7.Spec,
+				runtime7.Spec, runtime8.Spec,
 			},
 		},
 	}

@@ -334,6 +334,35 @@
                                 ],
                                 "type": "device",
                                 "image": "Device{Robot1}.Ability{Grab}.Service{ReturnToLevel}"
+                            },
+                            {
+                                "name": "R8",
+                                "parents": [
+                                    "R7"
+                                ],
+                                "devices": [
+                                    {
+                                        "name": "Robot1",
+                                        "expected_properties": {
+                                            "name": {
+
+                                            }
+                                        },
+                                        "abilities": [
+                                            "Turn"
+                                        ]
+                                    }
+                                ],
+                                "type": "device",
+                                "image": "Device{Robot1}.Ability{Turn}.Service{Turn}",
+                                "inputs": [
+                                    {
+                                        "type": "constants",
+                                        "name": "label",
+                                        "value": "belt",
+                                        "value_type": "string"
+                                    }
+                                ]
                             }
                         ]
                     }
