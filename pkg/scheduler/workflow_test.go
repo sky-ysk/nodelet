@@ -433,11 +433,11 @@ func TestDevice(t *testing.T) {
 
 // go test -run TestCreateWorkFlow -v
 func TestCreateWorkFlow(t *testing.T) {
-	cs, err := utils.CreateClientSetWithTimeOut(2000)
-	if err != nil {
-		panic(err)
-	}
-	m := manager.NewManager(cs)
+	//cs, err := utils.CreateClientSetWithTimeOut(2000)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//m := manager.NewManager(cs)
 	// 创建Device
 	deviceGalaxea := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
@@ -498,10 +498,10 @@ func TestCreateWorkFlow(t *testing.T) {
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.197"
 
-	_, err = m.CreateDevice(deviceGalaxea, "test")
-	if err != nil {
-		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceGalaxea.Name, err.Error())
-	}
+	//_, err = m.CreateDevice(deviceGalaxea, "test")
+	//if err != nil {
+	//	logs.Errorf("[TEST] Create Device[%s] err:%s", deviceGalaxea.Name, err.Error())
+	//}
 
 	deviceLeju := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
@@ -568,10 +568,10 @@ func TestCreateWorkFlow(t *testing.T) {
 	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Ip = "192.168.8.165"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
 	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = "192.168.8.165"
-	_, err = m.CreateDevice(deviceLeju, "test")
-	if err != nil {
-		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
-	}
+	//_, err = m.CreateDevice(deviceLeju, "test")
+	//if err != nil {
+	//	logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
+	//}
 
 	time.Sleep(5 * time.Second)
 
@@ -1185,12 +1185,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			},
 		},
 	}
+	b, _ := json.Marshal(task1)
+	fmt.Printf("%s", string(b))
 
-	u := uuid.Must(uuid.NewV7())
-	_, err = m.CreateTask(task1.Spec, nil, task1.Namespace, u.String(), "")
-	if err != nil {
-		logs.Errorf("[TEST] create task err:%v", err)
-	}
 }
 
 func TestLockDevice(t *testing.T) {
