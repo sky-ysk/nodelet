@@ -237,7 +237,7 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	g.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(gs.Desc.Label) > 0 {
+	if gs.Desc != nil && gs.Desc.Label != nil && len(gs.Desc.Label) > 0 {
 		g.Labels = gs.Desc.Label
 	} else {
 		g.Labels = map[string]string{}

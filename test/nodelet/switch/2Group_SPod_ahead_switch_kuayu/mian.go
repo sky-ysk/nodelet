@@ -30,7 +30,17 @@ const NodeName = "k8s-master"
 // 适配从k8s-master 迁移到 broker
 // 修改1：
 // 调度器代码: 触发k8s-master节点资源不足事件,从k8s-master迁移到broker--k8s-master节点的调度器代码可能要修改一下
-
+// k8s-master上的调度器修改成下面这样，broker下面的调度器不用修改代码，因为只有一个broker节点，不存在节点选择
+// host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
+//
+//	if strings.Contains(group.ObjectMeta.Name, "Train") {
+//		host = "CloudNode1"
+//	}
+//
+//	if strings.Contains(group.ObjectMeta.Name, "Reason") {
+//		host = "EdgeNode1"
+//	}
+//
 // 修改2：调度器关闭score插件
 // 修改3：const NodeName = "k8s-master"
 // 修改4：group1_1Replicas := []int32{0, 1}

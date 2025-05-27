@@ -580,7 +580,8 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									} else {
 										logs.Info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-										go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) //这句好像会阻塞
+										//go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-A
+										go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-B
 										go gmo.runtimeManager.RestoreData(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									}
 									patchRuntime, err := json.Marshal(map[string]interface{}{
