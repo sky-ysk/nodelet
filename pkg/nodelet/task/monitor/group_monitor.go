@@ -2156,7 +2156,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 				} else {
 					logs.Trace("runtime %v is waiting for installing dependency!", runtime.Name)
 				}
-				logs.Tracef("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
+				logs.Info("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
 				return false
 			}
 

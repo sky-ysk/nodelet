@@ -44,7 +44,7 @@ func NewConnectionPool() *ConnectionPool {
 //		return conn, nil
 //	}
 func (cp *ConnectionPool) GetConn(address string) (*grpc.ClientConn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond) // 连接超时   100 20
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Millisecond) // 连接超时   100 20
 	defer cancel()
 
 	conn, err := grpc.DialContext(
@@ -90,7 +90,7 @@ func (cp *ConnectionPool) GetConnWithRetry(address string, maxRetries int) (*grp
 
 		logs.Warnf("Connection attempt %d failed (耗时 %v): %v", i+1, time.Since(startTime), err)
 		if i < maxRetries-1 {
-			time.Sleep(10 * time.Millisecond) // 递增间隔：50ms, 100ms... time.Sleep(time.Duration(i+1) * 50 * time.Millisecond)   10mm
+			time.Sleep(15 * time.Millisecond) // 递增间隔：50ms, 100ms... time.Sleep(time.Duration(i+1) * 50 * time.Millisecond)   10mm
 		}
 	}
 	return nil, fmt.Errorf("after %d retries: %v", maxRetries, err)
