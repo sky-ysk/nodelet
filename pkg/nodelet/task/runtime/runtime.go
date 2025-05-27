@@ -37,13 +37,15 @@ type RuntimeManager struct {
 	//deviceClient core.DeviceInterface
 	//actionClient core.ActionInterface
 	//groupClient  core.GroupInterface
-	clientsManager *manager.Manager
-	mu             sync.Mutex
-	pool           *pool.ConnectionPool
-	NodeName       string
+	clientsManager   *manager.Manager
+	mu               sync.Mutex
+	pool             *pool.ConnectionPool
+	NodeName         string
+	wasmToolchainDir string
+	wasmRuntimePort  string
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, nodeName string) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, nodeName string, wasmToolchainDir string, wasmRuntimePort string) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
@@ -51,9 +53,11 @@ func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, 
 		//deviceClient: deviceClient,
 		//actionClient: actionClient,
 		//groupClient:  groupClient,
-		clientsManager: clientsManager,
-		pool:           pool.NewConnectionPool(),
-		NodeName:       nodeName,
+		clientsManager:   clientsManager,
+		pool:             pool.NewConnectionPool(),
+		NodeName:         nodeName,
+		wasmToolchainDir: wasmToolchainDir,
+		wasmRuntimePort:  wasmRuntimePort,
 	}
 }
 
@@ -79,7 +83,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			break
 		case apis.ByWasm:
 			//TODO
-			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus)
+			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus, rm.wasmToolchainDir, rm.wasmRuntimePort)
 			break
 		case apis.ByCommand: //任务作为系统命令执行
 			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool)

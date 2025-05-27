@@ -30,6 +30,7 @@ type WasmRuntime struct {
 }
 
 type Config struct {
+	wasmDir         string
 	runtimeExecfile string //wasm runtime server文件地址
 	wasmLLVM        string //wasm aot compiler 文件地址
 	rpcPort         string
@@ -37,12 +38,13 @@ type Config struct {
 
 // todo:增加config，配置rpc端口和运行时信息
 // todo:将config配置和runtime.args组合为启动参数
-func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus) *WasmRuntime {
+func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, wasmToolchainDir string, wasmRuntimePort string) *WasmRuntime {
 	// 请将地址修改到运行时二进制文件的位置，后续考虑将config作为wasm runtime的配置文件  ---是否是可以直接把地址配置到NewWasmRuntime当中，提前加载wasm运行时
 	config := Config{
-		runtimeExecfile: "/tmp/wasm/toolchain/server",
-		wasmLLVM:        "/tmp/wasm/toolchain/wa2xc",
-		rpcPort:         "8080", //在运行时里暂时写死了rpc端口，后续将rpc端口作为启动参数
+		wasmDir:         wasmToolchainDir,
+		runtimeExecfile: wasmToolchainDir + "/toolchain/server",
+		wasmLLVM:        wasmToolchainDir + "/toolchain/wa2xc",
+		rpcPort:         wasmRuntimePort, //在运行时里暂时写死了rpc端口，后续将rpc端口作为启动参数
 	}
 	wr := &WasmRuntime{
 		config:   config,
@@ -128,7 +130,7 @@ func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
 	wr.cmd.Stderr = os.Stderr
 	// 设置aot编译器环境变量,打开rust日志信息,设置 推理资源文件夹路径
 	llvm := fmt.Sprintf("WASM_LLVM=%s", wr.config.wasmLLVM)
-	fixtures := fmt.Sprintf("FIXTURES_DIR=/home/kcm/tmp/wasm/fixtures")
+	fixtures := fmt.Sprintf("FIXTURES_DIR=%s/fixtures", wr.config.wasmDir)
 	wr.cmd.Env = append(os.Environ(), llvm, "RUST_LOG=info", fixtures)
 	logs.Info(llvm)
 
