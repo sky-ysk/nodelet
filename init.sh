@@ -2,27 +2,36 @@
 
 # 定义函数，用于打印用法信息
 usage() {
-    echo "Usage: $0 -i {u|d}"
+    echo "Usage: $0 -i {u|d} -r {1|2}"
     exit 1
 }
 
 # 检查参数数量
-if [ $# -ne 2 ]; then
+if [ $# -lt 4 ]; then
     usage
 fi
 
 # 解析参数
-while getopts ":i:" opt; do
+init_script=""
+while getopts ":i:r:" opt; do
     case $opt in
         i)
             if [ "$OPTARG" == "u" ]; then
-                echo "Executing initUp.go..."
-                go run ./test/scene3/initUp.go
+                init_script="initUp"
             elif [ "$OPTARG" == "d" ]; then
-                echo "Executing initDown.go..."
-                go run ./test/scene3/initDown.go
+                init_script="initDown"
             else
                 echo "Invalid argument for -i: $OPTARG"
+                usage
+            fi
+            ;;
+        r)
+            if [ "$OPTARG" == "1" ]; then
+                init_script+="1"
+            elif [ "$OPTARG" == "2" ]; then
+                init_script+="2"
+            else
+                echo "Invalid argument for -r: $OPTARG"
                 usage
             fi
             ;;
@@ -36,3 +45,12 @@ while getopts ":i:" opt; do
             ;;
     esac
 done
+
+# 检查是否提供了所有必需的参数
+if [ -z "$init_script" ]; then
+    usage
+fi
+
+# 执行相应的脚本
+echo "Executing ${init_script}.go..."
+go run ./test/scene3/${init_script}.go
