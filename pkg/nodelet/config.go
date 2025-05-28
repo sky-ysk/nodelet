@@ -80,7 +80,7 @@ func NewConfig(configPath string) *Config {
 		}
 		config, err = LoadConfig(configPath)
 		if err != nil {
-			logs.Errorf("frameworkConf.yaml load failed")
+			logs.Errorf("frameworkConf.yaml load failed: %e", err)
 			config = &FrameworkConfig{} // 使用空配置
 		}
 	}

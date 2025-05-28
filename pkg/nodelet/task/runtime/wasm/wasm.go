@@ -50,11 +50,12 @@ func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus
 	}
 	switch runtime.GOOS {
 	case "linux":
-		config.runtimeExecfile = filepath.Join(config.runtimeExecfile, "toolchain", "server")
-		config.wasmLLVM = filepath.Join(config.wasmLLVM, "toolchain", "wa2xc")
+		config.runtimeExecfile = filepath.Join(wasmToolchainDir, "toolchain", "server")
+		config.wasmLLVM = filepath.Join(wasmToolchainDir, "toolchain", "wa2xc")
 	case "windows":
-		config.runtimeExecfile = filepath.Join(config.runtimeExecfile, "toolchain", "server.exe")
-		config.wasmLLVM = filepath.Join(config.wasmLLVM, "toolchain", "wa2xc.exe")
+		config.runtimeExecfile = filepath.Join(wasmToolchainDir, "toolchain", "server.exe")
+		config.wasmLLVM = filepath.Join(wasmToolchainDir, "toolchain", "wa2xc.exe")
+	default:
 	}
 	wr := &WasmRuntime{
 		config:   config,
@@ -83,7 +84,7 @@ func (wr *WasmRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis
 		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, runtime.Name)
 	}
 
-	_, err := wr.wasmClient.Deploy(wasm_file)
+	_, err := wr.wasmClient.Deploy(wasm_file, wr.config.wasmDir)
 	if err != nil {
 		wr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, strconv.Itoa(wr.cmd.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		return err
@@ -142,6 +143,7 @@ func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
 	llvm := fmt.Sprintf("WASM_LLVM=%s", wr.config.wasmLLVM)
 	fixtures := fmt.Sprintf("FIXTURES_DIR=%s/fixtures", wr.config.wasmDir)
 	wr.cmd.Env = append(os.Environ(), llvm, "RUST_LOG=info", fixtures)
+	logs.Info(cmd)
 	logs.Info(llvm)
 
 	err := wr.cmd.Start()
@@ -183,7 +185,7 @@ func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtim
 		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, runtime.Name)
 	}
 
-	_, err := wr.wasmClient.Deploy(wasm_file)
+	_, err := wr.wasmClient.Deploy(wasm_file, wr.config.wasmDir)
 	if err != nil {
 		wr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, strconv.Itoa(wr.cmd.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		logs.Errorf("任务启动失败 Deploy: %e", err)
@@ -206,7 +208,7 @@ func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runti
 		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, runtime.Name)
 	}
 
-	_, err := wr.wasmClient.Deploy(wasm_file)
+	_, err := wr.wasmClient.Deploy(wasm_file, wr.config.wasmDir)
 	if err != nil {
 		wr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, strconv.Itoa(wr.cmd.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		return err
