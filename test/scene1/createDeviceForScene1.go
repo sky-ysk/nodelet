@@ -10,23 +10,20 @@ import (
 
 func main() {
 
-	//长春现场机器人地址
-	//初检设备
-	device3IP := "192.168.1.237"
-	//复检设备
-	device4IP := "192.168.1.234"
+	// 星海图ip
+	deviceGalaxeaIP := "192.168.8.197"
+	// 乐聚ip
+	deviceLejuIP := "192.168.8.165"
 
-	////云服务器测试环境地址
-	//device1IP := "172.130.0.61"
-	//device2IP := "172.130.0.59"
 	cs, err := utils.CreateClientSetWithTimeOut(2000)
 	if err != nil {
 		panic(err)
 	}
 	m := manager.NewManager(cs)
-	device3 := &apis.Device{
+
+	deviceGalaxea := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "device3",
+			Name:      "deviceGalaxea",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -37,10 +34,10 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DeviceSpec{
-			Name: "device3",
+			Name: "deviceGalaxea",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
-				URL:  "http://" + device3IP + ":8080",
+				URL:  "http://" + deviceGalaxeaIP + ":8080",
 			},
 			Abilities: []string{
 				"Detect", "Grab",
@@ -74,17 +71,18 @@ func main() {
 			Phase: apis.DeviceIdle,
 		},
 	}
-	*device3.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
-	*device3.Status.Abilities["Detect"].Services["DetectPosition"].Ip = device3IP
-	*device3.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
-	*device3.Status.Abilities["Grab"].Services["GrabBall"].Ip = device3IP
 
-	_, err = m.CreateDevice(device3, "test")
+	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
+	*deviceGalaxea.Status.Abilities["Detect"].Services["DetectPosition"].Ip = deviceGalaxeaIP
+	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
+	*deviceGalaxea.Status.Abilities["Grab"].Services["GrabBall"].Ip = deviceGalaxeaIP
+
+	_, err = m.CreateDevice(deviceGalaxea, "test")
 	if err != nil {
-		logs.Errorf("[TEST] Create Device[%s] err:%s", device3.Name, err.Error())
+		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceGalaxea.Name, err.Error())
 	}
 
-	device4 := &apis.Device{
+	deviceLeju := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "device4",
 			Namespace: "test",
@@ -100,7 +98,7 @@ func main() {
 			Name: "device4",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
-				URL:  "http://" + device4IP + ":8080",
+				URL:  "http://" + deviceLejuIP + ":8080",
 			},
 			Abilities: []string{
 				"Detect", "Grab",
@@ -139,16 +137,16 @@ func main() {
 			Phase: apis.DeviceIdle,
 		},
 	}
-	*device4.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
-	*device4.Status.Abilities["Detect"].Services["DetectPosition"].Ip = device4IP
-	*device4.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
-	*device4.Status.Abilities["Detect"].Services["Download"].Ip = device4IP
-	*device4.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
-	*device4.Status.Abilities["Grab"].Services["GrabBall"].Ip = device4IP
+	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Interface = "/api/task/detect"
+	*deviceLeju.Status.Abilities["Detect"].Services["DetectPosition"].Ip = deviceLejuIP
+	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Interface = "/api/task/down_new_model"
+	*deviceLeju.Status.Abilities["Detect"].Services["Download"].Ip = deviceLejuIP
+	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Interface = "/api/task/grab_ball"
+	*deviceLeju.Status.Abilities["Grab"].Services["GrabBall"].Ip = deviceLejuIP
 
-	_, err = m.CreateDevice(device4, "test")
+	_, err = m.CreateDevice(deviceLeju, "test")
 	if err != nil {
-		logs.Errorf("[TEST] Create Device[%s] err:%s", device4.Name, err.Error())
+		logs.Errorf("[TEST] Create Device[%s] err:%s", deviceLeju.Name, err.Error())
 	}
 
 }

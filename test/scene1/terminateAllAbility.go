@@ -9,10 +9,10 @@ func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 	logs.Infof("[test] testing run.....\n")
-	// 星海图
-	url1 := "http://192.168.1.237:8080"
 	// 乐聚
-	url2 := "http://192.168.1.234:8080"
+	url1 := "http://192.168.8.165:8080"
+	// 星海图
+	url2 := "http://192.168.8.197:8080"
 
 	var name1 string = "GrabBall.Leju.Guochuang"       // 更改能力名字
 	var name2 string = "DetectPosition.Leju.Guochuang" // 更改能力名字

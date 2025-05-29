@@ -629,13 +629,6 @@ func TestCreateWorkFlow(t *testing.T) {
 					Value:     "ball.onnx",
 				},
 			},
-			Outputs: []apis.Value{
-				{
-					Name:      "Success",
-					Type:      apis.LocalData,
-					ValueType: apis.BoolType,
-				},
-			},
 		},
 	}
 
@@ -653,8 +646,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R2",
-			Type: apis.ByDevice,
+			Parents: []string{"R1"},
+			Name:    "R2",
+			Type:    apis.ByDevice,
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot1",
@@ -714,7 +708,7 @@ func TestCreateWorkFlow(t *testing.T) {
 				apis.Value{
 					Name: "worldPoints",
 					Type: apis.LocalData,
-					From: "Action{A1}.Runtime{R1}.Outputs{worldPoints}", // TODO
+					From: "Action{A1}.Runtime{R2}.Outputs{worldPoints}", // TODO
 				},
 			},
 		},
@@ -797,8 +791,9 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.RuntimeSpec{
-			Name: "R5",
-			Type: apis.ByDevice,
+			Name:    "R5",
+			Type:    apis.ByDevice,
+			Parents: []string{"R4"},
 			Devices: []apis.DeviceSpec{
 				apis.DeviceSpec{
 					Name: "Robot2",
@@ -858,13 +853,13 @@ func TestCreateWorkFlow(t *testing.T) {
 				apis.Value{
 					Name: "worldPoints",
 					Type: apis.LocalData,
-					From: "Action{A2}.Runtime{R2}.Outputs{worldPoints}", // TODO
+					From: "Action{A2}.Runtime{R5}.Outputs{worldPoints}", // TODO
 				},
 			},
 		},
 	}
 
-	// 星海图检测
+	// 星海图模型下载和检测
 	action1 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A1",
@@ -889,7 +884,7 @@ func TestCreateWorkFlow(t *testing.T) {
 		},
 	}
 
-	// 乐聚检测
+	// 乐聚模型下载和检测
 	action2 := &apis.Action{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "A2",
@@ -977,7 +972,26 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "Robot1",
+					Abilities: []string{
+						"Grab", "Detect",
+					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceGalaxea",
+						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
+					},
+				},
+			},
 			Desc: &apis.Description{
+				Label: map[string]string{
+					"scene": "scene1",
+				},
 				Docs: "星海图检测和抓取",
 			},
 			Name: "G1",
@@ -1002,8 +1016,27 @@ func TestCreateWorkFlow(t *testing.T) {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.GroupSpec{
+			Devices: []apis.DeviceSpec{
+				{
+					Name: "Robot2",
+					Abilities: []string{
+						"Grab", "Detect",
+					},
+					ExpectedProperties: map[string]apis.Property{
+						"name": apis.Property{
+							Value: "deviceLeju",
+						},
+						"strategy": apis.Property{
+							Value: "nominate",
+						},
+					},
+				},
+			},
 			Desc: &apis.Description{
 				Docs: "乐聚检测和抓取",
+				Label: map[string]string{
+					"scene": "scene1",
+				},
 			},
 			Name: "G2",
 			Actions: []apis.ActionSpec{
@@ -1035,6 +1068,7 @@ func TestCreateWorkFlow(t *testing.T) {
 			},
 		},
 	}
+
 	b, _ := json.Marshal(task1)
 	fmt.Printf("%s", string(b))
 
