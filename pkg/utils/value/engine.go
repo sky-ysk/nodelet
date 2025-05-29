@@ -181,6 +181,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		r := (o).(apis.Group)
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromGroup(typeName, parts, &r)
+		// fmt.Println(name, kindType, from, fromKey, err)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +204,6 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 	switch kindType {
 	case "Runtime":
 		v, err := e.ExtractRuntimeValue(name, namespace, from, fromKey, value)
-		logs.Infof("runtime value %v", v)
 		if err == nil {
 			return v, nil
 		}
@@ -390,8 +390,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 				}
 			}
 		}
-	case "GroupAbsoluteExpr":
-		fmt.Println("GroupAbsoluteExpr")
+	case "GroupActionRuntimeExpr":
 		// 只允许Group为最高层时使用
 		if group.Status.Belong == nil {
 			uuid := group.Labels["uuid"]
@@ -401,6 +400,105 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 			rn := fmt.Sprintf("%s.%s.%s-%s", groupName, actionName, runtimeName, uuid)
 			return rn, string(RuntimeType), "", "", nil
 		}
+
+		// add
+		// Group{}位置
+		emptyStr := ""
+		fmt.Println("GroupActionRuntimeExpr")
+		targetGroup := parts[1]
+		targetAction := parts[2]
+		targetRuntime := parts[3]
+		from := parts[4]
+		fromKey := parts[5]
+		fmt.Println(targetRuntime, from, fromKey)
+		fmt.Println(targetGroup, group.Spec.Name)
+		if targetGroup == group.Spec.Name {
+			// 寻址的是当前的Group
+			fmt.Println("current group")
+
+			// group下actions
+			an, ok := group.Status.Actions[targetAction]
+			if !ok {
+				logs.Infof("no action found for %s in %s", targetAction, targetGroup)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("no action found")
+			}
+
+			// action
+			a, err := e.manager.GetAction(an.Name, an.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			// action下runtimes
+			r, ok := a.Status.Runtimes[targetRuntime]
+			if !ok {
+				logs.Infof("no runtime found for %s in %s", targetRuntime, targetAction)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("runtime not found")
+			}
+
+			return r.Name, string(RuntimeType), from, fromKey, nil
+
+		} else {
+			// 寻址的是当前Task下的其他Group
+			fmt.Println("other group belong same task")
+			// 根据Belong查找Task
+			task, err := e.manager.GetTask(group.Status.Belong.Name, group.Status.Belong.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			//task下groups
+			gn, ok := task.Status.Groups[targetGroup]
+			if !ok {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("group not found")
+			}
+
+			// group
+			g, err := e.manager.GetGroup(gn.Name, gn.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			// group下actions
+			an, ok := g.Status.Actions[targetAction]
+			if !ok {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("action not found")
+			}
+
+			// action
+			a, err := e.manager.GetAction(an.Name, an.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			// action下runtimes
+			r, ok := a.Status.Runtimes[targetRuntime]
+			if !ok {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("runtime not found")
+			}
+			fmt.Printf("return r.Name:%v, string(RuntimeType):%v, from:%v, fromKey:%v, err:%v\n ", r.Name, string(RuntimeType), from, fromKey, nil)
+
+			return r.Name, string(RuntimeType), from, fromKey, nil
+
+		}
+	//case "GroupAbsoluteExpr":
+	//	fmt.Println("GroupAbsoluteExpr")
+	//	// 只允许Group为最高层时使用
+	//	if group.Status.Belong == nil {
+	//		uuid := group.Labels["uuid"]
+	//		groupName := parts[1]
+	//		actionName := parts[2]
+	//		runtimeName := parts[3]
+	//		rn := fmt.Sprintf("%s.%s.%s-%s", groupName, actionName, runtimeName, uuid)
+	//		return rn, string(RuntimeType), "", "", nil
+	//	}
 
 	case "TaskGroupExpr":
 		fmt.Println("TaskGroupExpr")
@@ -593,6 +691,7 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("target:%v\n", target)
 
 	switch target {
 	case "Status":
