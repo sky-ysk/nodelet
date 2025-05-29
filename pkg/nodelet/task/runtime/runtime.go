@@ -4,19 +4,20 @@ import (
 	"fmt"
 	"sync"
 
-	"hit.edu/framework/pkg/client-go/util/manager"
-	"hit.edu/framework/pkg/nodelet/events/eventbus"
-	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
-	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
-
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 	"hit.edu/framework/pkg/nodelet/task/runtime/binary"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
 	"hit.edu/framework/pkg/nodelet/task/runtime/container"
+	"hit.edu/framework/pkg/nodelet/task/runtime/device"
+	"hit.edu/framework/pkg/nodelet/task/runtime/k8s"
 	"hit.edu/framework/pkg/nodelet/task/runtime/net"
+	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
+	"hit.edu/framework/pkg/utils/value"
 )
 
 type Runtime interface {
@@ -40,10 +41,11 @@ type RuntimeManager struct {
 	clientsManager *manager.Manager
 	mu             sync.Mutex
 	pool           *pool.ConnectionPool
+	engine         *value.Engine
 	NodeName       string
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, nodeName string) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, nodeName string, engine *value.Engine) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
@@ -52,6 +54,7 @@ func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, 
 		//actionClient: actionClient,
 		//groupClient:  groupClient,
 		clientsManager: clientsManager,
+		engine:         engine,
 		pool:           pool.NewConnectionPool(),
 		NodeName:       nodeName,
 	}
@@ -88,7 +91,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = container.NewContainerRuntime()
 			break
 		case apis.ByDevice: //面向特定的物理设备
-			//runtime = device.NewDeviceRuntime(rm.clientsManager, rm.eventbus)
+			runtime = device.NewDeviceRuntime(rm.eventbus, rm.clientsManager, rm.engine)
 			break
 		case apis.ByNet: //基于网络的部署
 			runtime = net.NewNetRuntime()

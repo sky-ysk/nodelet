@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -49,7 +48,7 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	t.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(ts.Desc.Label) > 0 {
+	if ts.Desc != nil && ts.Desc.Label != nil && len(ts.Desc.Label) > 0 {
 		t.Labels = ts.Desc.Label
 	} else {
 		t.Labels = map[string]string{}
@@ -196,7 +195,7 @@ func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get task: %v", err)
-		return nil, fmt.Errorf("%w-%v", NotFound, err)
+		return nil, err
 	}
 
 	logs.Debugf("Get task: %v", a)

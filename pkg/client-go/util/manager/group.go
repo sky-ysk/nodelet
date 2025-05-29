@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -51,7 +50,7 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	g.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(gs.Desc.Label) > 0 {
+	if gs.Desc != nil && gs.Desc.Label != nil && len(gs.Desc.Label) > 0 {
 		g.Labels = gs.Desc.Label
 	} else {
 		g.Labels = map[string]string{}
@@ -304,7 +303,7 @@ func (m *Manager) GetGroup(name string, namespace string) (*apis.Group, error) {
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get group: %v", err)
-		return nil, fmt.Errorf("%w-%v", NotFound, err)
+		return nil, err
 	}
 
 	logs.Debugf("Get group: %v", a)

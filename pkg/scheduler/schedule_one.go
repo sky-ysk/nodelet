@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -185,6 +184,14 @@ func (sched *Scheduler) bindingCycle(
 	//TODO @linbohai 资源预留
 
 	status := fwk.RunBindPlugins(ctx, state, scheduleResult.Group, scheduleResult.SuggestedHost)
+
+	//TODO 绑定失败说明下层资源加锁失败，放弃调度，把Group重新Pending队列（后续可以放回Backoff队列）
+	if status.IsRejected() {
+		logs.Warnf("Node %s binding fail, Group : %s, Reason %s, sleep 2s for another try", scheduleResult.SuggestedHost,
+			scheduleResult.Group.Name, status.Message())
+		time.Sleep(2 * time.Second)
+		sched.SchedulingQueue.Add(ctx, scheduleResult.Group)
+	}
 	// {
 	// 	return status
 	// }
@@ -277,13 +284,13 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	}
 
 	//前端演示页面特判逻辑
-	if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
-		if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
-			host = "EdgeNode1"
-		} else {
-			host = "CloudNode1"
-		}
-	}
+	//if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
+	//	if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
+	//		host = "EdgeNode1"
+	//	} else {
+	//		host = "CloudNode1"
+	//	}
+	//}
 	//if strings.Contains(group.ObjectMeta.Name, "Train") {
 	//	host = "CloudNode1"
 	//}

@@ -561,6 +561,8 @@ type GroupSpec struct {
 	// Group Name
 	Name string `json:"name,omitempty" yaml:"name"`
 
+	// Device 需求
+	Devices []DeviceSpec `json:"devices,omitempty" yaml:"devices"`
 	// +Optional
 	SchedulerName *string `json:"scheduler_name,omitempty" yaml:"name"`
 
@@ -909,13 +911,13 @@ const (
 // 设备资源锁
 type Lock struct {
 	// 锁类型
-	Type LockType `json:"type,omitempty" yaml:"type"`
+	Type LockType `json:"type" yaml:"type"`
 
 	// 调度时 ref为0时释放
-	IsLocked bool `json:"is_locked,omitempty" yaml:"is_locked"`
+	IsLocked bool `json:"is_locked" yaml:"is_locked"`
 
 	// 资源引用数 部署时
-	Ref int `json:"ref,omitempty" yaml:"ref"`
+	Ref int `json:"ref" yaml:"ref"`
 }
 
 // 设备事件描述
@@ -967,7 +969,8 @@ type Ability struct {
 	Services   map[string]AbilityService `json:"services,omitempty" yaml:"services"`
 	InstanceID *string                   `json:"instance_id,omitempty" yaml:"instance_id"`
 	State      *AbilityState             `json:"state,omitempty" yaml:"state"`
-	Status     *string                   `json:"status,omitempty" yaml:"status"`
+	Status     AbilityStatus             `json:"status,omitempty" yaml:"status"`
+	Lock       Lock                      `json:"lock" yaml:"lock"`
 }
 
 // AbilityService 描述一个能力的具体业务（技能）
@@ -981,12 +984,15 @@ type AbilityService struct {
 
 // TODO: 增加具体的值限制
 type AbilityState int
+type AbilityStatus string
 
 const (
-	AbilityRunning        AbilityState = 1
-	AbilityReadyStartUp   AbilityState = 2
-	AbilityReadyTerminate AbilityState = 3
-	AbilityTerminated     AbilityState = 4
+	AbilityRunning        AbilityStatus = "Running"
+	AbilityReadyStartUp   AbilityStatus = "ReadyStartUp"
+	AbilityReadyTerminate AbilityStatus = "ReadyTerminate"
+	AbilityTerminated     AbilityStatus = "Terminated"
+	AbilityInit           AbilityStatus = "Init"
+	AbilityError          AbilityStatus = "Error"
 )
 
 type DeviceStatus struct {
@@ -1010,10 +1016,12 @@ type DeviceStatus struct {
 
 	// 设备事件描述
 	Events []DeviceEvent `json:"events,omitempty" yaml:"events"`
-
+	// 绑定到哪个Group中
+	Group string `json:"group,omitempty" yaml:"group"`
 	// 上次成功获取设备状态的时间
 	// 如果长时间不能获取设备的状态，则认为设备离线
-	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+	LastTime Time   `json:"last_time,omitempty" yaml:"last_time"`
+	Label    string `json:"label,omitempty" yaml:"label"`
 }
 
 // SceneSpec 描述scene的固有属性和期待属性

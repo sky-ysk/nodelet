@@ -66,6 +66,23 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	cmd := runtime.Spec.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
 	args := runtime.Spec.Args
+
+	// 场景三的特判逻辑
+	if group != nil && group.Spec.Desc != nil && group.Spec.Desc.Label != nil {
+		for _, label := range group.Spec.Desc.Label {
+			if label == "scene3" {
+
+				if group.Spec.Devices[0].ExpectedProperties["name"].Value == "device1" {
+					args = append(args, "device2")
+					logs.Infof("command runtime args[2] is device2")
+				} else {
+					args = append(args, "device1")
+					logs.Infof("command runtime args[2] is device1")
+				}
+			}
+		}
+	}
+
 	// 目前只接受Command中第一个元素
 	err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
 	if err != nil {
@@ -127,6 +144,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	logs.Infof("runtime Name:\t %s is Running", runtime.Name)
 
 	if err := CMD.Start(); err != nil {
+		logs.Errorf("error is %s", err.Error())
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 		cr.recorder.Event(runtime, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s start failed", runtime.Name))

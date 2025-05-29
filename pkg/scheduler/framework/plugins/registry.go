@@ -16,10 +16,12 @@ func NewInTreeRegistry() runtime.Registry {
 		"GreedyScore": NewGreedyScorePlugin,
 		//随机调度
 		"DefaultScorePlugin": NewDefaultScorePlugin,
-		//DTS插件策略
-		"ScorePluginForDBY": NewScorePluginDBY,
+		//DTS插件策略, 注意！使用这个策略必须要配合代码 go sched.monitorTask(ctx)使用（全局搜索把这个地方打开注释）
+		//"ScorePluginForDBY": NewScorePluginDBY,
 
 		"DefaultBindPlugin": NewDefaultBindPlugin,
+
+		"DeviceBinder": NewDeviceBinder,
 	}
 	return registry
 }

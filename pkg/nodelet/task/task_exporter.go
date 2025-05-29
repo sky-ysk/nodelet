@@ -2,10 +2,10 @@ package task
 
 import (
 	"context"
+	"hit.edu/framework/pkg/client-go/util/manager"
+	"hit.edu/framework/pkg/utils/value"
 	"sync"
 	"time"
-
-	"hit.edu/framework/pkg/client-go/util/manager"
 
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	fileManager "hit.edu/framework/pkg/nodelet/registry"
@@ -93,11 +93,11 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
-
+	engine := value.NewEngine(clientset)
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager, cfg.NodeName)
+	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager, cfg.NodeName, engine)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置

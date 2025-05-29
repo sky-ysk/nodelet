@@ -49,7 +49,7 @@ func (f *frameworkImpl) GetDTSPlugin() framework.ScorePlugin {
 func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.CycleState, group *apis.Group, nodeName string) (status *framework.Status) {
 	if len(f.bindPlugins) == 0 {
 		logs.Error("no bind plugins")
-		return framework.NewStatus(framework.Skip, "no bind plugins")
+		return framework.NewStatus(framework.Unschedulable, "no bind plugins")
 	}
 	for _, pl := range f.bindPlugins {
 		ctx := ctx
@@ -69,7 +69,7 @@ func (f *frameworkImpl) RunBindPlugins(ctx context.Context, state *framework.Cyc
 		}
 		return status
 	}
-	return status
+	return framework.NewStatus(framework.Unschedulable, "err occur when binding, no plugins avail able")
 }
 
 func (f *frameworkImpl) runBindPlugin(ctx context.Context, bp framework.BindPlugin, state *framework.CycleState, group *apis.Group, nodeName string) *framework.Status {

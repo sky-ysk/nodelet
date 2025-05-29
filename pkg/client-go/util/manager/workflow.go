@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -95,7 +94,7 @@ func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid st
 	w.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(ts.Desc.Label) > 0 {
+	if ts.Desc != nil && ts.Desc.Label != nil && len(ts.Desc.Label) > 0 {
 		w.Labels = ts.Desc.Label
 	} else {
 		w.Labels = map[string]string{}
@@ -162,7 +161,7 @@ func (m *Manager) GetWorkflows(namespace string) (*apis.WorkflowList, error) {
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get workflows: %v", err)
-		return nil, fmt.Errorf("%w-%v", NotFound, err)
+		return nil, err
 	}
 
 	logs.Debugf("Get workflows success. ")

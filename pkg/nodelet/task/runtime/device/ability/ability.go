@@ -5,89 +5,77 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/lib"
-	"hit.edu/framework/pkg/nodelet/task/runtime/device/ability/manager"
-	"strconv"
-	"strings"
-	"time"
+	"hit.edu/framework/pkg/utils/value"
 )
 
-func PublishAbilityInst(Inst string, device *apis.Device, operation string) (apis.Output, error) {
-	a := apis.Device{}
-	// 能力操作的适配分为两种
-	parts := strings.Split(Inst, "_")
-	if parts[0] == "manage" { // 以manage开头的是 拉起 暂停 终止能力等操作
-		abilityManager := manager.NewAbilityManager(device.Spec.AccessMethod.URL, parts[1])
-
-		if operation == "terminate" || len(parts) > 2 {
-			err := abilityManager.TerminateAbility()
-			if err != nil {
-				logs.Errorf("terminate ability %v failed", parts[1])
-				return apis.Output{}, err
-			}
-			logs.Infof("ability%s is terminated......", abilityManager.Name)
-			return apis.Output{}, err
-		}
-
-		heartBeat, err := abilityManager.StartupAbility()
-		if err != nil {
-			logs.Errorf("start ability frame fail...")
-			return apis.Output{}, err
-		}
-		logs.Info("start AbilityFramework successfully")
-		// 单独开一个协程来监控运行结果
-		//go monitorDeviceAbility(abilityManager)
-		for index, a := range device.Status.Abilities {
-			for index, s := range a.Services {
-				port := strconv.Itoa(heartBeat.AbilityPort)
-				s.Port = port
-				a.Services[index] = s
-			}
-			device.Status.Abilities[index] = a
-		}
-		return apis.Output{
-			Value:     strconv.Itoa(heartBeat.AbilityPort),
-			Name:      "port",
-			ValueType: "int",
-			Type:      apis.ResultsData,
-		}, nil
-
-	} else if parts[0] == "service" { // 以service开头的是每一次业务逻辑
-		logs.Infof("publish service %s inst ......", parts[1])
-		output, err := lib.SendServiceRequest(parts[1], device)
-		if err != nil {
-			return apis.Output{}, err
-		}
-		return output, nil
-	} else if parts[0] == "test" {
-		logs.Infof("this is a test ability")
-		return apis.Output{}, nil
-	}
-	logs.Errorf("inst is invalid")
-	return apis.Output{}, fmt.Errorf("inst is invalid")
+type AbilityStrategy interface {
+	Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error)
+}
+type AbilityContext struct {
+	strategy AbilityStrategy
 }
 
-func monitorDeviceAbility(am *manager.ManagerOfAbility) {
-	logs.Infof("monitoring the AbilityFrameWork status....")
-	go func() {
-		for {
-			hb, err := manager.GetAbilityHeartBeat(am.Url)
-			if err != nil {
-				logs.Errorf("get heartbeats fail")
-			}
-			logs.Infof("[AbilityFrameWork Monitor]ability: %v  status:%v", am.Name, hb[0].State)
-			time.Sleep(time.Millisecond * 1500)
-		}
-	}()
-	logs.Infof("monitoring the mock ability status....")
-	go func() {
-		for {
-			as, err := manager.GetAbilityExeStatus(am.UUid, am.Url)
-			if err != nil {
-				logs.Errorf("get mock status fail")
-			}
-			logs.Infof("[AbilityExe Monitor]ability: %v status %v", am.Name, as)
-			time.Sleep(time.Millisecond * 1500)
-		}
-	}()
+func (ac *AbilityContext) SetStrategy(strategy AbilityStrategy) {
+	ac.strategy = strategy
+}
 
+func (ac *AbilityContext) Execute(url string, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
+	return ac.strategy.Execute(url, params, engine, runtime, action)
+}
+
+// PublishAbilityInst 根据传入的指令来发布对应的指令
+func PublishAbilityInst(inst string, device *apis.Device, params []apis.Value, engine *value.Engine, runtime *apis.Runtime, action *apis.Action) (string, error) {
+	// 构造URL
+	ability := GetAbilityByService(device, inst)
+	ip := device.Status.Abilities[ability].Services[inst].Ip
+	port := device.Status.Abilities[ability].Services[inst].Port
+	api := device.Status.Abilities[ability].Services[inst].Interface
+	url := fmt.Sprintf("http://%s:%s%s", *ip, *port, *api)
+
+	var strategy AbilityStrategy
+	// 每一个服务
+	switch inst {
+	case "DetectPosition":
+		strategy = &lib.DetectPositionStrategy{}
+	case "GrabBall":
+		strategy = &lib.GrabBallStrategy{}
+	case "Download":
+		strategy = &lib.DownloadModelStrategy{}
+	case "PredictByUrl":
+		strategy = &lib.PreByUrlStrategy{}
+	case "test":
+		strategy = &lib.TestStrategy{}
+	case "Turn":
+		strategy = &lib.TurnStrategy{}
+	case "GrabInit":
+		strategy = &lib.GrabInitStrategy{}
+	case "GrabWorkpiece":
+		strategy = &lib.GrabWorkpieceStrategy{}
+	case "DetectWorkpiece":
+		strategy = &lib.DetectWorkpieceStrategy{}
+	case "PutWorkpiece":
+		strategy = &lib.PutWorkpieceStrategy{}
+	case "ReturnToLevel":
+		strategy = &lib.GrabReturnStrategy{}
+	default:
+		logs.Errorf("[DEVICE RUNTIME] Unknown Ability")
+		return "", fmt.Errorf("unknow ability")
+	}
+
+	context := &AbilityContext{}
+	context.SetStrategy(strategy)
+	return context.Execute(url, params, engine, runtime, action)
+
+}
+
+// GetAbilityByService 通过service得到相应的能力名称
+func GetAbilityByService(device *apis.Device, service string) string {
+	for nameAbility, a := range device.Status.Abilities {
+		for nameService, _ := range a.Services {
+			if nameService == service {
+				return nameAbility
+			}
+		}
+	}
+	return ""
 }

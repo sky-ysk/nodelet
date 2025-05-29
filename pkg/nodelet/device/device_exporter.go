@@ -11,7 +11,6 @@ import (
 	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/device/collector"
-	"hit.edu/framework/pkg/nodelet/device/collector/ability"
 	"net/http"
 	"time"
 )
@@ -40,6 +39,7 @@ func NewDeviceExporter(cfg *Config) (*DeviceExporter, error) {
 	de := &DeviceExporter{
 		deviceCollector: dc,
 	}
+	//TODO 添加设备 device.json  replace 设备注册
 	return de, nil
 }
 
@@ -69,41 +69,61 @@ func (n *DeviceExporter) Run() error {
 	//dynamicTicker := time.NewTicker(time.Second * 5)
 	//defer dynamicTicker.Stop()
 
-	// 加入关于Ability的信息收集
-	deviceMonitorTicker := time.NewTicker(time.Second * 20)
-	abilityMonitorTicker := time.NewTicker(time.Second * 10)
-	defer deviceMonitorTicker.Stop()
-	for {
-		select {
-		//case <-staticTicker.C:
-		//	err := n.deviceCollector.GatherStaticData()
-		//	if err != nil {
-		//		return err
-		//	}
-		//case <-dynamicTicker.C:
-		//	err := n.deviceCollector.GatherDynamicData()
-		//	if err != nil {
-		//		return err
-		//	}
-		case <-deviceMonitorTicker.C:
-			logs.Infof("[DEVICE EXPORTER] monitor all device....")
-			go func() {
-				err := manager.MonitorAllDevices(clientManager)
-				if err != nil {
-					logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
-				}
-			}()
-		case <-abilityMonitorTicker.C:
-			logs.Infof("[DEVICE EXPORTER] monitor all device....")
-			go func() {
-				err := manager.MonitorAllAbilities(clientManager)
-				if err != nil {
-					logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
-				}
-			}()
+	go func() {
+		for {
+			err1 := MonitorAllDevices(clientManager)
+			if err1 != nil {
+				logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
+			}
+			time.Sleep(20 * time.Second)
 		}
+	}()
 
-	}
+	go func() {
+		for {
+			err2 := MonitorAllAbilities(clientManager)
+			if err2 != nil {
+				logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}()
+	// 加入关于Ability的信息收集
+	//deviceMonitorTicker := time.NewTicker(time.Second * 20)
+	//abilityMonitorTicker := time.NewTicker(time.Second * 20)
+	//defer deviceMonitorTicker.Stop()
+	//
+	//for {
+	//	select {
+	//	//case <-staticTicker.C:
+	//	//	err := n.deviceCollector.GatherStaticData()
+	//	//	if err != nil {
+	//	//		return err
+	//	//	}
+	//	//case <-dynamicTicker.C:
+	//	//	err := n.deviceCollector.GatherDynamicData()
+	//	//	if err != nil {
+	//	//		return err
+	//	//	}
+	//	case <-deviceMonitorTicker.C:
+	//		logs.Infof("[DEVICE EXPORTER] monitor all device....")
+	//		go func() {
+	//			err := manager.MonitorAllDevices(clientManager)
+	//			if err != nil {
+	//				logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
+	//			}
+	//		}()
+	//	case <-abilityMonitorTicker.C:
+	//		logs.Infof("[DEVICE EXPORTER] monitor all device....")
+	//		go func() {
+	//			err := manager.MonitorAllAbilities(clientManager)
+	//			if err != nil {
+	//				logs.Errorf("[DEVICE EXPORTER] monitor err: %v", err)
+	//			}
+	//		}()
+	//	}
+
+	//}
 	// TODO: 监控Node,查看是否有与Node相关联的新的Device
 	// 更新deviceCollector中的DeviceList
 

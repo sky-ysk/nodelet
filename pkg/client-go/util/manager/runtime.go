@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -164,8 +163,8 @@ func (m *Manager) GetRuntime(name string, namespace string) (*apis.Runtime, erro
 	c := m.GetRuntimeClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		logs.Errorf("Failed to get runtime: %v", err)
-		return nil, fmt.Errorf("%w-%v", NotFound, err)
+		logs.Errorf("Failed to get runtime: %v, name %s, space %s", err, name, namespace)
+		return nil, err
 	}
 
 	//
@@ -177,7 +176,7 @@ func (m *Manager) GetRuntimes(namespace string) (*apis.RuntimeList, error) {
 	c := m.GetRuntimeClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Failed to get runtime: %v", err)
+		logs.Errorf("Failed to get runtimes: %v, name %s, space %s", err, namespace)
 		return nil, err
 	}
 

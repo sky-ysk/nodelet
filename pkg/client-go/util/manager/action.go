@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -135,7 +134,7 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 	a.APIVersion = "resources/v1"
 
 	// 构造Labels
-	if len(as.Desc.Label) > 0 {
+	if as.Desc != nil && as.Desc.Label != nil && len(as.Desc.Label) > 0 {
 		a.Labels = as.Desc.Label
 	} else {
 		a.Labels = map[string]string{}
@@ -203,7 +202,7 @@ func (m *Manager) GetAction(name string, namespace string) (*apis.Action, error)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get action: %v", err)
-		return nil, fmt.Errorf("%w-%v", NotFound, err)
+		return nil, err
 	}
 
 	//

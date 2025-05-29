@@ -9,6 +9,56 @@ import (
 	"time"
 )
 
+func TestPublishGrabWorkpieceInst(t *testing.T) {
+	logs.Init("test")
+	ip := "http://172.130.0.61:53051"
+	api := "/api/task/grab"
+	url := fmt.Sprintf("%s%s", ip, api)
+	taskId, err := PublishGrabWorkpieceInst("belt", url)
+	if err != nil {
+		logs.Errorf("err is %v", err)
+	}
+
+	time.Sleep(time.Second * 10)
+	tr, err := GetTaskStatus(taskId, "http://172.130.0.61:8080")
+	if err != nil {
+		logs.Errorf("tr is %v", tr)
+	}
+}
+
+func TestPublishPutWorkpieceInst(t *testing.T) {
+	logs.Init("test")
+	ip := "http://172.130.0.61:55607"
+	api := "/api/task/put"
+	url := fmt.Sprintf("%s%s", ip, api)
+	taskId, err := PublishPutWorkpieceInst("reject_bin", url)
+	if err != nil {
+		logs.Errorf("err is %v", err)
+	}
+
+	time.Sleep(time.Second * 10)
+	tr, err := GetTaskStatus(taskId, "http://172.130.0.61:8080")
+	if err != nil {
+		logs.Errorf("tr is %v", tr)
+	}
+}
+func TestPublishGrabInitInst(t *testing.T) {
+	logs.Init("test")
+	ip := "http://172.130.0.61:53051"
+	api := "/api/task/init"
+	url := fmt.Sprintf("%s%s", ip, api)
+	taskId, err := PublishGrabInitInst("up", url)
+	if err != nil {
+		logs.Errorf("err is %v", err)
+	}
+
+	time.Sleep(time.Second * 10)
+	tr, err := GetTaskStatus(taskId, "http://172.130.0.61:8080")
+	if err != nil {
+		logs.Errorf("tr is %v", tr)
+	}
+}
+
 // go test -run TestPublishArmAngleTerminate  -v
 func TestPublishArmAngleTerminate(t *testing.T) {
 	logs.Init("test")
