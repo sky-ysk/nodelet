@@ -152,6 +152,9 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 			//msg := fmt.Sprintf("group %s is ready , move to active queue", k)
 			//fmt.Println(msg)
 			//logs.Info(msg)
+		} else if readyRes == apis.False {
+			logs.Warnf("group %s parent fail", v.GroupInfo.Group.ObjectMeta.Name)
+			removeGroupss = append(removeGroupss, v)
 		}
 	}
 	for _, group := range removeGroupss {
@@ -177,6 +180,22 @@ func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.Queue
 		if err != nil {
 			logs.Error(err.Error())
 			return apis.False, err
+		}
+
+		//场景1特判
+		if gInfo.Group.Spec.Desc != nil && len(gInfo.Group.Spec.Desc.Label) != 0 {
+			val, ok := gInfo.Group.Spec.Desc.Label["scene"]
+			if ok && val == "scene1" {
+				if parentValue.Value == string(apis.Successed) {
+					logs.Warnf("scene1 parent success, no need child")
+					return apis.False, nil
+				} else if parentValue.Value == string(apis.Failed) {
+					logs.Warnf("scene1 parent fail, need child")
+					return apis.True, nil
+				} else {
+					return apis.NotReady, nil
+				}
+			}
 		}
 
 		if parentValue.Value != string(apis.Successed) {
