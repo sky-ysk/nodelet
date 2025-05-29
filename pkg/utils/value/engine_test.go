@@ -98,7 +98,7 @@ func TestValueExtract(t *testing.T) {
 
 	engine := NewEngine(clientSet)
 
-	name := "T1.G1-20250529T190834-c7db3"
+	name := "T1.G1-20250529T203045-5e256"
 	namespace := "Test"
 
 	fmt.Println("start get group")
@@ -127,7 +127,7 @@ func TestValueExtract(t *testing.T) {
 		NameSpace: "Test",
 		Name:      "Task",
 		Type:      apis.LocalData,
-		From:      "Group{G2}.Action{A1}.Runtime{R1}.Status{belong}",
+		From:      "Group{G2}.Action{A1}.Runtime{R1}.Outputs{test}",
 		ValueType: apis.StringType,
 	}
 

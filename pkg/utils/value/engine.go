@@ -702,6 +702,7 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 	case "Outputs":
 		// 检查
 		v, ok := r.Status.Outputs[subTarget]
+		fmt.Printf("output:%v\n", v)
 		if !ok {
 			return nil, errors.New(string("SubTarget is not existed" + subTarget))
 		}
