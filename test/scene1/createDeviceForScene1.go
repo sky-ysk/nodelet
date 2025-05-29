@@ -84,7 +84,7 @@ func main() {
 
 	deviceLeju := &apis.Device{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "device4",
+			Name:      "deviceLeju",
 			Namespace: "test",
 			Labels: map[string]string{
 				"environment": "dev",
@@ -95,7 +95,7 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DeviceSpec{
-			Name: "device4",
+			Name: "deviceLeju",
 			AccessMethod: &apis.AccessMethod{
 				Type: apis.AccessByAbility,
 				URL:  "http://" + deviceLejuIP + ":8080",
