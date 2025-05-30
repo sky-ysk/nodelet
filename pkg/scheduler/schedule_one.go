@@ -277,19 +277,19 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	}
 
 	//前端演示页面特判逻辑
-	if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
-		if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
-			host = "EdgeNode1"
-		} else {
-			host = "CloudNode1"
-		}
+	//if group.Spec.Desc != nil && len(group.Spec.Desc.Label) != 0 {
+	//	if strings.Contains(group.Spec.Desc.Label[0], "Infer") {
+	//		host = "EdgeNode1"
+	//	} else {
+	//		host = "CloudNode1"
+	//	}
+	//}
+	if strings.Contains(group.ObjectMeta.Name, "G1") {
+		host = "CloudNode1"
 	}
-	//if strings.Contains(group.ObjectMeta.Name, "Train") {
-	//	host = "CloudNode1"
-	//}
-	//if strings.Contains(group.ObjectMeta.Name, "Reason") {
-	//	host = "EdgeNode1"
-	//}
+	if strings.Contains(group.ObjectMeta.Name, "G2") {
+		host = "EdgeNode1"
+	}
 	//if strings.Contains(group.ObjectMeta.Name, "Robot") {
 	//	host = "EdgeNode1"
 	//}
