@@ -23,7 +23,7 @@ func main() {
 	for _, n := range list.Items {
 		//info := config.NewNodeInfo(&n)
 		nodes = append(nodes, n)
-		fmt.Println(n)
+		fmt.Println(n.Name)
 	}
 	for _, nn := range nodes {
 		get, err := nc.Get(context.TODO(), nn.Name, metav1.GetOptions{})
