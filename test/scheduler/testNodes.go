@@ -29,9 +29,8 @@ func main() {
 		get, err := nc.Get(context.TODO(), nn.Name, metav1.GetOptions{})
 		if err != nil {
 			fmt.Println(err)
-			return
+			continue
 		}
 		fmt.Println(get.Name)
-
 	}
 }
