@@ -5,7 +5,6 @@ import (
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/scheduler/apis/config"
 	"hit.edu/framework/pkg/scheduler/utils"
 )
 
@@ -20,14 +19,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	nodes := make([]*config.NodeInfo, 0)
+	nodes := make([]apis.Node, 0)
 	for _, n := range list.Items {
-		info := config.NewNodeInfo(&n)
-		nodes = append(nodes, info)
-		fmt.Println(info)
+		//info := config.NewNodeInfo(&n)
+		nodes = append(nodes, n)
+		fmt.Println(n)
 	}
 	for _, nn := range nodes {
-		get, err := nc.Get(context.TODO(), nn.Node().Name, metav1.GetOptions{})
+		get, err := nc.Get(context.TODO(), nn.Name, metav1.GetOptions{})
 		if err != nil {
 			fmt.Println(err)
 			return
