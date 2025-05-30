@@ -1,7 +1,7 @@
 #!/bin/bash
 # 停止所有 proxy 进程
-echo "Killing all proxy processes..."
-killall proxy
+#echo "Killing all proxy processes..."
+#killall proxy
 
 # 停止所有 nodelet 进程
 echo "Killing all nodelet processes..."

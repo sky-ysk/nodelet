@@ -283,8 +283,6 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	//		host = "CloudNode1"
 	//	}
 	//}
-	//if strings.Contains(group.ObjectMeta.Name, "Train") {
-	//	host = "CloudNode1"
 	//}
 	//if strings.Contains(group.ObjectMeta.Name, "Reason") {
 	//	host = "EdgeNode1"
