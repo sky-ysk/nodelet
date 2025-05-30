@@ -59,7 +59,7 @@ func main() {
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{0, 1}
+	group1_1Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -185,7 +185,7 @@ func postEventForMigrate(client core.EventInterface) {
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
 	time.Sleep(10 * time.Millisecond)
-	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
+	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "broker")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 

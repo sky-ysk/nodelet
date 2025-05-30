@@ -87,6 +87,14 @@ type RuntimeEndPhaseEvent1 struct {
 	FinishAt        apis.Time
 	LastTime        apis.Time // 可选字段，表示最后更新时间
 }
+type ActionEndPhaseEvent1 struct {
+	GroupName      string
+	GroupNamespace string
+	ActionSpecName string
+	Phase          apis.Phase
+	FinishAt       apis.Time
+	LastTime       apis.Time
+}
 
 const (
 	ReadyToMigrate = "ReadyToMigrate"

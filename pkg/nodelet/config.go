@@ -80,7 +80,7 @@ func NewConfig(configPath string) *Config {
 		}
 		config, err = LoadConfig(configPath)
 		if err != nil {
-			logs.Errorf("frameworkConf.yaml load failed")
+			logs.Errorf("frameworkConf.yaml load failed: %e", err)
 			config = &FrameworkConfig{} // 使用空配置
 		}
 	}
@@ -95,10 +95,11 @@ func NewConfig(configPath string) *Config {
 		logs.Errorf("targetMap build failed")
 		return nil
 	}
+	dir, port := GetWasmConfig(config)
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
 		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID),
-		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, dir, port),
 		apiserverAddr: address,
 	}
 }
@@ -140,6 +141,18 @@ func GetAPIServerHost(config *FrameworkConfig) string {
 	return "http://localhost:10000"
 }
 
+func GetWasmConfig(config *FrameworkConfig) (string, string) {
+	dir := "/home/public/tmp/wasm"
+	port := "8080"
+	if config.WasmConfig.WasmToolchainDir != "" {
+		dir = config.WasmConfig.WasmToolchainDir
+	}
+	if config.WasmConfig.WasmRuntimePort != "" {
+		port = config.WasmConfig.WasmRuntimePort
+	}
+	return dir, port
+}
+
 // 定义完整的配置结构体
 type FrameworkConfig struct {
 	EtcdPort        int    `yaml:"EtcdPort"`
@@ -151,6 +164,10 @@ type FrameworkConfig struct {
 		ClusterID string `yaml:"ClusterID"`
 		ClusterIP string `yaml:"ClusterIP"`
 	} `yaml:"OtherCluster"`
+	WasmConfig struct {
+		WasmToolchainDir string `yaml:"WasmToolchainDir"`
+		WasmRuntimePort  string `yaml:"WasmRuntimePort"`
+	} `yaml:"WasmConfig"`
 	// 注意YAML字段名与结构体的映射
 }
 

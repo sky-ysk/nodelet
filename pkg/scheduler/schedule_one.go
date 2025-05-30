@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -284,12 +283,10 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	//		host = "CloudNode1"
 	//	}
 	//}
-	if strings.Contains(group.ObjectMeta.Name, "G1") {
-		host = "CloudNode1"
-	}
-	if strings.Contains(group.ObjectMeta.Name, "G2") {
-		host = "EdgeNode1"
-	}
+	//}
+	//if strings.Contains(group.ObjectMeta.Name, "Reason") {
+	//	host = "EdgeNode1"
+	//}
 	//if strings.Contains(group.ObjectMeta.Name, "Robot") {
 	//	host = "EdgeNode1"
 	//}
@@ -465,7 +462,7 @@ func getNodeFromApiServer() []*config.NodeInfo {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	nodesClient := clientSet.Core().Nodes(apis.NamespaceTest)
+	nodesClient := clientSet.Core().Nodes(apis.NamespaceAll)
 	lstOpts := metav1.ListOptions{}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {

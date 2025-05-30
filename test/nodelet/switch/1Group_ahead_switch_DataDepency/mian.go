@@ -15,6 +15,7 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
+	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
@@ -22,27 +23,21 @@ import (
 	"time"
 )
 
-// 适配从pve2 迁移到 broker -123
+// 适配从debian1 迁移到 ubuntu2
 // 修改1：
-// 调度器代码: 触发k8s-master节点资源不足事件,从k8s-master迁移到broker--k8s-master节点的调度器代码可能要修改一下，这里为了和2Group_SPod_ahead_switch_kuayu统一
-// k8s-master上的调度器修改成下面这样，broker下面的调度器不用修改代码，因为只有一个broker节点，不存在节点选择
-// host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
-//
-//	if strings.Contains(group.ObjectMeta.Name, "Train") {
-//		host = "CloudNode1"
-//	}
-//
-//	if strings.Contains(group.ObjectMeta.Name, "Reason") {
-//		host = "EdgeNode1"
-//	}
-//
+// 调度器代码: 触发debian1资源不足事件,从Debian1迁移到ubuntu2
+//if strings.Contains(group.ObjectMeta.Name, "G1") {
+//host = "debian1"
+//}
+//if strings.Contains(group.ObjectMeta.Name, "copy") {
+//host = "ubuntu2"
+//}
 // 修改2：调度器关闭score插件
-// 修改3：const NodeName = "k8s-master"
-// 修改4：group1_1Replicas := []int32{0, 1}
-// 修改5：recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration
+// 修改3：const NodeName = "debian1"
+
 var scheme = runtime.NewScheme()
 
-const NodeName = "k8s-master"
+const NodeName = "debian1"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -59,7 +54,7 @@ func main() {
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{0, 1}
+	group1_1Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -72,13 +67,12 @@ func main() {
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
 			Type:      apis.ResultsData,
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
+			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -91,10 +85,32 @@ func main() {
 		Join:   "",
 		Result: apis.False,
 	}
+	// 数据依赖（../tmp/testFolder）
+	DataDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.DataDependency,
+		LeftValue: apis.Value{
+			Type:      apis.FileData,
+			Name:      "python",
+			Value:     "0",
+			ValueType: "string",
+			From:      "",
+		},
+		RightValue: apis.Value{
+			Type:      apis.ConstData,
+			Name:      "python",
+			Value:     "1",
+			ValueType: "string",
+			From:      "",
+		},
+		Signal: apis.Equal,
+		Join:   "",
+		Result: apis.False,
+	}
 
 	runtime1_1_1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
 			ProgramDependencyConditionFormula,
+			DataDependencyConditionFormula,
 		},
 	}
 
@@ -122,8 +138,9 @@ func main() {
 						Name:                         runtime1_1_1_1Name,
 						Type:                         apis.ByCommand,
 						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s
-						Parents:                      make([]string, 0),                                                // 加入Parents
+						Data:                         []apis.DataSpec{apis.DataSpec{Name: "yolo-runner1.py"}},
+						Args:                         []string{"yolo-runner1.py"}, //20s
+						Parents:                      make([]string, 0),           // 加入Parents
 						Conditions:                   &runtime1_1_1_1Condition,
 						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
@@ -141,14 +158,18 @@ func main() {
 		},
 	}
 	// 生成UUID
-	m := manager.NewManager(clientSet)
 	u := uuid.Must(uuid.NewV7())
-	_, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	m := manager.NewManager(clientSet)
+	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
+	str, err := analyzer.SerializeToJson(task)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
 
-	logs.Info("下发一个任务======")
 	prompt()
 	postEventForMigrate(eventclient)
 	prompt()
@@ -168,6 +189,28 @@ func prompt() {
 	logs.Info()
 }
 
+func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
+	return apis.ConditionFormula{
+		LeftValue: apis.Value{
+			Type:      apis.ResultsData,
+			Name:      "NodeDependency",
+			Value:     "0",
+			ValueType: "string",
+			From:      parentName,
+		},
+		RightValue: apis.Value{
+			Type:      apis.ConstData,
+			Name:      "NodeDependency",
+			Value:     "1",
+			ValueType: "string",
+			From:      "",
+		},
+		Signal: apis.Equal,
+		Join:   "",
+		Result: apis.False,
+	}
+}
+
 var node = &apis.Node{
 	ObjectMeta: meta.ObjectMeta{Name: NodeName, Namespace: "test"},
 	TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "resources/v1"},
@@ -175,7 +218,6 @@ var node = &apis.Node{
 }
 
 func postEventForMigrate(client core.EventInterface) {
-	logs.Info("发送跨域迁移事件======")
 	// 这些配置实际在组件初始化时就已经完成
 	ctx := context.Background()
 	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
@@ -184,8 +226,7 @@ func postEventForMigrate(client core.EventInterface) {
 	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
-	time.Sleep(10 * time.Millisecond)
-	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
+	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 

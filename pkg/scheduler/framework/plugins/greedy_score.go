@@ -25,7 +25,7 @@ func NewGreedyScorePlugin(ctx context.Context, f framework.Handle) (framework.Pl
 	if err != nil {
 		return nil, err
 	}
-	nc := cs.Core().Nodes(apis.NamespaceTest)
+	nc := cs.Core().Nodes(apis.NamespaceAll)
 	return &GreedyScorePlugin{
 		clientSet:  cs,
 		nodeClient: nc,

@@ -97,7 +97,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager, cfg.NodeName)
+	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager, cfg.NodeName, cfg.wasmToolchainDir, cfg.wasmRuntimePort)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
@@ -123,7 +123,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap,),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap),
 		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
 		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
 		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),
