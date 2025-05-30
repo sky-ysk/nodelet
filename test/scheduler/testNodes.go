@@ -13,7 +13,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	nc := cs.Core().Nodes(apis.NamespaceAll)
+	nc := cs.Core().Nodes(apis.NamespaceTest)
 	lstOpts := metav1.ListOptions{}
 	list, err := nc.List(context.TODO(), lstOpts)
 	if err != nil {
