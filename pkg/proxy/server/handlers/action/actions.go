@@ -19,7 +19,7 @@ type ActionsHandler struct {
 
 var _ Handler = &ActionsHandler{}
 
-// NewActionHandler 创建一个 ActionHandler
+// NewActionsHandler 创建一个 ActionHandler
 func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
 	return &ActionsHandler{
 		manager:   manager.NewManager(clientSet),

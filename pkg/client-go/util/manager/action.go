@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// 根据GroupSpec创建Action
+// CreateActions 根据GroupSpec创建Action
 func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, prefix string) ([]*apis.Action, error) {
 	var actions []*apis.Action
 	for _, as := range g.Spec.Actions {
@@ -22,7 +22,7 @@ func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, pr
 	return actions, nil
 }
 
-// 创建带有label的Action
+// CreateActionWithLabels 创建带有label的Action
 func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Action, error) {
 	// 临时创建一个Action对象
 	a := apis.Action{}

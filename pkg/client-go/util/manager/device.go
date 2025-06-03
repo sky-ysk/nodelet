@@ -67,8 +67,8 @@ func (m *Manager) GetDevices(namespace string) (*apis.DeviceList, error) {
 	return d, nil
 }
 
-// FilterDevice 根据Label查询Device
-func (m *Manager) FilterDevice(namespace string, labelSelector string) (*apis.DeviceList, error) {
+// FilterDevices 根据Label查询Device
+func (m *Manager) FilterDevices(namespace string, labelSelector string) (*apis.DeviceList, error) {
 	//labelSelector := ""
 	//for i, l := range label {
 	//	if i == 0 {
@@ -114,7 +114,7 @@ func (m *Manager) UpdateDevice(namespace string, name string, a *apis.Device) (*
 
 }
 
-func (m *Manager) PatchDevice(name string, namespace string, patchDevice string) (*apis.Device, error) {
+func (m *Manager) PatchDevice(name string, namespace string, patchDevice []byte) (*apis.Device, error) {
 	c := m.GetDeviceClient(namespace)
 
 	// 检查device是否存在
@@ -155,5 +155,21 @@ func (m *Manager) DeleteDevice(name string, namespace string) error {
 
 	//
 	logs.Debugf("Delete device %v ", err)
+	return nil
+}
+
+func (m *Manager) DeleteAllDevice(namespace string, fieldSelector string) error {
+	c := m.GetDeviceClient(namespace)
+
+	lstOpts := metav1.ListOptions{
+		FieldSelector: fieldSelector,
+	}
+	err := c.Client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, lstOpts)
+	if err != nil {
+		logs.Errorf("delete device in namespace: %s error: %v", namespace, err)
+		logs.Error(err)
+	}
+
+	logs.Info("Deleted collection device success")
 	return nil
 }

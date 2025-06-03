@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// 根据TaskSpec创建Groups
+// CreateGroups 根据TaskSpec创建Groups
 func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, prefix string) ([]*apis.Group, error) {
 	var groups []*apis.Group
 	for _, as := range g.Spec.Groups {
@@ -26,7 +26,7 @@ func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, pref
 	return groups, nil
 }
 
-// 创建Group，不创建Actions
+// CreateGroupWithoutActions 创建Group，不创建Actions
 func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, namespace string, uuid string, prefix string) (*apis.Group, error) {
 	// 临时创建一个Group对象
 	g := apis.Group{}
@@ -94,7 +94,7 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	return fg, nil
 }
 
-// 创建带有label的Group
+// CreateGroupWithLabels 创建带有label的Group
 func (m *Manager) CreateGroupWithLabels(gs apis.GroupSpec, t *apis.Task, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Group, error) {
 	// 临时创建一个Group对象
 	g := apis.Group{}
@@ -175,7 +175,7 @@ func (m *Manager) CreateGroupWithLabels(gs apis.GroupSpec, t *apis.Task, namespa
 	return fg, nil
 }
 
-// 填充Group的Actions
+// FillGroupWithActions 填充Group的Actions
 func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 	// 根据当前Group的Name来获取Prefix
 	// Prefix固定为g.Name - uuid的部分
@@ -213,7 +213,7 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 	return fg, nil
 }
 
-// 创建完整的Group
+// CreateGroup 创建完整的Group
 func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string, uuid string, prefix string) (*apis.Group, error) {
 	// 临时创建一个Group对象
 	g := apis.Group{}
@@ -250,7 +250,7 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	g.Status = apis.GroupStatus{}
 
 	// 记录Create时间
-	g.Status.CreateAt = &apis.Time{time.Now()}
+	g.Status.CreateAt = &apis.Time{Time: time.Now()}
 
 	// 初始化状态
 	g.Status.Phase = apis.Unknown
@@ -322,7 +322,7 @@ func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
 	return g, nil
 }
 
-// 根据Label查询Groups
+// FilterGroups 根据Label查询Groups
 func (m *Manager) FilterGroups(namespace string, labelSelector string) (*apis.GroupList, error) {
 	//labelSelector := ""
 	//for i, l := range label {

@@ -159,19 +159,18 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 			logs.Errorf("Create action fail ,failed write it to database , error: %v", err)
 			return
 		}
-	} else {
-		// 创建action with labels
-		result, err = h.manager.CreateActionWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create action with label fail ,failed write it to database , error: %v", err)
+	}
+
+	// 创建action with labels
+	result, err = h.manager.CreateActionWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+	if err != nil {
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error: %v", err1)
 			return
 		}
-
+		logs.Errorf("Create action with label fail ,failed write it to database , error: %v", err)
+		return
 	}
 
 	// 返回结果
