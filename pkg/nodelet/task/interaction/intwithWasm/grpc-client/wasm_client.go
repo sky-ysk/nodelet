@@ -5,6 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -24,7 +28,7 @@ type WasmClient struct {
 
 func NewClient(ctx context.Context, port string, app string) *WasmClient {
 	// app := "wasm-test-demo"
-	return &WasmClient{serverIPAndPort: "127.0.0.1:" + port, app: app, ctx: ctx}
+	return &WasmClient{serverIPAndPort: "localhost:" + port, app: app, ctx: ctx}
 }
 
 // // 与任务建立连接
@@ -63,7 +67,7 @@ func (c *WasmClient) checkConnection() bool {
 }
 
 // 部署-grpc接口
-func (c *WasmClient) Deploy(wasm_file string) (*wasm_interface.Result, error) {
+func (c *WasmClient) Deploy(wasm_file string, wasmDir string) (*wasm_interface.Result, error) {
 	if !c.checkConnection() {
 		return &wasm_interface.Result{}, errors.New("Deploy: grpc connection failed")
 	}
@@ -71,6 +75,42 @@ func (c *WasmClient) Deploy(wasm_file string) (*wasm_interface.Result, error) {
 	// wasm code
 	// wasm_file_1 := "test/wasm/wasm_task/printf.wasm"
 	wasm_file_1 := wasm_file
+	switch runtime.GOOS {
+	case "linux":
+	case "windows":
+		// 暂时单独处理下windows路径
+		if strings.Contains(wasm_file_1, "/") {
+			sliceName := strings.Split(wasm_file_1, "/")
+			// 直接拼接sliceName？
+			wasm_file_1 = filepath.Join(wasmDir, sliceName[len(sliceName)-1])
+		}
+		fileInfo, err := os.Stat(wasm_file_1)
+		if err != nil && os.IsNotExist(err) {
+			return &wasm_interface.Result{}, errors.New("Deploy: wasm file is not exist")
+		}
+		fileName := fileInfo.Name()
+		// windows下，需要手动将wasm文件提前编译成dll文件
+		if strings.Contains(fileName, ".wasm") {
+			dllName := strings.Replace(fileName, ".wasm", ".dll", -1)
+			// 先检查是否已经存在.dll文件
+			dllPath := filepath.Join(wasmDir, "toolchain", dllName)
+			_, err := os.Stat(dllPath)
+			if err != nil && os.IsNotExist(err) {
+				// ../wa2x/wa2xc.exe ./wasm/example.wasm --ldflags ./libwa2x.a
+				wasmLLVM := filepath.Join(wasmDir, "toolchain", "wa2xc.exe")
+				cmd := exec.Command(wasmLLVM, wasm_file_1, "--ldflags", "./libwa2x.a")
+				err = cmd.Run()
+				if err != nil {
+					logs.Error(err)
+					return &wasm_interface.Result{}, errors.New("Deploy: Wasm file compilation failed")
+				}
+			}
+			// 此时应编译出dll文件
+			wasm_file_1 = dllPath
+		}
+	default:
+	}
+
 	f, err := os.ReadFile(wasm_file_1)
 	if err != nil {
 		logs.Errorf("read fail %v", err)

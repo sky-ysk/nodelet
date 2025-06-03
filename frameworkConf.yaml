@@ -7,3 +7,6 @@ ClusterCategory : "Cloud"
 #  cluster1:
 #    ClusterID : "broker"
 #    ClusterIP : "172.100.0.130"
+WasmConfig:
+  WasmToolchainDir: "/home/kcm/tmp/wasm"
+  WasmRuntimePort: "8080"

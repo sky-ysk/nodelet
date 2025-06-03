@@ -442,7 +442,8 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		//	logs.Errorf("Get node %s failed-66: %v", *group.Status.Node, err2)
 		//}
 		if event.Reason == events.TriggerLocalMigration { // 本域迁移，指定了目标节点
-			nodeName := extractNode(event.MigrationTarget) // 如果nodeName未获取到，则nodeName = ""
+			logs.Info("-------------未部署副本-非跨域")
+			nodeName := event.MigrationTarget // 如果nodeName未获取到，则nodeName = ""
 			// TODO 本域迁移，则直接生成group副本并写入本域etcd当中
 			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 			groupCopy := NewGroupInfoCopy(group, false, nodeName) //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为副本的名字，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
@@ -488,12 +489,12 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			if err != nil {
 				logs.Errorf("Json Marshal failed, err:%v", err)
 			}
-			patchResult, err := groupClient.Client.Patch(context.TODO(), groupCopy.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+			group, err = groupClient.Client.Patch(context.TODO(), group.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{}) //注意的点：这里将更新好源Group重新赋值给源Group
 			if err != nil {
-				logs.Errorf("Patch group error:%v", err)
+				logs.Errorf("Patch group error-2:%v", err)
 			}
-			logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
-		} else { // 还未部署副本// 为跨域迁移
+			logs.Info("Source CopyInfo:[value:%v]", group.Spec.CopyInfo[groupCopy.Name])
+		} else { // 为跨域迁移
 			//if nodeName != "" { // 跨域迁移，指定了别的域的目标节点 TODO:后面这块应该删了，跨域迁移时不指定节点，只指定域的
 			//	// TODO 首先还得根据nodeName找到是哪个域，然后连接这个与的api-server ---这个得想想怎么操作 还未解决，可能有个问题，就是怎么根据nodeName来定位哪个域的通信链路
 			//	// TODO 这里需要和调度器沟通，如果说group的Status中node属性已经指定了，就不需要让调度器再指定节点了
@@ -545,7 +546,8 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			//	logs.Info("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopyName])
 			//} else { // 跨域迁移，未指定迁移到哪个节点，这里直接生成一个事件通过调度器，里面放Group信息
 			// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息
-			domainName := extractNode(event.MigrationTarget)
+			logs.Info("-------------未部署副本-跨域")
+			domainName := event.MigrationTarget
 			groupCopy := NewGroupInfoCopy(group, false, "") //第二个参数表示是否为提前写入etcd，这里为否 ;第三个为创建的副本是写到本域还是跨域，主要是为了创建完副本，将该副本信息写到源任务当中的GroupSpec的CopyInfo当中，第四个主要是，如果指定了迁移到哪个节点，这个值就非空
 			// 遍历action和Runtime，依次创建
 			for _, actionReference := range group.Status.Actions {
@@ -576,7 +578,30 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			}
 			mc.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
 			// TODO 这里还是需要调度器选择完节点后生成一个事件来通知部署器，接下来要做的是，监听事件，这块的方法可以自己从group_handler.go当中拿，已经写好
-			//}
+
+			// 往跨域的etcd里写入group数据
+			groupTarget, ok := mc.groupTargets[domainName]
+			if !ok {
+				logs.Info("[groupTarget]键 'broker' 不存在==========================================")
+			}
+			_, err := groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+			if err != nil {
+				logs.Errorf("Create cross-domain group error:%v", err)
+			}
+			// 将跨域的连接写入到源任务的copyInfo当中
+			patchGroup, err := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"copy_info": map[string]string{groupCopy.Name: "broker"},
+				},
+			})
+			if err != nil {
+				logs.Errorf("Json Marshal failed, err:%v", err)
+			}
+			group, err = mc.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup) //注意的点：这里将更新好源Group重新赋值给源Group
+			if err != nil {
+				logs.Errorf("Patch group error-3:%v", err)
+			}
+			logs.Info("-------------未部署副本-跨域==============success")
 		}
 	}
 
@@ -589,11 +614,11 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	if err != nil {
 		logs.Errorf("Json Marshal failed, err:%v", err)
 	}
-	patchResult, err := mc.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+	group, err = mc.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup) //注意的点：这里将更新好源Group重新赋值给源Group
 	if err != nil {
-		logs.Errorf("Patch group error-2:%v", err)
+		logs.Errorf("Patch group error-7:%v", err)
 	}
-	logs.Infof("Source groupStatus.Phase:%v", patchResult.Status.Phase)
+	logs.Infof("Source groupStatus.Phase:%v", group.Status.Phase)
 	// 获取任务group中需要迁移的runtime的当前的执行状态，并将该状态写入到副本group上的runtimeStatus中的keyStatus，并关闭源group中Running的runtime   注意对于DeployCheck的任务，就不采用这种读取状态并写入的方式
 	// 注意：如果说Runtime本身没有细粒度控制的话，就不用再保存任务状态以及写入到副本任务上去
 	for _, actionReference := range group.Status.Actions {
@@ -707,6 +732,8 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 		logs.Infof("============直接启动副本Group===========")
 		groupCopy.Status.CopyStatus = "Starting"
 	}
+	//修改group_copy_info
+	//groupCopy.Spec.CopyInfo = make(map[string]string)
 	// 将groupStatus下的node属性进行设置
 	groupCopy.Status.Node = StringPtr("")
 	if groupCopy.Status.Phase != apis.Successed {
@@ -747,6 +774,8 @@ func NewActionInfoCopy(a *apis.Action) *apis.Action {
 	actionCopy.Name += "-copy"
 	// 将actionCopy的ResourceVersion置空，注意：这是必须的，否则报错
 	actionCopy.ResourceVersion = ""
+	// 将一些状态置为空 5.26
+	actionCopy.Status.Waiting = false
 
 	if actionCopy.Status.Phase != apis.Successed {
 		actionCopy.Status.Phase = apis.Unknown
@@ -778,6 +807,13 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 	// 将runtimeCopy的ResourceVersion置空，注意：这是必须的，否则报错
 	runtimeCopy.ResourceVersion = ""
 	runtimeCopy.Status.ProcessId = StringPtr("")
+	// 将一些状态置为空 5.26
+	runtimeCopy.Status.Waiting = false
+	runtimeCopy.Status.Starting = false
+	runtimeCopy.Status.Initing = false
+	runtimeCopy.Status.IsDependencySatisf = false
+	runtimeCopy.Status.IsParsed = false
+	runtimeCopy.Status.DepenPreparing = false
 
 	if runtimeCopy.Status.Phase != apis.Successed {
 		runtimeCopy.Status.Phase = apis.Unknown

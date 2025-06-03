@@ -15,34 +15,31 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
+	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
-// 适配从pve2 迁移到 broker -123
-// 修改1：
-// 调度器代码: 触发k8s-master节点资源不足事件,从k8s-master迁移到broker--k8s-master节点的调度器代码可能要修改一下，这里为了和2Group_SPod_ahead_switch_kuayu统一
-// k8s-master上的调度器修改成下面这样，broker下面的调度器不用修改代码，因为只有一个broker节点，不存在节点选择
-// host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
-//
-//	if strings.Contains(group.ObjectMeta.Name, "Train") {
-//		host = "CloudNode1"
-//	}
-//
-//	if strings.Contains(group.ObjectMeta.Name, "Reason") {
-//		host = "EdgeNode1"
-//	}
-//
+// 适配在云集群上进行任务迁移
+// 修改1：---这个可以不用改
+// 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
+// if strings.Contains(group.ObjectMeta.Name, "G1") {
+// host = "CloudNode1"
+// }
+// if strings.Contains(group.ObjectMeta.Name, "copy") {
+// host = "CloudNode2"
+// }
 // 修改2：调度器关闭score插件
-// 修改3：const NodeName = "k8s-master"
-// 修改4：group1_1Replicas := []int32{0, 1}
-// 修改5：recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration
+// 修改3：const NodeName = "CloudNode1"
+// 修改4：recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration
 var scheme = runtime.NewScheme()
+var group1_1Name = "G91"
 
-const NodeName = "k8s-master"
+const NodeName = "CloudNode1"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -58,14 +55,14 @@ func main() {
 	task1Name := "T1" // 第一个Task的Name
 
 	// group
-	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{0, 1}
+	// 第一个Task下的第一个GroupName
+	group1_1Replicas := []int32{1, 0}
 
 	// action
-	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+	action1_1_1Name := "A91" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
 
 	// runtime
-	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_1_1_1Name := "R91" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := true
 	runtime1_1_1_1FineGrainedControlPort := "5123"
@@ -78,7 +75,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
+			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -143,14 +140,18 @@ func main() {
 	// 生成UUID
 	m := manager.NewManager(clientSet)
 	u := uuid.Must(uuid.NewV7())
-	_, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-
+	str, err := analyzer.SerializeToJson(&task)
+	if err != nil {
+		return
+	}
+	fmt.Println(str)
 	logs.Info("下发一个任务======")
 	prompt()
-	postEventForMigrate(eventclient)
+	postEventForMigrate_ForGroup(eventclient)
 	prompt()
 
 }
@@ -185,7 +186,38 @@ func postEventForMigrate(client core.EventInterface) {
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
 	time.Sleep(10 * time.Millisecond)
-	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
+	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
+	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
+}
+func postEventForMigrate_ForGroup(client core.EventInterface) {
+	logs.Info("发送跨域迁移事件======")
+	// 这些配置实际在组件初始化时就已经完成
+	ctx := context.Background()
+	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
+	defer eventBroadcaster.Shutdown()
+	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: client})
+	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
+	clientSet := initClientSet(scheme)
+	m := manager.NewManager(clientSet)
+	groups, err := m.GetGroups("test")
+	if err != nil {
+		logs.Errorf("GetGroups err: %v", err)
+	}
+	var groupName string
+	for i := range groups.Items {
+		group := groups.Items[i]
+		if group.Spec.Name == group1_1Name && !strings.Contains(group.Name, "copy") && group.Status.Phase == apis.Running {
+			groupName = group.Name
+		}
+	}
+	group, err := m.GetGroup(groupName, "test")
+	if err != nil {
+		logs.Errorf("GetGroup err: %v", err)
+	}
+	// 通过 recorder.Event或 recorder.Eventf可以生成事件
+	time.Sleep(10 * time.Millisecond)
+
+	recorder.EventForMigration(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), "")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 
@@ -219,3 +251,4 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	}
 	return clientSet
 }
+
