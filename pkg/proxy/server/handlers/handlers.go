@@ -124,7 +124,7 @@ func (h *Handlers) InstallRuntimeHandlers(container *restful.Container) {
 
 func (h *Handlers) InstallSceneHandlers(container *restful.Container) {
 	// Scenes相关
-	gsh := scene.NewSceneHandler(h.ClientSet)
+	gsh := scene.NewScenesHandler(h.ClientSet)
 	// 查询Scenes
 	container.Add(gsh.NewGetWebService())
 
