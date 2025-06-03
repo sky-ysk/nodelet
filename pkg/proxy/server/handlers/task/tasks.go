@@ -30,15 +30,11 @@ func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
 func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Response) {
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+
+	labels := request.QueryParameter("Label")
 	var results *apis.TaskList
 	var err error
-	if namespace == "" {
-		//err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
-		//if err != nil {
-		//	logs.Errorf("failed to return a status code ")
-		//	return
-		//}
-		//return
+	if labels == "" {
 		results, err = h.manager.GetTasks(namespace)
 		if err != nil {
 			logs.Errorf("Get tasks with labels failed: %v", err)
@@ -50,28 +46,13 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 		}
 	}
 
-	labels := request.QueryParameter("Label")
-	//var results *apis.TaskList
-	//var err error
-	if labels == "" {
-		results, err = h.manager.GetTasks(namespace)
+	results, err = h.manager.FilterTasks(namespace, labels)
+	if err != nil {
+		logs.Errorf("Get tasks with labels failed: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
-			logs.Errorf("Get tasks with labels failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-		}
-	} else {
-		results, err = h.manager.FilterTasks(namespace, labels)
-		if err != nil {
-			logs.Errorf("Get tasks with labels failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
+			logs.Errorf("failed to return a status code")
+			return
 		}
 	}
 

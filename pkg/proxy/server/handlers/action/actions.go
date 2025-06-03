@@ -32,14 +32,9 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 	namespace := request.QueryParameter(NAME_SPACE)
 	var results *apis.ActionList
 	var err error
-	if namespace == "" {
-		//err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
-		//if err != nil {
-		//	logs.Errorf("failed to return a status code ")
-		//	return
-		//}
-		//return
 
+	labels := request.QueryParameter("Label")
+	if labels == "" {
 		results, err = h.manager.GetActions(namespace)
 		if err != nil {
 			logs.Errorf("Get actions failed: %v", err)
@@ -51,30 +46,14 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 		}
 	}
 
-	labels := request.QueryParameter("Label")
-	//var results *apis.ActionList
-	//var err error
-	if labels == "" {
-		results, err = h.manager.GetActions(namespace)
+	results, err = h.manager.FilterActions(namespace, labels)
+	if err != nil {
+		logs.Errorf("Get actions with labels failed: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
-			logs.Errorf("Get actions failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
+			logs.Errorf("failed to return a status code")
+			return
 		}
-	} else {
-		results, err = h.manager.FilterActions(namespace, labels)
-		if err != nil {
-			logs.Errorf("Get actions with labels failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-		}
-
 	}
 
 	err = response.WriteEntity(results)

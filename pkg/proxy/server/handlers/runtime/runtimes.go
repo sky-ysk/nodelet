@@ -30,15 +30,11 @@ func NewRuntimesHandler(clientSet *clients.ClientSet) *RuntimesHandler {
 func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restful.Response) {
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+
+	labels := request.QueryParameter("Label")
 	var results *apis.RuntimeList
 	var err error
-	if namespace == "" {
-		//err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
-		//if err != nil {
-		//	logs.Errorf("failed to return a status code ")
-		//	return
-		//}
-		//return
+	if labels == "" {
 		results, err = h.manager.GetRuntimes(namespace)
 		if err != nil {
 			logs.Errorf("Get runtimes failed: %v", err)
@@ -50,28 +46,13 @@ func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restfu
 		}
 	}
 
-	labels := request.QueryParameter("Label")
-	//var results *apis.RuntimeList
-	//var err error
-	if labels == "" {
-		results, err = h.manager.GetRuntimes(namespace)
+	results, err = h.manager.FilterRuntimes(namespace, labels)
+	if err != nil {
+		logs.Errorf("Get runtimes failed: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
 		if err != nil {
-			logs.Errorf("Get runtimes failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-		}
-	} else {
-		results, err = h.manager.FilterRuntimes(namespace, labels)
-		if err != nil {
-			logs.Errorf("Get runtimes failed: %v", err)
-			err := response.WriteError(http.StatusInternalServerError, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
+			logs.Errorf("failed to return a status code")
+			return
 		}
 	}
 
