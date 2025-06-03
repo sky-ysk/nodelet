@@ -10,13 +10,18 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
-// 创建Device
+// CreateDevice 创建Device
 func (m *Manager) CreateDevice(d *apis.Device, namespace string) (*apis.Device, error) {
 	// TODO: 写入Device的相关信息
 	// 使用参数Namespace覆盖
 	d.Namespace = namespace
 
-	d.Labels = map[string]string{}
+	// 构造Labels
+	if d.Spec.Desc != nil && d.Spec.Desc.Label != nil && len(d.Spec.Desc.Label) > 0 {
+		d.Labels = d.Spec.Desc.Label
+	} else {
+		d.Labels = map[string]string{}
+	}
 
 	// 根据设备能力打上Label
 	for _, a := range d.Spec.Abilities {
@@ -40,31 +45,38 @@ func (m *Manager) GetDevice(name string, namespace string) (*apis.Device, error)
 	c := m.GetDeviceClient(namespace)
 	d, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get device: %v", err)
 		return nil, fmt.Errorf("%w-%v", NotFound, err)
 	}
+
+	//
+	logs.Debugf("Get device: %v", d)
 	return d, nil
 }
 
-// 查询所有Device
-func (m *Manager) GetDevices(name string, namespace string) (*apis.DeviceList, error) {
+// GetDevices 查询所有Device
+func (m *Manager) GetDevices(namespace string) (*apis.DeviceList, error) {
 	c := m.GetDeviceClient(namespace)
 	d, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		logs.Errorf("Failed to get devices: %v", err)
 		return nil, err
 	}
+
+	logs.Debugf("Get devices success.")
 	return d, nil
 }
 
-// 根据Label查询Device
-func (m *Manager) FilterDevice(namespace string, label []string) (*apis.DeviceList, error) {
-	labelSelector := ""
-	for i, l := range label {
-		if i == 0 {
-			labelSelector = l
-		} else {
-			labelSelector += "," + l
-		}
-	}
+// FilterDevice 根据Label查询Device
+func (m *Manager) FilterDevice(namespace string, labelSelector string) (*apis.DeviceList, error) {
+	//labelSelector := ""
+	//for i, l := range label {
+	//	if i == 0 {
+	//		labelSelector = l
+	//	} else {
+	//		labelSelector += "," + l
+	//	}
+	//}
 
 	listOptions := metav1.ListOptions{
 		LabelSelector: labelSelector,
@@ -73,6 +85,7 @@ func (m *Manager) FilterDevice(namespace string, label []string) (*apis.DeviceLi
 	c := m.GetDeviceClient(namespace)
 	d, err := c.Client.List(context.TODO(), listOptions)
 	if err != nil {
+		logs.Errorf("Failed to get devices with labelselector: %s , error %v ", labelSelector, err)
 		return nil, err
 	}
 	return d, nil

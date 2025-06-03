@@ -23,6 +23,8 @@ type Manager struct {
 	RuntimeClients    map[string]core.RuntimeInterface
 	DeviceClients     map[string]core.DeviceInterface
 	EventClients      map[string]core.EventInterface
+	NodeClients       map[string]core.NodeInterface
+	SceneClients      map[string]core.SceneInterface
 	EventBroadCasters map[string]recorder.EventBroadcaster
 	Recoders          map[string]recorder.EventRecorder
 	ClientSet         *clients.ClientSet
@@ -37,6 +39,8 @@ func NewManager(clientSet *clients.ClientSet) *Manager {
 		ActionClients:     make(map[string]core.ActionInterface),
 		RuntimeClients:    make(map[string]core.RuntimeInterface),
 		DeviceClients:     make(map[string]core.DeviceInterface),
+		NodeClients:       make(map[string]core.NodeInterface),
+		SceneClients:      make(map[string]core.SceneInterface),
 		EventClients:      make(map[string]core.EventInterface),
 		EventBroadCasters: make(map[string]recorder.EventBroadcaster),
 		Recoders:          make(map[string]recorder.EventRecorder),
@@ -67,13 +71,21 @@ type DeviceClient struct {
 	Client core.DeviceInterface
 }
 
+type NodeClient struct {
+	Client core.NodeInterface
+}
+
+type SceneClient struct {
+	Client core.SceneInterface
+}
+
 type EventClient struct {
 	Client      core.EventInterface
 	Broadcaster recorder.EventBroadcaster
 	Recoder     recorder.EventRecorder
 }
 
-// 根据 namespace 获取 client，如果不存在则创建
+// GetWorkflowClient 根据 namespace 获取 client，如果不存在则创建
 func (m *Manager) GetWorkflowClient(namespace string) *WorkflowClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -93,7 +105,7 @@ func (m *Manager) GetWorkflowClient(namespace string) *WorkflowClient {
 	}
 }
 
-// 根据 namespace 获取 client，如果不存在则创建
+// GetTaskClient 根据 namespace 获取 client，如果不存在则创建
 func (m *Manager) GetTaskClient(namespace string) *TaskClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -113,7 +125,7 @@ func (m *Manager) GetTaskClient(namespace string) *TaskClient {
 	}
 }
 
-// 根据 namespace 获取 client，如果不存在则创建
+// GetGroupClient 根据 namespace 获取 client，如果不存在则创建
 func (m *Manager) GetGroupClient(namespace string) *GroupClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -133,7 +145,7 @@ func (m *Manager) GetGroupClient(namespace string) *GroupClient {
 	}
 }
 
-// 根据 namespace 获取 client，如果不存在则创建
+// GetActionClient 根据 namespace 获取 client，如果不存在则创建
 func (m *Manager) GetActionClient(namespace string) *ActionClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -153,7 +165,7 @@ func (m *Manager) GetActionClient(namespace string) *ActionClient {
 	}
 }
 
-// 根据 namespace 获取 client，如果不存在则创建
+// GetRuntimeClient 根据 namespace 获取 client，如果不存在则创建
 func (m *Manager) GetRuntimeClient(namespace string) *RuntimeClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -173,7 +185,7 @@ func (m *Manager) GetRuntimeClient(namespace string) *RuntimeClient {
 	}
 }
 
-// 根据 namespace 获取 client，如果不存在则创建
+// GetDeviceClient 根据 namespace 获取 client，如果不存在则创建
 func (m *Manager) GetDeviceClient(namespace string) *DeviceClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -193,7 +205,41 @@ func (m *Manager) GetDeviceClient(namespace string) *DeviceClient {
 	}
 }
 
-// 根据 namespace 获取 client，如果不存在则创建
+func (m *Manager) GetNodeClient(namespace string) *NodeClient {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if c, exists := m.NodeClients[namespace]; exists {
+		return &NodeClient{
+			Client: c,
+		}
+	}
+
+	newClient := m.ClientSet.Core().Nodes(namespace)
+	m.NodeClients[namespace] = newClient
+	return &NodeClient{
+		Client: newClient,
+	}
+}
+
+func (m *Manager) GetSceneClient(namespace string) *SceneClient {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if c, exists := m.SceneClients[namespace]; exists {
+		return &SceneClient{
+			Client: c,
+		}
+	}
+
+	newClient := m.ClientSet.Core().Scenes(namespace)
+	m.SceneClients[namespace] = newClient
+	return &SceneClient{
+		Client: newClient,
+	}
+}
+
+// GetEventClient 根据 namespace 获取 client，如果不存在则创建
 func (m *Manager) GetEventClient(namespace string) *EventClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
