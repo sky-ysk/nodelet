@@ -1,7 +1,6 @@
 package task
 
 import (
-	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -31,18 +30,29 @@ func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
 func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Response) {
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+	var results *apis.TaskList
+	var err error
 	if namespace == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		//err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		//if err != nil {
+		//	logs.Errorf("failed to return a status code ")
+		//	return
+		//}
+		//return
+		results, err = h.manager.GetTasks(namespace)
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
+			logs.Errorf("Get tasks with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
-		return
 	}
 
 	labels := request.QueryParameter("Label")
-	var results *apis.TaskList
-	var err error
+	//var results *apis.TaskList
+	//var err error
 	if labels == "" {
 		results, err = h.manager.GetTasks(namespace)
 		if err != nil {

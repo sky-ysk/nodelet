@@ -2,7 +2,6 @@ package device
 
 import (
 	"context"
-	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -65,16 +64,17 @@ func (h *DevicesHandler) GetDevices(request *restful.Request, response *restful.
 	c := &CurrentDevicesHandler{}
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
-	if namespace == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	} else {
-		c = h.GetClient(namespace)
-	}
+	//if namespace == "" {
+	//	err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//} else {
+	//	c = h.GetClient(namespace)
+	//}
+	c = h.GetClient(namespace)
 	results, err := c.client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Get devices failed: %v", err)

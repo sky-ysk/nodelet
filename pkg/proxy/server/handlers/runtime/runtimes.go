@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -31,18 +30,29 @@ func NewRuntimesHandler(clientSet *clients.ClientSet) *RuntimesHandler {
 func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restful.Response) {
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+	var results *apis.RuntimeList
+	var err error
 	if namespace == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		//err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		//if err != nil {
+		//	logs.Errorf("failed to return a status code ")
+		//	return
+		//}
+		//return
+		results, err = h.manager.GetRuntimes(namespace)
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
+			logs.Errorf("Get runtimes failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
-		return
 	}
 
 	labels := request.QueryParameter("Label")
-	var results *apis.RuntimeList
-	var err error
+	//var results *apis.RuntimeList
+	//var err error
 	if labels == "" {
 		results, err = h.manager.GetRuntimes(namespace)
 		if err != nil {
