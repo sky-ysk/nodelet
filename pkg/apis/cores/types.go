@@ -194,7 +194,9 @@ type NodeSpec struct {
 
 	// 设备固有资源
 	Resource map[string][]Item `json:"resource,omitempty" yaml:"resource"`
+
 	// TODO: 节点Label
+	Desc *Description `json:"desc,omitempty" yaml:"desc"`
 
 	//  +个字段（Cloud、Edge、End）
 	ClusterCategory string `json:"clusterCategory,omitempty" yaml:"clusterCategory"` //该节点所在的集群类别：1、云集群 2、边集群 3、端集群
@@ -838,7 +840,7 @@ const (
 
 // 对设备能力的描述
 type DeviceDesc struct {
-	Label []string `json:"label,omitempty" yaml:"label"`
+	Label map[string]string `json:"label,omitempty" yaml:"label"`
 	// +Optional
 	Docs *string `json:"docs,omitempty" yaml:"docs"`
 	// +Optional
@@ -1036,11 +1038,11 @@ type SceneSpec struct {
 	ExpectedProperty map[string]Property `json:"expected_property,omitempty" yaml:"expected_property"`
 
 	// 场景的描述（不可变属性）
-	Desc SceneDesc `json:"desc,omitempty" yaml:"desc"`
+	Desc *SceneDesc `json:"desc,omitempty" yaml:"desc"`
 }
 
 type SceneDesc struct {
-	Label []string          `json:"label,omitempty" yaml:"label"`
+	Label map[string]string `json:"label,omitempty" yaml:"label"`
 	Value map[string]string `json:"value,omitempty" yaml:"value"`
 }
 type SceneType string
