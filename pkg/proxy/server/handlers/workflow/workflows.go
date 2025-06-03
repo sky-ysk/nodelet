@@ -31,17 +31,30 @@ func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
 func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *restful.Response) {
 	// 从url中获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
-	if namespace == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
-
 	var results *apis.WorkflowList
 	var err error
+	if namespace == "" {
+		//err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		//if err != nil {
+		//	logs.Errorf("failed to return a status code ")
+		//	return
+		//}
+		//return
+
+		results, err = h.manager.GetWorkflows(namespace)
+		if err != nil {
+			logs.Errorf("Get workflows failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
+			return
+		}
+	}
+
+	//var results *apis.WorkflowList
+	//var err error
 	labels := request.QueryParameter("Label")
 	if labels == "" {
 		results, err = h.manager.GetWorkflows(namespace)
