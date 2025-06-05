@@ -34,25 +34,18 @@ func NewRuntimeHandler(clientSet *clients.ClientSet) *RuntimeHandler {
 }
 
 func (h *RuntimeHandler) GetRuntime(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(RUNTIME_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Runtime{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide runtime name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide runtime name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
@@ -74,18 +67,26 @@ func (h *RuntimeHandler) GetRuntime(request *restful.Request, response *restful.
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
-		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get runtime")
+	//if result.Name == name {
+	//	err = response.WriteEntity(result)
+	//	if err != nil {
+	//		err := response.WriteError(http.StatusOK, err)
+	//		if err != nil {
+	//			logs.Errorf("failed to return a status code")
+	//			return
+	//		}
+	//		return
+	//	}
+	//	logs.Debugf("Get runtime")
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, result)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	logs.Debugf("Get runtime success")
 }
 
 func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restful.Response) {
@@ -94,6 +95,19 @@ func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restf
 	err := request.ReadEntity(&ew)
 	if err != nil {
 		logs.Errorf("Failed to deserialize json data, error: %v", err)
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
+	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
+	//格式校验
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Runtime{})
+	if err != nil {
 		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -116,68 +130,75 @@ func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restf
 
 	logs.Info(*ew)
 
-	////格式校验
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Runtime{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//	// return
-	//}
-
 	// 产生UUID
 	timestamp := time.Now().Format("20060102T150405")
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
 	var result *apis.Runtime
-	if ew.Labels == nil {
-		// 创建runtime without label
-		result, err = h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create runtime fail ,failed write it to database , error: %v", err)
+	result, err = h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
+	if err != nil {
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error: %v", err1)
 			return
 		}
-	} else {
-		// 创建runtime with label
-		result, err = h.manager.CreateRuntimeWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create runtime with labels fail ,failed write it to database , error: %v", err)
-			return
-		}
+		logs.Errorf("Create runtime fail ,failed write it to database , error: %v", err)
+		return
 	}
+
+	// TODO: 改成使用spec中的label创建
+	//if ew.Labels == nil {
+	//	// 创建runtime without label
+	//	result, err = h.manager.CreateRuntime(ew.Spec, nil, namespace, UUID, "")
+	//	if err != nil {
+	//		err1 := response.WriteError(http.StatusInternalServerError, err)
+	//		if err1 != nil {
+	//			logs.Errorf("failed to return a status code ,error: %v", err1)
+	//			return
+	//		}
+	//		logs.Errorf("Create runtime fail ,failed write it to database , error: %v", err)
+	//		return
+	//	}
+	//} else {
+	//	// 创建runtime with label
+	//	result, err = h.manager.CreateRuntimeWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+	//	if err != nil {
+	//		err1 := response.WriteError(http.StatusInternalServerError, err)
+	//		if err1 != nil {
+	//			logs.Errorf("failed to return a status code ,error: %v", err1)
+	//			return
+	//		}
+	//		logs.Errorf("Create runtime with labels fail ,failed write it to database , error: %v", err)
+	//		return
+	//	}
+	//}
 
 	// 返回结果
-	err = response.WriteEntity(result)
+	//err = response.WriteEntity(result)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+	//
+	//err = response.WriteError(http.StatusOK, err)
+	//if err != nil {
+	//	logs.Errorf("failed to return a status code ")
+	//	return
+	//}
+
+	// 返回结果
+	err = response.WriteHeaderAndEntity(http.StatusCreated, result)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
-	err = response.WriteError(http.StatusOK, err)
-	if err != nil {
-		logs.Errorf("failed to return a status code ")
-		return
-	}
-
-	logs.Debugf("Create runtime %v unsupport", result)
+	logs.Debugf("Create runtime %v success", result)
 }
 
 func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restful.Response) {
@@ -194,10 +215,28 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 		return
 	}
 
+	// TODO：格式验证
+	// 格式验证
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Runtime{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	}
+
 	// 获取name
 	name := request.QueryParameter(RUNTIME_NAME)
 	if name == "" {
-		name = ew.Name
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
 	// 获取namespace
@@ -211,18 +250,6 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 		return
 	}
 
-	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Runtime{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
-
 	// 更新runtime
 	updatedRuntime, updateErr := h.manager.UpdateRuntime(name, namespace, ew)
 	if updateErr != nil {
@@ -230,6 +257,8 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(updateErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -251,22 +280,15 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 }
 
 func (h *RuntimeHandler) DeleteRuntime(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(RUNTIME_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Runtime{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide runtime name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide runtime name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
 	// 获取namespace
@@ -287,6 +309,8 @@ func (h *RuntimeHandler) DeleteRuntime(request *restful.Request, response *restf
 		logs.Errorf("delete runtime %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(err, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -318,11 +342,14 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	//	return
 	//}
 
-	// 获取更改的字符串
+	// TODO: 这似乎不是我改的，不过这么写确实也可以哈
+
+	// 获取json
 	bodyBytes, err := io.ReadAll(request.Request.Body)
 	if err != nil {
 		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
 		return
@@ -332,16 +359,12 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	// 获取name
 	name := request.QueryParameter(RUNTIME_NAME)
 	if name == "" {
-		//if req.Name != "" {
-		//	name = req.Name
-		//} else {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
 		}
-		//return
-		//}
+		return
 	}
 
 	// 获取namespace
@@ -372,6 +395,8 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(patchedErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -407,7 +432,7 @@ func (h *RuntimeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the runtime").DataType("string")).
 		Operation("Get runtime").
 		Returns(200, "OK", apis.Runtime{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST("/").
@@ -418,7 +443,7 @@ func (h *RuntimeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Runtime", "The json string of the Runtime object").DataType("string")).
 		Operation("Create runtime").
 		Returns(200, "OK", apis.Runtime{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT("/").
@@ -430,7 +455,7 @@ func (h *RuntimeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Runtime", "The json string of the Runtime object").DataType("string")).
 		Operation("Update runtime").
 		Returns(200, "OK", apis.Runtime{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.PATCH("/").
 		To(h.PatchRuntime).
@@ -441,7 +466,7 @@ func (h *RuntimeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Runtime", "The json string of the Runtime field").DataType("string")).
 		Operation("Patch runtime").
 		Returns(200, "OK", apis.Runtime{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.DELETE("/").
 		To(h.DeleteRuntime).
@@ -451,7 +476,7 @@ func (h *RuntimeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the runtime").DataType("string")).
 		Operation("Delete runtime").
 		Returns(200, "OK", apis.Runtime{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	return ws
 }

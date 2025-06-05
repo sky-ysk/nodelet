@@ -64,25 +64,18 @@ func NewNodeHandler(clientSet *clients.ClientSet) *NodeHandler {
 //}
 
 func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Node{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
@@ -104,18 +97,27 @@ func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Respon
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
-		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get node")
+	//if result.Name == name {
+	//	err = response.WriteEntity(result)
+	//	if err != nil {
+	//		err := response.WriteError(http.StatusOK, err)
+	//		if err != nil {
+	//			logs.Errorf("failed to return a status code")
+	//			return
+	//		}
+	//		return
+	//	}
+	//	logs.Debugf("Get node")
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, result)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	logs.Debugf("Get node success")
+
 }
 
 func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Response) {
@@ -259,6 +261,19 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 		return
 	}
 
+	// TODO: 格式校验
+	//格式校验
+	res, err := analyzer.SerializeToJson(n)
+	_, err = analyzer.Deserialize(res, apis.Node{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
 	// 获取 namespace
 	namespace := n.Namespace
 	if namespace == "" {
@@ -273,26 +288,12 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 
 	logs.Info(*n)
 
-	//格式校验
-	res, err := analyzer.SerializeToJson(n)
-	_, err = analyzer.Deserialize(res, apis.Node{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
-
 	// 产生UUID
 	timestamp := time.Now().Format("20060102T150405")
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
 	var result *apis.Node
-
-	// 创建node without labels
 	result, err = h.manager.CreateNode(n.Spec, namespace, UUID)
 	if err != nil {
 		err1 := response.WriteError(http.StatusInternalServerError, err)
@@ -305,19 +306,26 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 	}
 
 	// 返回结果
-	err = response.WriteEntity(result)
-	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//err = response.WriteEntity(result)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+	//
+	//err = response.WriteError(http.StatusOK, err)
+	//if err != nil {
+	//	logs.Errorf("failed to return a status code ")
+	//	return
+	//}
 
-	err = response.WriteError(http.StatusOK, err)
+	// 返回结果
+	err = response.WriteHeaderAndEntity(http.StatusCreated, result)
 	if err != nil {
-		logs.Errorf("failed to return a status code ")
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
@@ -451,10 +459,27 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 		return
 	}
 
+	// 格式验证
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Node{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	}
+
 	// 获取name
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		name = ew.Name
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
 	// 获取namespace
@@ -468,18 +493,6 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 		return
 	}
 
-	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Node{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
-
 	// 更新node
 	updatedNode, updateErr := h.manager.UpdateNode(name, namespace, ew)
 	if updateErr != nil {
@@ -487,6 +500,8 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(updateErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -572,22 +587,15 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 	//	logs.Debugf("delete node : %v", name)
 	//}
 
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Node{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide node name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
 	// 获取namespace
@@ -608,6 +616,8 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 		logs.Errorf("delete node %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(err, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -732,16 +742,12 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 	// 获取name
 	name := request.QueryParameter(NODE_NAME)
 	if name == "" {
-		if req.Name != "" {
-			name = req.Name
-		} else {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		return
 	}
 
 	// 获取namespace
@@ -755,7 +761,7 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	// 序列化PatchNode
+	// 序列化Patch node
 	patchNode, err := analyzer.SerializeToJson(req)
 	if err != nil {
 		logs.Errorf("Serialize patch node error: %v", err)
@@ -772,6 +778,8 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(patchedErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -807,7 +815,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Operation("Get node").
 		Returns(200, "OK", apis.Node{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST(fmt.Sprint("/")).
@@ -819,7 +827,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Returns(200, "OK", apis.Node{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT(fmt.Sprintf("/")).
@@ -831,7 +839,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Operation("Update node").
 		Returns(200, "OK", apis.Node{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PATCH(fmt.Sprintf("/")).
@@ -843,7 +851,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Node", "The json string of the Node object").DataType("string")).
 		Operation("Patch node").
 		Returns(200, "OK", apis.Node{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.DELETE(fmt.Sprintf("/")).
@@ -854,7 +862,7 @@ func (h *NodeHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the node").DataType("string")).
 		Operation("Delete node").
 		Returns(200, "OK", apis.Node{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	return ws
 }

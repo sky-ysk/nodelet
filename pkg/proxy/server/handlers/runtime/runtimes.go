@@ -28,12 +28,13 @@ func NewRuntimesHandler(clientSet *clients.ClientSet) *RuntimesHandler {
 }
 
 func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restful.Response) {
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 
-	labels := request.QueryParameter("Label")
 	var results *apis.RuntimeList
 	var err error
+
+	labels := request.QueryParameter("Label")
 	if labels == "" {
 		results, err = h.manager.GetRuntimes(namespace)
 		if err != nil {
@@ -44,26 +45,33 @@ func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restfu
 				return
 			}
 		}
-	}
-
-	results, err = h.manager.FilterRuntimes(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get runtimes failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterRuntimes(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get runtimes failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
-	err = response.WriteEntity(results)
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
 	logs.Debugf("Get runtimes")
 }
 
@@ -81,7 +89,7 @@ func (h *RuntimesHandler) NewGetWebService() *restful.WebService {
 		To(h.GetRuntimes).
 		Operation("Get runtimes").
 		Returns(200, "OK", []apis.Runtime{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 	return ws
 }

@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -27,22 +26,28 @@ func (m *Manager) CreateDevice(d *apis.Device, namespace string) (*apis.Device, 
 	for _, a := range d.Spec.Abilities {
 		d.Labels[a] = a
 	}
+
 	// 根据设备的厂商打上Label
 	if d.Spec.Desc != nil && d.Spec.Desc.Maker != nil {
 		d.Labels["Maker"] = *d.Spec.Desc.Maker
 	}
+
 	//
 	c := m.GetDeviceClient(namespace)
 
 	fd, err := c.Client.Create(context.TODO(), d, metav1.CreateOptions{})
 	if err != nil {
-		return nil, errors.New("Failed to create device: " + err.Error())
+		logs.Errorf("Failed to create device: %v", err)
+		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
 	}
+
+	logs.Debugf("Created device: %v", fd)
 	return fd, nil
 }
 
 func (m *Manager) GetDevice(name string, namespace string) (*apis.Device, error) {
 	c := m.GetDeviceClient(namespace)
+
 	d, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get device: %v", err)
@@ -57,10 +62,11 @@ func (m *Manager) GetDevice(name string, namespace string) (*apis.Device, error)
 // GetDevices 查询所有Device
 func (m *Manager) GetDevices(namespace string) (*apis.DeviceList, error) {
 	c := m.GetDeviceClient(namespace)
+
 	d, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get devices: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	logs.Debugf("Get devices success.")
@@ -69,25 +75,19 @@ func (m *Manager) GetDevices(namespace string) (*apis.DeviceList, error) {
 
 // FilterDevices 根据Label查询Device
 func (m *Manager) FilterDevices(namespace string, labelSelector string) (*apis.DeviceList, error) {
-	//labelSelector := ""
-	//for i, l := range label {
-	//	if i == 0 {
-	//		labelSelector = l
-	//	} else {
-	//		labelSelector += "," + l
-	//	}
-	//}
+	c := m.GetDeviceClient(namespace)
 
 	listOptions := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
 
-	c := m.GetDeviceClient(namespace)
 	d, err := c.Client.List(context.TODO(), listOptions)
 	if err != nil {
 		logs.Errorf("Failed to get devices with labelselector: %s , error %v ", labelSelector, err)
-		return nil, err
+		return nil, fmt.Errorf("%v-%w", InternalServerError, err)
 	}
+
+	logs.Infof("Get devices with label success.")
 	return d, nil
 }
 
@@ -105,7 +105,7 @@ func (m *Manager) UpdateDevice(namespace string, name string, a *apis.Device) (*
 	updatedDevice, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update device %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, fmt.Errorf("%w-%v", InternalServerError, updateErr)
 	}
 
 	//
@@ -128,7 +128,7 @@ func (m *Manager) PatchDevice(name string, namespace string, patchDevice []byte)
 	patchedDevice, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchDevice), metav1.PatchOptions{})
 	if err != nil {
 		logs.Errorf("patch device %s error: %v", name, err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	//
@@ -150,7 +150,7 @@ func (m *Manager) DeleteDevice(name string, namespace string) error {
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("delete device %s error: %v", name, err)
-		return err
+		return fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	//

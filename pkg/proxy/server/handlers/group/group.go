@@ -34,25 +34,18 @@ func NewGroupHandler(clientSet *clients.ClientSet) *GroupHandler {
 }
 
 func (h *GroupHandler) GetGroup(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Group{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
@@ -74,18 +67,26 @@ func (h *GroupHandler) GetGroup(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
-		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get group")
+	//if result.Name == name {
+	//	err = response.WriteEntity(result)
+	//	if err != nil {
+	//		err := response.WriteError(http.StatusOK, err)
+	//		if err != nil {
+	//			logs.Errorf("failed to return a status code")
+	//			return
+	//		}
+	//		return
+	//	}
+	//	logs.Debugf("Get group success")
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, result)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	logs.Debugf("Get group success")
 }
 
 func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.Response) {
@@ -95,6 +96,31 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 	if err != nil {
 		logs.Errorf("Failed to deserialize json data, error: %v", err)
 		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
+	// TODO: 格式校验
+	////格式校验
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Group{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
+	// TODO：循环依赖检查
+	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
+	dependencyErr := util.CheckActionCircularDependency(ew.Spec)
+	if dependencyErr != nil {
+		err := response.WriteError(http.StatusBadRequest, dependencyErr)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -116,71 +142,76 @@ func (h *GroupHandler) CreateGroup(request *restful.Request, response *restful.R
 
 	logs.Info(*ew)
 
-	////格式校验
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Group{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//	// return
-	//}
-
 	// 产生UUID
 	timestamp := time.Now().Format("20060102T150405")
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
-	var result *apis.Group
-
+	// TODO：使用spec字段中的label创建label
 	// 创建group without label
-	if ew.Labels == nil {
-		// 创建group
-		result, err = h.manager.CreateGroup(ew.Spec, nil, namespace, UUID, "")
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create group fail ,failed write it to database , error: %v", err)
-			return
-		}
-	} else {
-		// 创建group with label
-		result, err = h.manager.CreateGroupWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create group  with label  fail ,failed write it to database , error: %v", err)
-			return
-		}
+	//if ew.Labels == nil {
+	//	// 创建group
+	//	result, err = h.manager.CreateGroup(ew.Spec, nil, namespace, UUID, "")
+	//	if err != nil {
+	//		err1 := response.WriteError(http.StatusInternalServerError, err)
+	//		if err1 != nil {
+	//			logs.Errorf("failed to return a status code ,error: %v", err1)
+	//			return
+	//		}
+	//		logs.Errorf("Create group fail ,failed write it to database , error: %v", err)
+	//		return
+	//	}
+	//} else {
+	//	// 创建group with label
+	//	result, err = h.manager.CreateGroupWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+	//	if err != nil {
+	//		err1 := response.WriteError(http.StatusInternalServerError, err)
+	//		if err1 != nil {
+	//			logs.Errorf("failed to return a status code ,error: %v", err1)
+	//			return
+	//		}
+	//		logs.Errorf("Create group  with label  fail ,failed write it to database , error: %v", err)
+	//		return
+	//	}
+	//
+	//}
 
+	var result *apis.Group
+	result, err = h.manager.CreateGroup(ew.Spec, nil, namespace, UUID, "")
+	if err != nil {
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error: %v", err1)
+			return
+		}
+		logs.Errorf("Create group fail ,failed write it to database , error: %v", err)
+		return
 	}
 
 	// 返回结果
-	err = response.WriteEntity(result)
+	//err = response.WriteEntity(result)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+	//
+	//err = response.WriteError(http.StatusOK, err)
+	//if err != nil {
+	//	logs.Errorf("failed to return a status code ")
+	//	return
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusCreated, result)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
-	err = response.WriteError(http.StatusOK, err)
-	if err != nil {
-		logs.Errorf("failed to return a status code ")
-		return
-	}
-
-	logs.Debugf("Create group %v ", result)
+	logs.Debugf("Create group %v success", result)
 }
 
 func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.Response) {
@@ -199,10 +230,40 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 		return
 	}
 
+	// TODO: 格式校验
+	// 格式校验
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Group{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
+	// TODO：循环依赖检查
+	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
+	dependencyErr := util.CheckActionCircularDependency(ew.Spec)
+	if dependencyErr != nil {
+		err := response.WriteError(http.StatusBadRequest, dependencyErr)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
 	// 获取name
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		name = ew.Name
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
 	// 获取namespace
@@ -216,18 +277,7 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 		return
 	}
 
-	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Group{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
-
+	// TODO: 完善一下没有返回状态部分的是什么情况 ， 暂时500
 	// 更新group
 	updatedGroup, updateErr := h.manager.UpdateGroup(name, namespace, ew)
 	if updateErr != nil {
@@ -235,6 +285,8 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(updateErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -256,22 +308,15 @@ func (h *GroupHandler) UpdateGroup(request *restful.Request, response *restful.R
 }
 
 func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Group{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide group name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
 	// 获取namespace
@@ -292,6 +337,8 @@ func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.R
 		logs.Errorf("delete group %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(err, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -310,7 +357,7 @@ func (h *GroupHandler) DeleteGroup(request *restful.Request, response *restful.R
 }
 
 func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Response) {
-	// 获取json
+	// 获取 json
 	req := &apis.Group{}
 	err := request.ReadEntity(&req)
 	if err != nil {
@@ -323,31 +370,15 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 		return
 	}
 
-	// TODO：循环依赖检查
-	// 增加一个简易版的依赖检查，无法检查a1->a2->a3->a1这种
-	dependencyErr := util.CheckActionCircularDependency(req.Spec)
-	if dependencyErr != nil {
-		err := response.WriteError(http.StatusBadRequest, dependencyErr)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
-
 	// 获取name
 	name := request.QueryParameter(GROUP_NAME)
 	if name == "" {
-		if req.Name != "" {
-			name = req.Name
-		} else {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		return
 	}
 
 	// 获取namespace
@@ -361,7 +392,7 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 		return
 	}
 
-	// 序列化Patchgroup
+	// 序列化Patch group
 	patchGroup, err := analyzer.SerializeToJson(req)
 	if err != nil {
 		logs.Errorf("Serialize patch group error: %v", err)
@@ -378,6 +409,8 @@ func (h *GroupHandler) PatchGroup(request *restful.Request, response *restful.Re
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(patchedErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -413,7 +446,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the group").DataType("string")).
 		Operation("Get group").
 		Returns(200, "OK", apis.Group{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST("/").
@@ -424,7 +457,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Group", "The json string of the group object").DataType("string")).
 		Operation("Create group").
 		Returns(200, "OK", apis.Group{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT("/").
@@ -436,7 +469,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Group", "The json string of the Group object").DataType("string")).
 		Operation("Update group").
 		Returns(200, "OK", apis.Group{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.PATCH("/").
 		To(h.PatchGroup).
@@ -447,7 +480,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Group", "The json string of the Group field").DataType("string")).
 		Operation("Patch group").
 		Returns(200, "OK", apis.Group{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.DELETE("/").
 		To(h.DeleteGroup).
@@ -457,7 +490,7 @@ func (h *GroupHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the group").DataType("string")).
 		Operation("Delete group").
 		Returns(200, "OK", apis.Group{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	return ws

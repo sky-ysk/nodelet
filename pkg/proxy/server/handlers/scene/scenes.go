@@ -28,8 +28,9 @@ func NewScenesHandler(clientSet *clients.ClientSet) *ScenesHandler {
 }
 
 func (h *ScenesHandler) GetScenes(request *restful.Request, response *restful.Response) {
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+
 	var results *apis.SceneList
 	var err error
 
@@ -44,26 +45,33 @@ func (h *ScenesHandler) GetScenes(request *restful.Request, response *restful.Re
 				return
 			}
 		}
-	}
-
-	results, err = h.manager.FilterScenes(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get scenes with labels failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterScenes(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get scenes with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
-	err = response.WriteEntity(results)
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
 	logs.Debugf("Get scenes ")
 }
 
@@ -81,7 +89,7 @@ func (h *ScenesHandler) NewGetWebService() *restful.WebService {
 		To(h.GetScenes).
 		Operation("Get scenes").
 		Returns(200, "OK", []apis.Scene{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	return ws

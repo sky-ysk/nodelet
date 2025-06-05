@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -13,7 +14,7 @@ func (m *Manager) CreateNode(ns apis.NodeSpec, namespace string, uuid string) (*
 	n := apis.Node{}
 
 	// 构造名称
-	n.Name = uuid
+	n.Name = ns.NodeName + "-" + uuid
 
 	// 构造Namespace
 	if namespace == "" {
@@ -54,10 +55,11 @@ func (m *Manager) CreateNode(ns apis.NodeSpec, namespace string, uuid string) (*
 
 func (m *Manager) GetNode(name string, namespace string) (*apis.Node, error) {
 	c := m.GetNodeClient(namespace)
+
 	n, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get node: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", NotFound, err)
 	}
 
 	//
@@ -67,14 +69,33 @@ func (m *Manager) GetNode(name string, namespace string) (*apis.Node, error) {
 
 func (m *Manager) GetNodes(namespace string) (*apis.NodeList, error) {
 	c := m.GetNodeClient(namespace)
+
 	n, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get nodes: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	logs.Debugf("Get nodes success. ")
 	return n, nil
+}
+
+// FilterNodes 根据Label查询nodes
+func (m *Manager) FilterNodes(namespace string, labelSelector string) (*apis.NodeList, error) {
+	c := m.GetNodeClient(namespace)
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
+	ns, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		logs.Errorf("Failed to get nodes with labelselector: %s , error %v ", labelSelector, err)
+		return nil, fmt.Errorf("%v-%w", InternalServerError, err)
+	}
+
+	logs.Infof("Get nodes with label success.")
+	return ns, nil
 }
 
 func (m *Manager) UpdateNode(name string, namespace string, n *apis.Node) (*apis.Node, error) {
@@ -91,7 +112,7 @@ func (m *Manager) UpdateNode(name string, namespace string, n *apis.Node) (*apis
 	updatedNode, updateErr := c.Client.Update(context.TODO(), n, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update node %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, fmt.Errorf("%w-%v", InternalServerError, updateErr)
 	}
 
 	//
@@ -114,7 +135,7 @@ func (m *Manager) PatchNode(name string, namespace string, patchNode []byte) (*a
 	patchedNode, updateErr := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchNode), metav1.PatchOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update node %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, fmt.Errorf("%w-%v", InternalServerError, updateErr)
 	}
 
 	//
@@ -137,24 +158,9 @@ func (m *Manager) DeleteNode(name string, namespace string) error {
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("delete node %s error: %v", name, err)
-		return err
+		return fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	logs.Debugf("Delete node: %v", name)
 	return nil
-}
-
-// Filternodes 根据Label查询nodes
-func (m *Manager) FilterNodes(namespace string, labelSelector string) (*apis.NodeList, error) {
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labelSelector,
-	}
-
-	c := m.GetNodeClient(namespace)
-	ns, err := c.Client.List(context.TODO(), listOptions)
-	if err != nil {
-		return nil, err
-	}
-	return ns, nil
 }

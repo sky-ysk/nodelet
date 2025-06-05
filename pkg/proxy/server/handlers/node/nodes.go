@@ -30,7 +30,7 @@ var _ Handler = &NodesHandler{}
 //	}
 //}
 
-// NewNodeHandler 创建一个 NodeHandler
+// NewNodesHandler 创建一个 NodeHandler
 func NewNodesHandler(clientSet *clients.ClientSet) *NodesHandler {
 	return &NodesHandler{
 		manager:   manager.NewManager(clientSet),
@@ -97,8 +97,9 @@ func (h *NodesHandler) GetNodes(request *restful.Request, response *restful.Resp
 	//}
 	//logs.Debugf("Get nodes")
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+
 	var results *apis.NodeList
 	var err error
 
@@ -113,26 +114,33 @@ func (h *NodesHandler) GetNodes(request *restful.Request, response *restful.Resp
 				return
 			}
 		}
-	}
-
-	results, err = h.manager.FilterNodes(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get nodes with labels failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterNodes(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get nodes with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
-	err = response.WriteEntity(results)
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
 	logs.Debugf("Get nodes ")
 }
 
@@ -151,7 +159,7 @@ func (h *NodesHandler) NewGetWebService() *restful.WebService {
 		To(h.GetNodes).
 		Operation("Get nodes").
 		Returns(200, "OK", []apis.Node{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	return ws

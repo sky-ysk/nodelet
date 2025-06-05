@@ -62,25 +62,18 @@ func NewDeviceHandler(clientSet *clients.ClientSet) *DeviceHandler {
 //}
 
 func (h *DeviceHandler) GetDevice(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(DEVICE_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Device{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide device name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide device name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAMESPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
@@ -102,18 +95,25 @@ func (h *DeviceHandler) GetDevice(request *restful.Request, response *restful.Re
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
-		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get device")
+	// if result.Name == name {}
+
+	//err = response.WriteEntity(result)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusOK, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, result)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	logs.Debugf("Get device success")
 }
 
 func (h *DeviceHandler) CreateDevice(request *restful.Request, response *restful.Response) {
@@ -258,6 +258,19 @@ func (h *DeviceHandler) CreateDevice(request *restful.Request, response *restful
 		return
 	}
 
+	// TODO: 增加device的json schema约束
+	//格式校验
+	res, err := analyzer.SerializeToJson(d)
+	_, err = analyzer.Deserialize(res, apis.Device{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
 	// 获取 namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	// namespace := d.Namespace
@@ -273,26 +286,7 @@ func (h *DeviceHandler) CreateDevice(request *restful.Request, response *restful
 
 	logs.Info(*d)
 
-	////格式校验
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Device{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//	// return
-	//}
-
-	// 产生UUID
-	// TODO: device 不需要生成名字吗，manager里面没有
-	//timestamp := time.Now().Format("20060102T150405")
-	//randomStr := uuid.New().String()[:5]
-	//UUID := timestamp + "-" + randomStr
-
 	var result *apis.Device
-
 	result, err = h.manager.CreateDevice(d, namespace)
 	if err != nil {
 		err1 := response.WriteError(http.StatusInternalServerError, err)
@@ -305,23 +299,24 @@ func (h *DeviceHandler) CreateDevice(request *restful.Request, response *restful
 	}
 
 	// 返回结果
-	err = response.WriteEntity(result)
+	//err = response.WriteEntity(result)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+	//response.WriteHeader(http.StatusOK)
+
+	err = response.WriteHeaderAndEntity(http.StatusCreated, result)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
-	err = response.WriteError(http.StatusOK, err)
-	if err != nil {
-		logs.Errorf("failed to return a status code ")
-		return
-	}
-
-	logs.Debugf("Create device %v unsupport", result)
+	logs.Debugf("Create device %v ", result)
 }
 
 func (h *DeviceHandler) UpdateDevice(request *restful.Request, response *restful.Response) {
@@ -450,10 +445,27 @@ func (h *DeviceHandler) UpdateDevice(request *restful.Request, response *restful
 		return
 	}
 
+	// 格式验证
+	res, err := analyzer.SerializeToJson(d)
+	_, err = analyzer.Deserialize(res, apis.Device{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	}
+
 	// 获取name
 	name := request.QueryParameter(DEVICE_NAME)
 	if name == "" {
-		name = d.Name
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
 	// 获取namespace
@@ -467,18 +479,6 @@ func (h *DeviceHandler) UpdateDevice(request *restful.Request, response *restful
 		return
 	}
 
-	// 格式验证
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Device{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code ")
-	//		return
-	//	}
-	//	return
-	//}
-
 	// 更新device
 	updatedDevice, updateErr := h.manager.UpdateDevice(name, namespace, d)
 	if updateErr != nil {
@@ -486,6 +486,8 @@ func (h *DeviceHandler) UpdateDevice(request *restful.Request, response *restful
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(updateErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -574,22 +576,15 @@ func (h *DeviceHandler) DeleteDevice(request *restful.Request, response *restful
 	//
 	//}
 
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(DEVICE_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Device{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide device name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide device name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
 	// 获取namespace
@@ -611,6 +606,8 @@ func (h *DeviceHandler) DeleteDevice(request *restful.Request, response *restful
 		logs.Errorf("delete device %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(err, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -735,16 +732,12 @@ func (h *DeviceHandler) PatchDevice(request *restful.Request, response *restful.
 	// 获取name
 	name := request.QueryParameter(DEVICE_NAME)
 	if name == "" {
-		if req.Name != "" {
-			name = req.Name
-		} else {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		return
 	}
 
 	// 获取namespace
@@ -775,6 +768,8 @@ func (h *DeviceHandler) PatchDevice(request *restful.Request, response *restful.
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(patchedErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -805,58 +800,57 @@ func (h *DeviceHandler) NewGetWebService() *restful.WebService {
 
 	ws.Route(ws.GET("/").
 		To(h.GetDevice).
-		Doc("Get a device with name").
+		Doc("Get a device with name and namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Operation("Get device").
 		Returns(200, "OK", apis.Device{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST("/").
 		To(h.CreateDevice).
-		Doc("Create a device").
+		Doc("Create a device with namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Param(ws.BodyParameter("Device", "The json string of the Device object").DataType("string")).
 		Operation("Create device").
 		Returns(200, "OK", apis.Device{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT("/").
 		To(h.UpdateDevice).
-		Doc("Update a device").
+		Doc("Update a device with name and namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Param(ws.BodyParameter("Device", "The json string of the Device object").DataType("string")).
 		Operation("Update device").
 		Returns(200, "OK", apis.Device{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.PATCH("/").
 		To(h.PatchDevice).
-		Doc("Patch a device").
+		Doc("Patch a device with name and namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Param(ws.BodyParameter("Device", "The json string of the Device field").DataType("string")).
 		Operation("Patch device").
 		Returns(200, "OK", apis.Device{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.DELETE("/").
 		To(h.DeleteDevice).
-		Doc("Delete a device").
+		Doc("Delete a device with name and namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the device").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the device").DataType("string")).
 		Operation("Delete device").
 		Returns(200, "OK", apis.Device{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	return ws
 }

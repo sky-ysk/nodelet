@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	NotFound = errors.New("404 Not Found")
+	NotFound            = errors.New("404 Not Found")
+	InternalServerError = errors.New("500 Internal Server Error")
 )
 
 type Manager struct {

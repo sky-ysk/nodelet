@@ -2,18 +2,20 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
+	"time"
 )
 
 func (m *Manager) CreateScene(ss apis.SceneSpec, namespace string, uuid string) (*apis.Scene, error) {
 	// 临时创建一个Scene对象
 	s := apis.Scene{}
 
-	// 构造名称
-	s.Name = uuid
+	// TODO: 确认scene名字生成方式
+	s.Name = ss.SceneID + " " + uuid
 
 	// 构造Namespace
 	if namespace == "" {
@@ -32,20 +34,28 @@ func (m *Manager) CreateScene(ss apis.SceneSpec, namespace string, uuid string) 
 		s.Labels = map[string]string{}
 	}
 
+	// 增加scene标签
+	s.Labels["Type"] = string(ss.Type)
+
+	// TODO:确认是否需要uuid ， 它spec中有一个id
+	s.Labels["uuid"] = uuid
+
 	// 复制Spec
 	s.Spec = ss
 
 	// 构造Status
 	s.Status = apis.SceneStatus{}
 
-	s.Labels["uuid"] = uuid
+	//
+	s.Status.UpdateMethod = "Create"
+	s.Status.UpdateTime = apis.Time{Time: time.Now()}
 
 	c := m.GetSceneClient(s.Namespace)
 
 	scene, err := c.Client.Create(context.TODO(), &s, metav1.CreateOptions{})
 	if err != nil {
 		logs.Errorf("Failed to create scene: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	logs.Debugf("Created scene: %v", scene)
@@ -54,10 +64,11 @@ func (m *Manager) CreateScene(ss apis.SceneSpec, namespace string, uuid string) 
 
 func (m *Manager) GetScene(name string, namespace string) (*apis.Scene, error) {
 	c := m.GetSceneClient(namespace)
+
 	n, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get Scene: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", NotFound, err)
 	}
 
 	//
@@ -67,14 +78,33 @@ func (m *Manager) GetScene(name string, namespace string) (*apis.Scene, error) {
 
 func (m *Manager) GetScenes(namespace string) (*apis.SceneList, error) {
 	c := m.GetSceneClient(namespace)
+
 	n, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get scenes: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	logs.Debugf("Get scenes success. ")
 	return n, nil
+}
+
+// FilterScenes 根据Label查询scenes
+func (m *Manager) FilterScenes(namespace string, labelSelector string) (*apis.SceneList, error) {
+	c := m.GetSceneClient(namespace)
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
+	ns, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		logs.Errorf("Failed to get scenes with labelselector: %s , error %v ", labelSelector, err)
+		return nil, fmt.Errorf("%v-%w", InternalServerError, err)
+	}
+
+	logs.Infof("Get scenes with label success.")
+	return ns, nil
 }
 
 func (m *Manager) UpdateScene(name string, namespace string, n *apis.Scene) (*apis.Scene, error) {
@@ -91,7 +121,7 @@ func (m *Manager) UpdateScene(name string, namespace string, n *apis.Scene) (*ap
 	updatedScene, updateErr := c.Client.Update(context.TODO(), n, metav1.UpdateOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update scene %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, fmt.Errorf("%w-%v", InternalServerError, updateErr)
 	}
 
 	//
@@ -114,7 +144,7 @@ func (m *Manager) PatchScene(name string, namespace string, patchScene []byte) (
 	patchedScene, updateErr := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patchScene), metav1.PatchOptions{})
 	if updateErr != nil {
 		logs.Errorf("Update scene %s error: %v", name, updateErr)
-		return nil, updateErr
+		return nil, fmt.Errorf("%w-%v", InternalServerError, updateErr)
 	}
 
 	//
@@ -137,24 +167,9 @@ func (m *Manager) DeleteScene(name string, namespace string) error {
 	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		logs.Errorf("delete scene %s error: %v", name, err)
-		return err
+		return fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
 	logs.Debugf("Delete scene: %v", name)
 	return nil
-}
-
-// FilterScenes 根据Label查询scenes
-func (m *Manager) FilterScenes(namespace string, labelSelector string) (*apis.SceneList, error) {
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labelSelector,
-	}
-
-	c := m.GetSceneClient(namespace)
-	ns, err := c.Client.List(context.TODO(), listOptions)
-	if err != nil {
-		return nil, err
-	}
-	return ns, nil
 }

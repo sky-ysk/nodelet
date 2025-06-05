@@ -36,25 +36,18 @@ func NewWorkflowHandler(clientSet *clients.ClientSet) *WorkflowHandler {
 }
 
 func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(WORKFLOW_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Workflow{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
@@ -76,18 +69,26 @@ func (h *WorkflowHandler) GetWorkflow(request *restful.Request, response *restfu
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
-		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get workflow")
+	//if result.Name == name {
+	//	err = response.WriteEntity(result)
+	//	if err != nil {
+	//		err := response.WriteError(http.StatusOK, err)
+	//		if err != nil {
+	//			logs.Errorf("failed to return a status code")
+	//			return
+	//		}
+	//		return
+	//	}
+	//	logs.Debugf("Get workflow")
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, result)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	logs.Debugf("Get workflow success")
 }
 
 func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *restful.Response) {
@@ -104,6 +105,19 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 		return
 	}
 	logs.Info(*ew)
+
+	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
+	//格式校验
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Action{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
 
 	// TODO：循环依赖检查
 	// 增加一个简易版的依赖检查，无法检查a1->a2->a3->a1这种
@@ -139,46 +153,64 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 	logs.Debugf("Create workflow  success, workflow id : %s ", UUID)
 
 	var result *apis.Workflow
-	if ew.Labels == nil {
-		// 创建Workflow without labels
-		result, err = h.manager.CreateWorkflow(ew.Spec, namespace, UUID)
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create workflow fail ,failed write it to database , error: %v", err)
-			return
-		}
-	} else {
-		// 创建Workflow with labels
-		result, err = h.manager.CreateWorkflowWithLabels(ew.Spec, namespace, UUID, ew.Labels)
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create workflow with labels fail ,failed write it to database , error: %v", err)
-			return
-		}
-	}
-
-	// 返回结果
-	err = response.WriteEntity(result)
+	result, err = h.manager.CreateWorkflow(ew.Spec, namespace, UUID)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error: %v", err1)
 			return
 		}
+		logs.Errorf("Create workflow fail ,failed write it to database , error: %v", err)
 		return
 	}
 
-	err = response.WriteError(http.StatusOK, err)
+	// TODO: 改成使用spec中的label创建
+	//if ew.Labels == nil {
+	//	// 创建Workflow without labels
+	//	result, err = h.manager.CreateWorkflow(ew.Spec, namespace, UUID)
+	//	if err != nil {
+	//		err1 := response.WriteError(http.StatusInternalServerError, err)
+	//		if err1 != nil {
+	//			logs.Errorf("failed to return a status code ,error: %v", err1)
+	//			return
+	//		}
+	//		logs.Errorf("Create workflow fail ,failed write it to database , error: %v", err)
+	//		return
+	//	}
+	//} else {
+	//	// 创建Workflow with labels
+	//	result, err = h.manager.CreateWorkflowWithLabels(ew.Spec, namespace, UUID, ew.Labels)
+	//	if err != nil {
+	//		err1 := response.WriteError(http.StatusInternalServerError, err)
+	//		if err1 != nil {
+	//			logs.Errorf("failed to return a status code ,error: %v", err1)
+	//			return
+	//		}
+	//		logs.Errorf("Create workflow with labels fail ,failed write it to database , error: %v", err)
+	//		return
+	//	}
+	//}
+
+	// 返回结果
+	//err = response.WriteEntity(result)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+	//
+	//err = response.WriteError(http.StatusOK, err)
+	//if err != nil {
+	//	logs.Errorf("failed to return a status code ")
+	//	return
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusCreated, result)
 	if err != nil {
-		logs.Errorf("failed to return a status code ")
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
@@ -199,10 +231,40 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 		return
 	}
 
+	// TODO: 格式校验
+	//格式校验
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Action{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	}
+
+	// TODO：循环依赖检查
+	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
+	dependencyErr := util.CheckTaskCircularDependency(ew.Spec)
+	if dependencyErr != nil {
+		err := response.WriteError(http.StatusBadRequest, dependencyErr)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
 	// 获取name
 	name := request.QueryParameter(WORKFLOW_NAME)
 	if name == "" {
-		name = ew.Name
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
 	// 获取namespace
@@ -216,27 +278,17 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 		return
 	}
 
-	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Workflow{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
-
 	// 更新workflow
 	updatedWorkflow, updateErr := h.manager.UpdateWorkflow(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update workflow %s error: %v", name, updateErr)
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, updateErr)
+		} else if errors.Is(updateErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -256,22 +308,15 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 }
 
 func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(WORKFLOW_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Workflow{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide workflow name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
 	// 获取namespace
@@ -292,6 +337,8 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 		logs.Errorf("delete workflow %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(err, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -310,6 +357,7 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 }
 
 func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *restful.Response) {
+	// TODO：不可更改字段更改检查
 	// 获取json
 	req := &apis.Workflow{}
 	err := request.ReadEntity(&req)
@@ -326,16 +374,12 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 	// 获取name
 	name := request.QueryParameter(WORKFLOW_NAME)
 	if name == "" {
-		if req.Name != "" {
-			name = req.Name
-		} else {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		return
 	}
 
 	// 获取namespace
@@ -365,9 +409,11 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 		logs.Errorf("patched workflow %s error: %v", name, err)
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, patchedErr)
+		} else if errors.Is(patchedErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -401,7 +447,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the workflow").DataType("string")).
 		Operation("Get workflow").
 		Returns(200, "OK", apis.Workflow{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST("/").
@@ -412,7 +458,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Create workflow").
 		Returns(200, "OK", apis.Workflow{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT("/").
@@ -424,7 +470,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow object").DataType("string")).
 		Operation("Update workflow").
 		Returns(200, "OK", apis.Workflow{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PATCH("/").
@@ -436,7 +482,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Workflow", "The json string of the Workflow field").DataType("string")).
 		Operation("Patch workflow").
 		Returns(200, "OK", apis.Workflow{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.DELETE("/").
@@ -447,7 +493,7 @@ func (h *WorkflowHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the workflow").DataType("string")).
 		Operation("Delete workflow").
 		Returns(200, "OK", apis.Workflow{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	return ws
 }

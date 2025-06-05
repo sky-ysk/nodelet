@@ -48,8 +48,9 @@ func NewDevicesHandler(clientSet *clients.ClientSet) *DevicesHandler {
 //}
 
 func (h *DevicesHandler) GetDevices(request *restful.Request, response *restful.Response) {
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+
 	var results *apis.DeviceList
 	var err error
 
@@ -64,15 +65,15 @@ func (h *DevicesHandler) GetDevices(request *restful.Request, response *restful.
 				return
 			}
 		}
-	}
-
-	results, err = h.manager.FilterDevices(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get actions with labels failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterDevices(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get actions with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
@@ -98,14 +99,23 @@ func (h *DevicesHandler) GetDevices(request *restful.Request, response *restful.
 	//	}
 	//}
 
-	err = response.WriteEntity(results)
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+	//
+	//response.WriteHeader(http.StatusOK)
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
 	logs.Debugf("Get devices")
 }
 
@@ -124,7 +134,7 @@ func (h *DevicesHandler) NewGetWebService() *restful.WebService {
 		To(h.GetDevices).
 		Operation("Get devices").
 		Returns(200, "OK", []apis.Device{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	return ws

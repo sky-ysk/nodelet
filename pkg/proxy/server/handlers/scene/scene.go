@@ -33,25 +33,18 @@ func NewSceneHandler(clientSet *clients.ClientSet) *SceneHandler {
 }
 
 func (h *SceneHandler) GetScene(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(SCENE_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Scene{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide scene name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide scene name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
@@ -73,18 +66,27 @@ func (h *SceneHandler) GetScene(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
-		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get scene")
+	// TODO：检查场景不存在的返回情况
+	//if result.Name == name {
+	//	err = response.WriteEntity(result)
+	//	if err != nil {
+	//		err := response.WriteError(http.StatusOK, err)
+	//		if err != nil {
+	//			logs.Errorf("failed to return a status code")
+	//			return
+	//		}
+	//		return
+	//	}
+	//	logs.Debugf("Get scene")
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, result)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	logs.Debugf("Get scene success")
 }
 
 func (h *SceneHandler) CreateScene(request *restful.Request, response *restful.Response) {
@@ -93,6 +95,19 @@ func (h *SceneHandler) CreateScene(request *restful.Request, response *restful.R
 	err := request.ReadEntity(&ew)
 	if err != nil {
 		logs.Errorf("Failed to deserialize json data, error: %v", err)
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
+	// TODO：格式校验
+	//格式校验
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Scene{})
+	if err != nil {
 		err := response.WriteError(http.StatusBadRequest, err)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -115,18 +130,6 @@ func (h *SceneHandler) CreateScene(request *restful.Request, response *restful.R
 
 	logs.Info(*ew)
 
-	////格式校验
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Scene{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//	// return
-	//}
-
 	// 产生UUID
 	timestamp := time.Now().Format("20060102T150405")
 	randomStr := uuid.New().String()[:5]
@@ -147,19 +150,26 @@ func (h *SceneHandler) CreateScene(request *restful.Request, response *restful.R
 	}
 
 	// 返回结果
-	err = response.WriteEntity(result)
-	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//err = response.WriteEntity(result)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+	//
+	//err = response.WriteError(http.StatusOK, err)
+	//if err != nil {
+	//	logs.Errorf("failed to return a status code ")
+	//	return
+	//}
 
-	err = response.WriteError(http.StatusOK, err)
+	// 返回结果
+	err = response.WriteHeaderAndEntity(http.StatusCreated, result)
 	if err != nil {
-		logs.Errorf("failed to return a status code ")
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
@@ -180,10 +190,28 @@ func (h *SceneHandler) UpdateScene(request *restful.Request, response *restful.R
 		return
 	}
 
+	// TODO：格式验证
+	// 格式验证
+	res, err := analyzer.SerializeToJson(ew)
+	_, err = analyzer.Deserialize(res, apis.Scene{})
+	if err != nil {
+		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	}
+
 	// 获取name
 	name := request.QueryParameter(SCENE_NAME)
 	if name == "" {
-		name = ew.Name
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
 	// 获取namespace
@@ -197,27 +225,17 @@ func (h *SceneHandler) UpdateScene(request *restful.Request, response *restful.R
 		return
 	}
 
-	// 格式验证
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Scene{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code ")
-	//		return
-	//	}
-	//	return
-	//}
-
 	// 更新Scene
 	updatedScene, updateErr := h.manager.UpdateScene(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update scene %s error: %v", name, updateErr)
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, updateErr)
+		} else if errors.Is(updateErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -238,22 +256,15 @@ func (h *SceneHandler) UpdateScene(request *restful.Request, response *restful.R
 }
 
 func (h *SceneHandler) DeleteScene(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(SCENE_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Scene{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide scene name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide scene name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
 	// 获取namespace
@@ -274,6 +285,8 @@ func (h *SceneHandler) DeleteScene(request *restful.Request, response *restful.R
 		logs.Errorf("delete scene %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
 			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(err, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
 		} else {
 			err = response.WriteError(http.StatusInternalServerError, err)
 		}
@@ -308,16 +321,12 @@ func (h *SceneHandler) PatchScene(request *restful.Request, response *restful.Re
 	// 获取name
 	name := request.QueryParameter(SCENE_NAME)
 	if name == "" {
-		if req.Name != "" {
-			name = req.Name
-		} else {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		return
 	}
 
 	// 获取namespace
@@ -331,7 +340,7 @@ func (h *SceneHandler) PatchScene(request *restful.Request, response *restful.Re
 		return
 	}
 
-	// 序列化PatchScene
+	// 序列化Patch scene
 	patchScene, err := analyzer.SerializeToJson(req)
 	if err != nil {
 		logs.Errorf("Serialize patch scene error: %v", err)
@@ -347,9 +356,11 @@ func (h *SceneHandler) PatchScene(request *restful.Request, response *restful.Re
 		logs.Errorf("patched scene %s error: %v", name, err)
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, patchedErr)
+		} else if errors.Is(patchedErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -383,7 +394,7 @@ func (h *SceneHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the scene").DataType("string")).
 		Operation("Get scene").
 		Returns(200, "OK", apis.Scene{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST("/").
@@ -394,7 +405,7 @@ func (h *SceneHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Scene", "The json string of the Scene object").DataType("string")).
 		Operation("Create scene").
 		Returns(200, "OK", apis.Scene{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT("/").
@@ -406,7 +417,7 @@ func (h *SceneHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Scene", "The json string of the scene object").DataType("string")).
 		Operation("Update scene").
 		Returns(200, "OK", apis.Scene{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.PATCH("/").
 		To(h.PatchScene).
@@ -417,7 +428,7 @@ func (h *SceneHandler) NewGetWebService() *restful.WebService {
 		Param(ws.BodyParameter("Scene", "The json string of the Scene field").DataType("string")).
 		Operation("Patch scene").
 		Returns(200, "OK", apis.Scene{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.DELETE("/").
 		To(h.DeleteScene).
@@ -427,7 +438,7 @@ func (h *SceneHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the scene").DataType("string")).
 		Operation("Delete scene").
 		Returns(200, "OK", apis.Scene{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	return ws
 }
