@@ -493,17 +493,18 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 		return
 	}
 
+	// TODO: 具体的报错是不是不应该返回给前端用户？
 	// 更新node
 	updatedNode, updateErr := h.manager.UpdateNode(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update node %s error: %v", name, updateErr)
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, updateErr)
 		} else if errors.Is(updateErr, manager.InternalServerError) {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -777,11 +778,11 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 		logs.Errorf("patched Node %s error: %v", name, err)
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, patchedErr)
 		} else if errors.Is(patchedErr, manager.InternalServerError) {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")

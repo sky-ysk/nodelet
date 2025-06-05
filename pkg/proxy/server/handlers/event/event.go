@@ -531,11 +531,11 @@ func (h *EventHandler) UpdateEvent(request *restful.Request, response *restful.R
 		logs.Errorf("Update event %s error: %v", name, updateErr)
 		var err error
 		if errors.Is(updateErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, updateErr)
 		} else if errors.Is(updateErr, manager.InternalServerError) {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
@@ -813,11 +813,11 @@ func (h *EventHandler) PatchEvent(request *restful.Request, response *restful.Re
 		logs.Errorf("patched event %s error: %v", name, err)
 		var err error
 		if errors.Is(patchedErr, manager.NotFound) {
-			err = response.WriteError(http.StatusNotFound, err)
+			err = response.WriteError(http.StatusNotFound, patchedErr)
 		} else if errors.Is(patchedErr, manager.InternalServerError) {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		} else {
-			err = response.WriteError(http.StatusInternalServerError, err)
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
 		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")

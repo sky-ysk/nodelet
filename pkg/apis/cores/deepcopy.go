@@ -8,7 +8,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime"
 )
 
-func (in *Time) DeepCopyInto(out *Time) 
 func (in *Time) DeepCopyInto(out *Time) {
 	*out = *in
 }
