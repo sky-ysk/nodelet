@@ -67,20 +67,6 @@ func (h *TaskHandler) GetTask(request *restful.Request, response *restful.Respon
 		return
 	}
 
-	// TODO：检查获取task不存在的情况
-	//if result.Name == name {
-	//	err = response.WriteEntity(result)
-	//	if err != nil {
-	//		err := response.WriteError(http.StatusOK, err)
-	//		if err != nil {
-	//			logs.Errorf("failed to return a status code")
-	//			return
-	//		}
-	//		return
-	//	}
-	//	logs.Debugf("Get task")
-	//}
-
 	err = response.WriteHeaderAndEntity(http.StatusOK, result)
 	if err != nil {
 		logs.Errorf("failed to return a status code")

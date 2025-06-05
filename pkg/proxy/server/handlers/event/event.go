@@ -155,8 +155,6 @@ func (h *EventHandler) GetEvent(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	// if result.Name == name {}
-
 	err = response.WriteHeaderAndEntity(http.StatusOK, result)
 	if err != nil {
 		logs.Errorf("failed to return a status code")

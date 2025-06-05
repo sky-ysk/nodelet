@@ -66,20 +66,6 @@ func (h *SceneHandler) GetScene(request *restful.Request, response *restful.Resp
 		return
 	}
 
-	// TODO：检查场景不存在的返回情况
-	//if result.Name == name {
-	//	err = response.WriteEntity(result)
-	//	if err != nil {
-	//		err := response.WriteError(http.StatusOK, err)
-	//		if err != nil {
-	//			logs.Errorf("failed to return a status code")
-	//			return
-	//		}
-	//		return
-	//	}
-	//	logs.Debugf("Get scene")
-	//}
-
 	err = response.WriteHeaderAndEntity(http.StatusOK, result)
 	if err != nil {
 		logs.Errorf("failed to return a status code")

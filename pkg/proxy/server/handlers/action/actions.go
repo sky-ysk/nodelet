@@ -27,6 +27,8 @@ func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
 	}
 }
 
+// TODO：删除所有的Action，同一命名空间下所有，不提供命名空间默认全部action
+
 func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.Response) {
 	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)

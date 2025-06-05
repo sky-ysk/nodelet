@@ -67,8 +67,6 @@ func (h *ActionHandler) GetAction(request *restful.Request, response *restful.Re
 		return
 	}
 
-	// if result.Name == name {}
-
 	err = response.WriteHeaderAndEntity(http.StatusOK, result)
 	if err != nil {
 		logs.Errorf("failed to return a status code")
@@ -246,7 +244,6 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 		return
 	}
 
-	// TODO:修改此处错乱的error
 	// 更新action
 	updatedAction, updateErr := h.manager.UpdateAction(name, namespace, ew)
 	if updateErr != nil {

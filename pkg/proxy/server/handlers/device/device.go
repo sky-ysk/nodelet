@@ -95,18 +95,6 @@ func (h *DeviceHandler) GetDevice(request *restful.Request, response *restful.Re
 		return
 	}
 
-	// if result.Name == name {}
-
-	//err = response.WriteEntity(result)
-	//if err != nil {
-	//	err := response.WriteError(http.StatusOK, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//	return
-	//}
-
 	err = response.WriteHeaderAndEntity(http.StatusOK, result)
 	if err != nil {
 		logs.Errorf("failed to return a status code")
@@ -588,7 +576,6 @@ func (h *DeviceHandler) DeleteDevice(request *restful.Request, response *restful
 	}
 
 	// 获取namespace
-	// TODO:这里是否考虑NamespaceAll为删除所有的device
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))

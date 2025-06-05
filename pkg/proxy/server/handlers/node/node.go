@@ -97,19 +97,6 @@ func (h *NodeHandler) GetNode(request *restful.Request, response *restful.Respon
 		return
 	}
 
-	//if result.Name == name {
-	//	err = response.WriteEntity(result)
-	//	if err != nil {
-	//		err := response.WriteError(http.StatusOK, err)
-	//		if err != nil {
-	//			logs.Errorf("failed to return a status code")
-	//			return
-	//		}
-	//		return
-	//	}
-	//	logs.Debugf("Get node")
-	//}
-
 	err = response.WriteHeaderAndEntity(http.StatusOK, result)
 	if err != nil {
 		logs.Errorf("failed to return a status code")
