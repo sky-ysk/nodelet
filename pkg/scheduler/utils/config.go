@@ -15,7 +15,7 @@ func GetNamespace() string {
 	// 获取当前文件绝对路径
 	_, currentFilePath, _, _ := run.Caller(0)
 	// 计算项目根目录路径
-	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
+	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..", "..")
 	// 构建配置文件的绝对路径
 	configPath := filepath.Join(projectRoot, fileName)
 	logs.Infof("configPath:%v", configPath)
