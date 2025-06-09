@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"math/rand"
 	"net/http"
 	"time"
@@ -208,8 +209,9 @@ func NewDefaultBindPlugin(ctx context.Context, f framework.Handle) (framework.Pl
 	if err != nil {
 		panic(err)
 	}
-	groupsClient := clientSet.Core().Groups("test")
-	tasksClient := clientSet.Core().Tasks("test")
+	namespace := utils.GetNamespace()
+	groupsClient := clientSet.Core().Groups(namespace)
+	tasksClient := clientSet.Core().Tasks(namespace)
 	return &DefaultBindPlugin{
 		groupClient: groupsClient,
 		taskClient:  tasksClient,

@@ -425,10 +425,10 @@ func (sched *Scheduler) findNodesThatPassFilters(
 }
 
 func (sched *Scheduler) getAllNodes() ([]*config.NodeInfo, error) {
-	return getNodeFromApiServer(), nil
+	return sched.getNodeFromApiServer(), nil
 }
 
-func getNodeFromApiServer() []*config.NodeInfo {
+func (sched *Scheduler) getNodeFromApiServer() []*config.NodeInfo {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	c := &rest.Config{
@@ -462,7 +462,7 @@ func getNodeFromApiServer() []*config.NodeInfo {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	nodesClient := clientSet.Core().Nodes(apis.NamespaceAll)
+	nodesClient := clientSet.Core().Nodes(sched.Namespace)
 	lstOpts := metav1.ListOptions{}
 	list, err := nodesClient.List(context.TODO(), lstOpts)
 	if err != nil {

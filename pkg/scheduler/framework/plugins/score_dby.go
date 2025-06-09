@@ -15,6 +15,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"math/rand"
@@ -244,9 +245,9 @@ func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugi
 	if err != nil {
 		panic(err)
 	}
-
-	tc := cs.Core().Tasks(apis.NamespaceAll)
-	nc := cs.Core().Nodes(apis.NamespaceAll)
+	namespace := utils.GetNamespace()
+	tc := cs.Core().Tasks(namespace)
+	nc := cs.Core().Nodes(namespace)
 	return &ScorePluginDBY{
 		clientSet:    cs,
 		taskClient:   tc,

@@ -177,7 +177,7 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 		ScheduleSigChan:  scheduleChan,
 		SchedulingQueue:  schedQueue,
 		DefaultFramework: defaultFramework,
-		Namespace:        getNamespace(),
+		Namespace:        GetNamespace(),
 	}
 
 	sched.applyDefaultHandlers()
@@ -186,7 +186,7 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 	return sched, nil
 }
 
-func getNamespace() string {
+func GetNamespace() string {
 	logs.Info("ConfigPath is empty, using default")
 	fileName := "frameworkConf.yaml"
 	// 获取当前文件绝对路径
@@ -294,7 +294,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	taskClient := clientSet.Core().Tasks("test")
+	taskClient := clientSet.Core().Tasks(sched.Namespace)
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
 	var watchTimeout int64 = 3600 * 24
@@ -376,7 +376,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	groupClient := clientSet.Core().Groups("test")
+	groupClient := clientSet.Core().Groups(sched.Namespace)
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
 	var watchTimeout int64 = 24 * 3600
