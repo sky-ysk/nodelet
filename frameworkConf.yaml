@@ -10,3 +10,4 @@ ClusterCategory : "Cloud"
 WasmConfig:
   WasmToolchainDir: "/home/kcm/tmp/wasm"
   WasmRuntimePort: "8080"
+Namespace: "test"

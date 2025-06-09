@@ -29,7 +29,9 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"hit.edu/framework/pkg/nodelet"
 	"os"
+	"path/filepath"
 	"time"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -40,6 +42,7 @@ import (
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/internal"
+	run "runtime"
 
 	// extension "hit.edu/framework/pkg/scheduler/schedulechain"
 	"net/http"
@@ -92,6 +95,8 @@ type Scheduler struct {
 	percentageOfNodesToScore int32
 
 	Profiles ProfileMap
+
+	Namespace string
 	// ScheduleExt     []*extension.ScheduleExtension
 	// PreScheduleExt  []*extension.PreScheduleExtension
 	// PostScheduleExt []*extension.PostScheduleExtension
@@ -172,12 +177,36 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 		ScheduleSigChan:  scheduleChan,
 		SchedulingQueue:  schedQueue,
 		DefaultFramework: defaultFramework,
+		Namespace:        getNamespace(),
 	}
 
 	sched.applyDefaultHandlers()
 	sched.ReadyGroup = schedQueue.Pop
 
 	return sched, nil
+}
+
+func getNamespace() string {
+	logs.Info("ConfigPath is empty, using default")
+	fileName := "frameworkConf.yaml"
+	// 获取当前文件绝对路径
+	_, currentFilePath, _, _ := run.Caller(0)
+	// 计算项目根目录路径
+	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
+	// 构建配置文件的绝对路径
+	configPath := filepath.Join(projectRoot, fileName)
+	logs.Infof("configPath:%v", configPath)
+	// 验证路径有效性
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		logs.Errorf("配置文件不存在于：%s", configPath)
+		panic(err)
+	}
+	cf, err := nodelet.LoadConfig(configPath)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("the config is ", cf.Namespace)
+	return cf.Namespace
 }
 
 // ScheduleResult represents the result of scheduling a pod.

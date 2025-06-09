@@ -141,6 +141,16 @@ func GetAPIServerHost(config *FrameworkConfig) string {
 	return "http://localhost:10000"
 }
 
+func GetNameSpace(config *FrameworkConfig) string {
+	//if addr := os.Getenv("API_SERVER_HOST"); addr != "" {
+	//	return addr
+	//}
+	if config.ApiServerAddr != "" {
+		return config.ApiServerAddr
+	}
+	return "http://localhost:10000"
+}
+
 func GetWasmConfig(config *FrameworkConfig) (string, string) {
 	dir := "/home/public/tmp/wasm"
 	port := "8080"
@@ -168,6 +178,7 @@ type FrameworkConfig struct {
 		WasmToolchainDir string `yaml:"WasmToolchainDir"`
 		WasmRuntimePort  string `yaml:"WasmRuntimePort"`
 	} `yaml:"WasmConfig"`
+	Namespace string `yaml:"Namespace"`
 	// 注意YAML字段名与结构体的映射
 }
 
