@@ -4,8 +4,7 @@ import (
 	"context"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/utils"
@@ -16,8 +15,7 @@ import (
 //根据@Hezhangyi设计的测试工作流特点（吃CPU不吃内存），该插件为CPU占用低的Node打高分（分数1-10）
 
 type GreedyScorePlugin struct {
-	clientSet  *clients.ClientSet
-	nodeClient core.NodeInterface
+	m *manager.Manager
 }
 
 func NewGreedyScorePlugin(ctx context.Context, f framework.Handle) (framework.Plugin, error) {
@@ -25,11 +23,8 @@ func NewGreedyScorePlugin(ctx context.Context, f framework.Handle) (framework.Pl
 	if err != nil {
 		return nil, err
 	}
-	space := utils.GetNamespace()
-	nc := cs.Core().Nodes(space)
 	return &GreedyScorePlugin{
-		clientSet:  cs,
-		nodeClient: nc,
+		m: manager.NewManager(cs),
 	}, nil
 }
 
@@ -42,7 +37,8 @@ func (sp *GreedyScorePlugin) Score(ctx context.Context, group *apis.Group, nodeN
 }
 
 func (sp *GreedyScorePlugin) greedyScore(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
-	node, err := sp.nodeClient.Get(ctx, nodeName, metav1.GetOptions{})
+	nodeClient := sp.m.GetNodeClient(apis.NamespaceAll).Client
+	node, err := nodeClient.Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
 		logs.Error(err.Error())
 		return 0, framework.NewStatus(framework.Error, err.Error())

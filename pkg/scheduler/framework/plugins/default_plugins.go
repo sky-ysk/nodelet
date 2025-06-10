@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hit.edu/framework/pkg/scheduler/utils"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"math/rand"
 	"net/http"
 	"time"
@@ -17,7 +17,6 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
@@ -80,8 +79,7 @@ func NewDefaultScorePlugin(ctx context.Context, f framework.Handle) (framework.P
 
 type DefaultBindPlugin struct {
 	//TODO 需要资源层对象
-	groupClient core.GroupInterface
-	taskClient  core.TaskInterface
+	m *manager.Manager
 }
 
 func (bp *DefaultBindPlugin) Name() string {
@@ -101,7 +99,9 @@ func (bp *DefaultBindPlugin) Bind(ctx context.Context, state *framework.CycleSta
 		logs.Error(err.Error())
 		return framework.NewStatus(framework.Error, err.Error())
 	}
-	_, err = bp.groupClient.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+	namespace := group.Namespace
+	groupClient := bp.m.GetGroupClient(namespace)
+	_, err = groupClient.Client.Patch(context.TODO(), group.ObjectMeta.Name, types.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
 	if err != nil {
 		logs.Error(err.Error())
 	}
@@ -164,7 +164,8 @@ func (bp *DefaultBindPlugin) getTaskByID(ctx context.Context, taskID string) (*a
 	lstOpts := metav1.ListOptions{
 		FieldSelector: selector,
 	}
-	list, err := bp.taskClient.List(context.TODO(), lstOpts)
+	taskClient := bp.m.GetTaskClient(apis.NamespaceAll).Client
+	list, err := taskClient.List(context.TODO(), lstOpts)
 	if err != nil {
 		logs.Error(err.Error())
 		return nil, err
@@ -209,11 +210,8 @@ func NewDefaultBindPlugin(ctx context.Context, f framework.Handle) (framework.Pl
 	if err != nil {
 		panic(err)
 	}
-	namespace := utils.GetNamespace()
-	groupsClient := clientSet.Core().Groups(namespace)
-	tasksClient := clientSet.Core().Tasks(namespace)
+
 	return &DefaultBindPlugin{
-		groupClient: groupsClient,
-		taskClient:  tasksClient,
+		m: manager.NewManager(clientSet),
 	}, nil
 }

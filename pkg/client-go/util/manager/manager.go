@@ -17,6 +17,7 @@ type Manager struct {
 	ActionClients     map[string]core.ActionInterface
 	RuntimeClients    map[string]core.RuntimeInterface
 	DeviceClients     map[string]core.DeviceInterface
+	NodeClients       map[string]core.NodeInterface
 	EventClients      map[string]core.EventInterface
 	EventBroadCasters map[string]recorder.EventBroadcaster
 	Recoders          map[string]recorder.EventRecorder
@@ -33,6 +34,7 @@ func NewManager(clientSet *clients.ClientSet) *Manager {
 		RuntimeClients:    make(map[string]core.RuntimeInterface),
 		DeviceClients:     make(map[string]core.DeviceInterface),
 		EventClients:      make(map[string]core.EventInterface),
+		NodeClients:       make(map[string]core.NodeInterface),
 		EventBroadCasters: make(map[string]recorder.EventBroadcaster),
 		Recoders:          make(map[string]recorder.EventRecorder),
 		ClientSet:         clientSet,
@@ -60,6 +62,10 @@ type RuntimeClient struct {
 
 type DeviceClient struct {
 	Client core.DeviceInterface
+}
+
+type NodeClient struct {
+	Client core.NodeInterface
 }
 
 type EventClient struct {
@@ -184,6 +190,26 @@ func (m *Manager) GetDeviceClient(namespace string) *DeviceClient {
 	newClient := m.ClientSet.Core().Devices(namespace)
 	m.DeviceClients[namespace] = newClient
 	return &DeviceClient{
+		Client: newClient,
+	}
+}
+
+// 根据 namespace 获取 client，如果不存在则创建
+func (m *Manager) GetNodeClient(namespace string) *NodeClient {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// 如果已经存在，直接返回
+	if c, exists := m.NodeClients[namespace]; exists {
+		return &NodeClient{
+			Client: c,
+		}
+	}
+
+	// 否则创建新的 client
+	newClient := m.ClientSet.Core().Nodes(namespace)
+	m.NodeClients[namespace] = newClient
+	return &NodeClient{
 		Client: newClient,
 	}
 }
