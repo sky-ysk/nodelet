@@ -141,15 +141,15 @@ func GetAPIServerHost(config *FrameworkConfig) string {
 	return "http://localhost:10000"
 }
 
-func GetNameSpace(config *FrameworkConfig) string {
-	//if addr := os.Getenv("API_SERVER_HOST"); addr != "" {
-	//	return addr
-	//}
-	if config.ApiServerAddr != "" {
-		return config.ApiServerAddr
-	}
-	return "http://localhost:10000"
-}
+//func GetNameSpace(config *FrameworkConfig) string {
+//	//if addr := os.Getenv("API_SERVER_HOST"); addr != "" {
+//	//	return addr
+//	//}
+//	if config.ApiServerAddr != "" {
+//		return config.ApiServerAddr
+//	}
+//	return "http://localhost:10000"
+//}
 
 func GetWasmConfig(config *FrameworkConfig) (string, string) {
 	dir := "/home/public/tmp/wasm"
