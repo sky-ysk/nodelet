@@ -45,12 +45,12 @@ func init() {
 const SchedulerName = "scheduler"
 
 func NewSchedulerCommand() *cobra.Command {
-
+	var configPath *string
 	cmd := &cobra.Command{
 		Use:  "scheduler",
 		Long: `调度器`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCommand(cmd)
+			return runCommand(cmd, configPath)
 		},
 		Args: func(cmd *cobra.Command, args []string) error {
 			for _, arg := range args {
@@ -61,11 +61,11 @@ func NewSchedulerCommand() *cobra.Command {
 			return nil
 		},
 	}
-
+	configPath = cmd.Flags().String("framework-conf", "", "初始化配置文件路径")
 	return cmd
 }
 
-func runCommand(cmd *cobra.Command) error {
+func runCommand(cmd *cobra.Command, configPath *string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -74,7 +74,7 @@ func runCommand(cmd *cobra.Command) error {
 		cancel()
 	}()
 
-	sched, err := Setup(ctx)
+	sched, err := Setup(ctx, *configPath)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func Run(ctx context.Context, sched *scheduler.Scheduler) error {
 	return fmt.Errorf("")
 }
 
-func Setup(ctx context.Context) (*scheduler.Scheduler, error) {
-	sched, err := scheduler.New(ctx)
+func Setup(ctx context.Context, configPath string) (*scheduler.Scheduler, error) {
+	sched, err := scheduler.New(ctx, configPath)
 	return sched, err
 }

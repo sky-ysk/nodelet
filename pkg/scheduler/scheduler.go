@@ -32,6 +32,7 @@ import (
 	"hit.edu/framework/pkg/nodelet"
 	"os"
 	"path/filepath"
+	run "runtime"
 	"time"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -42,8 +43,6 @@ import (
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/internal"
-	run "runtime"
-
 	// extension "hit.edu/framework/pkg/scheduler/schedulechain"
 	"net/http"
 
@@ -146,7 +145,7 @@ func init() {
 }
 
 // 创建新的Scheduler对象
-func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
+func New(ctx context.Context, configPath string, opts ...Option) (*Scheduler, error) {
 	logs.Info("init scheduler... ")
 	stopEverything := ctx.Done()
 
@@ -177,7 +176,7 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 		ScheduleSigChan:  scheduleChan,
 		SchedulingQueue:  schedQueue,
 		DefaultFramework: defaultFramework,
-		Namespace:        GetNamespace(),
+		Namespace:        GetNamespace(configPath),
 	}
 
 	sched.applyDefaultHandlers()
@@ -186,15 +185,17 @@ func New(ctx context.Context, opts ...Option) (*Scheduler, error) {
 	return sched, nil
 }
 
-func GetNamespace() string {
-	logs.Info("ConfigPath is empty, using default")
-	fileName := "frameworkConf.yaml"
-	// 获取当前文件绝对路径
-	_, currentFilePath, _, _ := run.Caller(0)
-	// 计算项目根目录路径
-	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
-	// 构建配置文件的绝对路径
-	configPath := filepath.Join(projectRoot, fileName)
+func GetNamespace(configPath string) string {
+	if configPath == "" {
+		logs.Info("ConfigPath is empty, using default")
+		fileName := "frameworkConf.yaml"
+		// 获取当前文件绝对路径
+		_, currentFilePath, _, _ := run.Caller(0)
+		// 计算项目根目录路径
+		projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
+		// 构建配置文件的绝对路径
+		configPath = filepath.Join(projectRoot, fileName)
+	}
 	logs.Infof("configPath:%v", configPath)
 	// 验证路径有效性
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
