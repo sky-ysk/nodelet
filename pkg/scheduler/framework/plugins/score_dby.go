@@ -10,12 +10,11 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
-	"hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils/value"
 	"io"
 	"math/rand"
@@ -25,9 +24,7 @@ import (
 
 type ScorePluginDBY struct {
 	pluginClient ScorePluginClient
-	clientSet    *clients.ClientSet
-	taskClient   core.TaskInterface
-	nodeClient   core.NodeInterface
+	m            *manager.Manager
 	valueEngine  *value.Engine
 	r            *rand.Rand
 }
@@ -245,15 +242,11 @@ func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugi
 	if err != nil {
 		panic(err)
 	}
-	namespace := utils.GetNamespace()
-	tc := cs.Core().Tasks(namespace)
-	nc := cs.Core().Nodes(namespace)
+
 	return &ScorePluginDBY{
-		clientSet:    cs,
-		taskClient:   tc,
+		m:            manager.NewManager(cs),
 		pluginClient: NewScorePluginClient(),
 		r:            rand.New(rand.NewSource(time.Now().UnixNano())),
-		nodeClient:   nc,
 	}, nil
 }
 

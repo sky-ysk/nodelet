@@ -295,7 +295,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	taskClient := clientSet.Core().Tasks(sched.Namespace)
+	taskClient := clientSet.Core().Tasks(apis.NamespaceAll)
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
 	var watchTimeout int64 = 3600 * 24
@@ -377,7 +377,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	// 获取访问Node的客户端
 	// 默认访问的Namespace是 ""
 
-	groupClient := clientSet.Core().Groups(sched.Namespace)
+	groupClient := clientSet.Core().Groups(apis.NamespaceAll)
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
 	var watchTimeout int64 = 24 * 3600
