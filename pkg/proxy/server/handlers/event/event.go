@@ -310,16 +310,16 @@ func (h *EventHandler) CreateEvent(request *restful.Request, response *restful.R
 
 	// TODO: 格式校验
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Event{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Event{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取 namespace
 	namespace := ew.Namespace
@@ -490,16 +490,16 @@ func (h *EventHandler) UpdateEvent(request *restful.Request, response *restful.R
 
 	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Event{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Event{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取name
 	name := request.QueryParameter(EVENT_NAME)
@@ -644,7 +644,7 @@ func (h *EventHandler) DeleteEvent(request *restful.Request, response *restful.R
 
 	// 删除event
 	var err error
-	err = h.manager.DeleteEvent(namespace, name)
+	err = h.manager.DeleteEvent(name, namespace)
 	if err != nil {
 		logs.Errorf("delete event %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
@@ -806,7 +806,7 @@ func (h *EventHandler) PatchEvent(request *restful.Request, response *restful.Re
 		}
 	}
 
-	patchedEvent, patchedErr := h.manager.PatchEvent(namespace, name, []byte(patchEvent))
+	patchedEvent, patchedErr := h.manager.PatchEvent(name, namespace, []byte(patchEvent))
 	if patchedErr != nil {
 		logs.Errorf("patched event %s error: %v", name, err)
 		var err error

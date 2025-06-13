@@ -9,7 +9,6 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/util/manager"
-	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
@@ -92,16 +91,16 @@ func (h *RuntimeHandler) CreateRuntime(request *restful.Request, response *restf
 
 	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Runtime{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Runtime{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取 namespace
 	namespace := ew.Namespace
@@ -204,16 +203,16 @@ func (h *RuntimeHandler) UpdateRuntime(request *restful.Request, response *restf
 
 	// TODO：格式验证
 	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Runtime{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Runtime{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取name
 	name := request.QueryParameter(RUNTIME_NAME)
@@ -376,7 +375,7 @@ func (h *RuntimeHandler) PatchRuntime(request *restful.Request, response *restfu
 	//	}
 	//}
 
-	patchedRuntime, patchedErr := h.manager.PatchRuntime(namespace, name, []byte(jsonStr))
+	patchedRuntime, patchedErr := h.manager.PatchRuntime(name, namespace, []byte(jsonStr))
 	if patchedErr != nil {
 		logs.Errorf("patched runtime %s error: %v", name, err)
 		var err error

@@ -155,6 +155,7 @@ func (h *NodesHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.GET("/").
 		Doc("Get all nodes").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Label", "Labels of the nodes (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the nodes").DataType("string")).
 		To(h.GetNodes).
 		Operation("Get nodes").

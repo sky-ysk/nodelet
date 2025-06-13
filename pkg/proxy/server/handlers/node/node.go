@@ -250,19 +250,19 @@ func (h *NodeHandler) CreateNode(request *restful.Request, response *restful.Res
 
 	// TODO: 格式校验
 	//格式校验
-	res, err := analyzer.SerializeToJson(n)
-	_, err = analyzer.Deserialize(res, apis.Node{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(n)
+	//_, err = analyzer.Deserialize(res, apis.Node{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取 namespace
-	namespace := n.Namespace
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		logs.Error("namespace is empty")
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
@@ -447,16 +447,16 @@ func (h *NodeHandler) UpdateNode(request *restful.Request, response *restful.Res
 	}
 
 	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Node{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Node{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取name
 	name := request.QueryParameter(NODE_NAME)
@@ -599,7 +599,7 @@ func (h *NodeHandler) DeleteNode(request *restful.Request, response *restful.Res
 
 	// 删除node
 	var err error
-	err = h.manager.DeleteNode(namespace, name)
+	err = h.manager.DeleteNode(name, namespace)
 	if err != nil {
 		logs.Errorf("delete node %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
@@ -760,7 +760,7 @@ func (h *NodeHandler) PatchNode(request *restful.Request, response *restful.Resp
 		}
 	}
 
-	patchedNode, patchedErr := h.manager.PatchNode(namespace, name, []byte(patchNode))
+	patchedNode, patchedErr := h.manager.PatchNode(name, namespace, []byte(patchNode))
 	if patchedErr != nil {
 		logs.Errorf("patched Node %s error: %v", name, err)
 		var err error

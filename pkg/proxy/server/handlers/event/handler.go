@@ -11,6 +11,7 @@ const (
 	EVENT_PATH  = API_PREFIX + "/event"
 	EVENT_NAME  = "Name"
 	NAME_SPACE  = "Namespace"
+	SELECT_NAME = "SelectorName"
 )
 
 type Handler interface {

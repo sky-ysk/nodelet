@@ -9,6 +9,8 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 )
 
+// TODO:确认device中的Name不由系统生成，不能创建名字相同的设备
+
 // CreateDevice 创建Device
 func (m *Manager) CreateDevice(d *apis.Device, namespace string) (*apis.Device, error) {
 	// TODO: 写入Device的相关信息
@@ -91,7 +93,7 @@ func (m *Manager) FilterDevices(namespace string, labelSelector string) (*apis.D
 	return d, nil
 }
 
-func (m *Manager) UpdateDevice(namespace string, name string, a *apis.Device) (*apis.Device, error) {
+func (m *Manager) UpdateDevice(name string, namespace string, a *apis.Device) (*apis.Device, error) {
 	c := m.GetDeviceClient(namespace)
 
 	// 检查device是否存在

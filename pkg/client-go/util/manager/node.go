@@ -14,7 +14,7 @@ func (m *Manager) CreateNode(ns apis.NodeSpec, namespace string, uuid string) (*
 	n := apis.Node{}
 
 	// 构造名称
-	n.Name = ns.NodeName + "-" + uuid
+	n.Name = ns.NodeName
 
 	// 构造Namespace
 	if namespace == "" {
@@ -39,7 +39,7 @@ func (m *Manager) CreateNode(ns apis.NodeSpec, namespace string, uuid string) (*
 	// 构造Status
 	n.Status = apis.NodeStatus{}
 
-	n.Labels["uuid"] = uuid
+	// n.Labels["uuid"] = uuid
 
 	c := m.GetNodeClient(n.Namespace)
 

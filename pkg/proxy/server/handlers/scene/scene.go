@@ -91,16 +91,16 @@ func (h *SceneHandler) CreateScene(request *restful.Request, response *restful.R
 
 	// TODO：格式校验
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Scene{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Scene{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取 namespace
 	namespace := ew.Namespace
@@ -178,16 +178,16 @@ func (h *SceneHandler) UpdateScene(request *restful.Request, response *restful.R
 
 	// TODO：格式验证
 	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Scene{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Scene{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取name
 	name := request.QueryParameter(SCENE_NAME)
@@ -266,7 +266,7 @@ func (h *SceneHandler) DeleteScene(request *restful.Request, response *restful.R
 
 	// 删除scene
 	var err error
-	err = h.manager.DeleteScene(namespace, name)
+	err = h.manager.DeleteScene(name, namespace)
 	if err != nil {
 		logs.Errorf("delete scene %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
@@ -337,7 +337,7 @@ func (h *SceneHandler) PatchScene(request *restful.Request, response *restful.Re
 		}
 	}
 
-	patchedScene, patchedErr := h.manager.PatchScene(namespace, name, []byte(patchScene))
+	patchedScene, patchedErr := h.manager.PatchScene(name, namespace, []byte(patchScene))
 	if patchedErr != nil {
 		logs.Errorf("patched scene %s error: %v", name, err)
 		var err error

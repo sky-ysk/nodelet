@@ -95,16 +95,16 @@ func (h *WorkflowHandler) CreateWorkflow(request *restful.Request, response *res
 
 	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Action{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Action{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// TODO：循环依赖检查
 	// 增加一个简易版的依赖检查，无法检查a1->a2->a3->a1这种
@@ -220,16 +220,16 @@ func (h *WorkflowHandler) UpdateWorkflow(request *restful.Request, response *res
 
 	// TODO: 格式校验
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Action{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Action{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// TODO：循环依赖检查
 	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
@@ -391,7 +391,7 @@ func (h *WorkflowHandler) PatchWorkflow(request *restful.Request, response *rest
 		}
 	}
 
-	patchedWorkflow, patchedErr := h.manager.PatchWorkflow(namespace, name, []byte(patchWorkflow))
+	patchedWorkflow, patchedErr := h.manager.PatchWorkflow(name, namespace, []byte(patchWorkflow))
 	if patchedErr != nil {
 		logs.Errorf("patched workflow %s error: %v", name, err)
 		var err error

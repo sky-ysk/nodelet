@@ -15,7 +15,7 @@ func (m *Manager) CreateScene(ss apis.SceneSpec, namespace string, uuid string) 
 	s := apis.Scene{}
 
 	// TODO: 确认scene名字生成方式
-	s.Name = ss.SceneID + " " + uuid
+	s.Name = ss.SceneID + "-" + uuid
 
 	// 构造Namespace
 	if namespace == "" {
@@ -24,7 +24,7 @@ func (m *Manager) CreateScene(ss apis.SceneSpec, namespace string, uuid string) 
 		s.Namespace = namespace
 	}
 
-	s.Kind = "Scene"
+	s.Kind = "scene"
 	s.APIVersion = "resources/v1"
 
 	// 构造Labels

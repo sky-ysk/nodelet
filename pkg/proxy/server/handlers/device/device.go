@@ -74,7 +74,7 @@ func (h *DeviceHandler) GetDevice(request *restful.Request, response *restful.Re
 	}
 
 	// 获取namespace
-	namespace := request.QueryParameter(NAMESPACE)
+	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
 		if err != nil {
@@ -248,16 +248,16 @@ func (h *DeviceHandler) CreateDevice(request *restful.Request, response *restful
 
 	// TODO: 增加device的json schema约束
 	//格式校验
-	res, err := analyzer.SerializeToJson(d)
-	_, err = analyzer.Deserialize(res, apis.Device{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(d)
+	//_, err = analyzer.Deserialize(res, apis.Device{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取 namespace
 	namespace := request.QueryParameter(NAME_SPACE)
@@ -434,16 +434,16 @@ func (h *DeviceHandler) UpdateDevice(request *restful.Request, response *restful
 	}
 
 	// 格式验证
-	res, err := analyzer.SerializeToJson(d)
-	_, err = analyzer.Deserialize(res, apis.Device{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(d)
+	//_, err = analyzer.Deserialize(res, apis.Device{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取name
 	name := request.QueryParameter(DEVICE_NAME)
@@ -588,7 +588,7 @@ func (h *DeviceHandler) DeleteDevice(request *restful.Request, response *restful
 
 	// 删除device
 	var err error
-	err = h.manager.DeleteDevice(namespace, name)
+	err = h.manager.DeleteDevice(name, namespace)
 	if err != nil {
 		logs.Errorf("delete device %s error: %v", name, err)
 		if errors.Is(err, manager.NotFound) {
@@ -749,7 +749,7 @@ func (h *DeviceHandler) PatchDevice(request *restful.Request, response *restful.
 		}
 	}
 
-	patchedDevice, patchedErr := h.manager.PatchDevice(namespace, name, []byte(patchDevice))
+	patchedDevice, patchedErr := h.manager.PatchDevice(name, namespace, []byte(patchDevice))
 	if patchedErr != nil {
 		logs.Errorf("patched device %s error: %v", name, err)
 		var err error

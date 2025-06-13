@@ -18,20 +18,9 @@ type EventsHandler struct {
 	mu        sync.Mutex
 }
 
-//type CurrentEventsHandler struct {
-//	client core.EventInterface
-//}
-
 var _ Handler = &EventsHandler{}
 
-//func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
-//	c := clientSet.Core().Events("test") //apis.NamespaceAll
-//	return &EventsHandler{
-//		client: c,
-//	}
-//}
-
-// NewEventHandler 创建一个 EventHandler
+// NewEventsHandler 创建一个 EventHandler
 func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
 	return &EventsHandler{
 		manager:   manager.NewManager(clientSet),
@@ -39,69 +28,10 @@ func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
 	}
 }
 
-// GetClient 根据 namespace 获取 client，如果不存在则创建
-//func (h *EventsHandler) GetClient(namespace string) *CurrentEventsHandler {
-//	h.mu.Lock()
-//	defer h.mu.Unlock()
-//
-//	// 如果已经存在，直接返回
-//	if c, exists := h.clients[namespace]; exists {
-//		return &CurrentEventsHandler{
-//			client: c,
-//		}
-//	}
-//
-//	// 否则创建新的 client
-//	newClient := h.clientSet.Core().Events(namespace)
-//	h.clients[namespace] = newClient
-//	return &CurrentEventsHandler{
-//		client: newClient,
-//	}
-//}
-
 func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Response) {
-	//c := &CurrentEventsHandler{}
-	//
-	//// 从url中获取namespace
-	//namespace := request.QueryParameter(NAME_SPACE)
-	////if namespace == "" {
-	////	err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
-	////	if err != nil {
-	////		logs.Errorf("failed to return a status code ")
-	////		return
-	////	}
-	////	return
-	////} else {
-	////	c = h.GetClient(namespace)
-	////}
-	//
-	//c = h.GetClient(namespace)
-	//results, err := c.client.List(context.TODO(), metav1.ListOptions{})
-	//if err != nil {
-	//	logs.Errorf("Get events failed: %v", err)
-	//	err := response.WriteError(http.StatusInternalServerError, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//}
-	//
-	//err = response.WriteEntity(results)
-	//if err != nil {
-	//	err := response.WriteError(http.StatusInternalServerError, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//}
-	//logs.Debugf("Get events")
-
-	// 获取namespace
-	// namespace := request.QueryParameter(NAME_SPACE)
-
-	// 获取name
-	name := request.QueryParameter(EVENT_NAME)
-	if name == "" {
+	// 获取selectName
+	selectName := request.QueryParameter(SELECT_NAME)
+	if selectName == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
@@ -124,7 +54,7 @@ func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Re
 	var results *apis.EventList
 	var err error
 
-	results, err = h.manager.GetEvents(name, namespace)
+	results, err = h.manager.GetEvents(selectName, namespace)
 	if err != nil {
 		logs.Errorf("Get events failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -144,6 +74,31 @@ func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Re
 }
 
 // TODO: DeleteAll
+// TODO: 检查满足功能 ， 删除命名空间下指定条件所有的event，未指定命名空间，删除所有符合条件的event
+
+// TODO: 确认这里的事件应该也是删除某一任务相关的所有事件
+
+func (h *EventsHandler) DeleteEvents(request *restful.Request, response *restful.Response) {
+	namespace := request.QueryParameter(NAME_SPACE)
+
+	fieldSelector := request.QueryParameter(SELECT_NAME)
+
+	logs.Debugf("delete events namespace: %s, fieldSelector: %s", namespace, fieldSelector)
+
+	err := h.manager.DeleteEvents(namespace, fieldSelector)
+	if err != nil {
+		logs.Errorf("Delete events failed: %v", err)
+		err := response.WriteError(http.StatusInternalServerError, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
+			return
+		}
+		return
+	}
+
+	response.WriteHeader(http.StatusOK)
+	logs.Debugf("Delete events ")
+}
 
 func (h *EventsHandler) NewGetWebService() *restful.WebService {
 	ws := new(restful.WebService)
@@ -152,12 +107,23 @@ func (h *EventsHandler) NewGetWebService() *restful.WebService {
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("/").
-		Doc("Get all events").
+		Doc("Get all events with selector").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Name", "The name of the involved object").DataType("string")).
+		Param(ws.QueryParameter("SelectorName", "The name of the involved object").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the events").DataType("string")).
 		To(h.GetEvents).
 		Operation("Get events").
+		Returns(200, "OK", []apis.Event{}).
+		Returns(404, "Not Found", nil),
+	)
+
+	ws.Route(ws.DELETE("/").
+		Doc("Delete all events with selector").
+		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("SelectorName", "Selector（optional）").DataType("string")).
+		Param(ws.QueryParameter("Namespace", "The namespace of the events").DataType("string")).
+		To(h.DeleteEvents).
+		Operation("Delete events").
 		Returns(200, "OK", []apis.Event{}).
 		Returns(404, "Not Found", nil),
 	)

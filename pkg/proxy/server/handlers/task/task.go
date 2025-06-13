@@ -92,17 +92,17 @@ func (h *TaskHandler) CreateTask(request *restful.Request, response *restful.Res
 
 	// TODO: 此处格式校验应该需要检查出一些无效任务
 	//格式校验
-	res, err := analyzer.SerializeToJson(et)
-	_, err = analyzer.Deserialize(res, apis.Task{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
-		return
-	}
+	//res, err := analyzer.SerializeToJson(et)
+	//_, err = analyzer.Deserialize(res, apis.Task{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	// 正常情况就应该return不创建，但测试的时候没有构造完整的task，根据名字能创建就行
+	//	return
+	//}
 
 	// TODO：循环依赖检查
 	// 增加一个简易版的依赖检查，无法检查a1->a2->a3->a1这种
@@ -254,16 +254,16 @@ func (h *TaskHandler) UpdateTask(request *restful.Request, response *restful.Res
 	}
 
 	// 格式验证
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Task{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Task{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// TODO：循环依赖检查
 	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
@@ -425,7 +425,7 @@ func (h *TaskHandler) PatchTask(request *restful.Request, response *restful.Resp
 		}
 	}
 
-	patchedTask, patchedErr := h.manager.PatchTask(namespace, name, []byte(patchTask))
+	patchedTask, patchedErr := h.manager.PatchTask(name, namespace, []byte(patchTask))
 	if patchedErr != nil {
 		logs.Errorf("patched task %s error: %v", name, err)
 		var err error

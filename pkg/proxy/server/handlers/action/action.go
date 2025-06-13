@@ -92,16 +92,16 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 
 	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Action{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Action{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// TODO：循环依赖检查
 	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
@@ -199,16 +199,16 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 
 	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
 	//格式校验
-	res, err := analyzer.SerializeToJson(ew)
-	_, err = analyzer.Deserialize(res, apis.Action{})
-	if err != nil {
-		err := response.WriteError(http.StatusBadRequest, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Action{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// TODO：循环依赖检查
 	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
@@ -371,7 +371,7 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 		}
 	}
 
-	patchedAction, patchedErr := h.manager.PatchAction(namespace, name, []byte(patchAction))
+	patchedAction, patchedErr := h.manager.PatchAction(name, namespace, []byte(patchAction))
 	if patchedErr != nil {
 		logs.Errorf("patched action %s error: %v", name, err)
 		var err error

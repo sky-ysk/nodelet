@@ -134,3 +134,21 @@ func (m *Manager) DeleteEvent(name string, namespace string) error {
 	logs.Debugf("Delete event %v ", err)
 	return nil
 }
+
+func (m *Manager) DeleteEvents(namespace string, Selector string) error {
+	// "Spec.Name=demo-event"
+
+	fieldSelector := fmt.Sprintf("involvedObject.name=%s", Selector)
+	listOptions := metav1.ListOptions{
+		FieldSelector: fieldSelector,
+	}
+
+	c := m.GetEventClient(namespace)
+
+	err := c.Client.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, listOptions)
+	if err != nil {
+		logs.Errorf("Failed to get events: %v", err)
+		return fmt.Errorf("%w-%v", InternalServerError, err)
+	}
+	return nil
+}
