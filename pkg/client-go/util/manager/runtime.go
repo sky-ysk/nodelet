@@ -113,7 +113,7 @@ func (m *Manager) GetRuntimes(namespace string) (*apis.RuntimeList, error) {
 
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logs.Errorf("Failed to get runtimes: %v, name %s, space %s", err, namespace)
+		logs.Errorf("Failed to get runtimes: %v, namespace %s", err, namespace)
 		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
 	}
 
