@@ -133,6 +133,12 @@ func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *api
 	wr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
 	return nil
 }
+func (wr *WasmRuntime) Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return nil
+}
+func (wr *WasmRuntime) Restore(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return nil
+}
 
 // 需要保存进程的pid，检查进程是否是正常执行完成
 func (wr *WasmRuntime) startCMD(cmd string, args []string) error {

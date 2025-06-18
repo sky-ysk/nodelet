@@ -9,9 +9,10 @@ type Operation int
 
 const (
 	ADD Operation = iota
-	DELETE
+	Stop
 	UPDATE
 	KILL
+	Restore
 )
 
 // 从API Server处获取的Group更新信息

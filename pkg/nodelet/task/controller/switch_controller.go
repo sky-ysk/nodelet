@@ -7,7 +7,7 @@ import (
 	"hit.edu/framework/pkg/apimachinery/watch"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
+
 	"hit.edu/framework/pkg/client-go/util/manager"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"path/filepath"
@@ -44,7 +44,7 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	//// Event 相关组件
 	//eventIndexer  cache.Indexer    // 这个参数就是cache.Controller当中的Indexer缓存
 	//eventInformer cache.Controller // cache.Controller当中包含了cache.Index ,这里我们将cache.Controller中的Indexer拎出来，是为了更好地编写代码而已，其实不要这个Indexer也是OK的，因为cache.Controller当中也是含有Indexer的
-	eventClient core.EventInterface
+	allEventClient core.EventInterface
 	// 工作队列
 	//queue workqueue.TypedRateLimitingInterface[string]
 	queue workqueue.TypedRateLimitingInterface[*apis.Event]
@@ -55,7 +55,7 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	// 当前Controller的启动时间
 	startTime time.Time
 	// event事件发布器
-	recorder recorder.EventRecorder
+	//recorder recorder.EventRecorder
 	// 跨域迁移
 	groupTargets   map[string]cross_core.GroupInterface
 	actionTargets  map[string]cross_core.ActionInterface
@@ -66,7 +66,9 @@ type MigrationController struct { // 自定义的业务控制器（适配迁移�
 	//nodeClient core.NodeInterface
 }
 
-func NewMigrationController(eventClient core.EventInterface, clientSet *clients.ClientSet, clientsManager *manager.Manager, runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, recorder recorder.EventRecorder, nodeName string, groupTarget map[string]cross_core.GroupInterface, ActionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface, groupManager group.Manager) *MigrationController {
+func NewMigrationController(clientSet *clients.ClientSet, clientsManager *manager.Manager,
+	runtimeManager *runtime.RuntimeManager, groupQueues *group.GroupQueues, nodeName string, groupTarget map[string]cross_core.GroupInterface,
+	ActionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface, groupManager group.Manager) *MigrationController {
 	nowTime := time.Now()
 	//创建资源的List Watcher
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*apis.Event]())
@@ -75,19 +77,20 @@ func NewMigrationController(eventClient core.EventInterface, clientSet *clients.
 		//groupClient:    groupClient,
 		//actionClient:   actionClient,
 		//runtimeClient:  runtimeClient,
-		eventClient:     eventClient,
+		//eventClient:     eventClient,
 		clientsManager:  clientsManager,
 		allGroupsClient: clientSet.Core().Groups(metav1.NamespaceAll),
+		allEventClient:  clientSet.Core().Events(metav1.NamespaceAll),
 		queue:           queue,
 		runtimeManager:  runtimeManager,
 		groupQueues:     groupQueues,
 		startTime:       nowTime,
-		recorder:        recorder,
-		groupTargets:    groupTarget,
-		actionTargets:   ActionTarget,
-		runtimeTargets:  runtimeTarget,
-		groupManager:    groupManager,
-		nodeName:        nodeName,
+		//recorder:        recorder,
+		groupTargets:   groupTarget,
+		actionTargets:  ActionTarget,
+		runtimeTargets: runtimeTarget,
+		groupManager:   groupManager,
+		nodeName:       nodeName,
 		//nodeClient:      nodeClient,
 	}
 	return ctrl
@@ -101,8 +104,8 @@ func (mc *MigrationController) eventWatcher() {
 		TimeoutSeconds: &timeout,
 		// FieldSelector:  fieldSelector,
 	}
-
-	watcher, err := mc.eventClient.Watch(context.TODO(), watchOptions)
+	watcher, err := mc.allEventClient.Watch(context.TODO(), watchOptions)
+	//watcher, err := mc.eventClient.Watch(context.TODO(), watchOptions)
 	if err != nil {
 		panic(err)
 	}
@@ -576,7 +579,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
 				}
 			}
-			mc.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
+			mc.clientsManager.LogEvent(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"), groupCopy.Namespace)
 			// TODO 这里还是需要调度器选择完节点后生成一个事件来通知部署器，接下来要做的是，监听事件，这块的方法可以自己从group_handler.go当中拿，已经写好
 
 			// 往跨域的etcd里写入group数据

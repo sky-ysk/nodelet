@@ -18,7 +18,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
@@ -43,7 +42,7 @@ type GroupMonitor struct {
 	groupQueues *group.GroupQueues
 	eventBus    *eventbus.EventBus
 	// eventRecorder 记录事件
-	recorder recorder.EventRecorder
+	//recorder recorder.EventRecorder
 	// 管理运行所需的Runtime
 	// 存储RuntimeManager
 	runtimeManager *runtime.RuntimeManager
@@ -68,14 +67,14 @@ type GroupMonitor struct {
 	belongTasks map[string]*apis.Task
 }
 
-func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus, recorder recorder.EventRecorder,
+func NewGroupMonitor(groupManager group.Manager, groupQueues *group.GroupQueues, eventbus *eventbus.EventBus,
 	runtimeManager *runtime.RuntimeManager, clientsManager *manager.Manager, dependencyManager *dependency.DependencyManager, conditionEngine *utils.ConditionEngine,
 	taskTarget map[string]cross_core.TaskInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface, runtimeTarget map[string]cross_core.RuntimeInterface) *GroupMonitor {
 	return &GroupMonitor{
-		groupManager:      groupManager,
-		groupQueues:       groupQueues,
-		eventBus:          eventbus,
-		recorder:          recorder,
+		groupManager: groupManager,
+		groupQueues:  groupQueues,
+		eventBus:     eventbus,
+		//recorder:          recorder,
 		runtimeManager:    runtimeManager,
 		dependencyManager: dependencyManager,
 		//nodesClient:       nodeClient,
@@ -774,7 +773,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							logs.Errorf("Patch group error-10:%v", err)
 						}
 						// 发送事件
-						gmo.recorder.Event(group, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", group.Name))
+						gmo.clientsManager.LogEvent(group, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", group.Name), group.Namespace)
 					}
 					logs.Info("Move to completed queue")
 					ok := gmo.groupQueues.DeleteFromRunningAndAddToCompleted(group.Name)
@@ -934,7 +933,7 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 					}
 					// 发送事件
 					logs.Infof("Send task Succeed event")
-					gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+					gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name), task.Namespace)
 					// 更新Task下的最新的Group状态---TODO 这里后续补充吧
 				}
 				logs.Infof("Delete group:%v", gro.Spec.Name)
@@ -997,7 +996,7 @@ func (gmo *GroupMonitor) ErrorQueueCheck(ctx context.Context) {
 					logs.Errorf("Etcd get group error-4:%v", err)
 				}
 				//TODO 通知调度器
-				gmo.recorder.Event(group, apis.EventTypeWarning, events.GroupRunError, fmt.Sprintf("Group name:%v run error", group.Name))
+				gmo.clientsManager.LogEvent(group, apis.EventTypeWarning, events.GroupRunError, fmt.Sprintf("Group name:%v run error", group.Name), group.Namespace)
 				// 删除内存当中group_manager当中的group信息
 				gmo.groupQueues.DeleteFromError(gro.Name)
 				gmo.groupManager.DeleteGroup(gro) //groupManager就删除group的信息，此时group的信息就只存在于etcd当中
@@ -1136,7 +1135,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 			gmo.updateCopyIngfoForAction(getGroup, phase, actionSpecName)
 
 			// 发送Action启动的事件
-			gmo.recorder.Event(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Action Name:\t %s is Running", action.Name))
+			gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Action Name:\t %s is Running", action.Name), action.Namespace)
 		}
 		// 更新一下etcd当中的action的Status
 		err = gmo.UpdateActionStatus(action.Namespace, actionStatus, action.Name)
@@ -1166,7 +1165,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	// Group信息更新完毕，考虑该Group是否是第一次启动Running，如果是，就发送Running事件
 	if groupIsFirstSet {
 		// 发送group启动的事件
-		gmo.recorder.Event(getGroup, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Group Name:\t %s is Running", getGroup.Name))
+		gmo.clientsManager.LogEvent(getGroup, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Group Name:\t %s is Running", getGroup.Name), getGroup.Namespace)
 	}
 	// 修改Task信息
 	if !isCopyGroup {
@@ -1183,7 +1182,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 
 		if taskIsFirstSet { // task是头一次Running启动
 			// 发送Task启动的事件,这里有个小bug就是这时候上传的task的状态里面有些参数还没有更新 TODO 后期如果有硬性要求，这里可以放到最后修改完Task的状态后，才发送Task事件，就一个参数TaskIsfirstSet
-			gmo.recorder.Event(task, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Task Name:\t %s is Running", task.Name))
+			gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Task Name:\t %s is Running", task.Name), task.Namespace)
 		}
 	}
 	// 更新一下etcd当中的Group的Status
@@ -1375,7 +1374,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				runtimeStatus.LastTime = &lastTime
 				// 5.17新增：加一个发送Runtime的Discard的事件
 				if phase == apis.Discard {
-					gmo.recorder.Event(allRuntime, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Runtime Name: %s is discard", allRuntime.Name))
+					gmo.clientsManager.LogEvent(allRuntime, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Runtime Name: %s is discard", allRuntime.Name), allRuntime.Namespace)
 				}
 				// 如果说该group有副本，并且该副本group是提前部署副本的，那么这里除了修改源runtime的状态，还得修改副本runtime的状态
 				gmo.updateCopyIngfoForRuntime(get, phase, actionSpecName, runtimeSpecName)
@@ -1406,7 +1405,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Failed
 			action.Status.Phase = apis.Failed // 方便最终End 显示状态
-			gmo.recorder.Event(action, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Action Name:\t %s is Failed", action.Name))
+			gmo.clientsManager.LogEvent(action, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Action Name:\t %s is Failed", action.Name), action.Namespace)
 			gmo.updateCopyIngfoForAction(get, phase, actionSpecName)
 		}
 		if finalActionIsKilled {
@@ -1414,7 +1413,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Killed
 			action.Status.Phase = apis.Killed // 方便最终End 显示状态
-			gmo.recorder.Event(action, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name))
+			gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name), action.Namespace)
 			gmo.updateCopyIngfoForAction(get, phase, actionSpecName)
 		}
 		if allRuntiemCompleted { //如果说ActionStatus下面的RuntimeStatus都被执行了，还得修改ActionStatus的phase状态
@@ -1428,14 +1427,14 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				if runtimeHasSucceed {
 					actionStatus.Phase = apis.Successed
 					action.Status.Phase = apis.Successed
-					gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+					gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name), action.Namespace)
 				} else { // 排除当前Runtime的所有Runtime当中，没有一个Runtime是Succeed状态，那么这里要进行一个判断，如果当前Runtime是成功的，则Action发送Succeed事件，如果当前Runtime是丢弃的，则Action发送Discard事件
 					actionStatus.Phase = phase
 					action.Status.Phase = phase  // 方便最终End 显示状态
 					if phase == apis.Successed { //当前Runtime是Successed，则Action发送Succeed完成事件
-						gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+						gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name), action.Namespace)
 					} else {
-						gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+						gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name), action.Namespace)
 					}
 				}
 			}
@@ -1453,13 +1452,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		groupStatus.FinishAt = &finshTime
 		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Failed
-		gmo.recorder.Event(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name))
+		gmo.clientsManager.LogEvent(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name), get.Namespace)
 	}
 	if finalGroupIsKilled {
 		groupStatus.FinishAt = &finshTime
 		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Killed
-		gmo.recorder.Event(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name))
+		gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name), get.Namespace)
 	}
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
 	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
@@ -1468,13 +1467,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		if !finalGroupIsKilled && !finalGroupIsFailed {
 			if actionHasSucceed {
 				groupStatus.Phase = apis.Successed //Group的状态等于当前Action执行完成的状态  Succeed
-				gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
+				gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name), get.Namespace)
 			} else { // 排除当前Action的所有Action当中，没有一个Action是Succeed状态，那么这里要进行一个判断，如果当前Action是成功的，则Group发送Succeed事件，如果当前Action是丢弃的，则Group发送Discard事件
 				groupStatus.Phase = phase
 				if phase == apis.Successed { //当前Action是Successed，则Group发送Succeed完成事件
-					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
+					gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name), get.Namespace)
 				} else {
-					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Group name:\t %s is discard", get.Name))
+					gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Group name:\t %s is discard", get.Name), get.Namespace)
 				}
 			}
 		}
@@ -1498,13 +1497,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			task.Status.FinishAt = &finshTime
 			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Failed
-			gmo.recorder.Event(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name))
+			gmo.clientsManager.LogEvent(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name), task.Namespace)
 		}
 		if finalTaskIsKilled {
 			task.Status.FinishAt = &finshTime
 			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Killed
-			gmo.recorder.Event(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name))
+			gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name), task.Namespace)
 		}
 		if otherGroupCompleted && nowGroupCompleted {
 			task.Status.FinishAt = &finshTime
@@ -1512,13 +1511,13 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			if !finalTaskIsFailed && !finalTaskIsKilled {
 				if groupHasSucceed {
 					task.Status.Phase = apis.Successed
-					gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+					gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name), task.Namespace)
 				} else {
 					task.Status.Phase = phase //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，如果为Succeed，则Task也为Succeed，反正为Failed
 					if phase == apis.Successed {
-						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+						gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name), task.Namespace)
 					} else {
-						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Task Name:\t %s is discard", task.Name))
+						gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Task Name:\t %s is discard", task.Name), task.Namespace)
 					}
 				}
 			}
@@ -1675,7 +1674,7 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Discard
 			action.Status.Phase = apis.Successed // 方便最终End 显示状态
-			gmo.recorder.Event(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name))
+			gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name), action.Namespace)
 			nowActionCompleted = true //当前Action已经完成
 
 			// 修改当前Action下面的所有Runtime的状态为Discard
@@ -1694,7 +1693,7 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 					logs.Errorf("Update runtime status error-99:%v", err)
 				}
 				//  send runtime discard event
-				gmo.recorder.Event(allRuntime, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Runtime Name:\t %s is discard", allRuntime.Name))
+				gmo.clientsManager.LogEvent(allRuntime, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Runtime Name:\t %s is discard", allRuntime.Name), allRuntime.Namespace)
 			}
 		}
 		// 更新一下etcd当中的当前Action的Status
@@ -1708,13 +1707,13 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 		groupStatus.FinishAt = &finshTime
 		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Failed
-		gmo.recorder.Event(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name))
+		gmo.clientsManager.LogEvent(get, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Group name:\t %s is failed", get.Name), get.Namespace)
 	}
 	if finalGroupIsKilled {
 		groupStatus.FinishAt = &finshTime
 		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Killed
-		gmo.recorder.Event(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name))
+		gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name), get.Namespace)
 	}
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
 	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
@@ -1723,13 +1722,13 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 		if !finalGroupIsKilled && !finalGroupIsFailed {
 			if actionHasSucceed {
 				groupStatus.Phase = apis.Successed //Group的状态等于当前Action执行完成的状态  Succeed
-				gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
+				gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name), get.Namespace)
 			} else { // 排除当前Action的所有Action当中，没有一个Action是Succeed状态，那么这里要进行一个判断，如果当前Action是成功的，则Group发送Succeed事件，如果当前Action是丢弃的，则Group发送Discard事件
 				groupStatus.Phase = phase
 				if phase == apis.Successed { //当前Action是Successed，则Group发送Succeed完成事件
-					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name))
+					gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Group name:\t %s is successed", get.Name), get.Namespace)
 				} else {
-					gmo.recorder.Event(get, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Group name:\t %s is discard", get.Name))
+					gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Group name:\t %s is discard", get.Name), get.Namespace)
 				}
 			}
 		}
@@ -1753,13 +1752,13 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 			task.Status.FinishAt = &finshTime
 			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Failed
-			gmo.recorder.Event(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name))
+			gmo.clientsManager.LogEvent(task, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Task Name:\t %s is Failed", task.Name), task.Namespace)
 		}
 		if finalTaskIsKilled {
 			task.Status.FinishAt = &finshTime
 			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Killed
-			gmo.recorder.Event(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name))
+			gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name), task.Namespace)
 		}
 		if otherGroupCompleted && nowGroupCompleted {
 			task.Status.FinishAt = &finshTime
@@ -1767,13 +1766,13 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 			if !finalTaskIsFailed && !finalTaskIsKilled {
 				if groupHasSucceed {
 					task.Status.Phase = apis.Successed
-					gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+					gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name), task.Namespace)
 				} else {
 					task.Status.Phase = phase //表示的是Task下的其他Group都是Successed状态，那么Task的状态取决于当前的Group，如果为Succeed，则Task也为Succeed，反正为Failed
 					if phase == apis.Successed {
-						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name))
+						gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Task Name:\t %s is Successed", task.Name), task.Namespace)
 					} else {
-						gmo.recorder.Event(task, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Task Name:\t %s is discard", task.Name))
+						gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Task Name:\t %s is discard", task.Name), task.Namespace)
 					}
 				}
 			}

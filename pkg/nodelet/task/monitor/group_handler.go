@@ -13,7 +13,6 @@ import (
 	meta "hit.edu/framework/pkg/apis/meta"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
@@ -39,7 +38,7 @@ type GroupHandler struct {
 	clientsManager *manager.Manager
 	//
 	// eventRecorder 记录事件
-	recorder    recorder.EventRecorder
+	//recorder    recorder.EventRecorder
 	eventClient core.EventInterface
 	fileManager *fileManager.FileManager
 
@@ -51,7 +50,7 @@ type GroupHandler struct {
 }
 
 func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers, groupQueues *group.GroupQueues, clientsManager *manager.Manager,
-	recorder recorder.EventRecorder, eventClient core.EventInterface, groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface,
+	groupTarget map[string]cross_core.GroupInterface, actionTarget map[string]cross_core.ActionInterface,
 	runtimeTarget map[string]cross_core.RuntimeInterface, fileManager *fileManager.FileManager) *GroupHandler {
 
 	return &GroupHandler{
@@ -62,13 +61,13 @@ func NewGroupHandler(groupManager group.Manager, groupWorkers group.GroupWorkers
 		//actionClient:  actionClient,
 		//runtimeClient: runtimeClient,
 		clientsManager: clientsManager,
-		recorder:       recorder,
-		eventClient:    eventClient,
-		fileManager:    fileManager,
-		stopCh:         make(chan struct{}),
-		groupTarget:    groupTarget,
-		actionTarget:   actionTarget,
-		runtimeTarget:  runtimeTarget,
+		//recorder:       recorder,
+		//eventClient:   eventClient,
+		fileManager:   fileManager,
+		stopCh:        make(chan struct{}),
+		groupTarget:   groupTarget,
+		actionTarget:  actionTarget,
+		runtimeTarget: runtimeTarget,
 	}
 }
 
@@ -118,6 +117,12 @@ func (gh *GroupHandler) LoopIteration(ctx context.Context, updateCh <-chan types
 			case types.KILL:
 				logs.Debug("Delete group")
 				gh.HandleGroupKill(u.Group)
+			case types.Stop:
+				logs.Debug("Stop group")
+				gh.HandleGroupStop(u.Group)
+			case types.Restore:
+				logs.Debug("Restore group")
+				gh.HandleGroupRestore(u.Group)
 			case types.UPDATE:
 				logs.Debug("Update group")
 				gh.HandleGroupUpdate(u.Group)
@@ -402,6 +407,31 @@ func (gh *GroupHandler) HandleGroupKill(gr *apis.Group) {
 	})
 	//gh.groupManager.DeleteGroup(gr)
 }
+func (gh *GroupHandler) HandleGroupStop(gr *apis.Group) {
+	start := time.Now()
+	logs.Infof("Start HandleGroupStop")
+	// 遍历所有的Group,创建Group
+	// 向 GroupWorkers 提交任务组的删除请求-hzy
+	gh.groupWorkers.UpdateGroup(&group.UpdateGroupOptions{
+		Group:      gr,
+		StartTime:  start,
+		UpdateType: group.GroupStop,
+	})
+	//gh.groupManager.DeleteGroup(gr)
+}
+
+func (gh *GroupHandler) HandleGroupRestore(gr *apis.Group) {
+	start := time.Now()
+	logs.Infof("Start HandleGroupRestore")
+	//// 遍历所有的Group,创建Group
+	//// 向 GroupWorkers 提交任务组的删除请求-hzy
+	gh.groupWorkers.UpdateGroup(&group.UpdateGroupOptions{
+		Group:      gr,
+		StartTime:  start,
+		UpdateType: group.GroupRestore,
+	})
+	////gh.groupManager.DeleteGroup(gr)
+}
 
 // TODO 检查本地资源是否可以启动该Group
 func (gh *GroupHandler) checkResource(g *apis.Group) bool {
@@ -424,7 +454,7 @@ func (gh *GroupHandler) CheckEventForSchedulerResult(gr *apis.Group, copyGroupNa
 	watchOptions := meta.ListOptions{
 		FieldSelector: fieldSelector,
 	}
-	watcher, err := gh.eventClient.Watch(context.TODO(), watchOptions)
+	watcher, err := gh.clientsManager.GetEventClient(gr.Namespace).Client.Watch(context.TODO(), watchOptions)
 	if err != nil {
 		logs.Errorf("Watch group error:%v", err)
 	}

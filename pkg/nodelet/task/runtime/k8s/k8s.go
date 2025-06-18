@@ -3,7 +3,6 @@ package k8s
 import (
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
@@ -25,8 +24,9 @@ type K8sRuntime struct {
 	metricsClient *metricsclientset.Clientset //go get k8s.io/metrics/pkg/client/clientset/versioned 从 Metrics Server 获取的实时监控数据
 	//client         *grpc_client.RuntimeClient
 	connectionPool *pool.ConnectionPool
+	clientsManager *manager.Manager
 	// 全局事件发送的组件
-	recorder recorder.EventRecorder
+	//recorder recorder.EventRecorder
 	monitor  *monitor.Monitor
 	eventBus *eventbus.EventBus
 }
@@ -43,7 +43,7 @@ type PodStatus struct {
 	Resource_usage ResourceUsage
 }
 
-func NewK8sRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, recorder recorder.EventRecorder, pool *pool.ConnectionPool, nodeName string) *K8sRuntime {
+func NewK8sRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool, nodeName string) *K8sRuntime {
 	clientset := config.LoadConfig()
 	metricsClient := config.LoadMcConfig()
 	if clientset == nil || metricsClient == nil {
@@ -51,8 +51,9 @@ func NewK8sRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus,
 		return nil
 	}
 	k8sMonitor := monitor.NewMonitor(clientset, eventBus, nodeName, clientsManager)
+
 	k8sMonitor.Start()
-	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, recorder: recorder, monitor: k8sMonitor, eventBus: eventBus}
+	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, monitor: k8sMonitor, eventBus: eventBus, clientsManager: clientsManager}
 }
 func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("k8s runtime kill runtime: %s", runtime.Name)
@@ -65,6 +66,14 @@ func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.
 	if err != nil {
 		logs.Errorf("Delete k8s resources from yaml file failed: %v", err)
 	}
+	return nil
+}
+func (k *K8sRuntime) Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+
+	return nil
+}
+func (k *K8sRuntime) Restore(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+
 	return nil
 }
 
@@ -111,7 +120,7 @@ func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *
 	if runtime.Spec.EnableFineGrainedControlService == nil || runtime.Spec.EnableFineGrainedControlPort == nil {
 		logs.Errorf("Need input EnableFineGrainedControlService and EnableFineGrainedControlPort, now all is nil")
 		// 发送失败事件
-		k.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc RunAppStore()", runtime.Name))
+		k.clientsManager.LogEvent(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc RunAppStore()", runtime.Name), group.Namespace)
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
@@ -121,7 +130,7 @@ func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *
 	if err != nil {
 		logs.Error(err, "Store application status failed")
 	}
-	k.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
+	k.clientsManager.LogEvent(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name), group.Namespace)
 	return "aass"
 }
 func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -129,7 +138,7 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 	if runtime.Spec.EnableFineGrainedControlService == nil || runtime.Spec.EnableFineGrainedControlPort == nil {
 		logs.Errorf("Need input EnableFineGrainedControlService and EnableFineGrainedControlPort, now all is nil in RestoreData")
 		// 发送失败事件
-		k.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc RestoreData()", runtime.Name))
+		k.clientsManager.LogEvent(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc RestoreData()", runtime.Name), group.Namespace)
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
@@ -138,7 +147,7 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 	if err != nil {
 		logs.Errorf("Restore application status failed")
 	}
-	k.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
+	k.clientsManager.LogEvent(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name), group.Namespace)
 	return err
 }
 func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -150,7 +159,7 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 	if runtime.Spec.EnableFineGrainedControlService == nil || runtime.Spec.EnableFineGrainedControlPort == nil {
 		logs.Errorf("Need input EnableFineGrainedControlService and EnableFineGrainedControlPort, now all is nil in StartRuntime")
 		// 发送失败事件
-		k.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc StartRuntime()", runtime.Name))
+		k.clientsManager.LogEvent(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc StartRuntime()", runtime.Name), group.Namespace)
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
@@ -171,7 +180,7 @@ func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime
 	if runtime.Spec.EnableFineGrainedControlService == nil || runtime.Spec.EnableFineGrainedControlPort == nil {
 		logs.Errorf("Need input EnableFineGrainedControlService and EnableFineGrainedControlPort, now all is nil in InitRuntime")
 		// 发送失败事件
-		k.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc InitRuntime()", runtime.Name))
+		k.clientsManager.LogEvent(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc InitRuntime()", runtime.Name), group.Namespace)
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
@@ -187,7 +196,7 @@ func (k *K8sRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime
 	if runtime.Spec.EnableFineGrainedControlService == nil || runtime.Spec.EnableFineGrainedControlPort == nil {
 		logs.Errorf("Need input EnableFineGrainedControlService and EnableFineGrainedControlPort, now all is nil in StopRuntime")
 		// 发送失败事件
-		k.recorder.Event(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc StopRuntime()", runtime.Name))
+		k.clientsManager.LogEvent(action, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s failed to use rpc StopRuntime()", runtime.Name), group.Namespace)
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}

@@ -19,6 +19,14 @@ func (br BinaryRuntime) Kill(group *apis.Group, action *apis.Action, runtime *ap
 	logs.Infof("binary runtime kill task:%s", group.Name)
 	return nil
 }
+func (br BinaryRuntime) Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	logs.Infof("binary runtime kill task:%s", group.Name)
+	return nil
+}
+func (br BinaryRuntime) Restore(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	logs.Infof("binary runtime kill task:%s", group.Name)
+	return nil
+}
 func (br BinaryRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 
 	return "", nil

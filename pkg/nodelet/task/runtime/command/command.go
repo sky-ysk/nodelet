@@ -13,7 +13,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
@@ -26,7 +25,7 @@ type CommandRuntime struct {
 	// 用于传输状态的适配Runtime运行时的事件总线
 	eventBus *eventbus.EventBus
 	// 全局系统的事件处理
-	recorder       recorder.EventRecorder
+	//recorder       recorder.EventRecorder
 	connectionPool *pool.ConnectionPool
 	//client      *grpc_client.RuntimeClient
 	stopSignals    map[string]chan struct{} // 用于标记进程是否被外部停止
@@ -34,12 +33,12 @@ type CommandRuntime struct {
 	mu             sync.Mutex // 保护clients和stopSignals
 }
 
-func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, recorder recorder.EventRecorder, pool *pool.ConnectionPool) *CommandRuntime {
+func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool) *CommandRuntime {
 	pm := process.NewProcessManager()
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
-		recorder:       recorder,
+		//recorder:       recorder,
 		stopSignals:    make(map[string]chan struct{}),
 		connectionPool: pool,
 		clientsManager: clientsManager,
@@ -57,6 +56,12 @@ func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *
 	if err != nil {
 		return err
 	}
+	return nil
+}
+func (cr *CommandRuntime) Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return nil
+}
+func (cr *CommandRuntime) Restore(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	return nil
 }
 
@@ -129,16 +134,16 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	if err := CMD.Start(); err != nil {
 		//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
-		cr.recorder.Event(runtime, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s start failed", runtime.Name))
+		cr.clientsManager.LogEvent(runtime, apis.EventTypeWarning, events.FailedToStartCommand, fmt.Sprintf("Runtime Name:\t %s start failed", runtime.Name), groupNamespace)
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 	//通知group_monitor，来修改全局的group信息（其中的runtime属性）
 	if isInit {
 		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Init, apis.Time{time.Now()}, apis.Time{time.Now()})
-		cr.recorder.Event(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to init", runtime.Name))
+		cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to init", runtime.Name), groupName)
 	} else {
 		cr.notifyRuntimeStartPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
-		cr.recorder.Event(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name))
+		cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name), groupNamespace)
 	}
 	cr.processManager.AddProcess(runtime.Name, CMD)
 	cr.stopSignals[runtime.Name] = make(chan struct{})
@@ -151,14 +156,14 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 		case <-cr.stopSignals[runtime.Name]: // 如果接收到停止信号
 			logs.Info("command killed externally by stopCMD")
 			cr.notifyRuntimeEndPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
-			cr.recorder.Event(runtime, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Runtime Name:\t %s start to close", runtime.Name)) // 发送事件：Runtime收到终止信号进行关闭
+			cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Runtime Name:\t %s start to close", runtime.Name), groupNamespace) // 发送事件：Runtime收到终止信号进行关闭
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Receive killed command:\t %s is Stopped", runtime.Name)
 		default:
 			logs.Errorf("command %s finished with error: %s", runtime.Name, err.Error())
 			cr.notifyRuntimeEndPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
-			cr.recorder.Event(runtime, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Runtime Name:\t %s execution failure", runtime.Name)) // 发送事件，任务执行失败进行关闭
+			cr.clientsManager.LogEvent(runtime, apis.EventTypeWarning, events.ExecuteFailed, fmt.Sprintf("Runtime Name:\t %s execution failure", runtime.Name), groupNamespace) // 发送事件，任务执行失败进行关闭
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
@@ -269,7 +274,7 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 		if err != nil {
 			logs.Errorf("任务保存状态失败: %e", err)
 		}
-		cr.recorder.Event(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name))
+		cr.clientsManager.LogEvent(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name), group.Namespace)
 
 		return strconv.FormatInt(index, 10)
 	} else {
@@ -315,7 +320,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 			logs.Errorf("任务启动失败: %e", err)
 		}
 		cr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, "", apis.Running, nowTime, nowTime)
-		cr.recorder.Event(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name))
+		cr.clientsManager.LogEvent(action, apis.EventTypeNormal, events.RestoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppRestore()", runtime.Name), group.Namespace)
 	} else {
 		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
 		err = fmt.Errorf("EnableFineGrainedControlPort not provide")

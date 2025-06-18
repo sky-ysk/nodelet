@@ -7,7 +7,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/tools/cache"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
@@ -28,8 +28,8 @@ const (
 
 type NodeMonitor struct {
 	//nodeClient    core.NodeInterface
-	//clientsManager *manager.Manager
-	recorder      recorder.EventRecorder
+	clientsManager *manager.Manager
+	//recorder      recorder.EventRecorder
 	nodeIndexer   cache.Indexer    //// 本地缓存，提供关于资源的快速查询（索引查询）。 informer会调用Indexer的Add、update、delete方法来实现资源的同步于更新
 	nodeInformer  cache.Controller //// cache.Controller 是 k8s中用于控制器模式的核心组件，它封装了资源的监听和事件处理机制，通常用于协调控制循环。，作用：监听资源变化、缓存资源、触发处理逻辑
 	queue         workqueue.TypedRateLimitingInterface[string]
@@ -37,7 +37,7 @@ type NodeMonitor struct {
 	lastEventTime time.Time // 记录节点最后事件时间
 }
 
-func NewNodeMonitor(clientSet *clients.ClientSet, recorder recorder.EventRecorder, nodeName string) *NodeMonitor {
+func NewNodeMonitor(clientSet *clients.ClientSet, clientsManager *manager.Manager, nodeName string) *NodeMonitor {
 	//创建资源的List Watcher
 	nodeListWatcher := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "nodes", "test", fields.Everything())
 	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
@@ -89,10 +89,11 @@ func NewNodeMonitor(clientSet *clients.ClientSet, recorder recorder.EventRecorde
 
 	return &NodeMonitor{
 		//nodeClient:   nodeClient,
-		recorder:     recorder,
-		nodeIndexer:  nodeIndexer,
-		nodeInformer: nodeInformer,
-		queue:        queue,
+		//recorder:     recorder,
+		clientsManager: clientsManager,
+		nodeIndexer:    nodeIndexer,
+		nodeInformer:   nodeInformer,
+		queue:          queue,
 	}
 }
 
@@ -181,7 +182,7 @@ func (nm *NodeMonitor) generateMigrationEvent(n *apis.Node) error {
 		logs.Infof("Node %s is still in the cooling period (last event time: %s)", n.Name, nm.lastEventTime.Format(time.RFC3339))
 		return nil
 	}
-	nm.recorder.EventForMigration(n, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", n.Name), "") //
+	nm.clientsManager.LogEventForMigration(n, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", n.Name), "", n.Namespace) //
 	logs.Info("send Trigger Migration event=====================")
 	nm.lastEventTime = nowTime
 	return nil

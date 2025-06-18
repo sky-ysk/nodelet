@@ -20,6 +20,14 @@ func (dr ContainerRuntime) Kill(group *apis.Group, action *apis.Action, runtime 
 	logs.Infof("docker runtime kill task:%s", group.Name)
 	return nil
 }
+func (dr ContainerRuntime) Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	logs.Infof("docker runtime kill task:%s", group.Name)
+	return nil
+}
+func (dr ContainerRuntime) Restore(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	logs.Infof("docker runtime kill task:%s", group.Name)
+	return nil
+}
 func (dr ContainerRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 
 	return "", nil

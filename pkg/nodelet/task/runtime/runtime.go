@@ -11,7 +11,6 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/runtime/wasm"
 
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/task/runtime/binary"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
@@ -22,6 +21,8 @@ import (
 type Runtime interface {
 	Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
 	Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
+	Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
+	Restore(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
 	CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error)
 	StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string
 	RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error
@@ -31,12 +32,8 @@ type Runtime interface {
 }
 
 type RuntimeManager struct {
-	runtimes map[apis.RuntimeType]Runtime
-	eventbus *eventbus.EventBus
-	recorder recorder.EventRecorder
-	//deviceClient core.DeviceInterface
-	//actionClient core.ActionInterface
-	//groupClient  core.GroupInterface
+	runtimes         map[apis.RuntimeType]Runtime
+	eventbus         *eventbus.EventBus
 	clientsManager   *manager.Manager
 	mu               sync.Mutex
 	pool             *pool.ConnectionPool
@@ -45,11 +42,11 @@ type RuntimeManager struct {
 	wasmRuntimePort  string
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, recorder recorder.EventRecorder, clientsManager *manager.Manager, nodeName string, wasmToolchainDir string, wasmRuntimePort string) *RuntimeManager {
+func NewRuntimeManager(bus *eventbus.EventBus, clientsManager *manager.Manager, nodeName string, wasmToolchainDir string, wasmRuntimePort string) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
-		recorder: recorder,
+		//recorder: recorder,
 		//deviceClient: deviceClient,
 		//actionClient: actionClient,
 		//groupClient:  groupClient,
@@ -79,14 +76,14 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			break
 		case apis.ByK8s: //k8s-Pod\k8s-deployment\k8s-service
 			//TODO
-			runtime = k8s.NewK8sRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool, rm.NodeName)
+			runtime = k8s.NewK8sRuntime(rm.clientsManager, rm.eventbus, rm.pool, rm.NodeName)
 			break
 		case apis.ByWasm:
 			//TODO
 			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus, rm.wasmToolchainDir, rm.wasmRuntimePort)
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.recorder, rm.pool)
+			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.pool)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime()
@@ -116,6 +113,13 @@ func (rm *RuntimeManager) Kill(group *apis.Group, action *apis.Action, runtime *
 	}
 	return rm.GetRuntime(runtime.Spec.Type).Kill(group, action, runtime, actionSpecName, runtimeSpecName)
 }
+func (rm *RuntimeManager) Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return rm.GetRuntime(runtime.Spec.Type).Stop(group, action, runtime, actionSpecName, runtimeSpecName)
+}
+func (rm *RuntimeManager) Restore(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	return rm.GetRuntime(runtime.Spec.Type).Restore(group, action, runtime, actionSpecName, runtimeSpecName)
+}
+
 func (rm *RuntimeManager) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 	//TODO
 	return "", nil

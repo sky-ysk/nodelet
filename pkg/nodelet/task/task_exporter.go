@@ -2,6 +2,10 @@ package task
 
 import (
 	"context"
+	"fmt"
+	"hit.edu/framework/pkg/apimachinery/watch"
+	meta "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/nodelet/events"
 	"sync"
 	"time"
 
@@ -13,11 +17,9 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/group/dependency"
 	"hit.edu/framework/pkg/utils"
 
-	scheme "hit.edu/framework/pkg/apimachinery/runtime"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	"hit.edu/framework/pkg/nodelet/task/group"
@@ -35,8 +37,10 @@ type TaskExporter struct {
 	clientsManager *manager.Manager
 	// 增加获取所有Namespace下的group的client-go
 	allGroupsClient core.GroupInterface
+	// 增加获取所有Namespace下的event的client-go
+	allEventsClient core.EventInterface
 	// TODO: 增加Event Broadcaster Recorder
-	eventBroadcaster recorder.EventBroadcaster
+	//eventBroadcaster recorder.EventBroadcaster
 
 	// TODO: 增加Group Lister
 	groupLister []*apis.Group
@@ -77,7 +81,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	//nodeClient := clientset.Core().Nodes("test")
 	//taskClient := clientset.Core().Tasks("test")
 	//groupClient := clientset.Core().Groups("test")
-	eventClient := clientset.Core().Events("test")
+	//eventClient := clientset.Core().Events("test")
 	//actionClient := clientset.Core().Actions("test")
 	//deviceClient := clientset.Core().Devices("test")
 	//runtimeClient := clientset.Core().Runtimes("test")
@@ -85,11 +89,11 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	//事件总线--只使用与Runtime运行时传输状态的
 	eb := eventbus.NewEventBus()
 	// 全局事件组件的配置
-	eventBroadcaster := recorder.NewBroadcaster()
-	eventBroadcaster.StartRecordingToSink(context.Background(), &core.EventSinkImpl{Interface: eventClient})
-	scheme := scheme.NewScheme()
-	apis.AddToScheme(scheme)
-	recorder := eventBroadcaster.NewRecorder(scheme, "TaskExporter")
+	//eventBroadcaster := recorder.NewBroadcaster()
+	//eventBroadcaster.StartRecordingToSink(context.Background(), &core.EventSinkImpl{Interface: eventClient})
+	//scheme := scheme.NewScheme()
+	//apis.AddToScheme(scheme)
+	//recorder := eventBroadcaster.NewRecorder(scheme, "TaskExporter")
 
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
@@ -97,7 +101,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, recorder, clientsManager, cfg.NodeName, cfg.wasmToolchainDir, cfg.wasmRuntimePort)
+	runtimeManager := runtime.NewRuntimeManager(eb, clientsManager, cfg.NodeName, cfg.wasmToolchainDir, cfg.wasmRuntimePort)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
@@ -116,17 +120,18 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		//nodesClient:         nodeClient,
 		//tasksClient:         taskClient,
 		//gropsClient:         groupClient,
-		allGroupsClient:     clientset.Core().Groups(metav1.NamespaceAll),
-		clientsManager:      clientsManager,
-		eventBroadcaster:    eventBroadcaster,
+		allGroupsClient: clientset.Core().Groups(metav1.NamespaceAll),
+		allEventsClient: clientset.Core().Events(metav1.NamespaceAll),
+		clientsManager:  clientsManager,
+		//eventBroadcaster:    eventBroadcaster,
 		conditionEngine:     conditionEngine,
 		groupManager:        groupManager,
 		groupLister:         lister,
 		groupWorkers:        workers,
-		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, recorder, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap),
-		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, recorder, eventClient, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
-		migrationController: controller.NewMigrationController(eventClient, clientset, clientsManager, runtimeManager, groupQueues, recorder, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
-		nodeMonitor:         controller.NewNodeMonitor(clientset, recorder, nodeName),
+		groupMonitor:        monitor.NewGroupMonitor(groupManager, groupQueues, eb, runtimeManager, clientsManager, depenManager, conditionEngine, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap),
+		groupHandler:        monitor.NewGroupHandler(groupManager, workers, groupQueues, clientsManager, groupTargetMap, actionTargetMap, runtimeTargetMap, fileManager),
+		migrationController: controller.NewMigrationController(clientset, clientsManager, runtimeManager, groupQueues, nodeName, groupTargetMap, actionTargetMap, runtimeTargetMap, groupManager),
+		nodeMonitor:         controller.NewNodeMonitor(clientset, clientsManager, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
 	}
@@ -156,7 +161,8 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	}()
 	go func() {
 		defer wg.Done()
-		te.ReceiveGroupInfo(ctx) // 持续从etcd当中读取group
+		te.ReceiveGroupInfo(ctx)     // 持续从etcd当中读取group
+		te.ReceiveKillEventInfo(ctx) // 持续从etcd当中读取kill-group的指令
 	}()
 
 	go te.migrationController.Run(5, ctx.Done())
@@ -221,6 +227,50 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+func (te *TaskExporter) ReceiveKillEventInfo(ctx context.Context) {
+	nowtime := time.Now() // 启动监听的时刻，为了放置启动nodelet组件的时候，etcd里已经有这类的数据，导致收到了老的event
+	fieldSelector := fmt.Sprintf("reason=%v", events.KillingCommand)
+	watchOptions := meta.ListOptions{
+		FieldSelector: fieldSelector,
+	}
+	watcher, err := te.allEventsClient.Watch(context.TODO(), watchOptions)
+	if err != nil {
+		logs.Errorf("Watch group error:%v", err)
+	}
+	defer watcher.Stop() // 确保 watcher 被停止
+	watchChan := watcher.ResultChan()
+	for {
+		select {
+		case event, ok := <-watchChan:
+			if !ok {
+				logs.Infof("watchChan closed")
+				return
+			}
+			// 打印事件类型和对象的相关信息
+			logs.Tracef("接收到事件类型: %v\n", event.Type)
+			switch event.Type {
+			case watch.Added:
+				logs.Infof("资源被添加: ", event.Object)
+				newEvent := event.Object.(*apis.Event)
+				group, err := te.groupManager.GetGroupByName(newEvent.InvolvedObject.Name) //groupManager当中有此group
+				if err != nil {
+					logs.Infof("Group not in nodelet")
+					return
+				}
+				if group != nil && newEvent.EventTime.Time.After(nowtime) { //前者晚于后者返回true
+					// 调用kill方法
+					groupUpdate := types.GroupUpdate{
+						Group: group,
+						Op:    types.KILL,
+					}
+					te.updateCh <- groupUpdate
+				}
+			default:
+				logs.Infof("未识别的事件类型: ", event.Type)
+			}
 		}
 	}
 }

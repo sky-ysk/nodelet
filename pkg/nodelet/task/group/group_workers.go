@@ -23,8 +23,8 @@ const (
 	GroupCreate UpdateGroupType = iota
 	GroupUpdate
 	GroupKill
-	GroupDelete //可能暂时没用
-
+	GroupStop
+	GroupRestore
 )
 
 // 更新Group中的选项内容
@@ -121,10 +121,12 @@ func (g *groupWorkers) groupWorkerLoop(groupUpdates <-chan *UpdateGroupOptions) 
 			g.startGroup(update.Group)
 		case GroupUpdate:
 			g.UpdateGroup(update)
-		//case GroupDelete:
-		//	g.deleteGroup(update.Group)
 		case GroupKill:
 			g.killGroup(update.Group)
+		case GroupStop:
+			g.stopGroup(update.Group)
+		case GroupRestore:
+			g.restoreGroup(update.Group)
 		default:
 			logs.Error("Unhandled default case")
 		}
@@ -191,6 +193,46 @@ func (g *groupWorkers) killGroup(group *apis.Group) {
 	g.groupLock.Lock()
 	defer g.groupLock.Unlock()
 	delete(g.groupUpdates, groupName) // 删除对应的key：group，value：channel
+	return
+}
+
+// 目前和killGroup方法实现的一样
+func (g *groupWorkers) stopGroup(group *apis.Group) {
+	if g.runtimeManager == nil {
+		logs.Error("RuntimeManager is nil")
+	}
+	for _, actionReference := range group.Status.Actions {
+		action, err := g.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
+		if err != nil {
+			logs.Errorf("Get action err:%v", err)
+		}
+		actionStatus := &action.Status
+		for _, runtimeReference := range actionStatus.Runtimes {
+			runtime, err := g.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+			if err != nil {
+				logs.Errorf("Get runtime err:%v", err)
+			}
+			runtimeStatus := &runtime.Status
+			if runtimeStatus.Phase == apis.Successed || runtimeStatus.Phase == apis.DeployCheck || runtimeStatus.Phase == apis.Failed {
+				// runtime已经执行完成，不用再kill了
+				continue
+			}
+			err = g.runtimeManager.Kill(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
+			if err != nil {
+				logs.Errorf("Kill task err:%v", err)
+			}
+		}
+	}
+	//这里需要关闭for循环，因为任务结束了，这个任务对应的管道需要被关闭，否则会一直开着
+	groupName := group.Name // 获取groupName
+	g.groupLock.Lock()
+	defer g.groupLock.Unlock()
+	delete(g.groupUpdates, groupName) // 删除对应的key：group，value：channel
+	return
+}
+
+func (g *groupWorkers) restoreGroup(group *apis.Group) {
+	//TODO
 	return
 }
 
