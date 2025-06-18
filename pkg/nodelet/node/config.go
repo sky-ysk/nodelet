@@ -17,9 +17,11 @@ type Config struct {
 	ClusterCategory string
 	// 节点所在集群的集群ID
 	LocalClusterID string
+	// 节点是否是主节点
+	IsMasterNode bool
 }
 
-func NewConfig(enabledCollectors []string, resourceAccessMethod, nodeName, clusterCategory string, localClusterID string) *Config {
+func NewConfig(enabledCollectors []string, resourceAccessMethod, nodeName, clusterCategory string, localClusterID string, isMaster bool) *Config {
 	//监测当前系统平台
 	platform := runtime.GOOS
 	// 如果资源访问方式为空，设置默认值
@@ -33,5 +35,6 @@ func NewConfig(enabledCollectors []string, resourceAccessMethod, nodeName, clust
 		NodeName:             nodeName,
 		LocalClusterID:       localClusterID,
 		ClusterCategory:      clusterCategory,
+		IsMasterNode:         isMaster,
 	}
 }

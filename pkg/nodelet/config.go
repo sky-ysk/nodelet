@@ -89,6 +89,7 @@ func NewConfig(configPath string) *Config {
 	LocalClusterID := GetLocalClusterID(config)
 	clusterCategory := GetClusterCategory(config)
 	address := GetAPIServerHost(config)
+	isMaster := GetIsMaster(config)
 	logs.Infof("address:%v==============", address)
 	taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
 	if err != nil {
@@ -98,10 +99,16 @@ func NewConfig(configPath string) *Config {
 	dir, port := GetWasmConfig(config)
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
-		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID),
+		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID, isMaster),
 		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, dir, port),
 		apiserverAddr: address,
 	}
+}
+func GetIsMaster(config *FrameworkConfig) bool {
+	if config.IsMasterNode == true {
+		return config.IsMasterNode
+	}
+	return false
 }
 
 func GetNodeName(config *FrameworkConfig) string {
@@ -118,7 +125,7 @@ func GetLocalClusterID(config *FrameworkConfig) string {
 	//	return nodeName
 	//}
 	if config.LocalClusterID != "" {
-		return config.ClusterCategory
+		return config.LocalClusterID
 	}
 	return ""
 }
@@ -170,6 +177,7 @@ type FrameworkConfig struct {
 	NodeName        string `yaml:"NodeName"`
 	ClusterCategory string `yaml:"ClusterCategory"`
 	LocalClusterID  string `yaml:"LocalClusterID"`
+	IsMasterNode    bool   `yaml:"IsMasterNode"`
 	OtherCluster    map[string]struct {
 		ClusterID string `yaml:"ClusterID"`
 		ClusterIP string `yaml:"ClusterIP"`

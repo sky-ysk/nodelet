@@ -513,7 +513,6 @@ func main() {
 		Conditions: &group1_6Condition,
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
-
 				Name: action1_6_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{

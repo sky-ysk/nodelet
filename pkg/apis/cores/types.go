@@ -1269,7 +1269,7 @@ type RuntimeStatus struct {
 	//
 	Belong *ObjectReference `json:"belong,omitempty" yaml:"belong"`
 	// 当前资源使用情况
-	Resources map[string]ObjectReference `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
+	Resources map[string]Item `json:"resources,omitempty" yaml:"resources"` // TODO: 修改为Map
 	// 当前设备使用情况
 	Devices map[string]ObjectReference `json:"devices,omitempty" yaml:"devices"`
 	// 当前数据使用情况

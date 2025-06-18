@@ -40,6 +40,7 @@ type NodeExporter struct {
 	NodeName         string
 	ClusterCategory  string
 	LocalClusterID   string
+	IsmasterNode     bool
 }
 
 func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, error) {
@@ -61,6 +62,7 @@ func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, 
 		NodeName:        cfg.NodeName,
 		LocalClusterID:  cfg.LocalClusterID,
 		ClusterCategory: cfg.ClusterCategory,
+		IsmasterNode:    cfg.IsMasterNode,
 	}, nil
 }
 func getHostName() string {
@@ -94,7 +96,8 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 		//etcd当中没有本节点的信息，下进行创建node信息
 		node := &apis.Node{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: n.NodeName,
+				Name:   n.NodeName,
+				Labels: n.getIsMasterForLabels(),
 			},
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Node",
@@ -154,6 +157,15 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+	}
+}
+func (n *NodeExporter) getIsMasterForLabels() map[string]string {
+	if n.IsmasterNode {
+		return map[string]string{
+			"isCenter": "true",
+		}
+	} else {
+		return nil
 	}
 }
 

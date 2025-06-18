@@ -2,11 +2,12 @@ EtcdPort : 2376
 ApiServerAddr : "http://127.0.0.1:10000"
 NodeName : "CloudNode1"
 ClusterCategory : "Cloud"
-#LocalClusterID : "pve2"
+LocalClusterID : "Cloud1"
 #OtherCluster:
 #  cluster1:
 #    ClusterID : "broker"
 #    ClusterIP : "172.100.0.130"
+IsMasterNode : true
 WasmConfig:
   WasmToolchainDir: "/home/kcm/tmp/wasm"
   WasmRuntimePort: "8080"

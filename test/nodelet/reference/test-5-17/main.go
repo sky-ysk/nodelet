@@ -22,9 +22,7 @@ import (
 // 简单任务测试
 var scheme = runtime.NewScheme()
 
-const NodeName = "debian1"
-
-// 测试切换
+// 提交工作流测试
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
 func main() {
 	moduleName := "testModule"
@@ -87,6 +85,11 @@ func main() {
 				Upperbound: "4",
 			},
 		},
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"type": "Train",
+			},
+		},
 		Replicas: group1_1Replicas,
 		Name:     group1_1Name,
 		Parents:  make([]string, 0),
@@ -117,7 +120,7 @@ func main() {
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	task, err := m.CreateTask(ts, nil, "HenanEP", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
