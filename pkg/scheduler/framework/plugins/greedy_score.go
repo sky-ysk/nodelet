@@ -37,7 +37,7 @@ func (sp *GreedyScorePlugin) Score(ctx context.Context, group *apis.Group, nodeN
 }
 
 func (sp *GreedyScorePlugin) greedyScore(ctx context.Context, group *apis.Group, nodeName string) (int64, *framework.Status) {
-	nodeClient := sp.m.GetNodeClient(apis.NamespaceAll).Client
+	nodeClient := sp.m.GetNodeClient(apis.NamespaceTest).Client
 	node, err := nodeClient.Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
 		logs.Error(err.Error())
