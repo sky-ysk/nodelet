@@ -2157,7 +2157,7 @@ func (in *RuntimeStatus) DeepCopyInto(out *RuntimeStatus) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make(map[string]ObjectReference, len(*in))
+		*out = make(map[string]Item, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
