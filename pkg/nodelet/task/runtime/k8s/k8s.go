@@ -1,8 +1,10 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	apis "hit.edu/framework/pkg/apis/cores"
+	me "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
@@ -84,7 +86,12 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	// 1、首先读取yaml文件，转换为资源
 	yamlFilePatch := runtime.Spec.Inputs[0].From
 	logs.Infof("group.Status.Node:%v", *group.Status.Node)
-	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, *group.Status.Node)
+	// 根据这个NodeName找到主机名
+	get, err2 := k.clientsManager.GetNodeClient("test").Client.Get(context.TODO(), *group.Status.Node, me.GetOptions{})
+	if err2 != nil {
+		logs.Errorf("Get node info error")
+	}
+	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, get.Spec.HostName)
 	if err != nil {
 		logs.Errorf("Get k8s resources from yaml file failed: %v", err)
 	}
