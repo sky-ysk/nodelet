@@ -2,9 +2,10 @@ package task
 
 import (
 	"context"
-	"fmt"
+	"hit.edu/framework/pkg/apimachinery/util/wait"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	meta "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/nodelet/events"
 	"sync"
 	"time"
@@ -65,7 +66,7 @@ type TaskExporter struct {
 	nodeMonitor         *controller.NodeMonitor
 	// 当前Taskexporter所部署的节点的Name
 	nodeName string
-
+	queue    workqueue.TypedRateLimitingInterface[*apis.Event]
 	updateCh chan types.GroupUpdate
 }
 
@@ -114,7 +115,8 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	workers := group.NewGroupWorkers(groupManager, groupQueues, runtimeManager, clientsManager)
 	// 当前Taskexporter所在节点的NodeName
 	nodeName := cfg.NodeName
-
+	//
+	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*apis.Event]())
 	taskExporter := &TaskExporter{
 		// Monitor配置
 		//nodesClient:         nodeClient,
@@ -134,6 +136,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 		nodeMonitor:         controller.NewNodeMonitor(clientset, clientsManager, nodeName),
 		nodeName:            nodeName,
 		updateCh:            make(chan types.GroupUpdate),
+		queue:               queue,
 	}
 
 	// 需要一个TaskCache,存储当前节点所有的Task信息 ====这是什么意思,有点没懂 ？-hzy
@@ -161,8 +164,8 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	}()
 	go func() {
 		defer wg.Done()
-		te.ReceiveGroupInfo(ctx)     // 持续从etcd当中读取group
-		te.ReceiveKillEventInfo(ctx) // 持续从etcd当中读取kill-group的指令
+		te.ReceiveGroupInfo(ctx)               // 持续从etcd当中读取group
+		te.ReceiveKillEventInfo(2, ctx.Done()) // 持续从etcd当中读取kill-group的指令
 	}()
 
 	go te.migrationController.Run(5, ctx.Done())
@@ -230,18 +233,69 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 		}
 	}
 }
-func (te *TaskExporter) ReceiveKillEventInfo(ctx context.Context) {
-	nowtime := time.Now() // 启动监听的时刻，为了放置启动nodelet组件的时候，etcd里已经有这类的数据，导致收到了老的event
-	fieldSelector := fmt.Sprintf("reason=%v", events.KillingCommand)
+
+//	func (te *TaskExporter) ReceiveKillEventInfo(ctx context.Context) {
+//		nowtime := time.Now() // 启动监听的时刻，为了放置启动nodelet组件的时候，etcd里已经有这类的数据，导致收到了老的event
+//		fieldSelector := fmt.Sprintf("reason=%v", events.KillingCommand)
+//		watchOptions := meta.ListOptions{
+//			FieldSelector: fieldSelector,
+//		}
+//		watcher, err := te.allEventsClient.Watch(context.TODO(), watchOptions)
+//		if err != nil {
+//			logs.Errorf("Watch group error:%v", err)
+//		}
+//		defer watcher.Stop() // 确保 watcher 被停止
+//		watchChan := watcher.ResultChan()
+//		for {
+//			select {
+//			case event, ok := <-watchChan:
+//				if !ok {
+//					logs.Infof("watchChan closed")
+//					return
+//				}
+//				// 打印事件类型和对象的相关信息
+//				logs.Tracef("接收到事件类型: %v\n", event.Type)
+//				switch event.Type {
+//				case watch.Added:
+//					logs.Infof("资源被添加: ", event.Object)
+//					newEvent := event.Object.(*apis.Event)
+//					group, err := te.groupManager.GetGroupByName(newEvent.InvolvedObject.Name) //groupManager当中有此group
+//					if err != nil {
+//						logs.Infof("Group not in nodelet")
+//						return
+//					}
+//					if group != nil && newEvent.EventTime.Time.After(nowtime) { //前者晚于后者返回true
+//						// 调用kill方法
+//						groupUpdate := types.GroupUpdate{
+//							Group: group,
+//							Op:    types.KILL,
+//						}
+//						te.updateCh <- groupUpdate
+//					}
+//				default:
+//					logs.Infof("未识别的事件类型: ", event.Type)
+//				}
+//			}
+//		}
+//	}
+func (te *TaskExporter) eventWatcher() {
+	// 筛选出 type是 EventTypeMigration 的事件
+	// fieldSelector := fmt.Sprintf("type=%v", apis.EventTypeMigration)
+	startTime := time.Now()
+	// 设置长超时时间
+	var timeout int64 = 7200
 	watchOptions := meta.ListOptions{
-		FieldSelector: fieldSelector,
+		TimeoutSeconds: &timeout,
+		// FieldSelector:  fieldSelector,
 	}
 	watcher, err := te.allEventsClient.Watch(context.TODO(), watchOptions)
+	//watcher, err := mc.eventClient.Watch(context.TODO(), watchOptions)
 	if err != nil {
-		logs.Errorf("Watch group error:%v", err)
+		panic(err)
 	}
 	defer watcher.Stop() // 确保 watcher 被停止
 	watchChan := watcher.ResultChan()
+
 	for {
 		select {
 		case event, ok := <-watchChan:
@@ -250,27 +304,89 @@ func (te *TaskExporter) ReceiveKillEventInfo(ctx context.Context) {
 				return
 			}
 			// 打印事件类型和对象的相关信息
-			logs.Tracef("接收到事件类型: %v\n", event.Type)
+			//logs.Infof("接收到事件类型: %v\n", event.Type)
 			switch event.Type {
 			case watch.Added:
-				logs.Infof("资源被添加: ", event.Object)
-				newEvent := event.Object.(*apis.Event)
-				group, err := te.groupManager.GetGroupByName(newEvent.InvolvedObject.Name) //groupManager当中有此group
-				if err != nil {
-					logs.Infof("Group not in nodelet")
+				// 类型断言放在最外层，避免重复断言
+				event, ok := event.Object.(*apis.Event)
+				//logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, ctrl.startTime)
+				if !ok {
 					return
 				}
-				if group != nil && newEvent.EventTime.Time.After(nowtime) { //前者晚于后者返回true
-					// 调用kill方法
-					groupUpdate := types.GroupUpdate{
-						Group: group,
-						Op:    types.KILL,
-					}
-					te.updateCh <- groupUpdate
+				//logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
+				// 合并时间判断和事件条件判断
+				//if event.EventTime.Time.Before(ctrl.startTime) ||
+				//	event.InvolvedObject.Name != nodeName ||
+				//	(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
+				//	return // 跳过历史事件/非本节点事件/非迁移触发事件
+				//}
+				if event.EventTime.Time.Before(startTime) ||
+					(event.Reason != events.KillingCommand) { // 不是跨域迁移或者本域迁移的话，跳过
+					continue // 跳过历史事件/非本节点事件/非迁移触发事件
 				}
+				if event.InvolvedObject.Kind == "Group" {
+					_, err := te.groupManager.GetGroupByName(event.InvolvedObject.Name)
+					if err != nil { // 说明该节点上没这个任务，那就不用触发kill
+						continue
+					}
+				}
+				logs.Info("++++++++++++++++++++++Events--------事件为kill事件")
+				// mc.handleEventEvent(event)
+				// // 所有条件满足时入队
+				logs.Infof("task exporter: event informer AddFunc(): %v", event.Name)
+				// key, _ := cache.MetaNamespaceKeyFunc(obj)
+				te.queue.Add(event)
+			case watch.Modified:
+			case watch.Deleted:
+			case watch.Error:
 			default:
-				logs.Infof("未识别的事件类型: ", event.Type)
 			}
 		}
 	}
+}
+
+// Run方法
+func (te *TaskExporter) ReceiveKillEventInfo(workers int, stopCh <-chan struct{}) {
+	defer te.queue.ShutDown()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		te.eventWatcher()
+		//mc.eventInformer.Run(stopCh)
+	}()
+	////缓存同步仅指初始的列表操作完成，后续的更新是由Informer的Watch机制自动处理的，不需要手动同步。因此，在控制器启动时只需要等待一次初始同步即可，之后Informer会自动维护缓存的更新，不需要循环检查。
+	//// 等待缓存同步 启动后第一次将全量数据加载到本地缓存中
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			wait.Until(te.runWorker, time.Second, stopCh)
+		}()
+	}
+	<-stopCh
+	wg.Wait()
+}
+
+func (te *TaskExporter) runWorker() {
+	for {
+		// 获取队列项
+		item, quit := te.queue.Get()
+		if quit {
+			return
+		}
+		defer te.queue.Done(item)
+		te.handleEventEvent(item)
+	}
+}
+
+func (te *TaskExporter) handleEventEvent(item *apis.Event) {
+	group, _ := te.groupManager.GetGroupByName(item.InvolvedObject.Name)
+	groupUpdate := types.GroupUpdate{
+		Group: group,
+		Op:    types.KILL,
+	}
+	te.updateCh <- groupUpdate
 }

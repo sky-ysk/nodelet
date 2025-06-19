@@ -1427,12 +1427,12 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 				if runtimeHasSucceed {
 					actionStatus.Phase = apis.Successed
 					action.Status.Phase = apis.Successed
-					gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name), action.Namespace)
+					gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is execute successesfully", action.Name), action.Namespace)
 				} else { // 排除当前Runtime的所有Runtime当中，没有一个Runtime是Succeed状态，那么这里要进行一个判断，如果当前Runtime是成功的，则Action发送Succeed事件，如果当前Runtime是丢弃的，则Action发送Discard事件
 					actionStatus.Phase = phase
 					action.Status.Phase = phase  // 方便最终End 显示状态
 					if phase == apis.Successed { //当前Runtime是Successed，则Action发送Succeed完成事件
-						gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is discard", action.Name), action.Namespace)
+						gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteSuccessfully, fmt.Sprintf("Action Name:\t %s is execute successfully", action.Name), action.Namespace)
 					} else {
 						gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.ExecuteDiscard, fmt.Sprintf("Action Name:\t %s is discard", action.Name), action.Namespace)
 					}
@@ -2155,7 +2155,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 				} else {
 					logs.Trace("runtime %v is waiting for installing dependency!", runtime.Name)
 				}
-				logs.Info("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
+				logs.Infof("programDependency err, runtime:%v get envName:%v", runtime.Name, envName)
 				return false
 			}
 

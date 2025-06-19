@@ -44,27 +44,6 @@ func NewNodeMonitor(clientSet *clients.ClientSet, clientsManager *manager.Manage
 	nodeOptions := cache.InformerOptions{
 		ListerWatcher: nodeListWatcher,
 		ObjectType:    &apis.Node{}, // 要监听的资源类型
-		//Handler: cache.ResourceEventHandlerFuncs{
-		//	UpdateFunc: func(oldObj, newObj interface{}) {
-		//		oldNode, okOld := oldObj.(*apis.Node)
-		//		newNode, okNew := newObj.(*apis.Node)
-		//		if !okOld || !okNew || newNode.Name != nodeName { // 只处理本节点的Node的资源不足的触发
-		//			return
-		//		}
-		//		// 状态变化检查：从正常变为超过阈值
-		//		oldExceeded := checkNodeThreshold(oldNode)
-		//		newExceeded := checkNodeThreshold(newNode)
-		//		if !oldExceeded && newExceeded {
-		//			key, err := cache.MetaNamespaceKeyFunc(newObj)
-		//			if err != nil {
-		//				logs.Errorf("get node key failed: %v", err)
-		//				return
-		//			}
-		//			queue.Add(key)
-		//			logs.Infof("Node:%s resource exceeds the threshold and is added to the queue", newNode.Name)
-		//		}
-		//	},
-		//},
 		Handler: cache.ResourceEventHandlerFuncs{
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				newNode, okNew := newObj.(*apis.Node)
