@@ -2,13 +2,14 @@ package task
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/util/wait"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	meta "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/util/workqueue"
 	"hit.edu/framework/pkg/nodelet/events"
-	"sync"
-	"time"
 
 	"hit.edu/framework/pkg/client-go/util/manager"
 
@@ -151,7 +152,7 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	// 任务执行过程中需要动态调整任务进程的资源, 根据当前任务执行的Spec和Status, 通过cGroup动态调整任务执行资源使用情况
 	defer close(te.updateCh)
 	var wg sync.WaitGroup
-	wg.Add(3) //等待三个协程
+	wg.Add(4) //等待三个协程
 
 	go func() {
 		defer wg.Done()
@@ -164,7 +165,11 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	}()
 	go func() {
 		defer wg.Done()
-		te.ReceiveGroupInfo(ctx)               // 持续从etcd当中读取group
+		te.ReceiveGroupInfo(ctx) // 持续从etcd当中读取group
+		// te.ReceiveKillEventInfo(2, ctx.Done()) // 持续从etcd当中读取kill-group的指令
+	}()
+	go func() {
+		defer wg.Done()
 		te.ReceiveKillEventInfo(2, ctx.Done()) // 持续从etcd当中读取kill-group的指令
 	}()
 

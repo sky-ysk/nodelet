@@ -17,6 +17,7 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
 )
 
 var scheme = runtime.NewScheme()
@@ -38,7 +39,8 @@ func main() {
 
 	// group
 	group1_1Name := "G1" // 第一个Task下的第一个GroupName
-	group1_1Replicas := []int32{0, 0}
+	// group1_1Replicas := []int32{1, 0}
+	group1_1Replicas := []int32{1, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -97,15 +99,24 @@ func main() {
 	fmt.Println(str)
 
 	prompt()
-
-	// 删除事件
-	// eventsClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{})
-
 	// time.Sleep(10 * time.Second)
 	// logs.Info("after 10s , post event for migration")
-	// postEventForMigrate(eventsClient, scheme, group_create)
-	// prompt()
+	logs.Info("post event for migration")
 
+	groupName := task.Status.Groups[group1_1Name].Name
+	group, _ := m.GetGroup(groupName, "test")
+	// m.GetEventClient("test").Recoder.EventForMigration(group, apis.EventTypeMigration, events.TriggerLocalMigration, fmt.Sprintf("group Name:\t %s is about to be migrated", groupName), "pve2")
+	m.LogEvent(group, apis.EventTypeMigration, events.TriggerLocalMigration, fmt.Sprintf("group Name:\t %s is about to be migrated", groupName), "test")
+
+	prompt()
+	actionName := group.Status.Actions[action1_1_1Name].Name
+	a, _ := m.GetAction(actionName, "test")
+
+	logs.Info("delete resource")
+	m.DeleteTask(task.Name, "test")
+	m.DeleteGroup(groupName, "test")
+	m.DeleteAction(actionName, "test")
+	m.DeleteRuntime(a.Status.Runtimes[runtime1_1_1_1Name].Name, "test")
 }
 
 // From K8s
