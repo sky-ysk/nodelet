@@ -1413,7 +1413,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			actionStatus.LastTime = &lastTime
 			actionStatus.Phase = apis.Killed
 			action.Status.Phase = apis.Killed // 方便最终End 显示状态
-			gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name), action.Namespace)
+			gmo.clientsManager.LogEvent(action, apis.EventTypeNormal, events.KilledCommand, fmt.Sprintf("Action Name:\t %s is Killed", action.Name), action.Namespace)
 			gmo.updateCopyIngfoForAction(get, phase, actionSpecName)
 		}
 		if allRuntiemCompleted { //如果说ActionStatus下面的RuntimeStatus都被执行了，还得修改ActionStatus的phase状态
@@ -1458,7 +1458,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 		groupStatus.FinishAt = &finshTime
 		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Killed
-		gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name), get.Namespace)
+		gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.KilledCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name), get.Namespace)
 	}
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
 	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
@@ -1503,7 +1503,7 @@ func (gmo *GroupMonitor) handleRuntimeEndUpdate(event events.RuntimeEndPhaseEven
 			task.Status.FinishAt = &finshTime
 			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Killed
-			gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name), task.Namespace)
+			gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.KilledCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name), task.Namespace)
 		}
 		if otherGroupCompleted && nowGroupCompleted {
 			task.Status.FinishAt = &finshTime
@@ -1713,7 +1713,7 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 		groupStatus.FinishAt = &finshTime
 		groupStatus.LastTime = &lastTime
 		groupStatus.Phase = apis.Killed
-		gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name), get.Namespace)
+		gmo.clientsManager.LogEvent(get, apis.EventTypeNormal, events.KilledCommand, fmt.Sprintf("Group name:\t %s is killed", get.Name), get.Namespace)
 	}
 	//如果说GroupStatus下面的ActionStatus都被执行了，还得修改GroupStatus的phase的状态
 	if otherActionCompleted && nowActionCompleted { //说明其他Action都执行完成，当前Action也执行完成
@@ -1758,7 +1758,7 @@ func (gmo *GroupMonitor) handleActionEndUpdate(event events.ActionEndPhaseEvent1
 			task.Status.FinishAt = &finshTime
 			task.Status.LastTime = &lastTime
 			task.Status.Phase = apis.Killed
-			gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name), task.Namespace)
+			gmo.clientsManager.LogEvent(task, apis.EventTypeNormal, events.KilledCommand, fmt.Sprintf("Task Name:\t %s is Killed", task.Name), task.Namespace)
 		}
 		if otherGroupCompleted && nowGroupCompleted {
 			task.Status.FinishAt = &finshTime

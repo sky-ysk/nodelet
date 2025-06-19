@@ -121,6 +121,7 @@ const (
 	FailedToCreateCommand  = "Failed"
 	FailedToStartCommand   = "Failed"
 	KillingCommand         = "Killing"
+	KilledCommand          = "Killed"
 	PreemptCommand         = "Preempting"
 	BackOffStartCommand    = "BackOff"
 	TriggerLocalMigration  = "TriggerLocalMigration"

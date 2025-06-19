@@ -156,7 +156,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 		case <-cr.stopSignals[runtime.Name]: // 如果接收到停止信号
 			logs.Info("command killed externally by stopCMD")
 			cr.notifyRuntimeEndPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
-			cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("Runtime Name:\t %s start to close", runtime.Name), groupNamespace) // 发送事件：Runtime收到终止信号进行关闭
+			cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.KilledCommand, fmt.Sprintf("Runtime Name:\t %s start to close", runtime.Name), groupNamespace) // 发送事件：Runtime收到终止信号进行关闭
 			cr.processManager.RemoveProcess(runtime.Name)
 			delete(cr.stopSignals, runtime.Name)
 			return fmt.Errorf("Receive killed command:\t %s is Stopped", runtime.Name)
