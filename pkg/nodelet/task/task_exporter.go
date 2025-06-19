@@ -314,7 +314,7 @@ func (te *TaskExporter) eventWatcher() {
 			case watch.Added:
 				// 类型断言放在最外层，避免重复断言
 				event, ok := event.Object.(*apis.Event)
-				//logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, ctrl.startTime)
+				logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v", event.Name, event.Reason)
 				if !ok {
 					return
 				}

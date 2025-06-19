@@ -3,8 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +24,9 @@ import (
 
 // 简单任务测试
 var scheme = runtime.NewScheme()
+var group1_1Name = "G1" // 第一个Task下的第一个GroupName
+var clientSet = initClientSet(scheme)
+var m = manager.NewManager(clientSet)
 
 // 提交工作流测试
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -28,14 +34,10 @@ func main() {
 	moduleName := "testModule"
 	logs.Init(moduleName)
 
-	//创建ClientSet
-	clientSet := initClientSet(scheme)
-
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
 	// group
-	group1_1Name := "G1" // 第一个Task下的第一个GroupName
 	group1_1Replicas := []int32{0, 0}
 
 	// action
@@ -52,7 +54,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements1.txt",
+			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt",
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -119,8 +121,8 @@ func main() {
 	}
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
-	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, "HenanEP", u.String(), "")
+
+	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
 	if err != nil {
 		panic(err)
 	}
@@ -130,11 +132,15 @@ func main() {
 	}
 	fmt.Println(str)
 
+	prompt()
+	postEventForKill_ForGroup()
+	prompt()
+
 }
 
 // From K8s
 func prompt() {
-	fmt.Printf("-> Press Return key to continue.发送一个迁移事件")
+	fmt.Printf("-> Press Return key to continue.发送kill指令")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		break
@@ -143,6 +149,40 @@ func prompt() {
 		panic(err)
 	}
 	logs.Info()
+}
+
+var group1 = &apis.Group{
+	ObjectMeta: meta.ObjectMeta{Name: "Group1", Namespace: "test"},
+	TypeMeta:   meta.TypeMeta{Kind: "Group", APIVersion: "resources/v1"},
+	Spec:       apis.GroupSpec{Name: "G1"},
+}
+
+func postEventForKill_ForGroup() {
+	logs.Info("发送kill事件======")
+	// 这些配置实际在组件初始化时就已经完成
+
+	groups, err := m.GetGroups("test")
+	if err != nil {
+		logs.Errorf("GetGroups err: %v", err)
+	}
+	var groupName string
+	for i := range groups.Items {
+		group := groups.Items[i]
+		if group.Spec.Name == group1_1Name && !strings.Contains(group.Name, "copy") && group.Status.Phase == apis.Running {
+			groupName = group.Name
+		}
+	}
+	group, err := m.GetGroup(groupName, "test")
+	if err != nil {
+		logs.Errorf("GetGroup err: %v", err)
+	}
+	logs.Infof("group Name:%v,groupNameSpace:%v", group.Name, group.Namespace)
+	// 通过 recorder.Event或 recorder.Eventf可以生成事件
+	time.Sleep(10 * time.Millisecond)
+	//group = group1
+	m.LogEvent(group, apis.EventTypeNormal, events.KillingCommand, fmt.Sprintf("The group %v is need to killing", group.Name), group.Namespace)
+	logs.Infof("++++++++++++++++++++++++++++++++++++++++++++")
+	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {

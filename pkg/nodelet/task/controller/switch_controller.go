@@ -334,6 +334,18 @@ func retryOnError(attempts int, fn func() error) error {
 
 // TODO 任务组迁移核心逻辑---我感觉这里的核心是要改成如果这个方法当中有一步没执行成功，那么如何再次执行，让其成功
 func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event) error { // 该group是从etcd当中获取的
+	go func() {
+		nowtime := apis.Time{time.Now()}
+		patchGroup, _ := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"storeTime": nowtime,
+			},
+		})
+		_, err := mc.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+		if err != nil {
+			logs.Errorf("Patch group err100:%v", err)
+		}
+	}()
 	// 增加一条规则：如果Group不是细粒度控制的，那么就不进行迁移---可能
 	// 1、检查当前状态
 	if group.Status.Phase == apis.Migrating || group.Status.Phase == apis.Migrated {

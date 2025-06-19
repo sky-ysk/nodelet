@@ -1,6 +1,7 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -309,6 +310,18 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//}
 	// rpc调用restore()
 	var port string
+	go func() {
+		nowtime := apis.Time{time.Now()}
+		patchGroup, _ := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"restoreTime": nowtime,
+			},
+		})
+		_, err := cr.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+		if err != nil {
+			logs.Errorf("Patch group err101:%v", err)
+		}
+	}()
 	if runtime.Spec.EnableFineGrainedControlPort != nil {
 		port = *runtime.Spec.EnableFineGrainedControlPort
 		client := cr.getClient(port)

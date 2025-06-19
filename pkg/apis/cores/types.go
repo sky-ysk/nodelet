@@ -639,6 +639,9 @@ type GroupStatus struct {
 	//添加-hzy
 	CheckDependencyCount int32  `json:"check_dependency_count,omitempty" yaml:"check_dependency_count"`
 	CopyStatus           string `json:"copy_status,omitempty" yaml:"copy_status"` //如果是源任务，这个参数可以标记其副本任务的执行状态    如果是副本任务，这个参数可以标记其是预部署还是说直接切换
+	StoreTime            *Time  `json:"storeTime" yaml:"storeTime"`
+	RestoreTime          *Time  `json:"restoreTime" yaml:"restoreTime"`
+	ServiceRestoreTime   *Time  `json:"serviceRestoreTime" yaml:"serviceRestoreTime"`
 }
 
 // ---------- Action
