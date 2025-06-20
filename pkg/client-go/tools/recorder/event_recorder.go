@@ -12,6 +12,7 @@ import (
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/tools/reference"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/nodelet/events"
 )
 
 type recorder struct {
@@ -78,10 +79,7 @@ func (recorder *recorder) generateEvent(object runtime.Object, eventtype, reason
 func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason, message, migrationTarget string) *apis.Event {
 	t := apis.Time{Time: time.Now()}
 	namespace := ref.Namespace
-	if namespace == "" {
-		// namespace = meta.NamespaceDefault
-		namespace = "test"
-	}
+	eventCode := validateEventCode(reason)
 	return &apis.Event{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
@@ -100,6 +98,7 @@ func (recorder *recorder) makeEvent(ref *apis.ObjectReference, eventtype, reason
 		Type:            eventtype,
 		EventTime:       apis.Time{time.Now()},
 		MigrationTarget: migrationTarget,
+		EventCode:       eventCode,
 	}
 }
 
@@ -110,3 +109,14 @@ func ValidateEventType(eventtype string) bool {
 	}
 	return false
 }
+
+func validateEventCode(reason string) apis.EventCode {
+	if code, exists := events.ReasonToCodeForDeploy[reason]; exists {
+		return code
+	}
+	return EvtCodeDefault
+}
+
+const (
+	EvtCodeDefault apis.EventCode = "0"
+)

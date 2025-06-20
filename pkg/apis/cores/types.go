@@ -119,9 +119,11 @@ type Event struct {
 	EventTime       Time
 	Count           int32
 	Type            string // EventTypeNormal or EventTypeWarning or EventTypeMigration
-	MigrationTarget string
-	// todo: 补充 action、reporting controller 、 instance
+	MigrationTarget string `json:"migrationTarget,omitempty" yaml:"migrationTarget"`
+	// 事件码
+	EventCode EventCode `json:"eventCode,omitempty" yaml:"eventCode"`
 }
+type EventCode string
 
 type EventSource struct {
 	// 事件产生组件

@@ -114,11 +114,12 @@ const (
 
 // Command event reason list
 const (
-	CreatedCommand         = "Created"
+	DeployCheck            = "DeployCheck"
+	DependencyError        = "DependencyError"
+	Running                = "Running"
 	StartedCommand         = "Started"
 	StoredCommand          = "Stored"
 	RestoredCommand        = "Restored"
-	FailedToCreateCommand  = "Failed"
 	FailedToStartCommand   = "Failed"
 	KillingCommand         = "Killing"
 	KilledCommand          = "Killed"
@@ -132,4 +133,53 @@ const (
 	GroupRunError          = "GroupRunError"
 	ScheduledToOtherDomain = "ScheduledToOtherDomain"
 	ExecuteDiscard         = "ExecuteDiscard"
+	Migrating              = "Migrating"
+	Migrated               = "Migrated"
 )
+
+// type EventCode string
+
+// 事件代码常量定义（使用4位数字编码）
+const (
+	EvtCodeDeployCheck            apis.EventCode = "31"
+	EvtCodeDependencyError        apis.EventCode = "311"
+	EvtCodeRunning                apis.EventCode = "32"
+	EvtCodeStartedCommand         apis.EventCode = "321"
+	EvtCodeStoredCommand          apis.EventCode = "323"
+	EvtCodeRestoredCommand        apis.EventCode = "324"
+	EvtCodeFailedToStartCommand   apis.EventCode = "322"
+	EvtCodeKillingCommand         apis.EventCode = "35"
+	EvtCodeKilledCommand          apis.EventCode = "351"
+	EvtCodeTriggerLocalMigration  apis.EventCode = "362"
+	EvtCodeTriggerCrossMigration  apis.EventCode = "363"
+	EvtCodeExecuteSuccessfully    apis.EventCode = "33"
+	EvtCodeExecuteFailed          apis.EventCode = "34"
+	EvtCodeSelectOtherDomain      apis.EventCode = "38"
+	EvtCodeGroupRunError          apis.EventCode = "38"
+	EvtCodeScheduledToOtherDomain apis.EventCode = "38"
+	EvtCodeExecuteDiscard         apis.EventCode = "37"
+	EvtCodeMigrating              apis.EventCode = "36"
+	EvtCodeMigrated               apis.EventCode = "361"
+)
+
+var ReasonToCodeForDeploy = map[string]apis.EventCode{
+	DeployCheck:            EvtCodeDeployCheck,
+	DependencyError:        EvtCodeDependencyError,
+	Running:                EvtCodeRunning,
+	StartedCommand:         EvtCodeStartedCommand,
+	FailedToStartCommand:   EvtCodeFailedToStartCommand,
+	StoredCommand:          EvtCodeStoredCommand,
+	RestoredCommand:        EvtCodeRestoredCommand,
+	ExecuteSuccessfully:    EvtCodeExecuteSuccessfully,
+	ExecuteFailed:          EvtCodeExecuteFailed,
+	KillingCommand:         EvtCodeKillingCommand,
+	KilledCommand:          EvtCodeKilledCommand,
+	Migrating:              EvtCodeMigrating,
+	Migrated:               EvtCodeMigrated,
+	TriggerLocalMigration:  EvtCodeTriggerLocalMigration,
+	TriggerCrossMigration:  EvtCodeTriggerCrossMigration,
+	ExecuteDiscard:         EvtCodeExecuteDiscard,
+	SelectOtherDomain:      EvtCodeSelectOtherDomain,
+	GroupRunError:          EvtCodeGroupRunError,
+	ScheduledToOtherDomain: EvtCodeScheduledToOtherDomain,
+}
