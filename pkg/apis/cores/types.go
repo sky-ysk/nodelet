@@ -119,7 +119,7 @@ type Event struct {
 	EventTime       Time
 	Count           int32
 	Type            string // EventTypeNormal or EventTypeWarning or EventTypeMigration
-	MigrationTarget string
+	MigrationTarget string `json:"migrationTarget,omitempty" yaml:"migrationTarget"`
 	// 事件码
 	EventCode EventCode `json:"eventCode,omitempty" yaml:"eventCode"`
 }
