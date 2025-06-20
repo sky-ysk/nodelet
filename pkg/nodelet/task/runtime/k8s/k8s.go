@@ -126,14 +126,13 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 	if namespace == "" {
 		namespace = "switch"
 	}
-	logs.Infof("开始监控 Pod %s 的时间戳，命名空间: %s\n", podName, namespace)
+	// logs.Infof("开始监控 Pod %s 的时间戳，命名空间: %s\n", podName, namespace)
 	const (
 		retryInterval = 5 // Pod 不存在时的重试间隔（秒）
-		logLineMatch  = "Starting server"
-		// logLineMatch  = "restore status successfully"
+		// logLineMatch  = "Starting server"
+		logLineMatch  = "restore status successfully"
 	)
 	cnt := 0
-	logs.Infof("111111111")
 	for {
 		// 如果podName不包含"-copy"子串，则直接返回
 		if !strings.Contains(podName, "-copy") {
@@ -143,36 +142,34 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 		time.Sleep(time.Duration(retryInterval) * time.Second)
 		cnt += 1
 		if cnt >= 10 {
-			logs.Infof("monitor times >= 10, can not find the pod%v", podName)
+			logs.Errorf("monitor times >= 10, can not find the pod%v", podName)
 			return
 		}
 		if !podExists(podName, namespace) {
-			logs.Infof("Pod %s 不存在，等待 %d 秒后重试...\n", podName, retryInterval)
+			// logs.Warnf("Pod %s 不存在，等待 %d 秒后重试...\n", podName, retryInterval)
 			continue
 		}
-		logs.Infof("222222222222")
 		// 捕获日志流
 		cmd := exec.Command("kubectl", "logs", "-f", podName, "-n", namespace, "--since=0s")
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			logs.Errorf("pod timestamp monitor创建管道失败: %v\n", err)
-			continue
+			return
 		}
 
 		if err := cmd.Start(); err != nil {
 			logs.Errorf("pod timestamp monitor启动日志捕获失败: %v\n", err)
-			continue
+			return
 		}
-		logs.Infof("?????????")
 		// 读取日志流
 		reader := bufio.NewReader(stdout)
 		for {
 			line, err := reader.ReadString('\n')
 			if err != nil {
-				// 日志流中断，重新开始循环
+				// 日志流中断(暂时不重新获取Logs)
 				logs.Errorf("pod timestamp monitor日志流读取失败: %v\n", err)
 				cmd.Process.Kill()
-				break
+				return
 			}
 
 			// 匹配目标日志行
@@ -180,7 +177,7 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 				// 提取时间戳（假设时间戳是日志行的前两个字段，格式为 YYYY/MM/DD HH:MM:SS.MICROSECONDS）
 				timestampStr := extractTimestamp(line)
 				if timestampStr != "" {
-					logs.Infof("已记录事件：%s\n", timestampStr)
+					// logs.Infof("已记录事件：%s\n", timestampStr)
 					// 上传到etcd
 					// 定义时间格式
 					layout := "2006/01/02 15:04:05.000000"
@@ -188,7 +185,6 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 					// 解析时间戳字符串
 					timestamp, err := time.Parse(layout, timestampStr)
 					TimeStamp := apis.Time{timestamp}
-					logs.Infof("time:%v", timestamp)
 					if err != nil {
 						logs.Errorf("解析时间戳失败:", err)
 						return
@@ -201,8 +197,9 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 					_, err = k.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
 					if err != nil {
 						logs.Errorf("Patch group err%v", err)
+						return
 					}
-					logs.Infof("33333333333")
+					logs.Infof("已记录服务重启事件的时间：%s\n", timestampStr)
 					return
 				}
 			}
