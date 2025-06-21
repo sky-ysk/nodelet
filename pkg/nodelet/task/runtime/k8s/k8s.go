@@ -58,7 +58,12 @@ func NewK8sRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus,
 		logs.Error("clientset or metricsClient is nil---")
 		return nil
 	}
-	k8sMonitor := monitor.NewMonitor(clientset, eventBus, nodeName, clientsManager)
+	// 此处需要根据nodeName转换为hostName
+	node, err2 := clientsManager.GetNodeClient("test").Client.Get(context.TODO(), nodeName, me.GetOptions{})
+	if err2 != nil {
+		logs.Errorf("Get node info error1")
+	}
+	k8sMonitor := monitor.NewMonitor(clientset, eventBus, node.Spec.HostName, clientsManager)
 
 	k8sMonitor.Start()
 	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, monitor: k8sMonitor, eventBus: eventBus, clientsManager: clientsManager}
@@ -118,19 +123,19 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 }
 
 func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, namespace string) {
-
+	logs.Info("MonitorPodTimestamp Start=======")
 	// 配置参数
 	if podName == "" {
-		podName = "grpc-server-pod"
+		podName = "grpc-client-pod-copy"
 	}
 	if namespace == "" {
 		namespace = "switch"
 	}
 	// logs.Infof("开始监控 Pod %s 的时间戳，命名空间: %s\n", podName, namespace)
 	const (
-		retryInterval = 5 // Pod 不存在时的重试间隔（秒）
+		retryInterval = 1 // Pod 不存在时的重试间隔（秒）
 		// logLineMatch  = "Starting server"
-		logLineMatch  = "restore status successfully"
+		logLineMatch = "restore status successfully"
 	)
 	cnt := 0
 	for {
@@ -141,8 +146,8 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 
 		time.Sleep(time.Duration(retryInterval) * time.Second)
 		cnt += 1
-		if cnt >= 10 {
-			logs.Errorf("monitor times >= 10, can not find the pod%v", podName)
+		if cnt >= 50 {
+			logs.Errorf("monitor times >= 50, can not find the pod%v", podName)
 			return
 		}
 		if !podExists(podName, namespace) {
@@ -267,6 +272,18 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 		// 同时应该发送失败的Notify
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
+	go func() {
+		nowtime := apis.Time{time.Now()}
+		patchGroup, _ := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"restoreTime": nowtime,
+			},
+		})
+		_, err := k.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+		if err != nil {
+			logs.Errorf("Patch group err101:%v", err)
+		}
+	}()
 	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, *runtime.Spec.EnableFineGrainedControlPort)
 	_, err := client.RunAppRestore(keyStatus)
 	if err != nil {

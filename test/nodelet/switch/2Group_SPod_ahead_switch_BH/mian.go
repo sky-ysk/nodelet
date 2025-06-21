@@ -2,30 +2,27 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 var scheme = runtime.NewScheme()
-
-const NodeName = "n19" //1$
+var group1_1Name = "G91"
+var namespace = "HenanEP"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -36,12 +33,10 @@ func main() {
 	//创建ClientSet
 	clientSet := initClientSet(scheme)
 
-	eventclient := clientSet.Core().Events("test")
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
 	// group1 - Client -A机器
-	group1_1Name := "G1"              // 第一个Task下的第一个GroupName
 	group1_1Replicas := []int32{1, 0} //6$
 
 	// action
@@ -61,7 +56,7 @@ func main() {
 	}
 
 	// group2 -Server-B机器
-	group1_2Name := "G2" // 第一个Task下的第一个GroupName
+	group1_2Name := "G81" // 第一个Task下的第一个GroupName
 	group1_2Replicas := []int32{0, 0}
 
 	// action
@@ -72,7 +67,7 @@ func main() {
 	// runtime是否细粒度控制
 	runtime1_2_1_1FineGrainedControl := true
 	runtime1_2_1_1FineGrainedControlPort := "30051"
-	runtime1_2_1_1FineGrainedControlService := "10.31.10.210" //B机器ip地址 //4$
+	runtime1_2_1_1FineGrainedControlService := "10.31.10.20" //B机器ip地址 //4$
 
 	runtime1_2_1_1Input := []apis.Value{
 		apis.Value{
@@ -163,7 +158,7 @@ func main() {
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	task, err := m.CreateTask(ts, nil, namespace, u.String(), "")
 	if err != nil {
 		panic(err)
 	}
@@ -174,7 +169,7 @@ func main() {
 	fmt.Println(str)
 
 	prompt()
-	postEventForMigrate(eventclient)
+	postEventForMigrate_ForGroup()
 	prompt()
 
 }
@@ -192,24 +187,29 @@ func prompt() {
 	logs.Info()
 }
 
-var node = &apis.Node{
-	ObjectMeta: meta.ObjectMeta{Name: NodeName, Namespace: "test"},
-	TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "resources/v1"},
-	Spec:       apis.NodeSpec{NodeName: NodeName},
+func postEventForMigrate_ForGroup() {
+	logs.Info("发送跨域迁移事件======")
+	clientSet := initClientSet(scheme)
+	m := manager.NewManager(clientSet)
+	groups, err := m.GetGroups(namespace)
+	if err != nil {
+		logs.Errorf("GetGroups err: %v", err)
+	}
+	var groupName string
+	for i := range groups.Items {
+		group := groups.Items[i]
+		if group.Spec.Name == group1_1Name && !strings.Contains(group.Name, "copy") && group.Status.Phase == apis.Running {
+			groupName = group.Name
+		}
+	}
+	group, err := m.GetGroup(groupName, namespace)
+	if err != nil {
+		logs.Errorf("GetGroup err: %v", err)
+	}
+	time.Sleep(10 * time.Millisecond)
+	m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
 }
 
-func postEventForMigrate(client core.EventInterface) {
-	// 这些配置实际在组件初始化时就已经完成
-	ctx := context.Background()
-	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
-	defer eventBroadcaster.Shutdown()
-	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: client})
-	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
-
-	// 通过 recorder.Event或 recorder.Eventf可以生成事件
-	recorder.Event(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", node.Name))
-	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
-}
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	apis.AddToScheme(scheme)
 	logs.Info(scheme)

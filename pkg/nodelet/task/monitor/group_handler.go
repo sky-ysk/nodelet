@@ -4,20 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	ty "hit.edu/framework/pkg/apimachinery/types"
+	metav1 "hit.edu/framework/pkg/apis/meta"
+	"hit.edu/framework/pkg/nodelet/task/controller"
+
 	"os"
 	"time"
 
-	ty "hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/watch"
 	apis "hit.edu/framework/pkg/apis/cores"
 	meta "hit.edu/framework/pkg/apis/meta"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	fileManager "hit.edu/framework/pkg/nodelet/registry"
-	"hit.edu/framework/pkg/nodelet/task/controller"
 	"hit.edu/framework/pkg/nodelet/task/group"
 	"hit.edu/framework/pkg/nodelet/task/types"
 	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
@@ -229,153 +230,156 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 
 	}
 
-	// 4、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
-	var copiesInDomain, copiesInOtherDomain int32 = 0, 0
-	// 安全处理逻辑
-	// 情况1：用户未传参时 Replicas == nil
-	if gr.Spec.Replicas == nil {
-		logs.Info("Replicas未配置，使用默认值[0,0]")
-	} else if len(gr.Spec.Replicas) < 2 {
-		logs.Warn("Replicas长度不足，使用前N个值并用0补全",
-			"输入值", gr.Spec.Replicas,
-			"有效长度", len(gr.Spec.Replicas))
-		// 安全取值（避免越界）
-		if len(gr.Spec.Replicas) >= 1 {
+	// 使用协程检查是否有副本并部署
+	go func() {
+		// 4、判断group是否需要部署副本，如果需要，在此处往域或者跨域的etcd当中添加副本
+		var copiesInDomain, copiesInOtherDomain int32 = 0, 0
+		// 安全处理逻辑
+		// 情况1：用户未传参时 Replicas == nil
+		if gr.Spec.Replicas == nil {
+			logs.Info("Replicas未配置，使用默认值[0,0]")
+		} else if len(gr.Spec.Replicas) < 2 {
+			logs.Warn("Replicas长度不足，使用前N个值并用0补全",
+				"输入值", gr.Spec.Replicas,
+				"有效长度", len(gr.Spec.Replicas))
+			// 安全取值（避免越界）
+			if len(gr.Spec.Replicas) >= 1 {
+				copiesInDomain = gr.Spec.Replicas[0]
+			}
+			// 第二个值保持默认0
+		} else { // 情况3：正常情况
 			copiesInDomain = gr.Spec.Replicas[0]
+			copiesInOtherDomain = gr.Spec.Replicas[1]
 		}
-		// 第二个值保持默认0
-	} else { // 情况3：正常情况
-		copiesInDomain = gr.Spec.Replicas[0]
-		copiesInOtherDomain = gr.Spec.Replicas[1]
-	}
 
-	if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的
-		// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本
-		for i := 0; i < int(copiesInDomain); i++ {
-			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
-			//groupCopyName := "Reason-Copy"                                               // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
-			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
-			// 新增操作--5.20--将Group写入到Task当中
-			gh.AddGroupCopyToTaskStatus(groupCopy)
-			// 遍历action和Runtime，依次创建
-			for _, actionReference := range gr.Status.Actions {
-				action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
-				if err != nil {
-					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
-				}
-				actionCopy := controller.NewActionInfoCopy(action)
-				actionClient := gh.clientsManager.GetActionClient(actionCopy.Namespace)
-				_, err = actionClient.Client.Create(context.TODO(), actionCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Action副本，所以说副本的namespace和源任务相同，直接用源action的namespace
-				if err != nil {
-					logs.Errorf("Create copy action %s in local failed: %v", actionReference.Name, err)
-				}
-				logs.Infof("Create actionCopy:%v", actionCopy.Name)
-				for _, runtimeReference := range action.Status.Runtimes {
-					runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+		if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的
+			// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本
+			for i := 0; i < int(copiesInDomain); i++ {
+				// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
+				//groupCopyName := "Reason-Copy"                                               // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
+				groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
+				// 新增操作--5.20--将Group写入到Task当中
+				gh.AddGroupCopyToTaskStatus(groupCopy)
+				// 遍历action和Runtime，依次创建
+				for _, actionReference := range gr.Status.Actions {
+					action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
 					if err != nil {
-						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
+						logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 					}
-					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, false)
-					runtimeClient := gh.clientsManager.GetRuntimeClient(runtimeCopy.Namespace)
-					_, err = runtimeClient.Client.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Runtime副本，所以说副本的namespace和源任务相同，直接用源runtime的namespace
+					actionCopy := controller.NewActionInfoCopy(action)
+					actionClient := gh.clientsManager.GetActionClient(actionCopy.Namespace)
+					_, err = actionClient.Client.Create(context.TODO(), actionCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Action副本，所以说副本的namespace和源任务相同，直接用源action的namespace
 					if err != nil {
-						logs.Errorf("Create copy runtime %s in local failed: %v", runtimeReference.Name, err)
+						logs.Errorf("Create copy action %s in local failed: %v", actionReference.Name, err)
 					}
-					logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
+					logs.Infof("Create actionCopy:%v", actionCopy.Name)
+					for _, runtimeReference := range action.Status.Runtimes {
+						runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+						if err != nil {
+							logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
+						}
+						runtimeCopy := controller.NewRuntimeInfoCopy(runtime, false)
+						runtimeClient := gh.clientsManager.GetRuntimeClient(runtimeCopy.Namespace)
+						_, err = runtimeClient.Client.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Runtime副本，所以说副本的namespace和源任务相同，直接用源runtime的namespace
+						if err != nil {
+							logs.Errorf("Create copy runtime %s in local failed: %v", runtimeReference.Name, err)
+						}
+						logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
+					}
 				}
-			}
-			// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
-			logs.Infof("group:%v===================", groupCopy.Name)
-			groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
-			_, err = groupClient.Client.Create(context.TODO(), groupCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Group副本，所以说副本的namespace和源任务相同，直接用源group的namespace
-			if err != nil {
-				logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
-			}
+				// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
+				logs.Infof("group:%v===================", groupCopy.Name)
+				groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
+				_, err = groupClient.Client.Create(context.TODO(), groupCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Group副本，所以说副本的namespace和源任务相同，直接用源group的namespace
+				if err != nil {
+					logs.Errorf("Create group:%s err: %v", groupCopy.Name, err)
+				}
 
-			// TODO 这里需要将副本信息写入到源任务的Copyinfo当中
-			patchGroup, err := json.Marshal(map[string]interface{}{
-				"spec": map[string]interface{}{
-					"copy_info": map[string]string{groupCopy.Name: "local"}, //value值不同
-				},
-			})
-			if err != nil {
-				logs.Errorf("Json Marshal failed, err:%v", err)
+				// TODO 这里需要将副本信息写入到源任务的Copyinfo当中
+				patchGroup, err := json.Marshal(map[string]interface{}{
+					"spec": map[string]interface{}{
+						"copy_info": map[string]string{groupCopy.Name: "local"}, //value值不同
+					},
+				})
+				if err != nil {
+					logs.Errorf("Json Marshal failed, err:%v", err)
+				}
+				patchResult, err := groupClient.Client.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
+				if err != nil {
+					logs.Errorf("Patch group error:%v", err)
+				}
+				logs.Infof("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
 			}
-			patchResult, err := groupClient.Client.Patch(context.TODO(), gr.Name, ty.StrategicMergePatchType, patchGroup, metav1.PatchOptions{})
-			if err != nil {
-				logs.Errorf("Patch group error:%v", err)
-			}
-			logs.Infof("Source CopyInfo:[value:%v]", patchResult.Spec.CopyInfo[groupCopy.Name])
 		}
-	}
-	if copiesInOtherDomain > 0 { // 说明有副本需要部署在其他域---后续可能要添加要求：部署在其他哪个域
-		for i := 0; i < int(copiesInOtherDomain); i++ {
-			// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息--我已经生成好副本group了，调度器直接把这个group放到别的域即可
-			// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
-			//groupCopyName := "Reason-Copy" // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
-			groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
-			// 遍历action和Runtime，依次创建
-			for _, actionReference := range gr.Status.Actions {
-				action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
-				if err != nil {
-					logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
-				}
-				actionCopy := controller.NewActionInfoCopy(action)
-				actionTarget, ok := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID   TODO 目前跨域还没有适配指定namespace创建
-				if !ok {
-					logs.Info("[actionTarget]键 'broker' 不存在==========================================")
-				}
-				_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
-				if err != nil {
-					logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
-				}
-				logs.Infof("Create actionCopy:%v", actionCopy.Name)
-				for _, runtimeReference := range action.Status.Runtimes {
-					runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+		if copiesInOtherDomain > 0 { // 说明有副本需要部署在其他域---后续可能要添加要求：部署在其他哪个域
+			for i := 0; i < int(copiesInOtherDomain); i++ {
+				// TODO （需要和调度器确认）发送一个事件通知调度器去选择一个域（不能为本域），事件里面放group信息--我已经生成好副本group了，调度器直接把这个group放到别的域即可
+				// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
+				//groupCopyName := "Reason-Copy" // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
+				groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
+				// 遍历action和Runtime，依次创建
+				for _, actionReference := range gr.Status.Actions {
+					action, err := gh.clientsManager.GetAction(actionReference.Name, actionReference.Namespace) // 从本域获得Action
 					if err != nil {
-						logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
+						logs.Errorf("Get action %s failed: %v", actionReference.Name, err)
 					}
-					runtimeCopy := controller.NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
-					runtimeTarget, ok := gh.runtimeTarget["broker"]             //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+					actionCopy := controller.NewActionInfoCopy(action)
+					actionTarget, ok := gh.actionTarget["broker"] //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID   TODO 目前跨域还没有适配指定namespace创建
 					if !ok {
-						logs.Info("[runtimeTarget]键 'broker' 不存在==========================================")
+						logs.Info("[actionTarget]键 'broker' 不存在==========================================")
 					}
-					_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
+					_, err = actionTarget.Create(context.TODO(), actionCopy, metav1.CreateOptions{})
 					if err != nil {
-						logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
+						logs.Errorf("Create copy action %s in other domainfailed: %v", actionReference.Name, err)
 					}
-					logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
+					logs.Infof("Create actionCopy:%v", actionCopy.Name)
+					for _, runtimeReference := range action.Status.Runtimes {
+						runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
+						if err != nil {
+							logs.Errorf("Get runtime %s failed: %v", runtimeReference.Name, err)
+						}
+						runtimeCopy := controller.NewRuntimeInfoCopy(runtime, true) // 区别，这里是true
+						runtimeTarget, ok := gh.runtimeTarget["broker"]             //-=-=-=-= 这里应该先根据nodeName查到clusterID，然后再使用这个ClusterID
+						if !ok {
+							logs.Info("[runtimeTarget]键 'broker' 不存在==========================================")
+						}
+						_, err = runtimeTarget.Create(context.TODO(), runtimeCopy, metav1.CreateOptions{})
+						if err != nil {
+							logs.Errorf("Create copy runtime in other domain %s failed: %v", actionReference.Name, err)
+						}
+						logs.Infof("Create runtimeCopy:%v", runtimeCopy.Name)
+					}
 				}
-			}
-			// 暂时做成，往跨域的etcd里写入数据
-			groupTarget, ok := gh.groupTarget["broker"] // -=-=-=-=- TODO：这里还得加逻辑，就是有这个域的连接，才能填入这个key
-			if !ok {
-				logs.Info("[groupTarget]键 'broker' 不存在==========================================")
-			}
-			_, err = groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
-			if err != nil {
-				logs.Errorf("Create cross-domain group error:%v", err)
-			}
-			// 将跨域的连接写入到源任务的copyInfo当中
-			patchGroup, err := json.Marshal(map[string]interface{}{
-				"spec": map[string]interface{}{
-					"copy_info": map[string]string{groupCopy.Name: "broker"},
-				},
-			})
-			if err != nil {
-				logs.Errorf("Json Marshal failed, err:%v", err)
-			}
-			_, err = gh.clientsManager.PatchGroup(gr.Name, gr.Namespace, patchGroup)
-			if err != nil {
-				logs.Errorf("Patch group error:%v", err)
-			}
+				// 暂时做成，往跨域的etcd里写入数据
+				groupTarget, ok := gh.groupTarget["broker"] // -=-=-=-=- TODO：这里还得加逻辑，就是有这个域的连接，才能填入这个key
+				if !ok {
+					logs.Info("[groupTarget]键 'broker' 不存在==========================================")
+				}
+				_, err = groupTarget.Create(context.TODO(), groupCopy, metav1.CreateOptions{})
+				if err != nil {
+					logs.Errorf("Create cross-domain group error:%v", err)
+				}
+				// 将跨域的连接写入到源任务的copyInfo当中
+				patchGroup, err := json.Marshal(map[string]interface{}{
+					"spec": map[string]interface{}{
+						"copy_info": map[string]string{groupCopy.Name: "broker"},
+					},
+				})
+				if err != nil {
+					logs.Errorf("Json Marshal failed, err:%v", err)
+				}
+				_, err = gh.clientsManager.PatchGroup(gr.Name, gr.Namespace, patchGroup)
+				if err != nil {
+					logs.Errorf("Patch group error:%v", err)
+				}
 
-			// TODO 这里需要监听调度器调度完成的事件，然后将副本信息填入到源group的copyInfo当中，先开启监听再发送事件给调度器
-			//go gh.CheckEventForSchedulerResult(gr, groupCopyName)
-			//gh.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
+				// TODO 这里需要监听调度器调度完成的事件，然后将副本信息填入到源group的copyInfo当中，先开启监听再发送事件给调度器
+				//go gh.CheckEventForSchedulerResult(gr, groupCopyName)
+				//gh.recorder.Event(groupCopy, apis.EventTypeNormal, events.SelectOtherDomain, fmt.Sprintf("Need Scheduler to choose the domain to cross"))
+			}
+			// TODO 这里得让调度器那边发送一个事件给我，我在这监听
 		}
-		// TODO 这里得让调度器那边发送一个事件给我，我在这监听
-	}
+	}()
 	// 任务满足条件，提交给GroupWorkers
 	gh.groupWorkers.UpdateGroup(
 		&group.UpdateGroupOptions{

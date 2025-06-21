@@ -73,7 +73,7 @@ func eventListener(ctx context.Context, client core.EventInterface) {
 				if !ok {
 					return
 				}
-				logs.Infof("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, time.Now())
+				logs.Tracef("++++++++++++++++++++++Events,event name:%v, event reason:%v,crtl.startTime:%v", event.Name, event.Reason, time.Now())
 				// // 合并时间判断和事件条件判断
 				// if event.EventTime.Time.Before(ctrl.startTime) ||
 				// 	event.InvolvedObject.Name != nodeName ||

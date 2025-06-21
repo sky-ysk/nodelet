@@ -69,7 +69,7 @@ func (c *RuntimeClient) checkConnection1() bool {
 	defer c.mu.Unlock()
 
 	// 直接连接（无需退避）
-	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 100) // 最多重试3次
+	conn, err := c.connPool.GetConnWithRetry(c.ServerIPAndPort, 500) // 最多重试3次
 	if err != nil {
 		logs.Infof("Failed to connect to gRPC server: %v", err)
 		return false
