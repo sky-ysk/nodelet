@@ -140,7 +140,7 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 	cnt := 0
 	for {
 		// 如果podName不包含"-copy"子串，则直接返回
-		if !strings.Contains(podName, "-copy") {
+		if !strings.Contains(group.Name, "-copy") {
 			return
 		}
 
