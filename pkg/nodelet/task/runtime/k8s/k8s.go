@@ -139,7 +139,7 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 	)
 	cnt := 0
 	for {
-		// 如果podName不包含"-copy"子串，则直接返回
+		// 如果groupName不包含"-copy"子串，则直接返回
 		if !strings.Contains(group.Name, "-copy") {
 			return
 		}
@@ -151,7 +151,7 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 			return
 		}
 		if !podExists(podName, namespace) {
-			// logs.Warnf("Pod %s 不存在，等待 %d 秒后重试...\n", podName, retryInterval)
+			logs.Warnf("Pod %s 不存在，等待 %d 秒后重试...\n", podName, retryInterval)
 			continue
 		}
 		// 捕获日志流
@@ -174,7 +174,7 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 				// 日志流中断(暂时不重新获取Logs)
 				logs.Errorf("pod timestamp monitor日志流读取失败: %v\n", err)
 				cmd.Process.Kill()
-				return
+				//return
 			}
 
 			// 匹配目标日志行
