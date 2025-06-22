@@ -70,16 +70,4 @@ else
 fi
 
 # 判断 proxy 文件是否存在
-#if [ -f "$PROXY_PATH" ]; then
-#  if check_process_running "$PROXY_PATH"; then
-#      echo "The proxy is already running. Restarting proxy ..."
-#      killall proxy
-#      sleep 1
-#  fi
-  # 将 proxy 放到后台运行
-#  echo "Starting proxy and redirected output to proxy_log.log."
-#  nohup "$PROXY_PATH" > proxy_log.log 2>&1 &
-#else
-#    echo "The proxy file at $PROXY_PATH does not exist."
-#    exit 1
-#fi
+
