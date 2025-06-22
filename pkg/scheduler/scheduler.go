@@ -282,7 +282,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
 		//设置监听通道一天关闭
-		Timeout: 24 * 3600 * time.Second,
+		Timeout: 7 * 24 * 3600 * time.Second,
 	}
 
 	//创建ClientSet
@@ -364,7 +364,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
 		},
 		//设置监听通道一小时关闭
-		Timeout: 24 * 3600 * time.Second,
+		Timeout: 7 * 24 * 3600 * time.Second,
 	}
 
 	//创建ClientSet

@@ -5,10 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
-	"net/http"
-	"time"
-
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -18,6 +14,10 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
+	"math/rand"
+	"net/http"
+	"strings"
+	"time"
 
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/workflow"
@@ -284,12 +284,15 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	//	}
 	//}
 	//}
-	//if strings.Contains(group.ObjectMeta.Name, "Reason") {
-	//	host = "EdgeNode1"
-	//}
-	//if strings.Contains(group.ObjectMeta.Name, "Robot") {
-	//	host = "EdgeNode1"
-	//}
+	if strings.Contains(group.ObjectMeta.Name, "G91") {
+		host = "CloudNode1"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G81") {
+		host = "CloudNode2"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "copy") {
+		host = "EdgeNode1"
+	}
 	return ScheduleResult{
 		SuggestedHost: host,
 		Group:         group,

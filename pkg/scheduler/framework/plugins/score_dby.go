@@ -142,7 +142,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 		logs.Error(err.Error())
 		return randScore, framework.NewStatus(framework.Error, err.Error())
 	}
-	time.Sleep(8 * time.Second)
+	//time.Sleep(8 * time.Second)
 	logs.Infof("now send schedule request to dts, group %s , time %s", request.GroupID, time.Now().String())
 	var resp transport.ScoreRespData
 	//先发第一次 理论上第一次是收不到的
@@ -163,7 +163,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	}
 
 	//理论上第二次才能收到分数 --5.7更新 理论上100%的请求在第二次发送拿到结果
-	time.Sleep(8 * time.Second)
+	//time.Sleep(8 * time.Second)
 	data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 	if err != nil {
 		logs.Error(err.Error())
@@ -183,7 +183,7 @@ func (sp *ScorePluginDBY) Score(ctx context.Context, group *apis.Group, nodeName
 	//大约20%的请求会走到这里 -- 5.7更新 ： DTS插件已修复，理论上不会有任何请求走到这里
 	logs.Warnf("group %s get schedule fail, node %s", group.Name, nodeName)
 	for {
-		time.Sleep(5 * time.Second)
+		//time.Sleep(5 * time.Second)
 		data, err = sp.pluginClient.SendData(jsonData, "/schedule/getSchedule")
 		if err != nil {
 			logs.Error(err.Error())

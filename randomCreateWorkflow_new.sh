@@ -10,7 +10,7 @@ declare -A workflow_weights=(
 )
 
 # 固定总轮次（建议设置为100的倍数）
-total_rounds=25
+total_rounds=200
 
 # ---------- 生成符合权重的任务序列 ----------
 generate_tasks() {
@@ -27,7 +27,7 @@ generate_tasks() {
     local remainder=$(( total_rounds - ${#tasks[@]} ))
     if [ $remainder -gt 0 ]; then
         # 按权重从高到低排序
-        local sorted_keys=$(for key in "${!workflow_weights[@]}"; do 
+        local sorted_keys=$(for key in "${!workflow_weights[@]}"; do
             echo "$key ${workflow_weights[$key]}"
         done | sort -k2,2nr | cut -d' ' -f1)
 
@@ -54,7 +54,7 @@ mapfile -t tasks < <(generate_tasks)
 # 遍历执行任务
 for selected_script in "${tasks[@]}"; do
     # 生成随机延迟（40-70秒）
-    delay=$(( RANDOM % 31  + 30 ))  # 修正为40-70秒
+    delay=$(( RANDOM % 41  + 70 ))  # 修正为40-70秒
 
     script_dir=$(dirname "$selected_script")
     script_file=$(basename "$selected_script")
@@ -79,5 +79,4 @@ done
 
 # 脚本结束提示
 echo -e "\n\033[34m[INFO] 所有任务执行完成，总轮次: ${total_rounds}\033[0m"
-
 
