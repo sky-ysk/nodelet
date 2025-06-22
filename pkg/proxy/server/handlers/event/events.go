@@ -42,14 +42,15 @@ func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Re
 
 	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
-	if namespace == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+
+	//if namespace == "" {
+	//	err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	var results *apis.EventList
 	var err error
