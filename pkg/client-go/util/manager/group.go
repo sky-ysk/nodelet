@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -319,7 +320,7 @@ func (m *Manager) DeleteGroup(name string, namespace string) error {
 	// 删除group里面的所有action
 	for _, v := range group.Status.Actions {
 		err := m.DeleteAction(v.Name, v.Namespace)
-		if err != nil {
+		if err != nil && !errors.Is(err, NotFound) {
 			logs.Errorf("delete actions in group error: %v", err)
 			return err
 		}

@@ -307,6 +307,7 @@ func (h *WorkflowHandler) DeleteWorkflow(request *restful.Request, response *res
 	}
 
 	// 获取namespace
+	// TODO：是否改成如果没有提供delete就是删除就是在所有命名空间查找
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
 		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is empty"))

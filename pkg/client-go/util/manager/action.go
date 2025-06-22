@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -220,7 +221,7 @@ func (m *Manager) DeleteAction(name string, namespace string) error {
 	// 删除action里面的所有runtimes
 	for _, v := range action.Status.Runtimes {
 		err := m.DeleteRuntime(v.Name, v.Namespace)
-		if err != nil {
+		if err != nil && !errors.Is(err, NotFound) {
 			logs.Errorf("delete runtimes in action error: %v", err)
 			return err
 		}

@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -181,7 +182,7 @@ func (m *Manager) DeleteWorkflow(name string, namespace string) error {
 	// 删除workflow里面的所有task
 	for _, v := range workflow.Status.Tasks {
 		err := m.DeleteTask(v.Name, v.Namespace)
-		if err != nil {
+		if err != nil && !errors.Is(err, NotFound) {
 			logs.Errorf("delete tasks in workflow error: %v", err)
 			return err
 		}

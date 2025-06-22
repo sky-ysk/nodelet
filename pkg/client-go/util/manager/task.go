@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -209,10 +210,12 @@ func (m *Manager) DeleteTask(name string, namespace string) error {
 		return err
 	}
 
+	// if err != nil && !errors.Is(err, NotFound)
+
 	// 删除task里面的所有groups
 	for _, v := range task.Status.Groups {
 		err := m.DeleteGroup(v.Name, v.Namespace)
-		if err != nil {
+		if err != nil && !errors.Is(err, NotFound) {
 			logs.Errorf("delete groups in task error: %v", err)
 			return err
 		}
