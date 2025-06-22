@@ -20,7 +20,7 @@ type WorkflowsHandler struct {
 
 var _ Handler = &WorkflowsHandler{}
 
-// NewWorkflowHandler 创建一个 ActionHandler
+// NewWorkflowsHandler 创建一个 ActionHandler
 func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
 	return &WorkflowsHandler{
 		manager:   manager.NewManager(clientSet),
@@ -29,11 +29,12 @@ func NewWorkflowsHandler(clientSet *clients.ClientSet) *WorkflowsHandler {
 }
 
 func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *restful.Response) {
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 
 	var results *apis.WorkflowList
 	var err error
+
 	labels := request.QueryParameter("Label")
 	if labels == "" {
 		results, err = h.manager.GetWorkflows(namespace)
@@ -46,31 +47,39 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 			}
 			return
 		}
-	}
-
-	results, err = h.manager.FilterWorkflows(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get workflows failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterWorkflows(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
+			logs.Errorf("Get workflows failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 			return
 		}
+	}
+
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
-	err = response.WriteEntity(results)
-	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
-	}
 	logs.Debugf("Get workflows")
 }
 
-// DeleteAll
+// TODO：处理递归删除中某些子任务被手动删除可能引发的错误
+
 func (h *WorkflowsHandler) DeleteAllWorkflow(request *restful.Request, response *restful.Response) {
 	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
@@ -114,7 +123,7 @@ func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 		To(h.GetWorkflows).
 		Operation("Get workflows").
 		Returns(200, "OK", []apis.Workflow{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.DELETE(fmt.Sprintf("/")).
@@ -124,7 +133,7 @@ func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 		To(h.DeleteAllWorkflow).
 		Operation("Delete workflows").
 		Returns(200, "OK", []apis.Workflow{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	return ws

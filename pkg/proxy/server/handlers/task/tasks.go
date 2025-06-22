@@ -19,7 +19,7 @@ type TasksHandler struct {
 
 var _ Handler = &TasksHandler{}
 
-// NewTaskHandler 创建一个 TaskHandler
+// NewTasksHandler 创建一个 TaskHandler
 func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
 	return &TasksHandler{
 		manager:   manager.NewManager(clientSet),
@@ -28,12 +28,13 @@ func NewTasksHandler(clientSet *clients.ClientSet) *TasksHandler {
 }
 
 func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Response) {
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 
-	labels := request.QueryParameter("Label")
 	var results *apis.TaskList
 	var err error
+
+	labels := request.QueryParameter("Label")
 	if labels == "" {
 		results, err = h.manager.GetTasks(namespace)
 		if err != nil {
@@ -56,14 +57,21 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 		}
 	}
 
-	err = response.WriteEntity(results)
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
 	logs.Debugf("Get tasks")
 }
 
@@ -82,7 +90,7 @@ func (h *TasksHandler) NewGetWebService() *restful.WebService {
 		To(h.GetTasks).
 		Operation("Get tasks").
 		Returns(200, "OK", []apis.Task{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	return ws

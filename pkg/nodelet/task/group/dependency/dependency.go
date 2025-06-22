@@ -49,7 +49,7 @@ func runCommand(name string, args ...string) error {
 		return fmt.Errorf("command execution failed: %v", err)
 	}
 
-	logs.Infof("Command output: %s", out.String())
+	logs.Info("Command output: %s", out.String())
 	return nil
 }
 
@@ -60,7 +60,7 @@ func GetAllCondaEnv() (map[string]string, error) {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		logs.Infof("Error executing conda command: %v", err)
+		logs.Info("Error executing conda command: %v", err)
 		return nil, err
 	}
 	// 解析输出
@@ -149,7 +149,7 @@ func (dm *DependencyManager) UpdateEnvs() error {
 	dm.allEnv = envs
 
 	timeCost := time.Since(startTime)
-	logs.Tracef("UpdateEnvs success! cost %v time", timeCost)
+	logs.Trace("UpdateEnvs success! cost %v time", timeCost)
 	// logs.Trace("UpdateEnvs success")
 	return nil
 }
@@ -161,7 +161,7 @@ func (dm *DependencyManager) UpdateEnvPackages() error {
 	for envname := range dm.allEnv {
 		installed, err := dm.GetInstalledPackages(envname)
 		if err != nil {
-			logs.Infof("Error retrieving installed packages: %v", err)
+			logs.Tracef("Error retrieving installed packages: %v", err)
 			return fmt.Errorf("UpdateEnvPackages err!")
 		}
 		dm.envsPackage[envname] = installed
@@ -184,7 +184,7 @@ func (dm *DependencyManager) CheckEnvironmentSatisfy(requirements []apis.Require
 			envpath = envpath + "/bin/python"
 			return envname, envpath, true
 		} else {
-			// logs.Infof("Some requirements are not satisfied. EnvName:%v", envname)
+			// logs.Info("Some requirements are not satisfied. EnvName:%v", envname)
 		}
 	}
 	return "", "", false
@@ -240,21 +240,21 @@ func CheckRequirements(requirements []apis.Requirement, installed []apis.Require
 			}
 		}
 		if !found {
-			// 如果没找到对应的包，说明没有安装，不满足
-			// logs.Infof("Package %v is not installed.", req.Name)
+			// logs.Info("Package %v is not installed.", req.Name)
 			allSatisfied = false
+			return allSatisfied
 		} else if req.Version != "" && installedVersion < req.Version {
-			//如果找到了，但是对应的package但是版本落后，也不满足
-			//logs.Tracef("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
+			//找到对应的package但是版本落后
+			logs.Info("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
 			allSatisfied = false
+			return allSatisfied
+		} else {
+			// logs.Info("Package %s is satisfied.", req.Name)
 		}
-
 	}
-	//下面这一行用于调试，打印出满足的虚拟环境
-	logs.Trace("requirements satisfied envName: %v", envName)
+	// logs.Info("requirements satisfied envName: %v", envName)
 	timeCost := time.Since(startTime)
 	logs.Trace("CheckRequirements cost %s time", timeCost)
-	//直到最后allsatisfied都为true，才说明满足
 	return allSatisfied
 }
 
@@ -276,29 +276,29 @@ func SetupEnvironment(reqFile string, runtiemName string) bool {
 	createEnvCmd := "conda"
 	createEnvArgs := []string{"create", "-n", newEnvName, pythonVersion}
 	CMDCreate := exec.Command(createEnvCmd, createEnvArgs...)
-	logs.Infof("Creating a new Conda environment...")
+	logs.Info("Creating a new Conda environment...")
 	if err := CMDCreate.Start(); err != nil {
 		logs.Error("Failed to start create Conda environment: %v", err)
 		return false
 	}
 	if err := CMDCreate.Wait(); err != nil {
-		logs.Infof("Failed to finish create Conda environment: %v", err)
+		logs.Info("Failed to finish create Conda environment: %v", err)
 		return false
 	}
 	//需要指定run -n的名称
 	installEnvCmd := "conda"
 	installEnvArgs := []string{"run", "-n", newEnvName, "pip", "install", "-r", reqFile}
 	CMDInstall := exec.Command(installEnvCmd, installEnvArgs...)
-	logs.Infof("Installing for new Conda environment...")
+	logs.Info("Installing for new Conda environment...")
 	if err := CMDInstall.Start(); err != nil {
 		logs.Error("Failed to start install dependency requirements.txt: %v", err)
 		return false
 	}
 	if err := CMDInstall.Wait(); err != nil {
-		logs.Infof("Failed to finish install dependency requirements.txt: %v", err)
+		logs.Info("Failed to finish install dependency requirements.txt: %v", err)
 		return false
 	}
-	logs.Infof("Environment '%v' created successfully with requirements from %v", newEnvName, reqFile)
+	logs.Info("Environment '%v' created successfully with requirements from %v", newEnvName, reqFile)
 	return true
 }
 
@@ -307,12 +307,12 @@ func SetupEnvironment(reqFile string, runtiemName string) bool {
 func RemoveEnvironment(envName string) bool {
 	removeEnvCmd := "conda"
 	removeEnvArgs := []string{"remove", "-n", envName, "--all"}
-	logs.Infof("Removing Conda environment:%v", envName)
+	logs.Info("Removing Conda environment:%v", envName)
 	if err := runCommand(removeEnvCmd, removeEnvArgs...); err != nil {
 		logs.Error("Failed to remove Conda environment:%v. err info: %v", envName, err)
 		return false
 	}
-	logs.Infof("Environment '%v' removed successfully", envName)
+	logs.Info("Environment '%v' removed successfully", envName)
 	return true
 }
 

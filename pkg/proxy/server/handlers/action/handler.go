@@ -14,6 +14,6 @@ const (
 )
 
 type Handler interface {
-	// 查询
+	// NewGetWebService 查询
 	NewGetWebService() *restful.WebService
 }

@@ -1,6 +1,7 @@
 package action
 
 import (
+	"errors"
 	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
@@ -10,6 +11,7 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/proxy/server/handlers/util"
 	"net/http"
 	"sync"
 	"time"
@@ -32,28 +34,21 @@ func NewActionHandler(clientSet *clients.ClientSet) *ActionHandler {
 }
 
 func (h *ActionHandler) GetAction(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Action{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is required , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 	if namespace == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required"))
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("namespace is required, the key is Namespace "))
 		if err != nil {
 			logs.Errorf("failed to return a status code ")
 			return
@@ -72,18 +67,13 @@ func (h *ActionHandler) GetAction(request *restful.Request, response *restful.Re
 		return
 	}
 
-	if result.Name == name {
-		err = response.WriteEntity(result)
-		if err != nil {
-			err := response.WriteError(http.StatusOK, err)
-			if err != nil {
-				logs.Errorf("failed to return a status code")
-				return
-			}
-			return
-		}
-		logs.Debugf("Get action")
+	err = response.WriteHeaderAndEntity(http.StatusOK, result)
+	if err != nil {
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
+	logs.Debugf("Get action success")
 }
 
 func (h *ActionHandler) CreateAction(request *restful.Request, response *restful.Response) {
@@ -93,6 +83,31 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 	if err != nil {
 		logs.Errorf("Failed to deserialize json data, error: %v", err)
 		err := response.WriteError(http.StatusBadRequest, err)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
+	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
+	//格式校验
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Action{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//	return
+	//}
+
+	// TODO：循环依赖检查
+	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
+	dependencyErr := util.CheckRuntimeCircularDependency(ew.Spec)
+	if dependencyErr != nil {
+		err := response.WriteError(http.StatusBadRequest, dependencyErr)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -114,70 +129,58 @@ func (h *ActionHandler) CreateAction(request *restful.Request, response *restful
 
 	logs.Info(*ew)
 
-	////格式校验
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Action{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//	// return
-	//}
-
 	// 产生UUID
 	timestamp := time.Now().Format("20060102T150405")
 	randomStr := uuid.New().String()[:5]
 	UUID := timestamp + "-" + randomStr
 
 	var result *apis.Action
-
-	// 创建action without labels
-	if ew.Labels == nil {
-		result, err = h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create action fail ,failed write it to database , error: %v", err)
+	result, err = h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
+	if err != nil {
+		err1 := response.WriteError(http.StatusInternalServerError, err)
+		if err1 != nil {
+			logs.Errorf("failed to return a status code ,error: %v", err1)
 			return
 		}
-	} else {
-		// 创建action with labels
-		result, err = h.manager.CreateActionWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
-		if err != nil {
-			err1 := response.WriteError(http.StatusInternalServerError, err)
-			if err1 != nil {
-				logs.Errorf("failed to return a status code ,error: %v", err1)
-				return
-			}
-			logs.Errorf("Create action with label fail ,failed write it to database , error: %v", err)
-			return
-		}
-
+		logs.Errorf("Create action fail ,failed write it to database , error: %v", err)
+		return
 	}
+
+	// TODO: 改成使用spec中的label创建
+	// 创建action without labels
+	//if ew.Labels == nil {
+	//	result, err = h.manager.CreateAction(ew.Spec, nil, namespace, UUID, "")
+	//	if err != nil {
+	//		err1 := response.WriteError(http.StatusInternalServerError, err)
+	//		if err1 != nil {
+	//			logs.Errorf("failed to return a status code ,error: %v", err1)
+	//			return
+	//		}
+	//		logs.Errorf("Create action fail ,failed write it to database , error: %v", err)
+	//		return
+	//	}
+	//}
+	//
+	//// 创建action with labels
+	//result, err = h.manager.CreateActionWithLabels(ew.Spec, nil, namespace, UUID, "", ew.Labels)
+	//if err != nil {
+	//	err1 := response.WriteError(http.StatusInternalServerError, err)
+	//	if err1 != nil {
+	//		logs.Errorf("failed to return a status code ,error: %v", err1)
+	//		return
+	//	}
+	//	logs.Errorf("Create action with label fail ,failed write it to database , error: %v", err)
+	//	return
+	//}
 
 	// 返回结果
-	err = response.WriteEntity(result)
+	err = response.WriteHeaderAndEntity(http.StatusCreated, result)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
 		return
 	}
 
-	err = response.WriteError(http.StatusOK, err)
-	if err != nil {
-		logs.Errorf("failed to return a status code ")
-		return
-	}
-
-	logs.Debugf("Create action %v unsupport", result)
+	logs.Debugf("Create action %v success", result)
 }
 
 func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful.Response) {
@@ -194,10 +197,40 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 		return
 	}
 
+	// TODO: 还是需要检查spec里面的字段，这里就能防止创建无效的任务
+	//格式校验
+	//res, err := analyzer.SerializeToJson(ew)
+	//_, err = analyzer.Deserialize(res, apis.Action{})
+	//if err != nil {
+	//	err := response.WriteError(http.StatusBadRequest, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
+
+	// TODO：循环依赖检查
+	// 简易版的依赖检查，无法检查a1->a2->a3->a1这种
+	dependencyErr := util.CheckRuntimeCircularDependency(ew.Spec)
+	if dependencyErr != nil {
+		err := response.WriteError(http.StatusBadRequest, dependencyErr)
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
+	}
+
 	// 获取name
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		name = ew.Name
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code")
+			return
+		}
+		return
 	}
 
 	// 获取namespace
@@ -211,23 +244,18 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 		return
 	}
 
-	// 格式验证
-	//res, err := analyzer.SerializeToJson(ew)
-	//_, err = analyzer.Deserialize(res, apis.Action{})
-	//if err != nil {
-	//	err := response.WriteError(http.StatusBadRequest, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code ")
-	//		return
-	//	}
-	//	return
-	//}
-
 	// 更新action
 	updatedAction, updateErr := h.manager.UpdateAction(name, namespace, ew)
 	if updateErr != nil {
 		logs.Errorf("Update action %s error: %v", name, updateErr)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		var err error
+		if errors.Is(updateErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, updateErr)
+		} else if errors.Is(updateErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, updateErr)
+		}
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
@@ -247,22 +275,15 @@ func (h *ActionHandler) UpdateAction(request *restful.Request, response *restful
 }
 
 func (h *ActionHandler) DeleteAction(request *restful.Request, response *restful.Response) {
-	// 尝试从url中获取参数
+	// 获取name
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		// url中没有获取到name参数，尝试从请求体中获取
-		req := &apis.Action{}
-		err := request.ReadEntity(&req)
-		if err != nil || req.Name == "" {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("provide action name , the key is Name "))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
-		} else {
-			name = req.Name
 		}
+		return
 	}
 
 	// 获取namespace
@@ -277,12 +298,19 @@ func (h *ActionHandler) DeleteAction(request *restful.Request, response *restful
 	}
 
 	// 删除action
-	err := h.manager.DeleteAction(namespace, name)
+	var err error
+	err = h.manager.DeleteAction(name, namespace)
 	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+		logs.Errorf("delete action %s error: %v", name, err)
+		if errors.Is(err, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, err)
+		} else if errors.Is(err, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, err)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return
@@ -296,7 +324,8 @@ func (h *ActionHandler) DeleteAction(request *restful.Request, response *restful
 }
 
 func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.Response) {
-	// 获取json
+	// TODO：不可更改字段更改检查
+	// 获取 json
 	req := &apis.Action{}
 	err := request.ReadEntity(&req)
 	if err != nil {
@@ -312,16 +341,12 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 	// 获取name
 	name := request.QueryParameter(ACTION_NAME)
 	if name == "" {
-		if req.Name != "" {
-			name = req.Name
-		} else {
-			err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-			if err != nil {
-				logs.Errorf("failed to return a status code ")
-				return
-			}
+		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+		if err != nil {
+			logs.Errorf("failed to return a status code ")
 			return
 		}
+		return
 	}
 
 	// 获取namespace
@@ -335,7 +360,7 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 		return
 	}
 
-	// 序列化Patchaction
+	// 序列化Patch action
 	patchAction, err := analyzer.SerializeToJson(req)
 	if err != nil {
 		logs.Errorf("Serialize patch action error: %v", err)
@@ -346,12 +371,19 @@ func (h *ActionHandler) PatchAction(request *restful.Request, response *restful.
 		}
 	}
 
-	patchedAction, err := h.manager.PatchAction(namespace, name, []byte(patchAction))
-	if err != nil {
-		logs.Error(err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	patchedAction, patchedErr := h.manager.PatchAction(name, namespace, []byte(patchAction))
+	if patchedErr != nil {
+		logs.Errorf("patched action %s error: %v", name, err)
+		var err error
+		if errors.Is(patchedErr, manager.NotFound) {
+			err = response.WriteError(http.StatusNotFound, patchedErr)
+		} else if errors.Is(patchedErr, manager.InternalServerError) {
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
+		} else {
+			err = response.WriteError(http.StatusInternalServerError, patchedErr)
+		}
 		if err != nil {
-			logs.Errorf("failed to return a status code ")
+			logs.Errorf("failed to return a status code")
 			return
 		}
 		return
@@ -382,51 +414,51 @@ func (h *ActionHandler) NewGetWebService() *restful.WebService {
 		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Operation("Get action").
 		Returns(200, "OK", apis.Action{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.POST("/").
 		To(h.CreateAction).
-		Doc("Create a action").
+		Doc("Create a action with namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action object").DataType("string")).
 		Operation("Create action").
 		Returns(200, "OK", apis.Action{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	ws.Route(ws.PUT("/").
 		To(h.UpdateAction).
-		Doc("Update a action").
+		Doc("Update a action with name and namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action object").DataType("string")).
 		Operation("Update action").
 		Returns(200, "OK", apis.Action{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.PATCH("/").
 		To(h.PatchAction).
-		Doc("Patch a action").
+		Doc("Patch a action with name and namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Param(ws.BodyParameter("Action", "The json string of the Action field").DataType("string")).
 		Operation("Patch action").
 		Returns(200, "OK", apis.Action{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	ws.Route(ws.DELETE("/").
 		To(h.DeleteAction).
-		Doc("Delete a action").
+		Doc("Delete a action with name and namespace").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Name", "The name of the action").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		Operation("Delete action").
 		Returns(200, "OK", apis.Action{}).
-		Returns(400, "Not Found", nil))
+		Returns(404, "Not Found", nil))
 
 	return ws
 }

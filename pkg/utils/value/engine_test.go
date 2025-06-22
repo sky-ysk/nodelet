@@ -90,6 +90,7 @@ func TestCreateTask(t *testing.T) {
 // 测试发现问题是status里面的reference信息必须填完整才能从Task Group Action Runtime中获取到信息，否则找不到
 // 但是在创建Task的时候并没有填充这些Status的信息
 func TestValueExtract(t *testing.T) {
+	fmt.Println("TestValueExtract")
 	clientSet, err := CreateClientSet()
 	if err != nil {
 		panic(err)
@@ -97,11 +98,14 @@ func TestValueExtract(t *testing.T) {
 
 	engine := NewEngine(clientSet)
 
-	name := "T1-01966742-ab54-7c2f-a89c-0c53a655c66b"
-	namespace := "Guochuang"
+	name := "T1.G1-20250529T203045-5e256"
+	namespace := "Test"
 
-	g, err := engine.manager.GetTask(name, namespace)
+	fmt.Println("start get group")
+	g, err := engine.manager.GetGroup(name, namespace)
 	if err != nil {
+
+		fmt.Println("get group err:", err)
 		panic(err)
 	}
 
@@ -120,10 +124,10 @@ func TestValueExtract(t *testing.T) {
 	// fmt.Println(v)
 
 	value := apis.Value{
-		NameSpace: "Guochuang",
-		Name:      "Test",
+		NameSpace: "Test",
+		Name:      "Task",
 		Type:      apis.LocalData,
-		From:      "Task{T1}.Group{G1}.Status{phase}",
+		From:      "Group{G2}.Action{A1}.Runtime{R1}.Outputs{test}",
 		ValueType: apis.StringType,
 	}
 
@@ -133,7 +137,6 @@ func TestValueExtract(t *testing.T) {
 	}
 	fmt.Println("-----------")
 	fmt.Println(v)
-
 }
 
 func CreateClientSet() (*clients.ClientSet, error) {
@@ -210,25 +213,25 @@ func TestCreateDevice(t *testing.T) {
 	client.Create(context.TODO(), &device, metav1.CreateOptions{})
 }
 
-func TestGetDeviceImage(t *testing.T) {
-	clientSet, err := CreateClientSet()
-	if err != nil {
-		panic(err)
-	}
-
-	engine := NewEngine(clientSet)
-
-	namespace := "Guochuang"
-
-	from := "Device{Robot}.Ability{Move}.Service{Start}"
-
-	v, err := engine.ExtractDeviceValue(from, namespace)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("-----------")
-	fmt.Println(v)
-}
+//func TestGetDeviceImage(t *testing.T) {
+//	clientSet, err := CreateClientSet()
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	engine := NewEngine(clientSet)
+//
+//	namespace := "Guochuang"
+//
+//	from := "Device{Robot}.Ability{Move}.Service{Start}"
+//
+//	v, err := engine.ExtractDeviceValue(from, namespace)
+//	if err != nil {
+//		panic(err)
+//	}
+//	fmt.Println("-----------")
+//	fmt.Println(v)
+//}
 
 func TestCreateTaskForOutput(t *testing.T) {
 	clientset, err := CreateClientSet()

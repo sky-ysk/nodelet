@@ -196,7 +196,9 @@ type NodeSpec struct {
 
 	// 设备固有资源
 	Resource map[string][]Item `json:"resource,omitempty" yaml:"resource"`
+
 	// TODO: 节点Label
+	Desc *Description `json:"desc,omitempty" yaml:"desc"`
 
 	//  +个字段（Cloud、Edge、End）
 	ClusterCategory string `json:"clusterCategory,omitempty" yaml:"clusterCategory"` //该节点所在的集群类别：1、云集群 2、边集群 3、端集群
@@ -563,6 +565,8 @@ type GroupSpec struct {
 	// Group Name
 	Name string `json:"name,omitempty" yaml:"name"`
 
+	// Device 需求
+	Devices []DeviceSpec `json:"devices,omitempty" yaml:"devices"`
 	// +Optional
 	SchedulerName *string `json:"scheduler_name,omitempty" yaml:"name"`
 
@@ -841,7 +845,7 @@ const (
 
 // 对设备能力的描述
 type DeviceDesc struct {
-	Label []string `json:"label,omitempty" yaml:"label"`
+	Label map[string]string `json:"label,omitempty" yaml:"label"`
 	// +Optional
 	Docs *string `json:"docs,omitempty" yaml:"docs"`
 	// +Optional
@@ -914,13 +918,13 @@ const (
 // 设备资源锁
 type Lock struct {
 	// 锁类型
-	Type LockType `json:"type,omitempty" yaml:"type"`
+	Type LockType `json:"type" yaml:"type"`
 
 	// 调度时 ref为0时释放
-	IsLocked bool `json:"is_locked,omitempty" yaml:"is_locked"`
+	IsLocked bool `json:"is_locked" yaml:"is_locked"`
 
 	// 资源引用数 部署时
-	Ref int `json:"ref,omitempty" yaml:"ref"`
+	Ref int `json:"ref" yaml:"ref"`
 }
 
 // 设备事件描述
@@ -972,7 +976,8 @@ type Ability struct {
 	Services   map[string]AbilityService `json:"services,omitempty" yaml:"services"`
 	InstanceID *string                   `json:"instance_id,omitempty" yaml:"instance_id"`
 	State      *AbilityState             `json:"state,omitempty" yaml:"state"`
-	Status     *string                   `json:"status,omitempty" yaml:"status"`
+	Status     AbilityStatus             `json:"status,omitempty" yaml:"status"`
+	Lock       Lock                      `json:"lock" yaml:"lock"`
 }
 
 // AbilityService 描述一个能力的具体业务（技能）
@@ -986,12 +991,15 @@ type AbilityService struct {
 
 // TODO: 增加具体的值限制
 type AbilityState int
+type AbilityStatus string
 
 const (
-	AbilityRunning        AbilityState = 1
-	AbilityReadyStartUp   AbilityState = 2
-	AbilityReadyTerminate AbilityState = 3
-	AbilityTerminated     AbilityState = 4
+	AbilityRunning        AbilityStatus = "Running"
+	AbilityReadyStartUp   AbilityStatus = "ReadyStartUp"
+	AbilityReadyTerminate AbilityStatus = "ReadyTerminate"
+	AbilityTerminated     AbilityStatus = "Terminated"
+	AbilityInit           AbilityStatus = "Init"
+	AbilityError          AbilityStatus = "Error"
 )
 
 type DeviceStatus struct {
@@ -1015,10 +1023,12 @@ type DeviceStatus struct {
 
 	// 设备事件描述
 	Events []DeviceEvent `json:"events,omitempty" yaml:"events"`
-
+	// 绑定到哪个Group中
+	Group string `json:"group,omitempty" yaml:"group"`
 	// 上次成功获取设备状态的时间
 	// 如果长时间不能获取设备的状态，则认为设备离线
-	LastTime Time `json:"last_time,omitempty" yaml:"last_time"`
+	LastTime Time   `json:"last_time,omitempty" yaml:"last_time"`
+	Label    string `json:"label,omitempty" yaml:"label"`
 }
 
 // SceneSpec 描述scene的固有属性和期待属性
@@ -1033,11 +1043,11 @@ type SceneSpec struct {
 	ExpectedProperty map[string]Property `json:"expected_property,omitempty" yaml:"expected_property"`
 
 	// 场景的描述（不可变属性）
-	Desc SceneDesc `json:"desc,omitempty" yaml:"desc"`
+	Desc *SceneDesc `json:"desc,omitempty" yaml:"desc"`
 }
 
 type SceneDesc struct {
-	Label []string          `json:"label,omitempty" yaml:"label"`
+	Label map[string]string `json:"label,omitempty" yaml:"label"`
 	Value map[string]string `json:"value,omitempty" yaml:"value"`
 }
 type SceneType string

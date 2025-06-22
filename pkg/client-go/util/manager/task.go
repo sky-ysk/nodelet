@@ -2,6 +2,8 @@ package manager
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -12,9 +14,11 @@ import (
 // CreateTasks 根据TaskSpec创建Group
 func (m *Manager) CreateTasks(w *apis.Workflow, namespace string, uuid string, prefix string) ([]*apis.Task, error) {
 	var groups []*apis.Task
+
 	for _, as := range w.Spec.Tasks {
 		a, err := m.CreateTask(as, w, namespace, uuid, prefix)
 		if err != nil {
+			logs.Errorf("create actions in groupSpec failed , err: %v", err)
 			return nil, err
 		}
 		groups = append(groups, a)
@@ -109,7 +113,129 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	return ft, nil
 }
 
-// 创建带有label的task
+func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
+	c := m.GetTaskClient(namespace)
+
+	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		logs.Errorf("Failed to get task: %v", err)
+		return nil, fmt.Errorf("%w-%v", NotFound, err)
+	}
+
+	logs.Debugf("Get task: %v", a)
+	return a, nil
+}
+
+func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
+	c := m.GetTaskClient(namespace)
+
+	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		logs.Errorf("Failed to get tasks: %v", err)
+		return nil, err
+	}
+
+	logs.Debugf("Get tasks success.")
+	return g, nil
+}
+
+// FilterTasks 根据Label查询Tasks
+func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.TaskList, error) {
+	c := m.GetTaskClient(namespace)
+
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
+	d, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		logs.Errorf("Failed to get tasks with labelselector: %s , error %v ", labelSelector, err)
+		return nil, fmt.Errorf("%v-%w", InternalServerError, err)
+	}
+
+	logs.Infof("Get tasks with label success.")
+	return d, nil
+}
+
+func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis.Task, error) {
+	c := m.GetTaskClient(namespace)
+
+	// 检查task是否存在
+	_, err := m.GetTask(name, namespace)
+	if err != nil {
+		logs.Errorf("Get task %s error: %v , task not exist !", name, err)
+		return nil, err
+	}
+
+	// 存在更新task
+	updatedTask, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
+	if updateErr != nil {
+		logs.Errorf("Update task %s error: %v", name, updateErr)
+		return nil, fmt.Errorf("%w-%v", InternalServerError, updateErr)
+	}
+
+	logs.Debugf("Update task: %v", updatedTask)
+	return updatedTask, nil
+
+}
+
+func (m *Manager) PatchTask(name string, namespace string, patchTask []byte) (*apis.Task, error) {
+	c := m.GetTaskClient(namespace)
+
+	// 检查task是否存在
+	_, err := m.GetTask(name, namespace)
+	if err != nil {
+		logs.Errorf("Get task %s error: %v , task not exist !", name, err)
+		return nil, err
+	}
+
+	// 部分更新task
+	patchedTask, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
+	if err != nil {
+		logs.Errorf("patch task %s error: %v", name, err)
+		return nil, err
+	}
+
+	logs.Debugf("Patch task: %v", patchedTask)
+	return patchedTask, nil
+}
+
+func (m *Manager) DeleteTask(name string, namespace string) error {
+	c := m.GetTaskClient(namespace)
+
+	// 检查task是否存在
+	task, err := m.GetTask(name, namespace)
+	if err != nil {
+		logs.Errorf("get task %s error: %v , task not exist ", name, err)
+		return err
+	}
+
+	// if err != nil && !errors.Is(err, NotFound)
+
+	// 删除task里面的所有groups
+	for _, v := range task.Status.Groups {
+		err := m.DeleteGroup(v.Name, v.Namespace)
+		if err != nil && !errors.Is(err, NotFound) {
+			logs.Errorf("delete groups in task error: %v", err)
+			return err
+		}
+	}
+
+	// 存在，删除
+	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
+	if err != nil {
+		logs.Errorf("delete task %s error: %v", name, err)
+		return fmt.Errorf("%w-%v", InternalServerError, err)
+	}
+
+	logs.Debugf("Delete task: %v", name)
+	return nil
+}
+
+// TODO: 任务从task开始创建，应该提供一个递归删除task的接口
+
+// CreateTaskWithLabels 创建带有label的task
+// TODO: 将这部分全部替换为根据Spec里面的label创建，删除这部分
 func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Task, error) {
 	// 临时创建一个Task对象
 	t := apis.Task{}
@@ -188,123 +314,4 @@ func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, names
 
 	logs.Debugf("Created task: %v", ft)
 	return ft, nil
-}
-
-func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
-	c := m.GetTaskClient(namespace)
-	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		logs.Errorf("Failed to get task: %v", err)
-		return nil, err
-	}
-
-	logs.Debugf("Get task: %v", a)
-	return a, nil
-}
-
-// 根据Label查询Tasks
-func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.TaskList, error) {
-	//labelSelector := ""
-	//for i, l := range label {
-	//	if i == 0 {
-	//		labelSelector = l
-	//	} else {
-	//		labelSelector += "," + l
-	//	}
-	//}
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labelSelector,
-	}
-
-	c := m.GetTaskClient(namespace)
-	d, err := c.Client.List(context.TODO(), listOptions)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
-	c := m.GetTaskClient(namespace)
-	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		logs.Errorf("Failed to get tasks: %v", err)
-		return nil, err
-	}
-
-	logs.Debugf("Get tasks success.")
-	return g, nil
-}
-
-func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis.Task, error) {
-	c := m.GetTaskClient(namespace)
-
-	// 检查task是否存在
-	_, err := m.GetTask(name, namespace)
-	if err != nil {
-		logs.Errorf("Get task %s error: %v , task not exist !", name, err)
-		return nil, err
-	}
-
-	// 存在更新task
-	updatedTask, updateErr := c.Client.Update(context.TODO(), a, metav1.UpdateOptions{})
-	if updateErr != nil {
-		logs.Errorf("Update task %s error: %v", name, updateErr)
-		return nil, updateErr
-	}
-
-	logs.Debugf("Update task: %v", updatedTask)
-	return updatedTask, nil
-
-}
-
-func (m *Manager) PatchTask(name string, namespace string, patchTask []byte) (*apis.Task, error) {
-	c := m.GetTaskClient(namespace)
-
-	// 检查task是否存在
-	_, err := m.GetTask(name, namespace)
-	if err != nil {
-		logs.Errorf("Get task %s error: %v , task not exist !", name, err)
-		return nil, err
-	}
-
-	// 部分更新task
-	patchedTask, err := c.Client.Patch(context.TODO(), name, types.StrategicMergePatchType, patchTask, metav1.PatchOptions{})
-	if err != nil {
-		logs.Errorf("patch task %s error: %v", name, err)
-		return nil, err
-	}
-
-	logs.Debugf("Patch task: %v", patchedTask)
-	return patchedTask, nil
-}
-
-func (m *Manager) DeleteTask(name string, namespace string) error {
-	c := m.GetTaskClient(namespace)
-
-	// 检查task是否存在
-	task, err := m.GetTask(name, namespace)
-	if err != nil {
-		logs.Errorf("get task %s error: %v , task not exist ", name, err)
-		return err
-	}
-
-	// 删除task里面的所有group
-	for _, v := range task.Status.Groups {
-		err := m.DeleteGroup(v.Name, v.Namespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	// 存在，删除
-	err = c.Client.Delete(context.TODO(), name, metav1.DeleteOptions{})
-	if err != nil {
-		logs.Errorf("delete task %s error: %v", name, err)
-		return err
-	}
-
-	logs.Debugf("Delete task: %v", name)
-	return nil
 }

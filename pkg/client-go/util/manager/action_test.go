@@ -349,7 +349,7 @@ func TestPatchAction(t *testing.T) {
 	// 把抬手改成放下
 	patchData := "{\n  \"spec\": {\n      \"desc\": {\n          \"docs\": \"放下\"\n      }\n  }\n\n}"
 
-	patched, err := m.PatchAction(actionName, "Guochuang", patchData)
+	patched, err := m.PatchAction(actionName, "Guochuang", []byte(patchData))
 	if err != nil {
 		panic(err)
 	} else {

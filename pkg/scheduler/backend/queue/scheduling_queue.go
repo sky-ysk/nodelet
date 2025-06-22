@@ -8,6 +8,8 @@ import (
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	sutils "hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils/value"
+	"strconv"
+	"strings"
 
 	//scheutils "hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils"
@@ -150,6 +152,9 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 			//msg := fmt.Sprintf("group %s is ready , move to active queue", k)
 			//fmt.Println(msg)
 			//logs.Info(msg)
+		} else if readyRes == apis.False {
+			logs.Warnf("group %s parent fail", v.GroupInfo.Group.ObjectMeta.Name)
+			removeGroupss = append(removeGroupss, v)
 		}
 	}
 	for _, group := range removeGroupss {
@@ -162,6 +167,7 @@ func (p *PriorityQueue) flushPendingQueue(ctx context.Context) {
 
 // TODO 这个方法目前不完善，只检查了父母节点的依赖
 func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.QueuedGroupInfo) (apis.ResultType, error) {
+	//检查父节点完成情况
 	for _, par := range gInfo.Group.Spec.Parents {
 		fromStr := fmt.Sprintf("Group{%s}.Status{phase}", par)
 		valueTmp := apis.Value{
@@ -176,11 +182,29 @@ func (p *PriorityQueue) checkGroupReady(ctx context.Context, gInfo *config.Queue
 			return apis.False, err
 		}
 
+		//场景1特判
+		if gInfo.Group.Spec.Desc != nil && len(gInfo.Group.Spec.Desc.Label) != 0 {
+			val, ok := gInfo.Group.Spec.Desc.Label["scene"]
+			if ok && val == "scene1" {
+				if parentValue.Value == string(apis.Successed) {
+					logs.Warnf("scene1 parent success, no need child")
+					return apis.False, nil
+				} else if parentValue.Value == string(apis.Failed) {
+					logs.Warnf("scene1 parent fail, need child")
+					return apis.True, nil
+				} else {
+					return apis.NotReady, nil
+				}
+			}
+		}
+
 		if parentValue.Value != string(apis.Successed) {
 			//logs.Infof("parent group is not ready %s, Phase : %s", par, parentValue.Value)
 			return apis.NotReady, nil
 		}
+
 	}
+
 	return apis.True, nil
 	//return p.conditionEngine.CheckConditions(gInfo.Group.Spec.Conditions)
 }
@@ -228,6 +252,37 @@ type PodNominator interface {
 func groupInfoKeyFunc(gInfo *config.QueuedGroupInfo) string {
 	key := fmt.Sprintf("%s-%s", gInfo.GroupInfo.Group.Name, gInfo.GroupInfo.Group.ObjectMeta.Name)
 	return key
+}
+
+func groupInfoLessFunc(i, j *config.QueuedGroupInfo) bool {
+	if i == nil || j == nil || i.Group == nil || j.Group == nil {
+		return false
+	}
+	iScore := parseWeightFromQGroupInfo(i)
+	jScore := parseWeightFromQGroupInfo(j)
+	return iScore >= jScore
+}
+
+func parseWeightFromQGroupInfo(g *config.QueuedGroupInfo) int64 {
+	if g == nil || g.Group == nil {
+		return 0
+	}
+	if g.Group.Spec.Desc == nil || len(g.Group.Spec.Desc.Label) == 0 {
+		return 1
+	}
+
+	val, ok := g.Group.Spec.Desc.Label["weight"]
+	if !ok {
+		return 1
+	}
+	valueStr := strings.TrimSpace(val)
+
+	ret, err := strconv.ParseInt(valueStr, 10, 64)
+	if err != nil {
+		logs.Error(err.Error())
+		return 1
+	}
+	return ret
 }
 
 func groupKeyFunc(g *apis.Group) string {

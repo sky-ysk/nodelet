@@ -19,7 +19,7 @@ type ActionsHandler struct {
 
 var _ Handler = &ActionsHandler{}
 
-// NewActionHandler 创建一个 ActionHandler
+// NewActionsHandler 创建一个 ActionHandler
 func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
 	return &ActionsHandler{
 		manager:   manager.NewManager(clientSet),
@@ -27,9 +27,12 @@ func NewActionsHandler(clientSet *clients.ClientSet) *ActionsHandler {
 	}
 }
 
+// TODO：删除所有的Action，同一命名空间下所有，不提供命名空间默认全部action
+
 func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.Response) {
-	// 从url中获取namespace
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
+
 	var results *apis.ActionList
 	var err error
 
@@ -44,26 +47,35 @@ func (h *ActionsHandler) GetActions(request *restful.Request, response *restful.
 				return
 			}
 		}
-	}
-
-	results, err = h.manager.FilterActions(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get actions with labels failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterActions(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get actions with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
-	err = response.WriteEntity(results)
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+	//
+	//response.WriteHeader(http.StatusOK)
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
 	logs.Debugf("Get actions ")
 }
 
@@ -74,14 +86,14 @@ func (h *ActionsHandler) NewGetWebService() *restful.WebService {
 		Produces(restful.MIME_JSON)
 
 	ws.Route(ws.GET("/").
-		Doc("Get all actions").
+		Doc("Get all actions (with selector)").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
 		Param(ws.QueryParameter("Label", "Labels of the action (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the action").DataType("string")).
 		To(h.GetActions).
 		Operation("Get actions").
 		Returns(200, "OK", []apis.Action{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 
 	return ws

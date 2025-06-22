@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hit.edu/framework/pkg/component-base/logs"
 	"reflect"
 
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -76,12 +77,12 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 		return resultValue, nil
 	case apis.DeviceData:
 		// 对Device进行寻址
-		result, err := e.ExtractDeviceValue(value.From, value.NameSpace)
-		if err != nil {
-			return nil, err
-		}
-		value.Value = result
-		value.ValueType = apis.StringType
+		//result, err := e.ExtractDeviceValue( , value.From, value.NameSpace)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//value.Value = result
+		//value.ValueType = apis.StringType
 		return value, nil
 	case apis.ResultsData:
 		return value, nil
@@ -90,7 +91,7 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 	}
 }
 
-func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, error) {
+func (e *Engine) ExtractDeviceValue(devices []apis.DeviceSpec, from string, namespace string) (string, error) {
 	kind := "Device"
 
 	_, parts, err := e.comparor.Match(kind, from)
@@ -100,11 +101,22 @@ func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, erro
 	switch kind {
 	case "Device":
 		name := parts[1]
+		realName := ""
+		for _, device := range devices {
+			if device.Name == name {
+				if ep, ok := device.ExpectedProperties["name"]; ok {
+					realName = ep.Value
+				}
+			}
+		}
+		if realName == "" {
+			return "", fmt.Errorf("[ENGINE] can not find Device[%s]'s real name", name)
+		}
 		namespace := namespace
 		ability := parts[2]
 		service := parts[3]
-		// fmt.Println(name, namespace, ability, service)
-		s, err := e.ExtractDeviceService(name, namespace, ability, service)
+		fmt.Println(name, namespace, ability, service)
+		s, err := e.ExtractDeviceService(realName, namespace, ability, service)
 		if err == nil {
 			// fmt.Println("success", s)
 			return s, nil
@@ -113,9 +125,30 @@ func (e *Engine) ExtractDeviceValue(from string, namespace string) (string, erro
 	return "", errors.New("Unsupported kind " + kind)
 }
 
-// o传入的是值，不能是指针
+func (e *Engine) ExtractDeviceImage(from string) (string, string, string, error) {
+	kind := "Device"
+
+	_, parts, err := e.comparor.Match(kind, from)
+	logs.Info(from)
+	if err != nil {
+		logs.Error(err.Error())
+		return "", "", "", err
+	}
+	switch kind {
+	case "Device":
+		name := parts[1]
+
+		ability := parts[2]
+		service := parts[3]
+		return name, ability, service, nil
+
+	}
+	return "", "", "", errors.New("Unsupported kind " + kind)
+}
+
 func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	kind := reflect.TypeOf(o).Name()
+	logs.Infof("kind %s, value %v", kind, value)
 	typeName, parts, err := e.comparor.Match(kind, value.From)
 	if err != nil {
 		return nil, errors.New("Unsupported kind " + kind)
@@ -131,13 +164,16 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		r := (o).(apis.Runtime)
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromRuntime(typeName, parts, &r)
+		logs.Infof(" name %s, kindType %s, from %s %s", name, kindType, from, fromKey)
 		if err != nil {
+			logs.Error(err.Error())
 			return nil, err
 		}
 	case "Action":
 		r := (o).(apis.Action)
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromAction(typeName, parts, &r)
+		logs.Infof(" name %s, kindType %s, from %s %s", name, kindType, from, fromKey)
 		if err != nil {
 			return nil, err
 		}
@@ -145,6 +181,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		r := (o).(apis.Group)
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromGroup(typeName, parts, &r)
+		// fmt.Println(name, kindType, from, fromKey, err)
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +204,6 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 	switch kindType {
 	case "Runtime":
 		v, err := e.ExtractRuntimeValue(name, namespace, from, fromKey, value)
-
 		if err == nil {
 			return v, nil
 		}
@@ -354,8 +390,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 				}
 			}
 		}
-	case "GroupAbsoluteExpr":
-		fmt.Println("GroupAbsoluteExpr")
+	case "GroupActionRuntimeExpr":
 		// 只允许Group为最高层时使用
 		if group.Status.Belong == nil {
 			uuid := group.Labels["uuid"]
@@ -365,6 +400,105 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 			rn := fmt.Sprintf("%s.%s.%s-%s", groupName, actionName, runtimeName, uuid)
 			return rn, string(RuntimeType), "", "", nil
 		}
+
+		// add
+		// Group{}位置
+		emptyStr := ""
+		fmt.Println("GroupActionRuntimeExpr")
+		targetGroup := parts[1]
+		targetAction := parts[2]
+		targetRuntime := parts[3]
+		from := parts[4]
+		fromKey := parts[5]
+		fmt.Println(targetRuntime, from, fromKey)
+		fmt.Println(targetGroup, group.Spec.Name)
+		if targetGroup == group.Spec.Name {
+			// 寻址的是当前的Group
+			fmt.Println("current group")
+
+			// group下actions
+			an, ok := group.Status.Actions[targetAction]
+			if !ok {
+				logs.Infof("no action found for %s in %s", targetAction, targetGroup)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("no action found")
+			}
+
+			// action
+			a, err := e.manager.GetAction(an.Name, an.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			// action下runtimes
+			r, ok := a.Status.Runtimes[targetRuntime]
+			if !ok {
+				logs.Infof("no runtime found for %s in %s", targetRuntime, targetAction)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("runtime not found")
+			}
+
+			return r.Name, string(RuntimeType), from, fromKey, nil
+
+		} else {
+			// 寻址的是当前Task下的其他Group
+			fmt.Println("other group belong same task")
+			// 根据Belong查找Task
+			task, err := e.manager.GetTask(group.Status.Belong.Name, group.Status.Belong.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			//task下groups
+			gn, ok := task.Status.Groups[targetGroup]
+			if !ok {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("group not found")
+			}
+
+			// group
+			g, err := e.manager.GetGroup(gn.Name, gn.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			// group下actions
+			an, ok := g.Status.Actions[targetAction]
+			if !ok {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("action not found")
+			}
+
+			// action
+			a, err := e.manager.GetAction(an.Name, an.Namespace)
+			if err != nil {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, err
+			}
+
+			// action下runtimes
+			r, ok := a.Status.Runtimes[targetRuntime]
+			if !ok {
+				logs.Info(err)
+				return emptyStr, emptyStr, emptyStr, emptyStr, errors.New("runtime not found")
+			}
+			fmt.Printf("return r.Name:%v, string(RuntimeType):%v, from:%v, fromKey:%v, err:%v\n ", r.Name, string(RuntimeType), from, fromKey, nil)
+
+			return r.Name, string(RuntimeType), from, fromKey, nil
+
+		}
+	//case "GroupAbsoluteExpr":
+	//	fmt.Println("GroupAbsoluteExpr")
+	//	// 只允许Group为最高层时使用
+	//	if group.Status.Belong == nil {
+	//		uuid := group.Labels["uuid"]
+	//		groupName := parts[1]
+	//		actionName := parts[2]
+	//		runtimeName := parts[3]
+	//		rn := fmt.Sprintf("%s.%s.%s-%s", groupName, actionName, runtimeName, uuid)
+	//		return rn, string(RuntimeType), "", "", nil
+	//	}
 
 	case "TaskGroupExpr":
 		fmt.Println("TaskGroupExpr")
@@ -546,27 +680,18 @@ func (e *Engine) ExtractActionValue(action string, namespace string, target stri
 		// TODO: 增加更多类型
 		value.Value = string(a.Status.Phase)
 		return value, nil
-	case "Outputs":
-		// 检查
-
-		v, ok := a.Status.Outputs[subTarget]
-
-		if !ok {
-			return nil, errors.New(string("SubTarget is not existed" + subTarget))
-		}
-		value.Value = v.Value
-		value.ValueType = v.ValueType
-		return value, nil
 	}
 	return nil, errors.New(string("Unsupported Target " + target))
 }
 
 // 目前只支持解析Status的State和Outputs
 func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target string, subTarget string, value *apis.Value) (*apis.Value, error) {
+	logs.Infof("runtime %s, namespace %s, target %s, subtarget %s", runtime, namespace, target, subTarget)
 	r, err := e.manager.GetRuntime(runtime, namespace)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("target:%v\n", target)
 
 	switch target {
 	case "Status":
@@ -577,6 +702,7 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 	case "Outputs":
 		// 检查
 		v, ok := r.Status.Outputs[subTarget]
+		fmt.Printf("output:%v\n", v)
 		if !ok {
 			return nil, errors.New(string("SubTarget is not existed" + subTarget))
 		}

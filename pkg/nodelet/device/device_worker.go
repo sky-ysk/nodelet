@@ -2,260 +2,637 @@ package device
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
+	m "hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
-	"sort"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"sync"
 	"time"
 )
 
-// AllocateRequest 描述一个Group对DeviceWorker的请求
-type AllocateRequest struct {
-	RequestTime     time.Time
-	Priority        int
-	AbilityNumTable map[string]int
-	GroupID         string
-	RequestID       string
-}
-
-// AbilityMapDevice 维护一个Ability到Map的映射表 存储所有非Disconnected的设备
-type AbilityMapDevice struct {
-	// Key是能力名 相同能力的设备放在一个列表中
-	MapTable map[string][]*apis.Device
-	// 用来存放所有的device名字
-	NameList []string
-}
-
-// hasDevice 判断映射表中是否含有某个device
-func (a *AbilityMapDevice) hasDevice(deviceName string) bool {
-	for _, name := range a.NameList {
-		if name == deviceName {
-			return true
-		}
-	}
-	return false
-}
-
-type Worker interface {
-	Run() error
-}
+var instance *DeviceWorker
+var once sync.Once
 
 type DeviceWorker struct {
-	// 接受请求的通道
-	RequestChan chan AllocateRequest
-	// Ability到device的映射表
-	DeviceMap *AbilityMapDevice
-	// 访问Device的client
-	DeviceClient core.DeviceInterface
-	// 错误处理的通道
-	errorChan chan error // 用于传递错误
-	// 展示分配结果
-	AllocateResult map[string]bool // 分配结果表
-	// 存储请求的队列
-	requestQueue []AllocateRequest
+	MapTable map[string]*apis.Device
+	// etcd的client
+	Manager *m.Manager
+	errChan chan error
 	// 互斥锁
-	mu sync.Mutex
-	// 设置分配策略
-	Strategy Strategy
+	Mu sync.Mutex
 }
-type Strategy string
 
-const (
-	StrategyPriority = "priority"
-	StrategyFCFS     = "FCFS"
-)
+// GetDeviceWorker 获取DeviceWorker的单例实例
+func GetDeviceWorker() *DeviceWorker {
+	once.Do(func() {
 
-func NewDeviceWorker(deviceClient core.DeviceInterface, strategy ...Strategy) *DeviceWorker {
-	deviceMap := &AbilityMapDevice{
-		MapTable: make(map[string][]*apis.Device),
-		NameList: make([]string, 0),
-	}
-	if len(strategy) == 0 {
-		strategy[0] = StrategyPriority
-	}
-	return &DeviceWorker{
-		RequestChan:    make(chan AllocateRequest, 10), // 创建一个缓冲的请求通道
-		DeviceClient:   deviceClient,
-		DeviceMap:      deviceMap,
-		errorChan:      make(chan error, 1),   // 创建一个缓冲的错误通道
-		AllocateResult: make(map[string]bool), // 初始化分配结果表
-		Strategy:       strategy[0],
-	}
-
-}
-func (w *DeviceWorker) Run() error {
-	// 更新设备状态的定时器
-	deviceUpdateTicker := time.NewTicker(time.Second * 5)
-	// 处理请求的定时器
-	requestProcessingTicker := time.NewTicker(time.Second * 5)
-	for {
-		select {
-		case <-deviceUpdateTicker.C: // 设备更新
-			go w.updateDeviceMap()
-		case req := <-w.RequestChan: // 处理请求
-			// 接收到请求，将其加入队列
-			w.mu.Lock()
-			w.requestQueue = append(w.requestQueue, req)
-			w.mu.Unlock()
-		case err := <-w.errorChan: // 错误反馈
-			logs.Infof("Error in DeviceWorker: %v", err)
-			return err
-		case <-requestProcessingTicker.C:
-
+		//clientSet, _ := InitClient()
+		clientSet, err := utils.CreateClientSetWithTimeOut(3600 * 3)
+		if err != nil {
+			logs.Fatalf("create client set failed, err:%v", err)
 		}
-	}
+		instance = &DeviceWorker{
+			MapTable: make(map[string]*apis.Device),
+			Manager:  m.NewManager(clientSet),
+			errChan:  make(chan error, 1),
+		}
+		ctx := context.Background()
+		go instance.monitorDiscardRuntimes(ctx)
+		go instance.errorCycle()
+	})
+	return instance
 }
 
-// updateDeviceMap 负责定期更新AbilityMapDevice
-func (w *DeviceWorker) updateDeviceMap() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	// 从数据库中拿去所有的device
-	devices, err := w.DeviceClient.List(context.TODO(), metav1.ListOptions{})
+// updateMapCycle 负责更新一下内存中的map
+func (dw *DeviceWorker) updateMap() {
+	logs.Infof("[DEVICE WORKER] update all devices")
+	deviceList, err := dw.Manager.GetDevices("", "test")
 	if err != nil {
-		logs.Errorf("[DEVICE WORKER] ")
-		w.errorChan <- err
+		logs.Infof("[DEVICE WORKER] List All Devices failed")
 		return
 	}
-	logs.Infof("[DEVICE WORKER] ETCD has %d device", len(devices.Items))
+	logs.Infof("[DEVICE WORKER] HAS %d devices", len(deviceList.Items))
 
-	for _, device := range devices.Items {
+	for _, device := range deviceList.Items {
+		dw.MapTable[device.Name] = &device
+		logs.Warnf("[DEVICE WORKER] Device %s has been updated, ref is %d", device.Name, device.Status.Lock.Ref)
+		for name, ability := range device.Status.Abilities {
+			logs.Warnf("[DEVICE WORKER] Device %s ability %s ref is %d", device.Name, name, ability.Lock.Ref)
+		}
+	}
 
-		// 只负责维护Ability设备
-		if device.Spec.AccessMethod.Type == apis.AccessByAbility {
-			// 跳过离线的设备
-			if device.Status.Phase == apis.DeviceDisconnected {
-				logs.Infof("[DEVICE WORKER] Device[%s] is Disconnected", device.Name)
-				continue
-			}
-			logs.Infof("[DEVICE WORKER] Update Device[%s]", device.Name)
-			if w.DeviceMap.hasDevice(device.Name) { // 如果map中有这个device
-				logs.Infof("[DEVICE WORKER] Device[%s] is exist in DeviceMap", device.Name)
-				// 将device进行更新
-				abilityName := device.Status.Abilities[0].Name
+}
 
-				for index, d := range w.DeviceMap.MapTable[abilityName] {
-					if d.Name == device.Name {
-						w.DeviceMap.MapTable[abilityName][index] = &device
+// ChooseDevices 根据group的设备需求筛选设备
+func (dw *DeviceWorker) ChooseDevices(group *apis.GroupSpec) (bool, map[string]*apis.Device, error) {
+
+	deviceTable := make(map[string]*apis.Device, len(group.Devices))
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	dw.updateMap()
+	// 遍历device需求表
+	for _, ds := range group.Devices {
+		//区分filter策略和Nominate策略, 默认是filter策略
+		strategy := ""
+		strategyVal, exists := ds.ExpectedProperties["strategy"]
+		if !exists || strategyVal.Value == "" {
+			strategy = "filter"
+		} else {
+			strategy = strategyVal.Value
+		}
+
+		switch strategy {
+		case "filter":
+			flag := false // 定义一个标志位，标识这个device需求是否满足
+			for _, device := range dw.MapTable {
+				// 找到满足能力需求的device
+				if device.Status.Lock.IsLocked != true && device.Status.Phase == apis.DeviceIdle { // 没有上锁的设备
+					if _, ok := deviceTable[device.Name]; ok {
+						continue
+					}
+					if contains(device.Spec.Abilities, ds.Abilities) {
+						// 将device存入deviceTable中
+						deviceTable[ds.Name] = device
+						//delete(dw.MapTable, device.Name)
+						flag = true // 满足设置为true
+						break
 					}
 				}
-
-				logs.Infof("[DEVICE WORKER] Update Device[%s] in DeviceMap", device.Name)
-			} else { // 如果map中没有存放这个device
-				logs.Infof("[DEVICE WORKER] Device[%s] is not exist in DeviceMap", device.Name)
-				// 加入到map中
-
-				deviceList := w.DeviceMap.MapTable[device.Status.Abilities[0].Name]
-				deviceList = append(deviceList, &device)
-				w.DeviceMap.MapTable[device.Status.Abilities[0].Name] = deviceList
-				// 在nameList中注册
-				nameList := w.DeviceMap.NameList
-				nameList = append(nameList, device.Name)
-				w.DeviceMap.NameList = nameList
-
-				logs.Infof("[DEVICE WORKER] Register Device[%s] in DeviceMap", device.Name)
 			}
+			if !flag { // device需求未满足，返回false
+				logs.Warnf("no device statisfied for group %s", group.Name)
+				return false, nil, nil
+			}
+		//最好不要有一些是nominate有一些是filter ，单个Group中的DeviceSpec中的strategy最好保持一致，要不然可能会出错
+		case "nominate":
+			// 获取真实的名字
+			deviceName, ok := ds.ExpectedProperties["name"]
+			if !ok || deviceName.Value == "" {
+				logs.Errorf("strategy is nominate but no device name ! group %s, device spec %s", group.Name, ds.Name)
+				return false, nil, errors.New("strategy is nominate but no device name")
+			}
+			// 查看table中的数据，能不能根据真实的名字找到这个device
+			device, ok := dw.MapTable[deviceName.Value]
+			if !ok || device == nil {
+				logs.Errorf("nominated device %s not exist", ds.Name)
+				return false, nil, errors.New("nominated device not exist")
+			}
+			if device.Status.Lock.IsLocked {
+				logs.Warnf("nominated device %s is locked", ds.Name)
+				return false, nil, nil
+			}
+			if device.Status.Phase != apis.DeviceIdle {
+				logs.Warnf("nominated device %s is error", ds.Name)
+				return false, nil, nil
+			}
+			deviceTable[ds.Name] = device
+
+		default:
+			logs.Errorf("invalid strtegy %s", strategy)
+			return false, nil, errors.New("invalid strategy")
 		}
 
 	}
+	return true, deviceTable, nil
 }
 
-// processRequests 进行请求处理
-func (w *DeviceWorker) processRequests() {
-	// 取出所有的请求
-	var requests []AllocateRequest
+// LockDevices 对device进行上锁
+func (dw *DeviceWorker) LockDevices(group *apis.Group, deviceTable map[string]*apis.Device) (bool, *apis.Group) {
 
-	w.mu.Lock()
-	for _, request := range w.requestQueue {
-		requests = append(requests, request)
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	logs.Warnf("[DEVICE WORKER] Call LockDevices")
+	dw.updateMap()
+	// 首先检查所需的设备有没有被占用
+	for _, device := range deviceTable {
+		if dw.MapTable[device.Name].Status.Lock.IsLocked != false {
+			logs.Warnf("device %s is locked, group %s", device.Name, group.Name)
+			return false, nil
+		}
+		if dw.MapTable[device.Name].Status.Phase != apis.DeviceIdle {
+			logs.Warnf("device %s is not idle, group %s", device.Name, group.Name)
+			return false, nil
+		}
 	}
-	w.requestQueue = w.requestQueue[:0]
-	w.mu.Unlock()
-	// 根据策略进行处理
-	switch w.Strategy {
-	case StrategyFCFS:
-		sort.Slice(requests, func(i, j int) bool {
-			return requests[i].RequestTime.Before(requests[j].RequestTime)
+
+	// 对所有设备上锁
+	for name, device := range deviceTable {
+		device.Status.Lock.IsLocked = true
+		deviceTable[name] = device
+	}
+	// 填写group的devices字段
+
+	for index, deviceSpec := range group.Spec.Devices {
+		if deviceSpec.ExpectedProperties == nil {
+			deviceSpec.ExpectedProperties = make(map[string]apis.Property)
+		}
+		deviceSpec.ExpectedProperties["name"] = apis.Property{
+			Value: deviceTable[deviceSpec.Name].Name,
+		}
+		group.Spec.Devices[index] = deviceSpec
+	}
+
+	// 遍历Group的actions
+	for ai, a := range group.Spec.Actions {
+		// 获取action的真实信息
+		aRealName := group.Status.Actions[a.Name].Name
+		aNamespace := group.Status.Actions[a.Name].Namespace
+		action, err := dw.Manager.GetAction(aRealName, aNamespace)
+		if err != nil {
+			logs.Errorf("[DEVICE RUNTIME] GET action fail")
+			return false, nil
+		}
+		// 遍历runtime
+		for ri, r := range a.Runtimes {
+			// 获取runtime的真实信息
+			rRealName := action.Status.Runtimes[r.Name].Name
+			rNamespace := action.Status.Runtimes[r.Name].Namespace
+			for di, ds := range r.Devices {
+				// 对runtime的device字段进行操作
+				ds.ExpectedProperties["name"] = apis.Property{
+					Value: deviceTable[ds.Name].Name,
+				}
+				// 对设备加锁
+				for _, ab := range ds.Abilities {
+
+					deviceTable[ds.Name].Status.Lock.Ref += 1
+					ability := deviceTable[ds.Name].Status.Abilities[ab]
+					ability.Lock.Ref += 1
+					deviceTable[ds.Name].Status.Abilities[ab] = ability
+					logs.Infof("Group:%s Device:%s Ref:%d", group.Name, deviceTable[ds.Name].Name, deviceTable[ds.Name].Status.Lock.Ref)
+				}
+
+				r.Devices[di] = ds
+			}
+
+			// 更新runtime
+			patchRuntime, _ := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"devices": r.Devices,
+				},
+			})
+			_, err = dw.Manager.PatchRuntime(rRealName, rNamespace, patchRuntime)
+			if err != nil {
+				logs.Errorf("[DEVICE WORKER] Patch runtime %s failed", rRealName)
+				return false, nil
+			}
+			logs.Infof("[DEVICE WORKER] Patch runtime:%s successfully", rRealName)
+			a.Runtimes[ri] = r
+		}
+		// 更新runtime
+		patchAction, _ := json.Marshal(map[string]interface{}{
+			"spec": map[string]interface{}{
+				"runtimes": a.Runtimes,
+			},
 		})
-	case StrategyPriority:
-		sort.Slice(requests, func(i, j int) bool {
-			return requests[i].Priority > requests[j].Priority
+		_, err = dw.Manager.PatchAction(aRealName, aNamespace, patchAction)
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Patch action %s failed", aRealName)
+			return false, nil
+		}
+		logs.Infof("[DEVICE WORKER] Patch action:%s successfully", aRealName)
+		group.Spec.Actions[ai] = a
+	}
+
+	// 更新设备
+	for _, device := range deviceTable {
+		patchDevice, _ := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"lock":      device.Status.Lock,
+				"abilities": device.Status.Abilities,
+				"group":     group.Name,
+			},
 		})
-	default:
-
+		_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
+			return false, nil
+		}
+		logs.Infof("[DEVICE WORKER] LOCK device:%s successfully", device.Name)
 	}
-	// 遍历request列表
-	for _, request := range requests {
-		// 检查每一个request是否可行
-		var flag bool
-		for ability, _ := range request.AbilityNumTable {
-			if flag = !w.isAvailable(ability); flag { // 如果不可行
-				w.mu.Lock()
-				w.AllocateResult[request.RequestID] = false
-				w.mu.Unlock()
-				break
+
+	// 更新group
+
+	//groupSpecStr, err := json.Marshal(group.Spec)
+	//if err != nil {
+	//	logs.Errorf("[DEVICE WORKER] Marshal Group Spec failed: %s", err.Error())
+	//	return false, nil
+	//}
+	//patchGroup, _ := json.Marshal(map[string]interface{}{
+	//	"spec": string(groupSpecStr),
+	//})
+	logs.Infof("group is %s", group.Spec.Actions[0].Runtimes[0].Devices[0].ExpectedProperties["name"].Value)
+	logs.Infof("action is %v", group.Spec.Actions[0])
+	_, err := dw.Manager.UpdateGroup(group.Name, apis.NamespaceTest, group)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] update group %s failed", group.Name)
+		return false, nil
+	}
+	logs.Infof("[DEVICE RUNTIME] update group successfully")
+	dw.updateMap()
+	return true, group
+}
+
+// LockAbility 对能力进行上锁
+func (dw *DeviceWorker) LockAbility(device *apis.Device, ability string) bool {
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	dw.updateMap()
+	logs.Warnf("[DEVICE WORKER] Call LockAbility")
+	d := dw.MapTable[device.Name]
+	if d.Status.Abilities[ability].Lock.IsLocked != false {
+		return false
+	} else {
+		a := d.Status.Abilities[ability]
+		a.Lock.IsLocked = true
+		d.Status.Abilities[ability] = a
+	}
+	patchDevice, _ := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"abilities": d.Status.Abilities,
+		},
+	})
+	_, err := dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device.Name)
+		return false
+	}
+	dw.updateMap()
+	return true
+}
+
+// ReleaseAbilityRef 在非正常情况下减少引用
+func (dw *DeviceWorker) ReleaseAbilityRef(device string, ability string, runtime *apis.Runtime) error {
+
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	logs.Warnf("[DEVICE WORKER] Call ReleaseAbilityRef")
+	dw.updateMap()
+	// 获取device
+	d := dw.MapTable[device]
+	// 获取ability
+	a := d.Status.Abilities[ability]
+	a.Lock.Ref -= 1        // 减引用
+	d.Status.Lock.Ref -= 1 // 减引用
+
+	d.Status.Abilities[ability] = a
+
+	aByte, err := json.Marshal(d.Status.Abilities)
+	lByte, err := json.Marshal(d.Status.Lock)
+	patchDevice, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"abilities": json.RawMessage(aByte),
+			"lock":      json.RawMessage(lByte),
+		},
+	})
+
+	if err != nil {
+		logs.Errorf("json marshal fail err：%s", err.Error())
+		return err
+	}
+	_, err = dw.Manager.PatchDevice(device, d.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch device %s failed", device)
+		return err
+	}
+	dw.updateMap()
+	return nil
+}
+
+// ReleaseAbility 正常释放能力锁
+func (dw *DeviceWorker) ReleaseAbility(device *apis.Device, ability string) bool {
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	logs.Warnf("[DEVICE RUNTIME] NORMAL")
+	dw.updateMap()
+
+	d := dw.MapTable[device.Name]
+	if d.Status.Abilities[ability].Lock.IsLocked != true {
+		return false
+	}
+	a := d.Status.Abilities[ability]
+	logs.Warnf("[DEVICE WORKER] REF IS  ABILITY %s ref is %d(BEFORE)", ability, a.Lock.Ref)
+	a.Lock.IsLocked = false // 解锁
+	a.Lock.Ref -= 1         // 减引用
+	d.Status.Abilities[ability] = a
+
+	aByte, err := json.Marshal(d.Status.Abilities)
+	patchDevice, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"abilities": json.RawMessage(aByte),
+		},
+	})
+	if err != nil {
+		logs.Errorf("json marshal fail err：%s", err.Error())
+	}
+	_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Patch device %s failed, err:%s", device.Name, err.Error())
+		return false
+	}
+	dd, err := dw.Manager.GetDevice(device.Name, device.Namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Get device %s failed", device.Name)
+		return false
+	}
+	logs.Warnf("[DEVICE WORKER] REF IS  ABILITY %s ref is %d(after)", ability, dd.Status.Abilities[ability].Lock.Ref)
+	logs.Infof("[DEVICE RUNTIME] RELEASE device:%s ability:%s successfully", device.Name, ability)
+	return true
+
+}
+
+// monitorDiscardRuntimes 监听丢弃的runtime
+func (dw *DeviceWorker) monitorDiscardRuntimes(ctx context.Context) {
+	//eventClient := dw.Manager.EventClients[apis.NamespaceTest]
+	eventClient := dw.Manager.ClientSet.Core().Events(apis.NamespaceTest)
+	if eventClient == nil {
+		logs.Error("No such event client!")
+		return
+	}
+	var timeOut int64 = 3600 * 3
+	watch, err := eventClient.Watch(ctx, metav1.ListOptions{
+		TimeoutSeconds: &timeOut,
+	})
+	watchChan := watch.ResultChan()
+	if err != nil {
+		return
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			logs.Errorf("[device worker] ctx is done")
+		case e, ok := <-watchChan:
+			if !ok {
+				logs.Error("[device worker] watch channel closed")
+				return
+			}
+
+			if event, ok := e.Object.(*apis.Event); ok {
+				//logs.Infof("[DEVICE RUNTIME] EVENT IS %v", event)
+				//logs.Infof("[DEVICE RUNTIME] Receive event:%s ", event.Name)
+				if event.InvolvedObject.Kind != "Runtime" || event.Reason != "ExecuteDiscard" {
+					continue
+				}
+				dw.handleRuntimeDiscardEvent(ctx, event)
+			} else {
+				logs.Errorf("[device worker] cannot tranform to event")
 			}
 		}
-		// 正式分配
-		if !flag {
-			w.mu.Lock()
-			for ability, num := range request.AbilityNumTable {
-				// 从map中获取对应的device
-				device := w.getDevice(ability)
-				device.Status.GroupID = request.GroupID
-				device.Status.Lock = apis.Lock{
-					Ref:  num,
-					Lock: true,
-				}
-				// 先更新etcd中的内容
-				_, err := w.DeviceClient.Get(context.TODO(), device.Name, metav1.GetOptions{})
-				if err != nil {
-					logs.Errorf("[DEVICE WORKER] get device fail")
-				}
-				_, err = w.DeviceClient.Update(context.TODO(), device, metav1.UpdateOptions{})
-				if err != nil {
-					logs.Errorf("[DEVICE WORKER] update device fail")
-					w.mu.Unlock()
-					return
-				}
-				// 更新map中的内容
-				w.updateDevice(ability, device)
+	}
+
+}
+
+// handleRuntimeDiscardEvent 处理丢弃事件
+func (dw *DeviceWorker) handleRuntimeDiscardEvent(ctx context.Context, event *apis.Event) {
+	name := event.InvolvedObject.Name
+	namespace := event.InvolvedObject.Namespace
+	//logs.Infof("[DEVICE RUNTIME] handleRuntimeDiscardEvent runtime IS %v", name)
+	// 获取runtime
+	runtime, err := dw.Manager.GetRuntime(name, namespace)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] get runtime %s failed", name)
+		return
+	}
+	// 释放不正常的引用
+	for _, ds := range runtime.Spec.Devices {
+		dname := ds.ExpectedProperties["name"].Value
+		for _, ability := range ds.Abilities {
+			logs.Errorf("runtime%s 被丢弃，不正常释放device%s的ability%s", runtime.Name, dname, ability)
+			err = dw.ReleaseAbilityRef(dname, ability, runtime)
+			if err != nil {
+				logs.Errorf("[DEVICE WORKER] ReleaseAbilityRef %s failed, err is %s", dname, err.Error())
+				return
 			}
-			w.AllocateResult[request.RequestID] = true
-
-			w.mu.Unlock()
-
 		}
 	}
 }
 
-// isAvailable 判断ability对应的列表有无可用的设备
-func (w *DeviceWorker) isAvailable(ability string) bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	for _, device := range w.DeviceMap.MapTable[ability] {
-		if device.Status.GroupID == "" {
-			return true
-		}
+// UpdateDeviceFinished 任务完成阶段进行设备状态更新
+func (dw *DeviceWorker) UpdateDeviceFinished(d *apis.Device, runtime *apis.Runtime) error {
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	logs.Warnf("[DEVICE WORKER] Call UpdateDeviceFinished")
+	dw.updateMap()
+
+	device := dw.MapTable[d.Name]
+	logs.Warnf("[DEVICE RUNTIME] REF IS %d, runtime is %s(before)", device.Status.Lock.Ref, runtime.Name)
+	device.Status.Lock.Ref -= 1
+
+	if device.Status.Lock.Ref == 0 {
+		device.Status.Lock.IsLocked = false
 	}
-	return false
+	// 将phase更改为running
+	device.Status.Phase = apis.DeviceIdle
+	// 设置更新时间
+	device.Status.LastTime = apis.Time{Time: time.Now()}
+	patchDevice, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"lock":      device.Status.Lock,
+			"phase":     device.Status.Phase,
+			"last_time": device.Status.LastTime,
+		},
+	})
+
+	_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE Worker] Update Device[%s] stage[FINISHED], err:%s", device.Name, err)
+		return err
+	}
+	dw.updateMap()
+	logs.Infof("[DEVICE Worker] Update Device[%s] successfully stage [FINISHED]\n", device.Name)
+
+	return nil
 }
 
-func (w *DeviceWorker) getDevice(ability string) *apis.Device {
-	for _, device := range w.DeviceMap.MapTable[ability] {
-		if device.Status.GroupID == "" {
-			return device
+func (dw *DeviceWorker) UpdateDeviceRunning(deviceMap map[string]*apis.Device) error {
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	dw.updateMap()
+	for name, d := range deviceMap {
+		device := dw.MapTable[d.Name]
+		logs.Infof("[DEVICE RUNTIME] Update Device[%s] stage[RUNNING]", name)
+		// 将phase更改为running
+		device.Status.Phase = apis.DeviceRunning
+		// 设置更新时间
+		device.Status.LastTime = apis.Time{Time: time.Now()}
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"phase":     device.Status.Phase,
+				"last_time": device.Status.LastTime,
+			},
+		})
+		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] Update Device[%s] Failed stage [RUNNING], err:%s", device.Name, err.Error())
+			return err
+		}
+		logs.Infof("[DEVICE WORKER] Update Device[%s] Successfully stage [RUNNING]\n", device.Name)
+	}
+
+	return nil
+}
+
+// UpdateDeviceError 任务执行失败阶段 更新设备状态
+func (dw *DeviceWorker) UpdateDeviceError(message string, d *apis.Device) error {
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	dw.updateMap()
+
+	logs.Infof("[DEVICE WORKER] Device:%s is Error, message: %s", d.Name, message)
+	device := dw.MapTable[d.Name]
+	errEvent := apis.DeviceEvent{
+		Desc: message,
+	}
+
+	// 填写错误信息
+	device.Status.Events = append(device.Status.Events, errEvent)
+
+	// 改写状态为error
+	device.Status.Phase = apis.DeviceError
+	device.Status.LastTime = apis.Time{Time: time.Now()}
+
+	// 清空每一个能力的锁信息
+	for name, ability := range device.Status.Abilities {
+		ability.Lock.IsLocked = false
+		ability.Lock.Ref = 0
+		device.Status.Abilities[name] = ability
+	}
+
+	// 清空设备的锁信息
+	device.Status.Lock.IsLocked = false
+	device.Status.Lock.Ref = 0
+	device.Status.Group = ""
+	aByte, err := json.Marshal(device.Status.Abilities)
+	if err != nil {
+		logs.Errorf("[DEVICE WORKER] Marshal device ability fail, err:%s", err.Error())
+		return err
+	}
+
+	var patchDevice []byte
+	patchDevice, err = json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"group":     device.Status.Group,
+			"events":    device.Status.Events,
+			"abilities": json.RawMessage(aByte),
+			"lock":      device.Status.Lock,
+			"phase":     device.Status.Phase,
+			"last_time": device.Status.LastTime,
+		},
+	})
+	_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+	if err != nil {
+		logs.Errorf("[DEVICE Worker] Update Device[%s] stage[ERROR], err:%s", device.Name, err)
+		return err
+	}
+	logs.Infof("[DEVICE WORKER] Patch Device%s Successfully\n", device.Name)
+	return nil
+}
+
+// 定时错误检测
+func (dw *DeviceWorker) errorCycle() {
+	for {
+		time.Sleep(20 * time.Second)
+		err := dw.checkError()
+		if err != nil {
+			logs.Errorf("[DEVICE WORKER] checkError Failed, err:%s", err.Error())
+		}
+	}
+}
+
+// 进行一次错误检查
+func (dw *DeviceWorker) checkError() error {
+	dw.Mu.Lock()
+	defer dw.Mu.Unlock()
+	logs.Warnf("[DEVICE WORKER] Call checkError")
+	// 获取这段时间中处于ERROR状态的device
+	dw.updateMap()
+	errDeviceList := make([]*apis.Device, 0)
+	for _, d := range dw.MapTable {
+		if d.Status.Phase == apis.DeviceError {
+			errDeviceList = append(errDeviceList, d)
+		}
+	}
+
+	// 进行错误处理
+	for _, device := range errDeviceList {
+		device.Status.Phase = apis.DeviceIdle
+	}
+	// 更新device
+	for _, device := range errDeviceList {
+		patchDevice, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"phase": device.Status.Phase,
+			},
+		})
+		_, err = dw.Manager.PatchDevice(device.Name, device.Namespace, string(patchDevice))
+		if err != nil {
+			logs.Errorf("[DEVICE Worker] Update Device[%s] stage[ERROR], err:%s", device.Name, err)
+			return err
 		}
 	}
 	return nil
 }
 
-func (w *DeviceWorker) updateDevice(ability string, device *apis.Device) {
-	for index, d := range w.DeviceMap.MapTable[ability] {
-		if d.Name == device.Name {
-			w.DeviceMap.MapTable[ability][index] = device
+// handleSimpleError 处理简单错误
+func (dw *DeviceWorker) handleSimpleError() {
+
+}
+
+func contains(slice []string, target []string) bool {
+	for _, t := range target {
+		found := false
+		for _, s := range slice {
+			if s == t {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
 		}
 	}
+	return true
 }

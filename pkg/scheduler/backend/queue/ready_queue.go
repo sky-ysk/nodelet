@@ -63,10 +63,12 @@ type readyQueue struct {
 }
 
 func newReadyQueue() *readyQueue {
-	//TODO @linbohai 写个真的方法
-	lessFn := func(i, j *config.QueuedGroupInfo) bool {
-		return false
-	}
+
+	//适配场景三 通过weight标签添加优先级 从而让复检任务优先调度
+	lessFn := groupInfoLessFunc
+	//lessFn := func(i, j *config.QueuedGroupInfo) bool {
+	//	return false
+	//}
 	queue := heap.New(groupInfoKeyFunc, lessFn)
 	rq := &readyQueue{
 		queue:                        queue,

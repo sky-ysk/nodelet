@@ -599,6 +599,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								// ①副本任务，但没有细粒度控制 ②原任务（没有副本） 采用Run方式启动任务
 								logs.Infof("****************************ashdkhaskldhklashdk****************************************")
 								if !runtime.Status.Starting {
+									logs.Infof("run runtime:%s", runtime.Name)
 									go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									patchRuntime, err := json.Marshal(map[string]interface{}{
 										"status": map[string]interface{}{

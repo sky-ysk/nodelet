@@ -442,7 +442,7 @@ func TestPatchGroup(t *testing.T) {
 
 	patchData := "{\n  \"spec\": {\n      \"desc\": {\n          \"docs\": \"group after patch\"\n      }\n  }\n\n}"
 
-	patched, err := m.PatchGroup(g.Name, g.Namespace, patchData)
+	patched, err := m.PatchGroup(g.Name, g.Namespace, []byte(patchData))
 	if err != nil {
 		panic(err)
 	} else {

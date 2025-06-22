@@ -272,20 +272,20 @@ func TestClearEtcd(t *testing.T) {
 		}
 	}
 
-	////删devices
-	//deviceClient := cs.Core().Devices("test")
-	//devices, err := deviceClient.List(ctx, metav1.ListOptions{})
-	//if err != nil {
-	//	return
-	//}
-	//for _, d := range devices.Items {
-	//	logs.Infof("delete act %s ", d.Name)
-	//	err := deviceClient.Delete(ctx, d.Spec.Name, metav1.DeleteOptions{})
-	//	if err != nil {
-	//		logs.Error(err)
-	//		return
-	//	}
-	//}
+	//删除device
+	deviceClient := cs.Core().Devices("test")
+	devices, err := deviceClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+	for _, d := range devices.Items {
+		logs.Infof("delete act %s ", d.Name)
+		err := deviceClient.Delete(ctx, d.Spec.Name, metav1.DeleteOptions{})
+		if err != nil {
+			logs.Error(err)
+			return
+		}
+	}
 
 	//删events
 	eventClient := cs.Core().Events(apis.NamespaceTest)
@@ -311,6 +311,36 @@ func TestClearEtcd(t *testing.T) {
 	for _, t := range tasks.Items {
 		logs.Infof("delete task %s ", t.Name)
 		err := taskClient.Delete(ctx, t.Name, metav1.DeleteOptions{})
+		if err != nil {
+			logs.Error(err)
+			return
+		}
+	}
+
+	//删node
+	//nc := cs.Core().Nodes(apis.NamespaceTest)
+	//nodes, err := nc.List(ctx, metav1.ListOptions{})
+	//if err != nil {
+	//	return
+	//}
+	//for _, t := range nodes.Items {
+	//	logs.Infof("delete task %s ", t.Name)
+	//	err := nc.Delete(ctx, t.Name, metav1.DeleteOptions{})
+	//	if err != nil {
+	//		logs.Error(err)
+	//		return
+	//	}
+	//}
+
+	//删runtime
+	rc := cs.Core().Runtimes(apis.NamespaceTest)
+	runtimes, err := rc.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+	for _, t := range runtimes.Items {
+		logs.Infof("delete task %s ", t.Name)
+		err := rc.Delete(ctx, t.Name, metav1.DeleteOptions{})
 		if err != nil {
 			logs.Error(err)
 			return
@@ -1865,11 +1895,12 @@ func createClientSet() (*clients.ClientSet, error) {
 
 // go test -run TestEnd -v
 func TestEnd(t *testing.T) {
-	url1 := "http://192.168.8.165:8080"
-	url2 := "http://192.168.8.197:8080"
-	abilityName1 := "ArmControl.Leju.Guochuang"
-	abilityName2 := "Detect"
-	abilityName3 := "ActInferenceAbility"
+	url1 := "http://192.168.8.197:8080"
+	url2 := "http://192.168.8.165:8080"
+	abilityName1 := "DetectPosition.Galaxea.Guochuang"
+	abilityName2 := "GrabBall.Galaxea.Guochuang"
+	abilityName3 := "DetectPosition.Leju.Guochuang"
+	abilityName4 := "GrabBall.Leju.Guochuang"
 	err := manager.NewAbilityManager(url1, abilityName1).TerminateAbility()
 	if err != nil {
 		logs.Errorf("fail to create AbilityManager: %v", err)
@@ -1879,6 +1910,10 @@ func TestEnd(t *testing.T) {
 		logs.Errorf("fail to create AbilityManager: %v", err)
 	}
 	err = manager.NewAbilityManager(url2, abilityName3).TerminateAbility()
+	if err != nil {
+		logs.Errorf("fail to create AbilityManager: %v", err)
+	}
+	err = manager.NewAbilityManager(url2, abilityName4).TerminateAbility()
 	if err != nil {
 		logs.Errorf("fail to create AbilityManager: %v", err)
 	}

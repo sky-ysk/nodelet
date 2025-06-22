@@ -9,6 +9,7 @@ import (
 	"hit.edu/framework/pkg/proxy/server/handlers/group"
 	"hit.edu/framework/pkg/proxy/server/handlers/node"
 	"hit.edu/framework/pkg/proxy/server/handlers/runtime"
+	"hit.edu/framework/pkg/proxy/server/handlers/scene"
 	"hit.edu/framework/pkg/proxy/server/handlers/task"
 	"hit.edu/framework/pkg/proxy/server/handlers/workflow"
 )
@@ -118,5 +119,17 @@ func (h *Handlers) InstallRuntimeHandlers(container *restful.Container) {
 	// Runtime相关
 	gh := runtime.NewRuntimeHandler(h.ClientSet)
 	// 查询单个Runtime
+	container.Add(gh.NewGetWebService())
+}
+
+func (h *Handlers) InstallSceneHandlers(container *restful.Container) {
+	// Scenes相关
+	gsh := scene.NewScenesHandler(h.ClientSet)
+	// 查询Scenes
+	container.Add(gsh.NewGetWebService())
+
+	// Scene相关
+	gh := scene.NewSceneHandler(h.ClientSet)
+	// 查询单个Scene
 	container.Add(gh.NewGetWebService())
 }

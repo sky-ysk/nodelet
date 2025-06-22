@@ -28,12 +28,14 @@ func NewGroupsHandler(clientSet *clients.ClientSet) *GroupsHandler {
 }
 
 func (h *GroupsHandler) GetGroups(request *restful.Request, response *restful.Response) {
-	// 从url中获取namespace
+	// TODO: 检查某些namespace为空判断是否考虑namespace为空默认所有namespace资源的情况
+	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
 
-	labels := request.QueryParameter("Label")
 	var results *apis.GroupList
 	var err error
+
+	labels := request.QueryParameter("Label")
 	if labels == "" {
 		results, err = h.manager.GetGroups(namespace)
 		if err != nil {
@@ -56,14 +58,21 @@ func (h *GroupsHandler) GetGroups(request *restful.Request, response *restful.Re
 		}
 	}
 
-	err = response.WriteEntity(results)
+	//err = response.WriteEntity(results)
+	//if err != nil {
+	//	err := response.WriteError(http.StatusInternalServerError, err)
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code")
+	//		return
+	//	}
+	//}
+
+	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
-		err := response.WriteError(http.StatusInternalServerError, err)
-		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
-		}
+		logs.Errorf("failed to return a status code")
+		return
 	}
+
 	logs.Debugf("Get groups")
 }
 
@@ -81,7 +90,7 @@ func (h *GroupsHandler) NewGetWebService() *restful.WebService {
 		To(h.GetGroups).
 		Operation("Get groups").
 		Returns(200, "OK", []apis.Group{}).
-		Returns(400, "Not Found", nil),
+		Returns(404, "Not Found", nil),
 	)
 	return ws
 }

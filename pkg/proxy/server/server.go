@@ -58,6 +58,9 @@ func (s *Server) InstallDefaultHandlers() {
 	// Node
 	s.handlers.InstallNodeHandlers(s.container)
 
+	// scene 相关
+	s.handlers.InstallSceneHandlers(s.container)
+
 	// Action
 	s.handlers.InstallActionHandlers(s.container)
 
