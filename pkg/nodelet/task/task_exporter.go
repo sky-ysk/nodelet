@@ -184,28 +184,82 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	//}
 }
 
-//	func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
-//		for {
-//			select {
-//			case <-ctx.Done():
-//				logs.Info("ReceiveGroupInfo exiting due to context cancel")
+func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			logs.Info("ReceiveGroupInfo exiting due to context cancel")
+			return
+		default:
+			//读取 etcd当中的group列表
+			//groupsClient := te.clientsManager.GetGroupClient("test")
+			groupList, err := te.allGroupsClient.List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				logs.Errorf("List task err:%v", err)
+			}
+			// 遍历group
+			for i := range groupList.Items {
+				gr := &groupList.Items[i] // 修改了此处，如果不行的话，改为原来的
+				//groupName := gr.Name // 这里是一个坑
+				//// 从etcd当中读group的信息
+				//gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
+				//if err != nil {
+				//	logs.Errorf("get group:%s failed", groupName)
+				//}
+				if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
+					if gr.Status.Phase == apis.ReadyToDeploy {
+						logs.Infof("Receive-GroupName：%v,groupStatus:%v", gr.Name, gr.Status.Phase)
+						groupUpdate := types.GroupUpdate{
+							Group: gr,
+							Op:    types.ADD,
+						}
+						te.updateCh <- groupUpdate
+					} else if gr.Status.Phase == apis.ReadyToKill {
+						groupUpdate := types.GroupUpdate{
+							Group: gr,
+							Op:    types.KILL,
+						}
+						te.updateCh <- groupUpdate
+					}
+				}
+				// 读完一个Group暂停一会
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(100 * time.Millisecond):
+				}
+			}
+		}
+		// GroupList 读完暂停一会
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+//func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
+//	var watchTimeout int64 = 24 * 3600
+//	watchOptions := metav1.ListOptions{
+//		TimeoutSeconds: &watchTimeout,
+//	}
+//	watcher, err := te.allGroupsClient.Watch(context.TODO(), watchOptions)
+//	if err != nil {
+//		logs.Errorf("Watch start false")
+//	}
+//	defer watcher.Stop() // 确保退出时关闭watch
+//	watchChan := watcher.ResultChan()
+//	for {
+//		select {
+//		case event, ok := <-watchChan:
+//			if !ok {
+//				logs.Info("WatchChan closed")
 //				return
-//			default:
-//				//读取 etcd当中的group列表
-//				//groupsClient := te.clientsManager.GetGroupClient("test")
-//				groupList, err := te.allGroupsClient.List(context.TODO(), metav1.ListOptions{})
-//				if err != nil {
-//					logs.Errorf("List task err:%v", err)
-//				}
-//				// 遍历group
-//				for i := range groupList.Items {
-//					gr := &groupList.Items[i] // 修改了此处，如果不行的话，改为原来的
-//					//groupName := gr.Name // 这里是一个坑
-//					//// 从etcd当中读group的信息
-//					//gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-//					//if err != nil {
-//					//	logs.Errorf("get group:%s failed", groupName)
-//					//}
+//			}
+//			switch event.Type {
+//			case watch.Added:
+//				if gr, ok := event.Object.(*apis.Group); ok {
 //					if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
 //						if gr.Status.Phase == apis.ReadyToDeploy {
 //							logs.Infof("Receive-GroupName：%v,groupStatus:%v", gr.Name, gr.Status.Phase)
@@ -222,67 +276,14 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 //							te.updateCh <- groupUpdate
 //						}
 //					}
-//					// 读完一个Group暂停一会
-//					select {
-//					case <-ctx.Done():
-//						return
-//					case <-time.After(100 * time.Millisecond):
-//					}
 //				}
 //			}
-//			// GroupList 读完暂停一会
-//			select {
-//			case <-ctx.Done():
-//				return
-//			case <-time.After(100 * time.Millisecond):
-//			}
+//		case <-ctx.Done():
+//			logs.Info("Context cancle")
+//			return
 //		}
 //	}
-func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
-	var watchTimeout int64 = 24 * 3600
-	watchOptions := metav1.ListOptions{
-		TimeoutSeconds: &watchTimeout,
-	}
-	watcher, err := te.allGroupsClient.Watch(context.TODO(), watchOptions)
-	if err != nil {
-		logs.Errorf("Watch start false")
-	}
-	defer watcher.Stop() // 确保退出时关闭watch
-	watchChan := watcher.ResultChan()
-	for {
-		select {
-		case event, ok := <-watchChan:
-			if !ok {
-				logs.Info("WatchChan closed")
-				return
-			}
-			switch event.Type {
-			case watch.Added:
-				if gr, ok := event.Object.(*apis.Group); ok {
-					if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
-						if gr.Status.Phase == apis.ReadyToDeploy {
-							logs.Infof("Receive-GroupName：%v,groupStatus:%v", gr.Name, gr.Status.Phase)
-							groupUpdate := types.GroupUpdate{
-								Group: gr,
-								Op:    types.ADD,
-							}
-							te.updateCh <- groupUpdate
-						} else if gr.Status.Phase == apis.ReadyToKill {
-							groupUpdate := types.GroupUpdate{
-								Group: gr,
-								Op:    types.KILL,
-							}
-							te.updateCh <- groupUpdate
-						}
-					}
-				}
-			}
-		case <-ctx.Done():
-			logs.Info("Context cancle")
-			return
-		}
-	}
-}
+//}
 
 //	func (te *TaskExporter) ReceiveKillEventInfo(ctx context.Context) {
 //		nowtime := time.Now() // 启动监听的时刻，为了放置启动nodelet组件的时候，etcd里已经有这类的数据，导致收到了老的event
