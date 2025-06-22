@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -146,8 +147,8 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 
 		time.Sleep(time.Duration(retryInterval) * time.Second)
 		cnt += 1
-		if cnt >= 50 {
-			logs.Errorf("monitor times >= 50, can not find the pod%v", podName)
+		if cnt >= 60 {
+			logs.Errorf("monitor times >= 60, can not find the pod%v", podName)
 			return
 		}
 		if !podExists(podName, namespace) {
@@ -170,13 +171,16 @@ func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, name
 		reader := bufio.NewReader(stdout)
 		for {
 			line, err := reader.ReadString('\n')
-			if err != nil {
+			if err == io.EOF {
 				// 日志流中断(暂时不重新获取Logs)
-				logs.Errorf("pod timestamp monitor日志流读取失败: %v\n", err)
-				cmd.Process.Kill()
-				//return
+				logs.Info("Log stream is ni")
+				return
 			}
-
+			time.Sleep(1 * time.Second)
+			if !podExists(podName, namespace) {
+				logs.Warnf("Pod %s 已关闭", podName)
+				return
+			}
 			// 匹配目标日志行
 			if strings.Contains(line, logLineMatch) {
 				// 提取时间戳（假设时间戳是日志行的前两个字段，格式为 YYYY/MM/DD HH:MM:SS.MICROSECONDS）
