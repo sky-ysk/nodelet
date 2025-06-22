@@ -47,7 +47,8 @@ func (m *Manager) CreateWorkflow(ts apis.WorkflowSpec, namespace string, uuid st
 
 	// 初始化状态
 	// TODO: 检查创建状态Pending？unknown？
-	w.Status.Phase = apis.Pending
+	// w.Status.Phase = apis.Pending
+	w.Status.Phase = apis.Unknown
 	w.Status.Tasks = map[string]apis.ObjectReference{}
 
 	w.Labels["uuid"] = uuid
