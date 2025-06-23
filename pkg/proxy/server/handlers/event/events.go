@@ -1,7 +1,6 @@
 package event
 
 import (
-	"fmt"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -30,15 +29,15 @@ func NewEventsHandler(clientSet *clients.ClientSet) *EventsHandler {
 
 func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Response) {
 	// 获取selectName
-	selectName := request.QueryParameter(SELECT_NAME)
-	if selectName == "" {
-		err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
-		if err != nil {
-			logs.Errorf("failed to return a status code ")
-			return
-		}
-		return
-	}
+	//selectName := request.QueryParameter(SELECT_NAME)
+	//if selectName == "" {
+	//	err := response.WriteError(http.StatusBadRequest, fmt.Errorf("name is empty"))
+	//	if err != nil {
+	//		logs.Errorf("failed to return a status code ")
+	//		return
+	//	}
+	//	return
+	//}
 
 	// 获取namespace
 	namespace := request.QueryParameter(NAME_SPACE)
@@ -55,7 +54,7 @@ func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Re
 	var results *apis.EventList
 	var err error
 
-	results, err = h.manager.GetEvents(selectName, namespace)
+	results, err = h.manager.GetEvents(namespace)
 	if err != nil {
 		logs.Errorf("Get events failed: %v", err)
 		err := response.WriteError(http.StatusInternalServerError, err)
@@ -110,7 +109,7 @@ func (h *EventsHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.GET("/").
 		Doc("Get all events with selector").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("SelectorName", "The name of the involved object").DataType("string")).
+		// Param(ws.QueryParameter("SelectorName", "The name of the involved object").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the events").DataType("string")).
 		To(h.GetEvents).
 		Operation("Get events").

@@ -24,27 +24,40 @@ func (m *Manager) CreateEvent(e *apis.Event, namespace string) (*apis.Event, err
 	return fe, nil
 }
 
-func (m *Manager) GetEvent(name string, namespace string) (*apis.Event, error) {
-	c := m.GetEventClient(namespace)
-
-	e, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		logs.Errorf("Failed to get event: %v", err)
-		return nil, fmt.Errorf("%w-%v", NotFound, err)
-	}
-
+func (m *Manager) GetEvent(name string, namespace string) (*apis.EventList, error) {
+	//c := m.GetEventClient(namespace)
 	//
-	logs.Debugf("Get event: %v", e)
-	return e, nil
-}
+	//e, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
+	//if err != nil {
+	//	logs.Errorf("Failed to get event: %v", err)
+	//	return nil, fmt.Errorf("%w-%v", NotFound, err)
+	//}
+	//
+	////
+	//logs.Debugf("Get event: %v", e)
+	//return e, nil
 
-// GetEvents 查询一个变量所有的相关事件
-func (m *Manager) GetEvents(name string, namespace string) (*apis.EventList, error) {
 	fieldSelector := fmt.Sprintf("involvedObject.name=%s", name)
 
 	listOptions := metav1.ListOptions{
 		FieldSelector: fieldSelector,
 	}
+
+	c := m.GetEventClient(namespace)
+
+	e, err := c.Client.List(context.TODO(), listOptions)
+	if err != nil {
+		logs.Errorf("Failed to get events: %v", err)
+		return nil, fmt.Errorf("%w-%v", InternalServerError, err)
+	}
+	return e, nil
+}
+
+// GetEvents 查询一个变量所有的相关事件
+func (m *Manager) GetEvents(namespace string) (*apis.EventList, error) {
+	// fieldSelector := fmt.Sprintf("involvedObject.name=%s", name)
+
+	listOptions := metav1.ListOptions{}
 
 	c := m.GetEventClient(namespace)
 
