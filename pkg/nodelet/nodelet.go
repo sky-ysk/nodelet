@@ -3,12 +3,12 @@ package nodelet
 import (
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/device"
 	"log"
 	"net/http"
 	_ "net/http/pprof" // 自动注册 pprof 处理器
 	"time"
+
+	"hit.edu/framework/pkg/component-base/logs"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -110,21 +110,6 @@ func (nl *Nodelet) Run(ctx context.Context) {
 		panic(err)
 	}
 	go te.Run(ctx)
-
-	cfg := &device.Config{
-		EnabledCollectors: make([]string, 0),
-	}
-	deviceExporter, err := device.NewDeviceExporter(cfg)
-	if err != nil {
-		logs.Errorf("new device exporter fail")
-		return
-	}
-	go func() {
-		err := deviceExporter.Run()
-		if err != nil {
-			logs.Error(err.Error())
-		}
-	}()
 
 	// 构造Ability Exporter
 

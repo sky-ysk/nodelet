@@ -228,12 +228,12 @@ type ScheduleResult struct {
 func (sched *Scheduler) Run(ctx context.Context) {
 	// 初始化任务优先级队列
 	//TODO 做成调度器一个变量来控制
-	concurrency := 1
+	concurrency := 3
 	for i := 0; i < concurrency; i++ {
 		go wait.UntilWithContext(ctx, sched.ScheduleOne, 0)
 	}
 	go sched.monitorWorkflow(ctx)
-	//go sched.monitorTask(ctx)
+	go sched.monitorTask(ctx)
 	<-ctx.Done()
 
 	// TODO: 具体内容实现
@@ -259,6 +259,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
+	fmt.Println(scheme)
 	//参数配置
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
