@@ -126,9 +126,9 @@ type EventCode string
 
 type EventSource struct {
 	// 事件产生组件
-	Component string
+	Component string `json:"component,omitempty" yaml:"component"`
 	// 事件产生节点
-	Host string
+	Host string `json:"host,omitempty" yaml:"host"`
 }
 
 // event type 常量
