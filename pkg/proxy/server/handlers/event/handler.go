@@ -12,6 +12,8 @@ const (
 	EVENT_NAME  = "Name"
 	NAME_SPACE  = "Namespace"
 	SELECT_NAME = "SelectorName"
+	PAGE        = "Page"
+	PAGE_SIZE   = "PageSize"
 )
 
 type Handler interface {
