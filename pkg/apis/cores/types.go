@@ -109,19 +109,18 @@ type Event struct {
 	//TODO: ObjectReference设计
 	meta.TypeMeta
 	meta.ObjectMeta
-	InvolvedObject ObjectReference
+	InvolvedObject ObjectReference `json:"involved_object,omitempty" yaml:"involved_object"`
 	// 事件产生原因，机器可读，供handler判断
-	Reason string
+	Reason string `json:"reason,omitempty" yaml:"reason"`
 	// 描述，应有用户可读性
-	Message string
+	Message string `json:"message,omitempty" yaml:"message"`
 	// 事件产生来源
-	Source          EventSource
-	EventTime       Time
-	Count           int32
-	Type            string // EventTypeNormal or EventTypeWarning or EventTypeMigration
-	MigrationTarget string `json:"migrationTarget,omitempty" yaml:"migrationTarget"`
-	// 事件码
-	EventCode EventCode `json:"eventCode,omitempty" yaml:"eventCode"`
+	Source          EventSource `json:"source,omitempty" yaml:"source"`
+	EventTime       Time        `json:"event_time,omitempty" yaml:"event_time"`
+	Count           int32       `json:"count,omitempty" yaml:"count"`
+	Type            string      `json:"type,omitempty" yaml:"type"` // EventTypeNormal or EventTypeWarning or EventTypeMigration
+	MigrationTarget string      `json:"migration_target,omitempty" yaml:"migration_target"`
+	// todo: 补充 action、reporting controller 、 instance
 }
 type EventCode string
 
@@ -144,18 +143,18 @@ const (
 type ObjectReference struct {
 	// GVK
 	// +Optional
-	APIVersion string
+	APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion"`
 	// +Optional
-	Kind string
+	Kind string `json:"kind,omitempty" yaml:"kind"`
 	// Name
-	Namespace string
-	Name      string
+	Namespace string `json:"namespace,omitempty" yaml:"namespace"`
+	Name      string `json:"name,omitempty" yaml:"name"`
 	// +Optional
-	UID UID
+	UID UID `json:"uid,omitempty" yaml:"uid"`
 	// +Optional
-	ResourceVersion string
+	ResourceVersion string `json:"resource_version,omitempty" yaml:"resource_version"`
 	// +Optional
-	FieldPath string
+	FieldPath string `json:"field_path,omitempty" yaml:"field_path"`
 }
 type UID string
 
