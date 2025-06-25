@@ -144,18 +144,18 @@ const (
 type ObjectReference struct {
 	// GVK
 	// +Optional
-	APIVersion string
+	APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion"`
 	// +Optional
-	Kind string
+	Kind string `json:"kind,omitempty" yaml:"kind"`
 	// Name
-	Namespace string
-	Name      string
+	Namespace string `json:"namespace,omitempty" yaml:"namespace"`
+	Name      string `json:"name,omitempty" yaml:"name"`
 	// +Optional
-	UID UID
+	UID UID `json:"uid,omitempty" yaml:"uid"`
 	// +Optional
-	ResourceVersion string
+	ResourceVersion string `json:"resource_version,omitempty" yaml:"resourceVersion"`
 	// +Optional
-	FieldPath string
+	FieldPath string `json:"field_path,omitempty" yaml:"fieldPath"`
 }
 type UID string
 
