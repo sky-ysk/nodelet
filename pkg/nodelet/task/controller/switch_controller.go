@@ -755,7 +755,7 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 	if groupCopy.Status.Phase != apis.Successed {
 		groupCopy.Status.Phase = apis.Unknown
 	}
-	if nodeName != "" || groupCopy.Status.Phase != apis.Successed { // 用户指定了group迁移到哪个节点，那么这里直接把调度器的工作给做了，把Group的Status.phase改为ReadyToDeploy，并且把Group的Staus.Node改为指定的节点 TODO 这里需要和调度器说一下，就是调度器读取到分配了的Group，不会再修改
+	if nodeName != "" && groupCopy.Status.Phase != apis.Successed { // 用户指定了group迁移到哪个节点，那么这里直接把调度器的工作给做了，把Group的Status.phase改为ReadyToDeploy，并且把Group的Staus.Node改为指定的节点 TODO 这里需要和调度器说一下，就是调度器读取到分配了的Group，不会再修改
 		groupCopy.Status.Node = &nodeName
 		groupCopy.Status.Phase = apis.ReadyToDeploy
 	}

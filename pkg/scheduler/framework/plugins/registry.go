@@ -15,9 +15,9 @@ func NewInTreeRegistry() runtime.Registry {
 		//贪心调度策略（CPU占用率低优先调度）
 		//	"GreedyScore": NewGreedyScorePlugin,
 		//随机调度
-		//	"DefaultScorePlugin": NewDefaultScorePlugin,
+		"DefaultScorePlugin": NewDefaultScorePlugin,
 		//DTS插件策略
-		"ScorePluginForDBY": NewScorePluginDBY,
+		//"ScorePluginForDBY": NewScorePluginDBY,
 
 		"DefaultBindPlugin": NewDefaultBindPlugin,
 	}

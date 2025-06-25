@@ -312,8 +312,9 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			}
 		}
 		if copiesInOtherDomain > 0 { // 说明有副本需要部署在其他域---后续可能要添加要求：部署在其他哪个域
+			logs.Info("==================================================================copiesInOtherDomain")
 			// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本
-			for i := 0; i < int(copiesInDomain); i++ {
+			for i := 0; i < int(copiesInOtherDomain); i++ {
 				// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 				//groupCopyName := "Reason-Copy"           】                                    // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
 				// 适配天数环境

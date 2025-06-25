@@ -120,6 +120,7 @@ type Event struct {
 	Count           int32       `json:"count,omitempty" yaml:"count"`
 	Type            string      `json:"type,omitempty" yaml:"type"` // EventTypeNormal or EventTypeWarning or EventTypeMigration
 	MigrationTarget string      `json:"migration_target,omitempty" yaml:"migration_target"`
+	EventCode       EventCode   `json:"eventCode,omitempty" yaml:"eventCode"`
 	// todo: 补充 action、reporting controller 、 instance
 }
 type EventCode string
@@ -143,18 +144,18 @@ const (
 type ObjectReference struct {
 	// GVK
 	// +Optional
-	APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion"`
+	APIVersion string
 	// +Optional
-	Kind string `json:"kind,omitempty" yaml:"kind"`
+	Kind string
 	// Name
-	Namespace string `json:"namespace,omitempty" yaml:"namespace"`
-	Name      string `json:"name,omitempty" yaml:"name"`
+	Namespace string
+	Name      string
 	// +Optional
-	UID UID `json:"uid,omitempty" yaml:"uid"`
+	UID UID
 	// +Optional
-	ResourceVersion string `json:"resource_version,omitempty" yaml:"resource_version"`
+	ResourceVersion string
 	// +Optional
-	FieldPath string `json:"field_path,omitempty" yaml:"field_path"`
+	FieldPath string
 }
 type UID string
 
