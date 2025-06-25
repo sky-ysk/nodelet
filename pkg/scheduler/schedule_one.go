@@ -288,10 +288,10 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 		host = "CloudNode1"
 	}
 	if strings.Contains(group.ObjectMeta.Name, "G81") {
-		host = "CloudNode2"
+		host = "CloudNode1"
 	}
 	if strings.Contains(group.ObjectMeta.Name, "copy") {
-		host = "EdgeNode1"
+		host = "CloudNode2"
 	}
 	return ScheduleResult{
 		SuggestedHost: host,

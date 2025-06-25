@@ -407,8 +407,26 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 		// 从etcd-GroupSpec-copyInfo当中获取,还需要获取Condition，是执行一个副本还是执行全部副本---目前做的简单一下 就选一个副本进行迁移即可
 		for key, value := range group.Spec.CopyInfo { // 这里相当于只遍历CopyInfo这个数组当中的第一个元素
 			groupCopyName = key
-			if value != "local" { // && event.Reason == events.TriggerCrossMigration
-				if event.Reason == events.TriggerCrossMigration && (event.MigrationTarget == value || event.MigrationTarget == "") { //所要迁的目的地正好和副本所在的域相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+			if value == "local" { // && event.Reason == events.TriggerCrossMigration
+				if event.Reason == events.TriggerLocalMigration || event.Reason == events.TriggerCrossMigration { //适配天数环境
+					// 查副本group所在的节点是否为要迁移的目的节点
+					getCopyGroup, err := mc.clientsManager.GetGroup(groupCopyName, group.Namespace)
+					if err != nil {
+						logs.Errorf("Get group %s failed-66: %v", groupCopyName, err)
+					}
+					if event.MigrationTarget == *getCopyGroup.Status.Node || event.MigrationTarget == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
+						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
+						if err != nil {
+							logs.Errorf("Patch group error-6:%v", err)
+						}
+						logs.Info("Change the copy_Status of the copy task to Starting")
+					} else {
+						continue //说明本域迁移，指定的迁移目的域和副本所在的节点不一致，那就接着查看其他副本，如果遍历完没有副本的话，那就走非预部署的流程
+					}
+				}
+			} else {
+				if (event.Reason == events.TriggerCrossMigration) && (event.MigrationTarget == value || event.MigrationTarget == "") { //所要迁的目的地正好和副本所在的域相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 					// 跨域迁移 通过跨域的通信总线通知另一个域的副本copyGroup进行状态的恢复,暂时使用update--后期改成patch
 					groupTarget := mc.groupTargets[value] //=-=-=-=-
 					//copyGroup, err := groupTarget.Get(context.TODO(), "test", groupCopyName, "groups", metav1.GetOptions{})
@@ -428,24 +446,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 				} else {
 					continue //说明跨域迁移，指定的迁移目的域和副本所在的域不一致，那就接着查看其他副本，如果遍历完没有副本的话，那就走非预部署的流程
 				}
-			} else {
-				if event.Reason == events.TriggerLocalMigration {
-					// 查副本group所在的节点是否为要迁移的目的节点
-					getCopyGroup, err := mc.clientsManager.GetGroup(groupCopyName, group.Namespace)
-					if err != nil {
-						logs.Errorf("Get group %s failed-66: %v", groupCopyName, err)
-					}
-					if event.MigrationTarget == *getCopyGroup.Status.Node || event.MigrationTarget == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
-						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
-						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
-						if err != nil {
-							logs.Errorf("Patch group error-6:%v", err)
-						}
-						logs.Info("Change the copy_Status of the copy task to Starting")
-					} else {
-						continue //说明本域迁移，指定的迁移目的域和副本所在的节点不一致，那就接着查看其他副本，如果遍历完没有副本的话，那就走非预部署的流程
-					}
-				}
+
 			}
 			break
 		}
@@ -836,13 +837,13 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 	if runtimeCopy.Spec.Type == apis.ByPod {
 		// 1、因为pod是通过yaml创建，所以的话，这里得修改yaml文件当中的pod.ObjectMeta.Name，让其唯一创建，
 		yamlFilePath := r.Spec.Inputs[0].From
-		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)      //yaml文件名加上-copy后缀
-		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("172.150.0.24") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
+		runtimeCopy.Spec.Inputs[0].From = AddCopySuffixToFilePath(yamlFilePath)     //yaml文件名加上-copy后缀
+		runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("10.31.10.20") // 将string字符串转换为指针类型 StringPtr("172.110.0.104")
 		runtimeCopy.Spec.EnableFineGrainedControlPort = StringPtr("30053")
 		// 2、接着修改yaml当中Service的Selector、修改Pod的ObjectMeta.Labels
 		// 3、判断是否为跨域迁移，如果是的话，yaml当中pod下面的Env,连接服务端需要加上域名
 		if isCrossDomain {
-
+			runtimeCopy.Spec.EnableFineGrainedControlService = StringPtr("10.31.10.33")
 		}
 
 		// 4、接着修改runtime.Spec.EnableFineGrainedControlService
