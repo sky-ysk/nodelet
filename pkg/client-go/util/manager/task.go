@@ -58,6 +58,11 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 		t.Labels = map[string]string{}
 	}
 
+	// 检查是否有scheduler标签，有的话不管，没有的话增加标记为cloud
+	if _, ok := t.Labels["scheduler"]; !ok {
+		t.Labels["scheduler"] = "cloud"
+	}
+
 	// 复制Spec
 	t.Spec = ts
 
