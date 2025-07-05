@@ -380,7 +380,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	groupClient := clientSet.Core().Groups(apis.NamespaceAll)
 	logs.Info("scheduler start watching groups")
 	//设置监听通道一小时关闭
-	var watchTimeout int64 = 24 * 3600
+	var watchTimeout int64 = 7 * 24 * 3600
 	watchOptions := metav1.ListOptions{
 		TimeoutSeconds: &watchTimeout,
 	}
@@ -431,7 +431,7 @@ func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
 		//logs.Info("group add: ", g.Name)
 		logs.Infof("g.status:%v", g.Status.Phase)
-		if g.Status.Phase == apis.ReadyToDeploy {
+		if g.Status.Phase == apis.ReadyToDeploy || g.Status.Phase == apis.Successed || g.Status.Phase == apis.Running || g.Status.Phase == apis.Migrated {
 			logs.Info("==========================not diaodu")
 			return
 		}

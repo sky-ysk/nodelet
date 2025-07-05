@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -11,9 +10,7 @@ import (
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -39,6 +36,8 @@ import (
 var scheme = runtime.NewScheme()
 var group1_1Name = "G91"
 
+var nameSpace = "test"
+
 const NodeName = "CloudNode1"
 
 // 测试切换
@@ -50,7 +49,7 @@ func main() {
 	//创建ClientSet
 	clientSet := initClientSet(scheme)
 
-	eventclient := clientSet.Core().Events("test")
+	//eventclient := clientSet.Core().Events("test")
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
@@ -108,11 +107,7 @@ func main() {
 				Upperbound: "4",
 			},
 		},
-		Desc: &apis.Description{
-			Label: map[string]string{
-				"type": "Infer",
-			},
-		},
+		Desc:     &apis.Description{Docs: "yolo推理任务"},
 		Replicas: group1_1Replicas,
 		Name:     group1_1Name,
 		Parents:  make([]string, 0),
@@ -141,6 +136,7 @@ func main() {
 		Groups: []apis.GroupSpec{
 			gs1,
 		},
+		Desc: &apis.Description{Docs: "训推工作流"},
 	}
 	// 生成UUID
 	m := manager.NewManager(clientSet)
@@ -156,7 +152,7 @@ func main() {
 	fmt.Println(str)
 	logs.Info("下发一个任务======")
 	prompt()
-	postEventForMigrate_ForGroup(eventclient)
+	postEventForMigrate_ForGroup()
 	prompt()
 
 }
@@ -180,31 +176,11 @@ var node = &apis.Node{
 	Spec:       apis.NodeSpec{NodeName: NodeName},
 }
 
-func postEventForMigrate(client core.EventInterface) {
+func postEventForMigrate_ForGroup() {
 	logs.Info("发送跨域迁移事件======")
-	// 这些配置实际在组件初始化时就已经完成
-	ctx := context.Background()
-	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
-	defer eventBroadcaster.Shutdown()
-	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: client})
-	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
-
-	// 通过 recorder.Event或 recorder.Eventf可以生成事件
-	time.Sleep(10 * time.Millisecond)
-	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
-	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
-}
-func postEventForMigrate_ForGroup(client core.EventInterface) {
-	logs.Info("发送跨域迁移事件======")
-	// 这些配置实际在组件初始化时就已经完成
-	ctx := context.Background()
-	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
-	defer eventBroadcaster.Shutdown()
-	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: client})
-	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
 	clientSet := initClientSet(scheme)
 	m := manager.NewManager(clientSet)
-	groups, err := m.GetGroups("test")
+	groups, err := m.GetGroups(nameSpace)
 	if err != nil {
 		logs.Errorf("GetGroups err: %v", err)
 	}
@@ -215,15 +191,12 @@ func postEventForMigrate_ForGroup(client core.EventInterface) {
 			groupName = group.Name
 		}
 	}
-	group, err := m.GetGroup(groupName, "test")
+	group, err := m.GetGroup(groupName, nameSpace)
 	if err != nil {
 		logs.Errorf("GetGroup err: %v", err)
 	}
-	// 通过 recorder.Event或 recorder.Eventf可以生成事件
 	time.Sleep(10 * time.Millisecond)
-
-	recorder.EventForMigration(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), "")
-	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
+	m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
 }
 
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
