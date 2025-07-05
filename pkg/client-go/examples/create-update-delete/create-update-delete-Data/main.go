@@ -110,8 +110,8 @@ func main() {
 			"namespace": "test",
 		},
 		"spec": map[string]interface{}{
-			"dataName": "patch-data-name",
-			"hostName": "master",
+			"name":       "patch-data-name",
+			"belongNode": "patch-belongNode",
 		},
 	})
 
