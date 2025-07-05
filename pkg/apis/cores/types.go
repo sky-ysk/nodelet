@@ -1084,14 +1084,25 @@ type SceneStatus struct {
 	Lock Lock `json:"lock,omitempty" yaml:"lock"`
 }
 type DataSpec struct {
-	Name string `json:"name,omitempty" yaml:"name"`
+	Name       string `json:"name,omitempty,omitempty" yaml:"name"`
+	BelongNode string `json:"belongNode,omitempty" yaml:"belongNode"`
+	FilePath   string `json:"filePath,omitempty" yaml:"filePath,omitempty"`
 	// 对于文件类型的Data
 	// 文件格式
+	FileFormat string `json:"fileFormat,omitempty" yaml:"fileFormat,omitempty"`
 	// 文件大小
+	SizeBytes int64 `json:"sizeBytes,omitempty" yaml:"sizeBytes,omitempty"`
 	// SHA文件校验
+	AccessMode string `json:"accessMode,omitempty" yaml:"accessMode,omitempty"` // e.g. ReadWriteOnce, ReadOnlyMany
 }
 
-type DataStatus struct{}
+type DataStatus struct {
+
+	// 创建时间
+	CreateAt *Time `json:"create,omitempty" yaml:"create"`
+	// 最新获取状态的时间
+	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
+}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Runtime struct {
