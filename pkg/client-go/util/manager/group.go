@@ -167,6 +167,14 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 		g.Labels = map[string]string{}
 	}
 
+	if t != nil {
+		if scheduler, ok := t.Labels["scheduler"]; ok {
+			g.Labels["scheduler"] = scheduler
+		} else {
+			logs.Infof("scheduler label not found in taskSpec")
+		}
+	}
+
 	// 复制Spec
 	g.Spec = gs
 
@@ -227,7 +235,7 @@ func (m *Manager) GetGroup(name string, namespace string) (*apis.Group, error) {
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		logs.Errorf("Failed to get group: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("%w-%v", NotFound, err)
 	}
 
 	logs.Debugf("Get group: %v", a)
