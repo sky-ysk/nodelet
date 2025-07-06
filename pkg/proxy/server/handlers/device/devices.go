@@ -130,7 +130,7 @@ func (h *DevicesHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.GET("/").
 		Doc("Get all devices").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Label", "Labels of the tasks (optional)").DataType("string")).
+		Param(ws.QueryParameter("Label", "Labels of the devices (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the devices").DataType("string")).
 		To(h.GetDevices).
 		Operation("Get devices").

@@ -73,6 +73,9 @@ func (s *Server) InstallDefaultHandlers() {
 	// Device
 	s.handlers.InstallDeviceHandlers(s.container)
 
+	// data
+	s.handlers.InstallDataHandlers(s.container)
+
 	// Logs相关
 
 	// Openapi相关

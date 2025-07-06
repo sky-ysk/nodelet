@@ -4,6 +4,7 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/proxy/server/handlers/action"
+	"hit.edu/framework/pkg/proxy/server/handlers/data"
 	"hit.edu/framework/pkg/proxy/server/handlers/device"
 	"hit.edu/framework/pkg/proxy/server/handlers/event"
 	"hit.edu/framework/pkg/proxy/server/handlers/group"
@@ -130,6 +131,18 @@ func (h *Handlers) InstallSceneHandlers(container *restful.Container) {
 
 	// Scene相关
 	gh := scene.NewSceneHandler(h.ClientSet)
+	// 查询单个Scene
+	container.Add(gh.NewGetWebService())
+}
+
+func (h *Handlers) InstallDataHandlers(container *restful.Container) {
+	// Datas相关
+	gsh := data.NewDatasHandler(h.ClientSet)
+	// 查询Datas
+	container.Add(gsh.NewGetWebService())
+
+	// Data相关
+	gh := data.NewDataHandler(h.ClientSet)
 	// 查询单个Scene
 	container.Add(gh.NewGetWebService())
 }

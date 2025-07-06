@@ -25,6 +25,7 @@ type Manager struct {
 	DeviceClients     map[string]core.DeviceInterface
 	EventClients      map[string]core.EventInterface
 	NodeClients       map[string]core.NodeInterface
+	DataClients       map[string]core.DataInterface
 	SceneClients      map[string]core.SceneInterface
 	EventBroadCasters map[string]recorder.EventBroadcaster
 	Recoders          map[string]recorder.EventRecorder
@@ -41,6 +42,7 @@ func NewManager(clientSet *clients.ClientSet) *Manager {
 		RuntimeClients:    make(map[string]core.RuntimeInterface),
 		DeviceClients:     make(map[string]core.DeviceInterface),
 		NodeClients:       make(map[string]core.NodeInterface),
+		DataClients:       make(map[string]core.DataInterface),
 		SceneClients:      make(map[string]core.SceneInterface),
 		EventClients:      make(map[string]core.EventInterface),
 		EventBroadCasters: make(map[string]recorder.EventBroadcaster),
@@ -74,6 +76,10 @@ type DeviceClient struct {
 
 type NodeClient struct {
 	Client core.NodeInterface
+}
+
+type DataClient struct {
+	Client core.DataInterface
 }
 
 type SceneClient struct {
@@ -236,6 +242,25 @@ func (m *Manager) GetSceneClient(namespace string) *SceneClient {
 	newClient := m.ClientSet.Core().Scenes(namespace)
 	m.SceneClients[namespace] = newClient
 	return &SceneClient{
+		Client: newClient,
+	}
+}
+
+func (m *Manager) GetDataClient(namespace string) *DataClient {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// 如果已经存在，直接返回
+	if c, exists := m.DataClients[namespace]; exists {
+		return &DataClient{
+			Client: c,
+		}
+	}
+
+	// 否则创建新的 client
+	newClient := m.ClientSet.Core().Datas(namespace)
+	m.DataClients[namespace] = newClient
+	return &DataClient{
 		Client: newClient,
 	}
 }

@@ -156,7 +156,7 @@ func (m *Manager) DeleteDevice(name string, namespace string) error {
 	}
 
 	//
-	logs.Debugf("Delete device %v ", err)
+	logs.Debugf("Delete device")
 	return nil
 }
 
