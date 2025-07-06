@@ -60,7 +60,7 @@ func TestCreateEvent(t *testing.T) {
 
 	// 开始查询
 	fmt.Println("Get Event")
-	e, err := m.GetEvents(a.Name, a.Namespace)
+	e, err := m.GetEvents(a.Namespace)
 	if err != nil {
 		panic(err)
 	}
