@@ -60,15 +60,6 @@ func (h *WorkflowsHandler) GetWorkflows(request *restful.Request, response *rest
 		}
 	}
 
-	//err = response.WriteEntity(results)
-	//if err != nil {
-	//	err := response.WriteError(http.StatusInternalServerError, err)
-	//	if err != nil {
-	//		logs.Errorf("failed to return a status code")
-	//		return
-	//	}
-	//}
-
 	err = response.WriteHeaderAndEntity(http.StatusOK, results)
 	if err != nil {
 		logs.Errorf("failed to return a status code")
@@ -129,6 +120,7 @@ func (h *WorkflowsHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.DELETE(fmt.Sprintf("/")).
 		Doc("Delete all workflows").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
+		Param(ws.QueryParameter("Label", "Labels of the tasks (optional)").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the workflows").DataType("string")).
 		To(h.DeleteAllWorkflow).
 		Operation("Delete workflows").
