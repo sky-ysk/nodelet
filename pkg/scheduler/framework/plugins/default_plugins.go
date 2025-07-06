@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"hit.edu/framework/pkg/client-go/util/manager"
+	"hit.edu/framework/pkg/scheduler"
 	"math/rand"
 	"net/http"
 	"time"
@@ -185,7 +186,7 @@ func NewDefaultBindPlugin(ctx context.Context, f framework.Handle) (framework.Pl
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    scheduler.GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

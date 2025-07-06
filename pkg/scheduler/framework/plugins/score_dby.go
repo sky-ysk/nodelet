@@ -13,6 +13,7 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/scheduler"
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/transport"
 	"hit.edu/framework/pkg/utils/value"
@@ -218,7 +219,7 @@ func NewScorePluginDBY(ctx context.Context, f framework.Handle) (framework.Plugi
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    scheduler.GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

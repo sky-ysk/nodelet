@@ -96,6 +96,8 @@ type Scheduler struct {
 	Profiles ProfileMap
 
 	Namespace string
+
+	Name string
 	// ScheduleExt     []*extension.ScheduleExtension
 	// PreScheduleExt  []*extension.PreScheduleExtension
 	// PostScheduleExt []*extension.PostScheduleExtension
@@ -122,23 +124,6 @@ const (
 )
 
 var defaultScheduler Scheduler
-
-// TODO: 挪到apis中
-// func indexHandler(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Fprintf(w, "hello and this is the scheduler")
-// }
-
-// func (sched *Scheduler) Run(ctx context.Context) {
-// 	http.HandleFunc("/test", indexHandler)
-// 	http.ListenAndServe(":8000", nil)
-// 	go mockScheduleSignal(sched.ScheduleSigChan)
-
-// 	// TODO: 调度器核心逻辑
-
-// 	for i := 0; i < SchedulerPipelineNum; i++ {
-// 		go sched.SchedulingPipeline(sched.ScheduleSigChan, ctx)
-// 	}
-// }
 
 func init() {
 
@@ -181,7 +166,7 @@ func New(ctx context.Context, configPath string, opts ...Option) (*Scheduler, er
 
 	sched.applyDefaultHandlers()
 	sched.ReadyGroup = schedQueue.Pop
-
+	sched.Name = GetSchedName(configPath)
 	return sched, nil
 }
 
@@ -210,6 +195,31 @@ func GetNamespace(configPath string) string {
 	return cf.Namespace
 }
 
+func GetSchedName(configPath string) string {
+	if configPath == "" {
+		logs.Info("ConfigPath is empty, using default")
+		fileName := "frameworkConf.yaml"
+		// 获取当前文件绝对路径
+		_, currentFilePath, _, _ := run.Caller(0)
+		// 计算项目根目录路径
+		projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
+		// 构建配置文件的绝对路径
+		configPath = filepath.Join(projectRoot, fileName)
+	}
+	logs.Infof("configPath:%v", configPath)
+	// 验证路径有效性
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		logs.Errorf("配置文件不存在于：%s", configPath)
+		panic(err)
+	}
+	cf, err := nodelet.LoadConfig(configPath)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("the config is ", cf.Namespace)
+	return cf.NodeName
+}
+
 // ScheduleResult represents the result of scheduling a pod.
 type ScheduleResult struct {
 	// Name of the selected node.
@@ -236,7 +246,6 @@ func (sched *Scheduler) Run(ctx context.Context) {
 	go sched.monitorTask(ctx)
 	<-ctx.Done()
 
-	// TODO: 具体内容实现
 }
 
 func (sched *Scheduler) applyDefaultHandlers() {
@@ -430,6 +439,10 @@ func GetAPIServerHost() string {
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
 		//logs.Info("group add: ", g.Name)
+		if !sched.checkShouldSchedule(g) {
+			logs.Errorf("group %s should not schedule on %s", g.Name, sched.Name)
+			return
+		}
 		logs.Infof("g.status:%v", g.Status.Phase)
 		if g.Status.Phase == apis.ReadyToDeploy || g.Status.Phase == apis.Successed || g.Status.Phase == apis.Running || g.Status.Phase == apis.Migrated {
 			logs.Info("==========================not diaodu")
@@ -439,73 +452,31 @@ func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	} else {
 		logs.Error("cannot convert to group")
 	}
-
 }
 
-// func mockScheduleSignal(scheChan chan<- internal.ScheduleSignal) {
-// 	for {
-// 		scheChan <- nil
-// 		time.Sleep(500 * time.Millisecond)
-// 	}
-// }
+func (sched *Scheduler) checkShouldSchedule(group *apis.Group) bool {
+	// 从标签中获取调度器名称，如果不存在则默认为 "Cloud"
+	nominateHost, exists := group.Labels["scheduler"]
+	if !exists || nominateHost == "" {
+		nominateHost = "Cloud"
+	}
+	// 比较当前调度器名称与标签中指定的调度器名称
+	return sched.Name == nominateHost
+}
 
-// func (sched *Scheduler) SchedulingPipeline(scheChan chan internal.ScheduleSignal, ctx context.Context) {
-// 	for {
-// 		select {
-// 		case <-scheChan:
-// 			sched.SchedulingCycle(ctx)
-// 		}
-// 	}
-// }
+type GroupRecoveryContext struct {
+	Strategy       string          `json:"strategy"`
+	GroupName      string          `json:"groupName"`
+	ActionName     string          `json:"actionName"`
+	InsertRuntimes []*apis.Runtime `json:"insertRuntimes"`
+}
 
-// // TODO: 核心内容移到framework/plugins中
-// func (sched *Scheduler) RegisterScheduleExt(ext *extension.ScheduleExtension) {
-// 	sched.ScheduleExt = append(sched.ScheduleExt, ext)
-// }
+const (
+	Insert = "insert"
+	Skip   = "skip"
+	Retry  = "retry"
+)
 
-// func (sched *Scheduler) RegisterPreScheduleExt(ext *extension.PreScheduleExtension) {
-// 	sched.PreScheduleExt = append(sched.PreScheduleExt, ext)
-// }
-
-// func (sched *Scheduler) RegisterPostScheduleExt(ext *extension.PostScheduleExtension) {
-// 	sched.PostScheduleExt = append(sched.PostScheduleExt, ext)
-// }
-
-// func (sched *Scheduler) MatchScheduleExt(group *workflow.Group) *extension.ScheduleExtension {
-// 	return nil
-// }
-
-// // TODO: 改成Run函数
-// func (sched *Scheduler) SchedulingCycle(ctx context.Context) {
-// 	holdLock := false
-
-// 	defer func() {
-// 		if holdLock {
-// 			sched.SchedulingQueue.ReadyGroups.SyncLock.Unlock()
-// 			holdLock = false
-// 		}
-// 	}()
-// 	//pop queue
-// 	sched.SchedulingQueue.ReadyGroups.SyncLock.Lock()
-// 	readyGroups := sched.SchedulingQueue.ReadyGroups.GetQueue()
-// 	for _, group := range readyGroups {
-// 		//TODO match
-// 		scheExt := sched.MatchScheduleExt(&group)
-// 		(*scheExt).Schedule(&group)
-// 	}
-// 	//fail -> event
-// 	sched.SchedulingQueue.ReadyGroups.Empty()
-// 	holdLock = true
-
-// 	//unlock after pop queue to avoid Blocking other pipeline
-// 	sched.SchedulingQueue.ReadyGroups.SyncLock.Unlock()
-// 	holdLock = false
-// 	//TODO: generate
-
-// 	//TODO: schedule
-
-// 	//TODO bind
-
-// 	//enqueue
-
-// }
+type GroupRecoveryExecutor interface {
+	ExecuteGroupRecoverySteps() error
+}
