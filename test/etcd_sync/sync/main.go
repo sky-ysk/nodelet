@@ -27,12 +27,9 @@ func main() {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	//参数配置
-	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		//Host: "http://broker.registry-svc.test.svc.clusterset.local:3001/forward?target=",
-		//Host:    "http://localhost:10000",
-		Host:    "http://broker.registry-svc.test.svc.clusterset.local:3001",
+		Host:    "http://172.110.0.121:8081",
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -42,9 +39,9 @@ func main() {
 				Version: "v1",
 			},
 			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
-			TargetURL:            "http://172.110.0.120:10000",
+			TargetURL:            "http://172.150.0.17:10000",
 			FlowType:             "etcd",
-			ClusterID:            "pve2",
+			ClusterID:            "10.147.19.65",
 		},
 		UserAgent: "defaultUserAgent",
 		Transport: &http.Transport{
