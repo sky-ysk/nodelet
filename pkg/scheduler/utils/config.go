@@ -31,3 +31,10 @@ func GetNamespace() string {
 	fmt.Println("the config is ", cf.Namespace)
 	return cf.Namespace
 }
+
+func GetAPIServerHost() string {
+	if host := os.Getenv("API_SERVER_HOST"); host != "" {
+		return host
+	}
+	return "http://localhost:10000"
+}
