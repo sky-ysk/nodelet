@@ -105,7 +105,7 @@ func (nl *Nodelet) Run(ctx context.Context) {
 	go ne.Run(ctx)
 
 	//构造Task Exporter
-	te, err := task.NewTaskExporter(nl.cfg.tc, nl.clientSet)
+	te, err := task.NewTaskExporter(nl.cfg.tc, nl.clientSet, ctx)
 	if err != nil {
 		panic(err)
 	}

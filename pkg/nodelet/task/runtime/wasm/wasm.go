@@ -29,6 +29,8 @@ type WasmRuntime struct {
 	eventBus   *eventbus.EventBus
 	// stopSignals map[string]chan struct{} // 用于标记进程是否被外部停止
 	clientsManager *manager.Manager
+	ctx            context.Context
+	runtimeState   bool
 }
 
 type Config struct {
@@ -40,7 +42,7 @@ type Config struct {
 
 // todo:增加config，配置rpc端口和运行时信息
 // todo:将config配置和runtime.args组合为启动参数
-func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, wasmToolchainDir string, wasmRuntimePort string) *WasmRuntime {
+func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, wasmToolchainDir string, wasmRuntimePort string, ctx context.Context) *WasmRuntime {
 	// 请将地址修改到运行时二进制文件的位置，后续考虑将config作为wasm runtime的配置文件  ---是否是可以直接把地址配置到NewWasmRuntime当中，提前加载wasm运行时
 	config := Config{
 		wasmDir: wasmToolchainDir,
@@ -62,16 +64,40 @@ func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus
 		eventBus: eventBus,
 		// stopSignals: make(map[string]chan struct{}),
 		clientsManager: clientsManager,
+		ctx:            ctx,
 	}
 	// 拉起运行时
-	logs.Info("pull wasm runtime")
-	err := wr.startCMD(config.runtimeExecfile, []string{config.rpcPort})
-	if err != nil {
-		logs.Errorf("Failed to run cmd: %v", err)
-		return nil
-	}
+	wr.pullRuntimeProcess()
+	// logs.Info("pull wasm runtime")
+	// err := wr.startCMD(config.runtimeExecfile, []string{config.rpcPort})
+	// if err != nil {
+	// 	logs.Errorf("Failed to run cmd: %v", err)
+	// 	return nil
+	// }
 	return wr
 }
+
+func (wr *WasmRuntime) pullRuntimeProcess() error {
+	if !wr.runtimeState {
+		logs.Info("pull wasm runtime")
+		err := wr.startCMD(wr.config.runtimeExecfile, []string{wr.config.rpcPort})
+		if err != nil {
+			logs.Errorf("Failed to run cmd: %v", err)
+			return err
+		}
+		wr.runtimeState = true
+		go wr.checkRuntimeTerminal()
+	}
+	return nil
+}
+
+func (wr *WasmRuntime) checkRuntimeTerminal() {
+	<-wr.ctx.Done() // 当 channel 关闭时，会立即触发此 case
+	logs.Info("wasm runtime terminal")
+	wr.StopCMD()
+	// wr.cmd.Process.Kill()
+}
+
 func ensureFile() error {
 	return nil
 }
@@ -148,7 +174,10 @@ func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
 	// 设置aot编译器环境变量,打开rust日志信息,设置 推理资源文件夹路径
 	llvm := fmt.Sprintf("WASM_LLVM=%s", wr.config.wasmLLVM)
 	fixtures := fmt.Sprintf("FIXTURES_DIR=%s/fixtures", wr.config.wasmDir)
-	wr.cmd.Env = append(os.Environ(), llvm, "RUST_LOG=info", fixtures)
+	// export LD_LIBRARY_PATH=/tmp/kcm/wasm/toolchain:$LD_LIBRARY_PATH
+	lib := filepath.Join(wr.config.wasmDir, "toolchain")
+	ldLibraryPath := fmt.Sprintf("LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH", lib)
+	wr.cmd.Env = append(os.Environ(), llvm, "RUST_LOG=info", fixtures, ldLibraryPath)
 	logs.Info(cmd)
 	logs.Info(llvm)
 
@@ -178,6 +207,7 @@ func (wr *WasmRuntime) StopCMD() {
 	} else {
 		logs.Info("wasm runtime 进程已停止")
 	}
+	wr.runtimeState = false
 }
 func (wr WasmRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 

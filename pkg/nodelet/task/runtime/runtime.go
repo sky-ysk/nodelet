@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -40,9 +41,11 @@ type RuntimeManager struct {
 	NodeName         string
 	wasmToolchainDir string
 	wasmRuntimePort  string
+	// 为了合理关闭wasm运行时进程
+	ctx context.Context
 }
 
-func NewRuntimeManager(bus *eventbus.EventBus, clientsManager *manager.Manager, nodeName string, wasmToolchainDir string, wasmRuntimePort string) *RuntimeManager {
+func NewRuntimeManager(ctx context.Context, bus *eventbus.EventBus, clientsManager *manager.Manager, nodeName string, wasmToolchainDir string, wasmRuntimePort string) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
@@ -55,6 +58,7 @@ func NewRuntimeManager(bus *eventbus.EventBus, clientsManager *manager.Manager, 
 		NodeName:         nodeName,
 		wasmToolchainDir: wasmToolchainDir,
 		wasmRuntimePort:  wasmRuntimePort,
+		ctx:              ctx,
 	}
 }
 
@@ -80,7 +84,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			break
 		case apis.ByWasm:
 			//TODO
-			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus, rm.wasmToolchainDir, rm.wasmRuntimePort)
+			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus, rm.wasmToolchainDir, rm.wasmRuntimePort, rm.ctx)
 			break
 		case apis.ByCommand: //任务作为系统命令执行
 			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.pool)

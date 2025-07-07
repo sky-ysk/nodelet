@@ -73,7 +73,7 @@ type TaskExporter struct {
 
 var _ Exporter = &TaskExporter{}
 
-func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, error) {
+func NewTaskExporter(cfg *Config, clientset *clients.ClientSet, ctx context.Context) (*TaskExporter, error) {
 	// Task Exporter配置 config
 	taskTargetMap := cfg.taskTargetMap
 	groupTargetMap := cfg.groupTargetMap
@@ -103,7 +103,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet) (*TaskExporter, 
 	// lister
 	lister := groupManager.GetGroups(nil)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(eb, clientsManager, cfg.NodeName, cfg.wasmToolchainDir, cfg.wasmRuntimePort)
+	runtimeManager := runtime.NewRuntimeManager(ctx, eb, clientsManager, cfg.NodeName, cfg.wasmToolchainDir, cfg.wasmRuntimePort)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
