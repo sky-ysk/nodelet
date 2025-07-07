@@ -168,7 +168,8 @@ func (wr *WasmRuntime) Restore(group *apis.Group, action *apis.Action, runtime *
 
 // 需要保存进程的pid，检查进程是否是正常执行完成
 func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
-	wr.cmd = exec.Command(cmd, args...)
+	wr.cmd = exec.CommandContext(wr.ctx, cmd, args...)
+	// wr.cmd = exec.Command(cmd, args...)
 	wr.cmd.Stdout = os.Stdout
 	wr.cmd.Stderr = os.Stderr
 	// 设置aot编译器环境变量,打开rust日志信息,设置 推理资源文件夹路径
