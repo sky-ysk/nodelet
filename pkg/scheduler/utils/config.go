@@ -47,16 +47,16 @@ type APIConfig struct {
 }
 
 // GetAPIServerHost 获取API服务器地址（线程安全）
-func GetAPIServerHost() (string, error) {
+func GetAPIServerHost() string {
 	once.Do(func() {
 		initErr = initializeConfig()
 	})
 
 	if initErr != nil {
-		return "", initErr
+		panic(initErr)
 	}
 
-	return apiServerHost, nil
+	return apiServerHost
 }
 
 // initializeConfig 初始化配置（私有方法）
