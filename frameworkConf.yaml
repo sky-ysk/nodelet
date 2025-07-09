@@ -1,6 +1,6 @@
 EtcdPort : 2376
-ApiServerAddr : "http://127.0.0.1:10000"
-NodeName : "debian1"
+ApiServerAddr : "http://172.150.0.24:10000"
+NodeName : "cloud"
 ClusterCategory : "Cloud"
 LocalClusterID : "Cloud1"
 #OtherCluster:

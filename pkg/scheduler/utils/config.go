@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet"
 	"os"
 	"path/filepath"
 	run "runtime"
+	"sync"
 )
 
 func GetNamespace() string {
@@ -32,9 +35,65 @@ func GetNamespace() string {
 	return cf.Namespace
 }
 
-func GetAPIServerHost() string {
-	if host := os.Getenv("API_SERVER_HOST"); host != "" {
-		return host
+var (
+	apiServerHost string
+	once          sync.Once
+	initErr       error
+)
+
+// APIConfig 定义YAML配置结构
+type APIConfig struct {
+	APIServerHost string `yaml:"api_server_host"`
+}
+
+// GetAPIServerHost 获取API服务器地址（线程安全）
+func GetAPIServerHost() (string, error) {
+	once.Do(func() {
+		initErr = initializeConfig()
+	})
+
+	if initErr != nil {
+		return "", initErr
 	}
-	return "http://localhost:10000"
+
+	return apiServerHost, nil
+}
+
+// initializeConfig 初始化配置（私有方法）
+func initializeConfig() error {
+	// 获取当前可执行文件所在目录
+	exeDir, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("获取可执行文件路径失败: %w", err)
+	}
+	exeDir = filepath.Dir(exeDir)
+
+	// 构建配置文件的绝对路径（相对于项目根目录上三层）
+	configPath := filepath.Join(exeDir, "../../../config.yaml")
+
+	// 读取YAML文件
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// 文件不存在时使用默认值
+			apiServerHost = "http://localhost:10000"
+			return nil
+		}
+		return fmt.Errorf("读取配置文件失败: %w", err)
+	}
+
+	// 解析YAML
+	var cfg APIConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("解析配置文件失败: %w", err)
+	}
+
+	// 设置API服务器地址
+	if cfg.APIServerHost != "" {
+		apiServerHost = cfg.APIServerHost
+	} else {
+		apiServerHost = "http://localhost:10000" // 默认值
+	}
+
+	return nil
 }
