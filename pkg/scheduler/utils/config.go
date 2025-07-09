@@ -69,7 +69,7 @@ func initializeConfig() error {
 	exeDir = filepath.Dir(exeDir)
 
 	// 构建配置文件的绝对路径（相对于项目根目录上三层）
-	configPath := filepath.Join(exeDir, "../../../frameworkConf.yaml")
+	configPath := filepath.Join(exeDir, "../../../../frameworkConf.yaml")
 	// 读取YAML文件
 	data, err := os.ReadFile(configPath)
 	if err != nil {
