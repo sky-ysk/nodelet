@@ -167,13 +167,13 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 		g.Labels = map[string]string{}
 	}
 
-	if t != nil {
-		if scheduler, ok := t.Labels["scheduler"]; ok {
-			g.Labels["scheduler"] = scheduler
-		} else {
-			logs.Infof("scheduler label not found in taskSpec")
-		}
-	}
+	//if t != nil {
+	//	if scheduler, ok := t.Labels["scheduler"]; ok {
+	//		g.Labels["scheduler"] = scheduler
+	//	} else {
+	//		logs.Infof("scheduler label not found in taskSpec")
+	//	}
+	//}
 
 	// 复制Spec
 	g.Spec = gs
