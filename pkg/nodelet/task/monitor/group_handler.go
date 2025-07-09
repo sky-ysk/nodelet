@@ -205,7 +205,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			logs.Tracef("runtime Data[]:%v", runtime.Spec.Data)
 			for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
 				// 检查DownloadStatus[]是否存在
-				// FIXME: 5-15测试发现有bug，fileManager针对的是文件名，那么多个runtime使用到同名文件的时候会出错，导致文件不再被下载
+				// FIXME: 5-15测试发现有bug，fileManager针对的是文件名，那么多个runtime使用到同名文件的时候会出错，导致文件不再被下载---已解决，增加runtime的信息保证不重复
 				// 修改建议：1、当一个文件下载完成之后，立刻删除filaManager里面的记录，保证能再次下载（这里会不会有同步的问题？感觉会有）
 				// 2、fileManager对文件下载的记录增加针对runtime的记录，保证每个文件都与runtime联系，这样就不会导致不同的runtime下载直接相互冲突了
 				fileKey := runtime.Name + "-" + filedata.Name

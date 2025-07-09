@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	cpu "github.com/shirou/gopsutil/v3/cpu"
+	processV0 "github.com/shirou/gopsutil/v3/process"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
 
@@ -168,6 +170,9 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	cr.stopSignals[runtime.Name] = make(chan struct{})
 	logs.Infof("process id:\t %d is Running", CMD.Process.Pid)
 
+	// 开启一个协程监控这个pid进程的资源,间隔为1s
+	go cr.monitorProcessResource(CMD.Process.Pid, runtime, 1*time.Second)
+
 	// return nil
 	if err := CMD.Wait(); err != nil { // err := CMD.Wait()会阻塞
 		// 检查 stopSignal 通道是否被关闭，判断进程是否是外部停止的
@@ -193,12 +198,6 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	cr.processManager.MoveProcessToSucess(runtime.Name) //移入successProcess，同时移出process
 	// 修改RuntimeStatus的Phase为Successed，ActionStatus的Phase也为Successed
 	cr.notifyRuntimeEndPhase(groupName, groupNamespace, actionSpeName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
-
-	// TODO: 使用进程启动CMD, 异步操作
-	// TODO: 多个Command拼接---ysk  action包含多个command拼接指？如果一个cmd比较复杂（例如：python predict.py 10 100  data.json）
-	//我们如何区分其中的参数和路径（因为执行需要predict.py  data.json的路径，（可以采取固定下载到的数据的路径，采取相对路径的方式？））
-	// TODO：注入环境变量---ysk  暂时未确定环境变量的例子
-	// TODO: 处理Action的Input和Output---ysk  output的结构后续可能需要调整，目前暂时以文件.txt的输出形式
 	return nil
 }
 
@@ -224,6 +223,69 @@ func (cr *CommandRuntime) stopCMD(runtime *apis.Runtime) error {
 	}
 	return nil
 
+}
+
+func (cr *CommandRuntime) monitorProcessResource(pid int, runtime *apis.Runtime, interval time.Duration) {
+	// 定时监控指定进程的资源占用。如果获取失败或者检查到任务已经结束，则退出监控
+	logs.Infof("Starting resource monitoring for process %s (PID: %d)", runtime.Name, pid)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	// 获取 CPU 核心数
+	coreCount, err := cpu.Counts(true)
+	if err != nil {
+		logs.Fatalf("Failed to get CPU core count: %v", err)
+	}
+	// logs.Infof("Number of CPU cores: %d\n", coreCount)
+
+	for range ticker.C {
+		p, err := processV0.NewProcess(int32(pid))
+		if err != nil {
+			logs.Errorf("Failed to get process %d: %v", pid, err)
+			return
+		}
+
+		// 获取CPU使用率
+		cpuPercent, err := p.Percent(1000 * time.Millisecond) // 获取最近1000毫秒的CPU使用率
+		// 除以逻辑核心的数量
+		cpuPercent = cpuPercent / float64(coreCount) // 转换为百分比
+		if err != nil {
+			logs.Warnf("Failed to get CPU usage for PID %d: %v", pid, err)
+			return
+		} else {
+			logs.Infof("[Monitor] Process %s (PID: %d) CPU: %.2f%%", runtime.Name, pid, cpuPercent)
+		}
+		//RuntimeStatus--Resource
+
+		// 获取内存信息
+		memInfo, err := p.MemoryInfo()
+		if err != nil {
+			logs.Warnf("Failed to get memory info for PID %d: %v", pid, err)
+			return
+		} else {
+			// 转换为MB
+			memMB := float64(memInfo.RSS) / (1024 * 1024)
+			logs.Infof("[Monitor] Process %s (PID: %d) Memory: %.2f MB", runtime.Name, pid, memMB)
+		}
+		// 上传资源的占用
+		// 写到etcd上去
+		resourceItem := make(map[string]apis.Item)
+		// 填充Values这个字段，这是一个map
+		resourceItem["cpu"] = apis.Item{Name: "cpu", Values: map[string]string{"cpu": fmt.Sprintf("%.2f%%", cpuPercent)}}
+		resourceItem["memory"] = apis.Item{Name: "memory", Values: map[string]string{"memory": fmt.Sprintf("%.2f MB", float64(memInfo.RSS)/(1024*1024))}}
+		patchRuntime, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"resources": resourceItem,
+			},
+		})
+		_, err = cr.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+		if err != nil {
+			logs.Errorf("patch runtimeStatus error")
+		}
+
+		// 查到这个Runtime状态是Failed、丢弃、Successed，把这个协程关掉---不确定还需不需要，我觉得直接根据进程还在不在return就行了
+	}
 }
 
 // 通过 EventBus 通知 Runtime 状态更新

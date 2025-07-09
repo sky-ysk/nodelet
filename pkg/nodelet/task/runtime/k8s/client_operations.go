@@ -25,6 +25,7 @@ func CreateResource(clientset *kubernetes.Clientset, obj runtime.Object) error {
 	// 根据资源类型分发创建逻辑
 	switch resource := obj.(type) {
 	case *corev1.Pod:
+		// 创建Pod
 		logs.Info("-----------------k8s Pod created----------------------------")
 		_, err := clientset.CoreV1().Pods(namespace).Create(
 			context.TODO(), resource, metav1.CreateOptions{},
@@ -32,6 +33,9 @@ func CreateResource(clientset *kubernetes.Clientset, obj runtime.Object) error {
 		if handleCreateError(err, "Pod", resource.Name) != nil {
 			return err
 		}
+
+		// 监控Pod资源
+		// go monitorPodResources(clientset, namespace, resource.Name)
 
 	case *appsv1.Deployment:
 		logs.Info("-----------------k8s Deployment created----------------------------")
