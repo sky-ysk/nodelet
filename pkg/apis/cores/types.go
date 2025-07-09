@@ -1094,6 +1094,8 @@ type DataSpec struct {
 	SizeBytes int64 `json:"sizeBytes,omitempty" yaml:"sizeBytes,omitempty"`
 	// SHA文件校验
 	AccessMode string `json:"accessMode,omitempty" yaml:"accessMode,omitempty"` // e.g. ReadWriteOnce, ReadOnlyMany
+	// 数据描述
+	Desc *Description `json:"desc,omitempty" yaml:"desc"`
 }
 
 type DataStatus struct {
