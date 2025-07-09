@@ -4,6 +4,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -18,10 +23,8 @@ import (
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
-	"net/http"
-	"os"
-	"strings"
-	"time"
+	fileManager "hit.edu/framework/pkg/nodelet/registry"
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
 var scheme = runtime.NewScheme()
@@ -55,12 +58,6 @@ func main() {
 	//runtime1_1_1_1FineGrainedControlPort := "30052"
 	//runtime1_1_1_1FineGrainedControlService := "172.150.0.24" //A机器IP地址:k8s-master
 
-	runtime1_1_1_1Input := []apis.Value{
-		apis.Value{
-			From: "/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/switch/grpc-server-pod.yaml",
-		},
-	}
-
 	// group2 -Server-B机器
 	group1_2Name := "G92" // 第一个Task下的第一个GroupName
 	group1_2Replicas := []int32{0, 0}
@@ -75,9 +72,41 @@ func main() {
 	//runtime1_2_1_1FineGrainedControlPort := "30051"
 	//runtime1_2_1_1FineGrainedControlService := "172.150.0.24" //B机器ip地址:k8s-node2
 
-	runtime1_2_1_1Input := []apis.Value{
-		apis.Value{
-			From: "/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/switch/grpc-server-pod.yaml",
+	//上传文件，runtime的Data[]里面的每一个文件都需要上传
+	filePath := "/home/public/goprojects/reference/test/nodelet/switch/grpc-server-pod.yaml"
+	UploadFile(filePath)
+
+	// 数据依赖（../tmp/testFolder）
+	DataDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.DataDependency,
+		LeftValue: apis.Value{
+			Type:      apis.FileData,
+			Name:      "asdasd",
+			Value:     "0",
+			ValueType: "string",
+			From:      "",
+		},
+		RightValue: apis.Value{
+			Type:      apis.ConstData,
+			Name:      "asdasd",
+			Value:     "1",
+			ValueType: "string",
+			From:      "",
+		},
+		Signal: apis.Equal,
+		Join:   "",
+		Result: apis.False,
+	}
+
+	runtime1_1_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			DataDependencyConditionFormula,
+		},
+	}
+
+	runtime1_2_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			DataDependencyConditionFormula,
 		},
 	}
 
@@ -108,8 +137,9 @@ func main() {
 						Args:                     []string{},        //20s
 						Parents:                  make([]string, 0), // 加入Parents
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						Inputs:                   runtime1_1_1_1Input,
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "grpc-server-pod.yaml"}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
+						Conditions:               &runtime1_1_1_1Condition,
 						//EnableFineGrainedControlService: &runtime1_1_1_1FineGrainedControlService,
 						//EnableFineGrainedControlPort:    &runtime1_1_1_1FineGrainedControlPort,
 					},
@@ -145,8 +175,9 @@ func main() {
 						Args:                     []string{},        //20s
 						Parents:                  make([]string, 0), // 加入Parents
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						Inputs:                   runtime1_2_1_1Input,
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "grpc-server-pod.yaml"}},
 						EnableFineGrainedControl: runtime1_2_1_1FineGrainedControl,
+						Conditions:               &runtime1_2_1_1Condition,
 						//EnableFineGrainedControlService: &runtime1_2_1_1FineGrainedControlService,
 						//EnableFineGrainedControlPort:    &runtime1_2_1_1FineGrainedControlPort,
 					},
@@ -273,4 +304,20 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 		panic(err)
 	}
 	return clientSet
+}
+
+// 上传文件
+func UploadFile(filePath string) (string, error) {
+	// 调用 utils.UploadFile 函数上传文件
+	// 这里的 filePath 是要上传的文件路径
+	// 返回上传结果和错误信息
+	url := fileManager.UploadURL
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+		return "", err
+	} else {
+		fmt.Println("Upload successful!")
+		return "Upload successful!", nil
+	}
 }

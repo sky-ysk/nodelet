@@ -19,7 +19,6 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
-	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
 // 测试部署-123-12
@@ -80,67 +79,9 @@ func main() {
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
 
-	// 程序依赖（requirements.txt）
-	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		ConditionType: apis.ProgramDependency,
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "ProgramDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      "requirements.txt",
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "ProgramDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
-
-	// 数据依赖（../tmp/testFolder）
-	DataDependencyConditionFormula := apis.ConditionFormula{
-		ConditionType: apis.DataDependency,
-		LeftValue: apis.Value{
-			Type:      apis.FileData,
-			Name:      "asdasd",
-			Value:     "0",
-			ValueType: "string",
-			From:      "",
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "asdasd",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
-	}
-	//上传文件，runtime的Data[]里面的每一个文件都需要上传
-	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/upload.py"
-	UploadFile(filePath)
-	filePath = "/home/public/workspace/model_torch_absolute/wine/wine.py"
-	UploadFile(filePath)
-	filePath = "/home/public/workspace/model_torch_absolute/wine/wine_data.csv"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/task_exporter/dependency/requirements.txt"
-	UploadFile(filePath)
-
-	runtime1_1_1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			DataDependencyConditionFormula,
-			ProgramDependencyConditionFormula,
-		},
-	}
+	// runtime1_1_1_1Condition := apis.Conditions{
+	// 	Formulas: []apis.ConditionFormula{},
+	// }
 
 	group1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{},
@@ -169,13 +110,14 @@ func main() {
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
 						Name:                     runtime1_1_1_1Name,
-						Type:                     apis.ByCommand,
+						Type:                     apis.ByDocker,
 						Command:                  []string{"python"},
-						Args:                     []string{"wine.py"}, // 10s
-						Inputs:                   []apis.Value{apis.Value{}},                                        //20s
-						Parents:                  make([]string, 0),                                                                  // 加入Parents
-						Data:                     []apis.DataSpec{apis.DataSpec{Name: "wine_data.csv"}, apis.DataSpec{Name: "wine.py"}, apis.DataSpec{Name: "requirements.txt"}}, // 依赖文件
-						Conditions:               &runtime1_1_1_1Condition,
+						Args:                     []string{"/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/task_exporter/docker_Runtime/time_writer.py"}, // 10s
+						Inputs:                   []apis.Value{},                                                                                                                  //20s
+						Parents:                  make([]string, 0),                                                                                                                           // 加入Parents
+						Data:                     []apis.DataSpec{},                                                                                                                           // 依赖文件
+						Image:                    "python:3.10-slim",
+						Conditions:               nil,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
@@ -312,21 +254,5 @@ func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
 		Signal: apis.Equal,
 		Join:   "",
 		Result: apis.False,
-	}
-}
-
-// 上传文件
-func UploadFile(filePath string) (string, error) {
-	// 调用 utils.UploadFile 函数上传文件
-	// 这里的 filePath 是要上传的文件路径
-	// 返回上传结果和错误信息
-	url := "http://localhost:8888/upload"
-	err := utils.UploadFile(filePath, "v1.0.0", url)
-	if err != nil {
-		fmt.Println("Upload failed:", err)
-		return "", err
-	} else {
-		fmt.Println("Upload successful!")
-		return "Upload successful!", nil
 	}
 }

@@ -7,19 +7,19 @@ import (
 )
 
 func main() {
-	// url := "http://localhost:8888/download?filename=upload.py"
-	// savePath := "/home/public/goprojects/Combine-ysk-0102/tmp/downloadsRegistry"
+	url := "http://localhost:8888/download?filename=grpc-server-pod.yaml"
+	savePath := "/home/public/goprojects/Combine-ysk-0102/tmp/downloadsRegistry"
 
-	// err := utils.DownloadFile(url, savePath)
-	// if err != nil {
-	// 	fmt.Println("Download failed:", err)
-	// } else {
-	// 	fmt.Println("Download successful!")
-	// }
+	err := utils.DownloadFile(url, savePath)
+	if err != nil {
+		fmt.Println("Download failed:", err)
+	} else {
+		fmt.Println("Download successful!")
+	}
 
 
 	// url := "http://localhost:8888/upload"
-	// filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/testFolder/upload.py"
+	// filePath := "/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/switch/grpc-server-pod.yaml"
 	// fmt.Println("aaaaaUploading file:", filePath)
 	// err := utils.UploadFile(filePath, "v1.0.0", url)
 	// fmt.Println("bbbbUploading file:", filePath)
@@ -29,14 +29,14 @@ func main() {
 	// 	fmt.Println("Upload successful!")
 	// }
 
-	url := "http://localhost:8888/upload"
-	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
-	err := utils.UploadFile(filePath, "v1.0.0", url)
-	if err != nil {
-		fmt.Println("Upload failed:", err)
-	} else {
-		fmt.Println("Upload successful!")
-	}
+	// url := "http://localhost:8888/upload"
+	// filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
+	// err := utils.UploadFile(filePath, "v1.0.0", url)
+	// if err != nil {
+	// 	fmt.Println("Upload failed:", err)
+	// } else {
+	// 	fmt.Println("Upload successful!")
+	// }
 
 	// url := "http://localhost:8888/upload?filename=downloads"
 	// filePath := "./downloads"

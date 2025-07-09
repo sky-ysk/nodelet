@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: grpc-server-pod  # 名称需唯一，不可复用
+  namespace: switch
+  labels:
+    app: grpc-server     # 必须保留此标签以匹配 Service
+spec:
+  restartPolicy: Never  # 添加 RestartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: debian1 # 直接使用节点名称标签
+  containers:
+  - name: grpc-server
+    image: registry.cn-hangzhou.aliyuncs.com/sudasuzhou/grpc_service:grpc-server-pod-v2.0
+    ports:
+    - containerPort: 50051
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-server-service
+  namespace: switch
+spec:
+  selector:
+    app: grpc-server
+  ports:
+  - protocol: TCP
+    port: 50051  # Service暴露的端口号
+    targetPort: 50051   #targetPort而是实际处理请求的容器端口 ，相当于是Service将port转发到targetPort
+    nodePort: 30051   # 供外部访问的端口 (可选, 也可让K8s自动分配)
+  type: NodePort
+

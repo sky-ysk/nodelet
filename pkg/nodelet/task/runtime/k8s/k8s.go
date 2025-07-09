@@ -22,6 +22,8 @@ import (
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/config"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/entity"
 	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/monitor"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -96,6 +98,7 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	logs.Infof("k8s runtime for task: %s", group.Name)
 	//先执行共同的操作,再各自调用代码
 	// 1、首先读取yaml文件，转换为资源
+	// yamlFilePatch := runtime.Spec.Directory + "/" + runtime.Spec.Data[0].Name
 	yamlFilePatch := runtime.Spec.Inputs[0].From
 	logs.Infof("group.Status.Node:%v", *group.Status.Node)
 	// 根据这个NodeName找到主机名
@@ -115,15 +118,18 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 			logs.Errorf("Create k8s resource failed: %v", err)
 			return err
 		}
+		// MonitorPodResources
+		go k.monitorPodResources(objName, objNamespace, runtime, 1*time.Second)
 	}
 	// MonitorPodTimestamp
 	// go k.MonitorPodTimestamp(group, podName, namespace)
-	go k.MonitorPodTimestamp(group, "", "")
+	go k.monitorPodTimestamp(group, "", "")
 
 	return nil
 }
 
-func (k *K8sRuntime) MonitorPodTimestamp(group *apis.Group, podName string, namespace string) {
+// 监控某一个pod的restore的时间戳并上传
+func (k *K8sRuntime) monitorPodTimestamp(group *apis.Group, podName string, namespace string) {
 	logs.Info("MonitorPodTimestamp Start=======")
 	// 配置参数
 	if podName == "" {
@@ -232,6 +238,60 @@ func extractTimestamp(line string) string {
 		return parts[0] + " " + parts[1]
 	}
 	return ""
+}
+
+// 新增的Pod监控方法
+func (k *K8sRuntime) monitorPodResources(podName, namespace string, runtime *apis.Runtime, interval time.Duration) {
+	logs.Infof("Starting resource monitoring for pod %s in namespace %s", podName, namespace)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// 获取Pod资源使用情况
+		podMetrics, err := k.metricsClient.MetricsV1beta1().PodMetricses(namespace).Get(
+			context.TODO(), podName, metav1.GetOptions{})
+
+		if err != nil {
+			logs.Warnf("Failed to get metrics for pod %s: %v", podName, err)
+			continue
+		}
+
+		var (
+			cpuTotal resource.Quantity
+			memTotal resource.Quantity
+		)
+
+		for _, container := range podMetrics.Containers {
+			cpuTotal.Add(container.Usage[corev1.ResourceCPU])
+			memTotal.Add(container.Usage[corev1.ResourceMemory])
+		}
+		// 转换并记录
+		cpuMilli := cpuTotal.MilliValue()
+		memMB := float64(memTotal.Value()) / (1024 * 1024)
+		// // 获取 CPU 核心数,计算总占用的百分比形式需要使用
+		// coreCount, err := cpu.Counts(true)
+		// if err != nil {
+		// 	logs.Fatalf("Failed to get CPU core count: %v", err)
+		// }
+		logs.Infof("[Monitor] Runtime %s (Pod: %s) - CPU: %dm, Memory: %.2f MB",
+			runtime.Name, podName, cpuMilli, memMB)
+
+		//上传etcd
+		resourceItem := make(map[string]apis.Item)
+		// 填充Values这个字段，这是一个map
+		resourceItem["cpu"] = apis.Item{Name: "cpu", Values: map[string]string{"cpu": fmt.Sprintf("%d m", cpuMilli)}}
+		resourceItem["memory"] = apis.Item{Name: "memory", Values: map[string]string{"memory": fmt.Sprintf("%.2f MB", float64(memMB))}}
+		patchRuntime, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"resources": resourceItem,
+			},
+		})
+		_, err = k.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+		if err != nil {
+			logs.Errorf("patch runtimeStatus error")
+		}
+	}
 }
 
 // 通用方法：获取资源的 Name 和 Namespace

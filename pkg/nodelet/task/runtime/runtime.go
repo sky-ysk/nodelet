@@ -90,7 +90,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.pool)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
-			runtime = container.NewContainerRuntime()
+			runtime = container.NewContainerRuntime(rm.clientsManager, rm.eventbus)
 			break
 		case apis.ByDevice: //面向特定的物理设备
 			//runtime = device.NewDeviceRuntime(rm.clientsManager, rm.eventbus)
