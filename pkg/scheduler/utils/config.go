@@ -43,7 +43,7 @@ var (
 
 // APIConfig 定义YAML配置结构
 type APIConfig struct {
-	APIServerHost string `yaml:"api_server_host"`
+	APIServerHost string `yaml:"ApiServerAddr"`
 }
 
 // GetAPIServerHost 获取API服务器地址（线程安全）
@@ -69,11 +69,11 @@ func initializeConfig() error {
 	exeDir = filepath.Dir(exeDir)
 
 	// 构建配置文件的绝对路径（相对于项目根目录上三层）
-	configPath := filepath.Join(exeDir, "../../../config.yaml")
-
+	configPath := filepath.Join(exeDir, "../../../frameworkConf.yaml")
 	// 读取YAML文件
 	data, err := os.ReadFile(configPath)
 	if err != nil {
+		panic(err)
 		if errors.Is(err, os.ErrNotExist) {
 			// 文件不存在时使用默认值
 			apiServerHost = "http://localhost:10000"
