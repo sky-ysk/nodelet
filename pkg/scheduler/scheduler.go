@@ -459,7 +459,7 @@ func (sched *Scheduler) checkShouldSchedule(group *apis.Group) bool {
 	// 从标签中获取调度器名称，如果不存在则默认为 "Cloud"
 	nominateHost, exists := group.Labels["scheduler"]
 	if !exists || nominateHost == "" {
-		nominateHost = "cloud"
+		nominateHost = "CloudNode1"
 	}
 	// 比较当前调度器名称与标签中指定的调度器名称
 	return sched.Name == nominateHost
