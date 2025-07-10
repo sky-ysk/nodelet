@@ -20,7 +20,7 @@ func CreateClientSetWithTimeOut(timeout int64) (*clients.ClientSet, error) {
 	apis.AddToScheme(scheme)
 
 	c := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

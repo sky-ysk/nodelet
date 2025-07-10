@@ -249,7 +249,8 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Infer",
+				"type":      "Infer",
+				"scheduler": "cloud",
 			},
 		},
 		Replicas:   group1_1Replicas,
@@ -300,7 +301,8 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "cloud",
 			},
 		},
 		Replicas:   group1_2Replicas,
@@ -351,7 +353,8 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "edge",
 			},
 		},
 		Replicas:   group1_3Replicas,
@@ -402,7 +405,8 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "edge",
 			},
 		},
 		Replicas:   group1_4Replicas,
@@ -453,7 +457,8 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "cloud",
 			},
 		},
 		Replicas:   group1_5Replicas,
@@ -504,7 +509,8 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "edge",
 			},
 		},
 		Replicas:   group1_6Replicas,

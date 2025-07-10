@@ -45,15 +45,15 @@ func (h *RuntimesHandler) GetRuntimes(request *restful.Request, response *restfu
 				return
 			}
 		}
-	}
-
-	results, err = h.manager.FilterRuntimes(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get runtimes failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterRuntimes(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get runtimes failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
