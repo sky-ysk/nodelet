@@ -181,8 +181,8 @@ func (h *EventsHandler) NewGetWebService() *restful.WebService {
 	ws.Route(ws.GET("/").
 		Doc("Get all events with selector").
 		Metadata(restfulspec.KeyOpenAPITags, []string{TAG}).
-		Param(ws.QueryParameter("Page", "The page of the events").DataType("int")).
-		Param(ws.QueryParameter("PageSize", "The size of the page").DataType("int")).
+		Param(ws.QueryParameter("Page", "The page of the events(optional)").DataType("int")).
+		Param(ws.QueryParameter("PageSize", "The size of the page(optional Default=10)").DataType("int")).
 		// Param(ws.QueryParameter("SelectorName", "The name of the involved object").DataType("string")).
 		Param(ws.QueryParameter("Namespace", "The namespace of the events").DataType("string")).
 		To(h.GetEvents).
