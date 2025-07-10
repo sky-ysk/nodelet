@@ -30,6 +30,7 @@ import (
 	"context"
 	"fmt"
 	"hit.edu/framework/pkg/nodelet"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"os"
 	"path/filepath"
 	run "runtime"
@@ -132,6 +133,7 @@ func init() {
 // 创建新的Scheduler对象
 func New(ctx context.Context, configPath string, opts ...Option) (*Scheduler, error) {
 	logs.Info("init scheduler... ")
+	utils.Initialize(configPath)
 	stopEverything := ctx.Done()
 
 	// 配置调度器启动选项，在这里需要定义所需的模块，插件
@@ -273,7 +275,7 @@ func (sched *Scheduler) monitorTask(ctx context.Context) {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    GetAPIServerHost(),
+		Host:    utils.GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -355,7 +357,7 @@ func (sched *Scheduler) monitorWorkflow(ctx context.Context) {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    GetAPIServerHost(),
+		Host:    utils.GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

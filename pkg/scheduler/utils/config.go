@@ -12,6 +12,10 @@ import (
 	"sync"
 )
 
+type Utils struct {
+	configPaht string
+}
+
 func GetNamespace() string {
 	logs.Info("ConfigPath is empty, using default")
 	fileName := "frameworkConf.yaml"
@@ -46,35 +50,33 @@ type APIConfig struct {
 	APIServerHost string `yaml:"ApiServerAddr"`
 }
 
-// GetAPIServerHost 获取API服务器地址（线程安全）
-func GetAPIServerHost() string {
+func Initialize(configPath string) {
 	once.Do(func() {
-		initErr = initializeConfig()
+		initErr = initializeConfig(configPath)
 	})
-
 	if initErr != nil {
 		panic(initErr)
 	}
+}
 
+// GetAPIServerHost 获取API服务器地址（线程安全）
+func GetAPIServerHost() string {
 	return apiServerHost
 }
 
 // initializeConfig 初始化配置（私有方法）
-func initializeConfig() error {
-	// 获取当前可执行文件所在目录
-	exeDir, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("获取可执行文件路径失败: %w", err)
+func initializeConfig(configPath string) error {
+	if configPath == "" {
+		logs.Info("ConfigPath is empty, using default")
+		fileName := "frameworkConf.yaml"
+		// 获取当前文件绝对路径
+		_, currentFilePath, _, _ := run.Caller(0)
+		// 计算项目根目录路径
+		projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..", "..")
+		// 构建配置文件的绝对路径
+		configPath = filepath.Join(projectRoot, fileName)
 	}
-	exeDir = filepath.Dir(exeDir)
-
-	fileName := "frameworkConf.yaml"
-	// 获取当前文件绝对路径
-	_, currentFilePath, _, _ := run.Caller(0)
-	// 计算项目根目录路径
-	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
-	// 构建配置文件的绝对路径
-	configPath := filepath.Join(projectRoot, fileName)
+	logs.Infof("configPath:%v", configPath)
 
 	// 构建配置文件的绝对路径（相对于项目根目录上三层）
 	// 读取YAML文件

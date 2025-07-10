@@ -14,6 +14,7 @@ import (
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
+	"hit.edu/framework/pkg/scheduler/utils"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -291,6 +292,9 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 		host = "CloudNode1"
 	}
 	if strings.Contains(group.ObjectMeta.Name, "G71") {
+		host = "CloudNode2"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G61") {
 		host = "EdgeNode1"
 	}
 	if strings.Contains(group.ObjectMeta.Name, "copy") {
@@ -438,7 +442,7 @@ func (sched *Scheduler) getNodeFromApiServer() []*config.NodeInfo {
 	scheme := runtime.NewScheme()
 	apis.AddToScheme(scheme)
 	c := &rest.Config{
-		Host:    GetAPIServerHost(),
+		Host:    utils.GetAPIServerHost(),
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
