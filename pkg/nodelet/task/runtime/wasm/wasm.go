@@ -81,8 +81,17 @@ func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus
 
 func (wr *WasmRuntime) pullRuntimeProcess() error {
 	if !wr.runtimeState {
+		// 先kill可能残留的孤儿server
+		killCmd := exec.Command("killall", "server")
+		killCmd.Stdout = os.Stdout
+		killCmd.Stderr = os.Stderr
+		err := killCmd.Run()
+		if err != nil {
+			logs.Errorf("Failed to run cmd to killall server : %v", err)
+			return err
+		}
 		logs.Info("pull wasm runtime")
-		err := wr.startCMD(wr.config.runtimeExecfile, []string{wr.config.rpcPort})
+		err = wr.startCMD(wr.config.runtimeExecfile, []string{wr.config.rpcPort})
 		if err != nil {
 			logs.Errorf("Failed to run cmd: %v", err)
 			return err
@@ -257,8 +266,16 @@ loop:
 		switch status {
 		case 0x02, 0x04:
 			wr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			if wr.wasmClient == nil {
+				wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, runtime.Name)
+			}
+			wr.wasmClient.Destory()
+			wr.wasmClient = nil
 			break loop
-		case 0x03, 0xfe, 0xff:
+		case 0x03, 0xff:
+			break loop
+		case 0xfe:
+			wr.wasmClient = nil
 			break loop
 		default:
 		}
