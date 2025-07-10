@@ -23,7 +23,8 @@ type WasmRuntime struct {
 	// 配置wasm运行时的基本设置
 	config Config
 	// 对应运行时所在进程
-	cmd *exec.Cmd
+	cmd     *exec.Cmd
+	process *os.Process
 	// 对应grpc客户端
 	wasmClient *wasm_client.WasmClient
 	eventBus   *eventbus.EventBus
@@ -66,8 +67,9 @@ func NewWasmRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus
 		clientsManager: clientsManager,
 		ctx:            ctx,
 	}
-	// 拉起运行时
+	// // 拉起运行时
 	wr.pullRuntimeProcess()
+
 	// logs.Info("pull wasm runtime")
 	// err := wr.startCMD(config.runtimeExecfile, []string{config.rpcPort})
 	// if err != nil {
@@ -94,7 +96,7 @@ func (wr *WasmRuntime) pullRuntimeProcess() error {
 func (wr *WasmRuntime) checkRuntimeTerminal() {
 	<-wr.ctx.Done() // 当 channel 关闭时，会立即触发此 case
 	logs.Info("wasm runtime terminal")
-	wr.StopCMD()
+	wr.stopCMD()
 	// wr.cmd.Process.Kill()
 }
 
@@ -146,7 +148,8 @@ func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *api
 	// }
 	// close(wr.stopSignals[runtime.Name]) // 关闭通道，标记进程被外部停止  这里是一个问题，这个变量全局只能关一次？不然就报错了
 
-	defer wr.StopCMD() // 这里是把运行时进程给关闭了，因为目前运行时提供的destory接口不能关闭正在运行的任务
+	// defer wr.stopCMD() // 这里是把运行时进程给关闭了，因为目前运行时提供的destory接口不能关闭正在运行的任务
+
 	logs.Infof("wasm runtime kill for task:%s", runtime.Name)
 	if wr.wasmClient == nil {
 		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, runtime.Name)
@@ -157,6 +160,7 @@ func (wr *WasmRuntime) Kill(group *apis.Group, action *apis.Action, runtime *api
 		return err
 	}
 	wr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+	wr.wasmClient = nil
 	return nil
 }
 func (wr *WasmRuntime) Stop(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -200,7 +204,13 @@ func (wr *WasmRuntime) startCMD(cmd string, args []string) error {
 }
 
 // 终止wasm运行时进程(区分关闭wasm任务)
-func (wr *WasmRuntime) StopCMD() {
+func (wr *WasmRuntime) stopCMD() {
+	if wr.cmd == nil {
+		logs.Info("1")
+	}
+	if wr.cmd.Process == nil {
+		logs.Info("2")
+	}
 	info := fmt.Sprintf("stop wasm runtime process pid : %d", wr.cmd.Process.Pid)
 	logs.Info(info)
 	if err := wr.cmd.Process.Kill(); err != nil {
@@ -210,12 +220,60 @@ func (wr *WasmRuntime) StopCMD() {
 	}
 	wr.runtimeState = false
 }
+
+func (wr *WasmRuntime) getTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) (byte, error) {
+	// logs.Infof("wasm runtime getTaskStatus() for task:%s", runtime.Name)
+	if wr.wasmClient == nil {
+		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, runtime.Name)
+	}
+	var runtimeStatus byte = 0xff
+	result, err := wr.wasmClient.GetStatus()
+	if err != nil {
+		// wr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, strconv.Itoa(wr.cmd.Process.Pid), apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+		// logs.Errorf("任务启动失败 Deploy: %e", err)
+		return runtimeStatus, err
+	}
+	if result.StateCode == 0 && result.Data != nil && len(result.Data.Data) > 0 {
+		runtimeStatus = result.Data.Data[0]
+		logs.Infof("runtimeStatus:%v", runtimeStatus)
+	} else if result.StateCode == 4 {
+		runtimeStatus = 0xfe
+	} else {
+		logs.Infof("Failed to get runtime status for task:%s", runtime.Name)
+	}
+
+	return runtimeStatus, nil
+}
+
+func (wr *WasmRuntime) checkTaskStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) {
+loop:
+	for {
+		time.Sleep(5 * time.Second)
+		status, getStatusErr := wr.getTaskStatus(group, action, runtime, actionSpecName, runtimeSpecName)
+		if getStatusErr != nil {
+			wr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			break
+		}
+		switch status {
+		case 0x02, 0x04:
+			wr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+			break loop
+		case 0x03, 0xfe, 0xff:
+			break loop
+		default:
+		}
+	}
+}
+
 func (wr WasmRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime) (string, error) {
 
 	return "", nil
 }
 
 func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	// 拉起运行时
+	// wr.pullRuntimeProcess()
+
 	logs.Infof("wasm runtime InitRuntime() for task:%s", runtime.Name)
 	wasm_file := runtime.Spec.Image
 	if wr.wasmClient == nil {
@@ -239,6 +297,9 @@ func (wr WasmRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtim
 }
 
 func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	// 拉起运行时
+	// wr.pullRuntimeProcess()
+
 	logs.Infof("wasm runtime StartRuntime() for task:%s", runtime.Name)
 	wasm_file := runtime.Spec.Image
 	if wr.wasmClient == nil {
@@ -272,8 +333,22 @@ func (wr WasmRuntime) StartRuntime(group *apis.Group, action *apis.Action, runti
 	}
 	// todo:后续增加EndPhase(apis.succeed)
 	// wr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, strconv.Itoa(wr.cmd.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+	go wr.checkTaskStatus(group, action, runtime, actionSpecName, runtimeSpecName)
 	return nil
 }
+
+// switch status {
+// case "2": //finished
+// 	wr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+// 	break
+// }
+// pub(crate) enum WasmTaskState {
+//     Init = 0,
+//     Running,
+//     Finished,
+//     Migrated,
+//     Paniced,
+// }
 
 func (wr WasmRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 	logs.Infof("wasm runtime StoreData() for task:%s", runtime.Name)
@@ -350,11 +425,12 @@ func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtim
 		}
 	}
 	logs.Info("--WasmRuntime RestoreData()--")
+	go wr.checkTaskStatus(group, action, runtime, actionSpecName, runtimeSpecName)
 	return nil
 }
 
 func (wr WasmRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
-	defer wr.StopCMD()
+	defer wr.stopCMD()
 	logs.Infof("wasm runtime StopRuntime for task:%s", runtime.Name)
 	if wr.wasmClient == nil {
 		wr.wasmClient = wasm_client.NewClient(context.Background(), wr.config.rpcPort, runtime.Name)
@@ -369,7 +445,7 @@ func (wr WasmRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtim
 
 // 销毁
 func (wr *WasmRuntime) Destory() error {
-	defer wr.StopCMD()
+	defer wr.stopCMD()
 	logs.Infof("wasm runtime destory for task: wasm-test")
 	// if wr.wasmClient == nil {
 	// 	// 该方法应增加err返回值

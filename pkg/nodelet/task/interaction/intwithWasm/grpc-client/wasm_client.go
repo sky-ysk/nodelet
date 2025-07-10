@@ -261,3 +261,25 @@ func (c *WasmClient) Destory() (*wasm_interface.Result, error) {
 	logs.Info(out)
 	return result, err
 }
+
+// get_status-grpc接口
+func (c *WasmClient) GetStatus() (*wasm_interface.Result, error) {
+	if !c.checkConnection() {
+		return &wasm_interface.Result{}, errors.New("GetStatus: grpc connection failed")
+	}
+
+	// init_intent_data
+	getStatus_intent := &wasm_interface.GetStatusIntent{App: c.app}
+
+	// ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result, err := c.client.GetStatus(ctx, getStatus_intent)
+	if err != nil {
+		logs.Errorf("%v GetStatus() : no connection%v", c.app, err)
+		return &wasm_interface.Result{}, err
+	}
+	out := fmt.Sprintf("wasm getStatus result: code: %d _ msg:  %s ", result.GetStateCode(), result.GetMsg())
+	logs.Info(out)
+	return result, err
+}
