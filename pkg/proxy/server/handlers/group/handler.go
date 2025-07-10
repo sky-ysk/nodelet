@@ -13,6 +13,8 @@ const (
 	GROUP_PATH  = API_PREFIX + "/group"
 	GROUP_NAME  = "Name"
 	NAME_SPACE  = "Namespace"
+	PAGE        = "Page"
+	PAGE_SIZE   = "PageSize"
 )
 
 type Handler interface {

@@ -45,15 +45,15 @@ func (h *TasksHandler) GetTasks(request *restful.Request, response *restful.Resp
 				return
 			}
 		}
-	}
-
-	results, err = h.manager.FilterTasks(namespace, labels)
-	if err != nil {
-		logs.Errorf("Get tasks with labels failed: %v", err)
-		err := response.WriteError(http.StatusInternalServerError, err)
+	} else {
+		results, err = h.manager.FilterTasks(namespace, labels)
 		if err != nil {
-			logs.Errorf("failed to return a status code")
-			return
+			logs.Errorf("Get tasks with labels failed: %v", err)
+			err := response.WriteError(http.StatusInternalServerError, err)
+			if err != nil {
+				logs.Errorf("failed to return a status code")
+				return
+			}
 		}
 	}
 
