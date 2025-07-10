@@ -52,26 +52,46 @@ func (cm *ContainerManager) DeleteRuntimeMapping(runtimeName string) bool {
 }
 
 // 获取所有容器列表
-func (cm *ContainerManager) GetContainerList() map[string]string {
+func (cm *ContainerManager) GetContainerList() (map[string]string, error) {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
 	ctx := context.Background()
 	containers, err := cm.client.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		logs.Errorf("Error:get containers failed. %v\n", err)
-		return nil
+		return nil, err
 	}
 	container_list := make(map[string]string)
 	// 遍历容器列表，存入所有容器信息
 	for _, container := range containers {
 		for _, name := range container.Names {
 			container_list[name] = container.ID
-			logs.Infof("Container ID: %s, Container NAME: %s\n", container.ID, name)
-			logs.Infof("Container Image: %s, Container Status: %s\n", container.Image, container.Status)
+			// logs.Infof("Container ID: %s, Container NAME: %s\n", container.ID, name)
+			// logs.Infof("Container Image: %s, Container Status: %s\n", container.Image, container.Status)
 		}
 	}
 
-	return container_list
+	return container_list, nil
+}
+
+// 根据name查询ID
+func (cm *ContainerManager) GetContainerID(name string) string {
+	// 遍历所有容器，查找匹配的名称
+	// 获取所有容器，使用docker的包
+	// logs.Infof("iiiiiiiiiiDDDDDDDDDDDDDDDD")
+	name = "/" + name // docker容器名称前面有一个斜杠
+	containerList, err := cm.GetContainerList()
+	if err != nil {
+		logs.Errorf("Failed to get container list: %v", err)
+		return ""
+	}
+	for containerName, containerID := range containerList {
+		if containerName == name {
+			return containerID
+		}
+	}
+	logs.Errorf("Container with name %s not found", name)
+	return ""
 }
 
 // 获取单个容器信息
