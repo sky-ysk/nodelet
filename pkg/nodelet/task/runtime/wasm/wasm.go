@@ -83,12 +83,12 @@ func (wr *WasmRuntime) pullRuntimeProcess() error {
 	if !wr.runtimeState {
 		// 先kill可能残留的孤儿server
 		killCmd := exec.Command("killall", "server")
-		killCmd.Stdout = os.Stdout
-		killCmd.Stderr = os.Stderr
+		// killCmd.Stdout = os.Stdout
+		// killCmd.Stderr = os.Stderr
 		err := killCmd.Run()
 		if err != nil {
-			logs.Errorf("Failed to run cmd to killall server : %v", err)
-			return err
+			logs.Infof("Failed to run cmd to killall server : %v", err)
+			// return err
 		}
 		logs.Info("pull wasm runtime")
 		err = wr.startCMD(wr.config.runtimeExecfile, []string{wr.config.rpcPort})
