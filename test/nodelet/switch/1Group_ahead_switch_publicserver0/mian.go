@@ -47,7 +47,7 @@ func main() {
 
 	// group
 
-	group1_1Replicas := []int32{1, 0}
+	group1_1Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -101,7 +101,12 @@ func main() {
 		},
 		Replicas: group1_1Replicas,
 		Name:     group1_1Name,
-		Parents:  make([]string, 0),
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"scheduler": "EdgeNode1",
+			},
+		},
+		Parents: make([]string, 0),
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
 				Name: action1_1_1Name,
@@ -141,9 +146,9 @@ func main() {
 	}
 	fmt.Println(str)
 
-	prompt()
-	postEventForMigrate_ForGroup()
-	prompt()
+	//prompt()
+	//postEventForMigrate_ForGroup()
+	//prompt()
 
 }
 

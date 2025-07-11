@@ -515,7 +515,8 @@ type TaskSpec struct {
 	// 可以有多个Group作为Group的入口，支持多个图形结构
 	// 支持并发执行多组Group
 	// TODO: 增加Level支持
-	Groups []GroupSpec `json:"groups,omitempty" yaml:"groups"`
+	Groups    []GroupSpec `json:"groups,omitempty" yaml:"groups"`
+	RandomNum int32       `json:"randomNum,omitempty" yaml:"randomNum"`
 }
 
 type TaskStatus struct {
