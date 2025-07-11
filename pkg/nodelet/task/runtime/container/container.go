@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -92,6 +93,14 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	logs.Infof("RunCMD for group:%s, action:%s, runtime:%s", group.Name, action.Name, runtime.Name)
 	cmd := runtime.Spec.Command[0]
 	args := runtime.Spec.Args
+	// TODO：根据Spec里面的用户提前填写的Env信息一个个查找args里面的字符串，进行替换
+	// spec.env
+	// 目前只修改$HOME，使用os.ExpandEnv
+	for i, arg := range args {
+		args[i] = os.ExpandEnv(arg)
+	}
+	// 查看修改后的args
+	logs.Infof("Modified args: %v.cmd :%s", args, cmd)
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
 	env := os.Environ() //获取当前环境的环境变量
@@ -115,10 +124,27 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	}
 	logs.Infof("Command %s started successfully with PID %d", cmd, CMD.Process.Pid)
 	// 通知group_monitor，来修改全局的group信息（其中的runtime属性）
+
 	cr.notifyRuntimeStartPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 	cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name), group.Namespace)
 
 	// TODO:根据容器名字查找ID，然后放入manager，并通过monitor监管
+	// 名字是args其中的一个字符串，包含 --name=
+	var containerName string
+	for _, str := range runtime.Spec.Args {
+		if strings.Contains(str, "--name=") {
+			containerName = strings.TrimPrefix(str, "--name=")
+			logs.Infof("Found container name: %s", containerName)
+		}
+	}
+
+	// 根据name查询ID
+	// 不确定会不会出现docker拉起速度较慢，查不到====有这个问题，需要等待数秒,设置为5秒
+	time.Sleep(5 * time.Second)
+	containerId := cr.containerManager.GetContainerID(containerName)
+	logs.Infof("Container ID for runtime %s is %s", runtime.Name, containerId)
+	cr.containerManager.AddRuntimeMapping(runtime.Name, containerId)
+	cr.MonitorContainerStatus(group, action, runtime, actionSpecName, runtimeSpecName, containerId)
 
 	return nil
 }
@@ -128,7 +154,8 @@ func (cr *ContainerRuntime) MonitorContainerStatus(group *apis.Group, action *ap
 	go func() {
 		for {
 			select {
-			case <-time.After(30 * time.Second):
+			case <-time.After(5 * time.Second):
+				logs.Infof("Checking container status for runtime: %s", runtime.Name)
 				container, err := cr.containerManager.GetContainer(containerId)
 				if err != nil {
 					logs.Errorf("Failed to get container info for %s: %v", containerId, err)
