@@ -100,6 +100,13 @@ func (k *K8sRuntime) Restore(group *apis.Group, action *apis.Action, runtime *ap
 
 // 粗粒度管理的启动方法
 func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	task, err2 := k.clientsManager.GetTask(group.Labels["belong"], group.Namespace)
+	if err2 != nil {
+		logs.Errorf("Get Task error")
+	}
+	randomNum := task.Spec.RandomNum
+	k.randomNum[group.Name] = randomNum
+	logs.Infof("【【【Run】】】====group.name:%v,randomNum:%v", group.Name, k.randomNum[group.Name])
 	logs.Infof("k8s runtime for task: %s", group.Name)
 	//先执行共同的操作,再各自调用代码
 	// 1、首先读取yaml文件，转换为资源
@@ -111,7 +118,6 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	if err2 != nil {
 		logs.Errorf("Get node info error")
 	}
-	randomNum := k.randomNum[group.Name]
 	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, get.Spec.HostName, randomNum)
 	if err != nil {
 		logs.Errorf("Get k8s resources from yaml file failed: %v", err)
@@ -390,13 +396,13 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 	return err
 }
 func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
-	task, err2 := k.clientsManager.GetTask(group.Labels["belong"], group.Namespace)
-	if err2 != nil {
-		logs.Errorf("Get Task error")
-	}
-	randomNum := task.Spec.RandomNum
-	k.randomNum[group.Name] = randomNum
-	logs.Infof("【【【StartRuntime】】】====group.name:%v,randomNum:%v", group.Name, k.randomNum[group.Name])
+	//task, err2 := k.clientsManager.GetTask(group.Labels["belong"], group.Namespace)
+	//if err2 != nil {
+	//	logs.Errorf("Get Task error")
+	//}
+	//randomNum := task.Spec.RandomNum
+	//k.randomNum[group.Name] = randomNum
+	//logs.Infof("【【【StartRuntime】】】====group.name:%v,randomNum:%v", group.Name, k.randomNum[group.Name])
 	err := k.Run(group, action, runtime, actionSpecName, runtimeSpecName)
 	if err != nil {
 		logs.Errorf("StartRuntime failed: %v", err)
@@ -410,6 +416,7 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
 	var port string
+	randomNum := k.randomNum[group.Name]
 	if strings.Contains(runtime.Spec.Inputs[0].From, "grpc-client-pod-copy") {
 		port = strconv.Itoa(int(randomNum + 2))
 	} else if strings.Contains(runtime.Spec.Inputs[0].From, "grpc-client-pod") {
@@ -428,13 +435,13 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 	return err
 }
 func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
-	task, err2 := k.clientsManager.GetTask(group.Labels["belong"], group.Namespace)
-	if err2 != nil {
-		logs.Errorf("Get Task error")
-	}
-	randomNum := task.Spec.RandomNum
-	k.randomNum[group.Name] = randomNum
-	logs.Infof("【【【InitRuntime】】】====group.name:%v,randomNum:%v", group.Name, k.randomNum[group.Name])
+	//task, err2 := k.clientsManager.GetTask(group.Labels["belong"], group.Namespace)
+	//if err2 != nil {
+	//	logs.Errorf("Get Task error")
+	//}
+	//randomNum := task.Spec.RandomNum
+	//k.randomNum[group.Name] = randomNum
+	//logs.Infof("【【【InitRuntime】】】====group.name:%v,randomNum:%v", group.Name, k.randomNum[group.Name])
 	logs.Info("++++++++++++++++++++++++++++++++++++k8s的init方法----------------------------------")
 	err := k.Run(group, action, runtime, actionSpecName, runtimeSpecName)
 	if err != nil {
@@ -449,6 +456,7 @@ func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime
 		k.notifyRuntimeEndPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
 	}
 	var port string
+	randomNum := k.randomNum[group.Name]
 	if strings.Contains(runtime.Spec.Inputs[0].From, "grpc-client-pod-copy") {
 		port = strconv.Itoa(int(randomNum + 2))
 	} else if strings.Contains(runtime.Spec.Inputs[0].From, "grpc-client-pod") {

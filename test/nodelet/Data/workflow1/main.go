@@ -150,7 +150,7 @@ func main() {
 
 	data := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "HenanEP-switch1",
+			Name:      "HenanEP-train2",
 			Namespace: "HenanEP",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -158,12 +158,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "HenanEP-switch1",
+			Name:       "HenanEP-train2",
 			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/switch_dianwang.json",
+			FilePath:   "/root/goprojects/workflow/train_dianwang_pod.json",
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "推理迁移工作流-Command",
+				Docs: "模型训练工作流-Pod",
 			},
 		},
 		Status: apis.DataStatus{
@@ -174,7 +174,7 @@ func main() {
 
 	data2 := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "Cosmo-switch1",
+			Name:      "Cosmo-train2",
 			Namespace: "Cosmo",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -182,12 +182,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "Cosmo-switch1",
+			Name:       "Cosmo-train2",
 			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/switch_zhizao.json",
+			FilePath:   "/root/goprojects/workflow/train_zhizao_pod.json",
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "推理迁移工作流-Command",
+				Docs: "模型训练工作流-Pod",
 			},
 		},
 		Status: apis.DataStatus{
@@ -197,7 +197,7 @@ func main() {
 	}
 	data3 := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ShandongHS-switch1",
+			Name:      "ShandongHS-train2",
 			Namespace: "ShandongHS",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -205,154 +205,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "ShandongHS-switch1",
+			Name:       "ShandongHS-train2",
 			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/switch_jiaotong.json",
+			FilePath:   "/root/goprojects/workflow/train_jiaotong_pod.json",
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "推理迁移工作流-Command",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-
-	data4 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "HenanEP-switch2",
-			Namespace: "HenanEP",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "HenanEP-switch2",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/switch_grpc_dianwang.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "grpc服务迁移工作流-Pod",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-
-	data5 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "Cosmo-switch2",
-			Namespace: "Cosmo",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "Cosmo-switch2",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/switch_grpc_zhizao.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "grpc服务迁移工作流-Pod",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-	data6 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ShandongHS-switch2",
-			Namespace: "ShandongHS",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "ShandongHS-switch2",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/switch_grpc_jiaotong.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "grpc服务迁移工作流-Pod",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-
-	data7 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "HenanEP-train1",
-			Namespace: "HenanEP",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "HenanEP-train1",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/infer_dianwang.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "训练工作流-Command",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-
-	data8 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "Cosmo-train1",
-			Namespace: "Cosmo",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "Cosmo-train1",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/infer_zhizao.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "训练工作流-Command",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-	data9 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ShandongHS-train1",
-			Namespace: "ShandongHS",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "ShandongHS-train1",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/infer_jiaotong.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "训练工作流-Command",
+				Docs: "模型训练工作流-Pod",
 			},
 		},
 		Status: apis.DataStatus{
@@ -378,40 +236,271 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(d)
-	d, err = manager.CreateData(data4, namespace1)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
 
-	d, err = manager.CreateData(data5, namespace2)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-
-	d, err = manager.CreateData(data6, namespace3)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-	d, err = manager.CreateData(data7, namespace1)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-
-	d, err = manager.CreateData(data8, namespace2)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-
-	d, err = manager.CreateData(data9, namespace3)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
+	//data := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "HenanEP-switch1",
+	//		Namespace: "HenanEP",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "HenanEP-switch1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/switch_dianwang.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "推理迁移工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//data2 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "Cosmo-switch1",
+	//		Namespace: "Cosmo",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "Cosmo-switch1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/switch_zhizao.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "推理迁移工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//data3 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "ShandongHS-switch1",
+	//		Namespace: "ShandongHS",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "ShandongHS-switch1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/switch_jiaotong.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "推理迁移工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//data4 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "HenanEP-switch2",
+	//		Namespace: "HenanEP",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "HenanEP-switch2",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/switch_grpc_dianwang.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "grpc服务迁移工作流-Pod",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//data5 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "Cosmo-switch2",
+	//		Namespace: "Cosmo",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "Cosmo-switch2",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/switch_grpc_zhizao.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "grpc服务迁移工作流-Pod",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//data6 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "ShandongHS-switch2",
+	//		Namespace: "ShandongHS",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "ShandongHS-switch2",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/switch_grpc_jiaotong.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "grpc服务迁移工作流-Pod",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//data7 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "HenanEP-train1",
+	//		Namespace: "HenanEP",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "HenanEP-train1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/infer_dianwang.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "训练工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//data8 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "Cosmo-train1",
+	//		Namespace: "Cosmo",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "Cosmo-train1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/infer_zhizao.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "训练工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//data9 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "ShandongHS-train1",
+	//		Namespace: "ShandongHS",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "ShandongHS-train1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/infer_jiaotong.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "训练工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//d, err := manager.CreateData(data, namespace1)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data2, namespace2)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data3, namespace3)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//d, err = manager.CreateData(data4, namespace1)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data5, namespace2)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data6, namespace3)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//d, err = manager.CreateData(data7, namespace1)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data8, namespace2)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data9, namespace3)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
 
 }
 
