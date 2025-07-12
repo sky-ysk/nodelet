@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: train-task
+  namespace: test
+  labels:
+    app: long-running-task
+spec:
+  containers:
+    - name: long-running-task
+      image: registry.cn-hangzhou.aliyuncs.com/sudasuzhou/longtask:model_train-v1.0
+      imagePullPolicy: Always
+  restartPolicy: Always
