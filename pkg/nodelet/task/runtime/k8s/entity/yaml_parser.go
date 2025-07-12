@@ -45,7 +45,7 @@ func parseK8sResources(yamlContent []byte, nodeName string, randomNum int32) ([]
 			return nil, fmt.Errorf("YAML解析失败: %v", err)
 		}
 
-		typedObj, err := convertToTyped(obj, gvk)
+		typedObj, err := convertToTyped(obj, gvk) //typedOb是具体类型的指针
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,13 @@ func injectName(obj runtime.Object, randomNum int32) {
 
 	// 获取原始名称（修改前）
 	originalName := metaObj.GetName()
-
+	//这里是为了适配演示，让生成的pod能够有随机值
+	if strings.Contains(originalName, "train") {
+		// 生成后缀（-加随机数）
+		suffix := fmt.Sprintf("-%d", randomNum)
+		// 修改对象名称
+		metaObj.SetName(originalName + suffix)
+	}
 	// 只处理名称以 "grpc" 开头的情况
 	if !strings.HasPrefix(originalName, "grpc") {
 		return
