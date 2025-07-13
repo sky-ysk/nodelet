@@ -414,21 +414,6 @@ func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtim
 	}
 	// logs.Infof("WasmRuntime: keyStatus: %s", keyStatus)
 
-	go func() {
-		nowtime := apis.Time{time.Now()}
-		patchGroup, _ := json.Marshal(map[string]interface{}{
-			"status": map[string]interface{}{
-				"restoreTime": nowtime,
-			},
-		})
-		restoreTimePatch, err := wr.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
-		if err != nil {
-			logs.Errorf("Patch group err101:%v", err)
-		} else {
-			logs.Infof("wasm runtime restoreTime patch: %v", restoreTimePatch.Status.RestoreTime)
-		}
-	}()
-
 	// runtimeStatus := &action.Status.RuntimeStatus[runtimeIndex]
 	// keyStatus := runtimeStatus.KeyStatus
 	if keyStatus != "" {
@@ -450,6 +435,24 @@ func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtim
 		}
 		done <- true
 	}()
+
+	// 在notifyRuntimeStartPhase回调里会对status进行patch操作,为防止覆盖对status.restoreTime的patch操作,这里不用协程
+	nowtime := apis.Time{time.Now()}
+	patchGroup, _ := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"restoreTime": nowtime,
+		},
+	})
+	restoreTimePatch, err := wr.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+	if err != nil {
+		logs.Errorf("Patch group err101:%v", err)
+	} else {
+		logs.Infof("wasm runtime restoreTime patch: %v", restoreTimePatch.Status.RestoreTime)
+	}
+	// logs.Info("------------------")
+	// t, _ := wr.clientsManager.GetGroup(group.Name, group.Namespace)
+	// logs.Infof("after GetGroup(), status.restoreTime %v", t.Status.RestoreTime)
+
 	wr.notifyRuntimeStartPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, strconv.Itoa(wr.cmd.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
 	if success, ok := <-done; ok {
 		if !success {
