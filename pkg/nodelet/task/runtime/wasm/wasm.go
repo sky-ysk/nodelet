@@ -3,6 +3,7 @@ package wasm
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -412,6 +413,21 @@ func (wr WasmRuntime) RestoreData(group *apis.Group, action *apis.Action, runtim
 		keyStatus = etcdRuntime.Status.KeyStatus
 	}
 	// logs.Infof("WasmRuntime: keyStatus: %s", keyStatus)
+
+	go func() {
+		nowtime := apis.Time{time.Now()}
+		patchGroup, _ := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"restoreTime": nowtime,
+			},
+		})
+		restoreTimePatch, err := wr.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+		if err != nil {
+			logs.Errorf("Patch group err101:%v", err)
+		} else {
+			logs.Infof("wasm runtime restoreTime patch: %v", restoreTimePatch.Status.RestoreTime)
+		}
+	}()
 
 	// runtimeStatus := &action.Status.RuntimeStatus[runtimeIndex]
 	// keyStatus := runtimeStatus.KeyStatus
