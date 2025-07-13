@@ -1,10 +1,13 @@
 package fileManager
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"hit.edu/framework/pkg/component-base/logs"
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
@@ -145,31 +148,53 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 	}
 	// TODO 更新文件下载的状态
 }
+
 func (fm *FileManager) DownloadFileDir(fileName, savePath string) (string, error) {
-	url := fm.DownloadURL
-	downloadURL := url + fileName
-	//downloadURL := "http://localhost:8888/download?filename=downloads"
+	// 1. 创建HTTP服务器
+	server := &http.Server{Addr: ":8080"}
+	done := make(chan bool)
 
-	// 发送 GET 请求
-	resp, err := http.Get(downloadURL)
-	if err != nil {
-		fmt.Println("Request failed:", err)
-		return "Download failed", err
-	}
-	defer resp.Body.Close() // 确保响应体被关闭
-
-	// filePath := "./test"
+	// 2. 设置处理函数（使用闭包捕获savePath）
 	http.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
 		utils.ReceiveDir(w, r, savePath)
+
+		// 检查传输完成信号
+		if fileType := r.Header.Get("FileType"); fileType == "completion" {
+			log.Println("文件传输完成")
+			close(done)
+		}
 	})
 
-	port := ":8080" // 固定接受的端口为8080
-	log.Printf("Server is running on port %s", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-		return "Download failed", err
+	// 3. 在goroutine中启动服务器
+	go func() {
+		log.Println("启动文件接收服务...")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("服务器启动失败: %v", err)
+		}
+	}()
+
+	// 4. 短时等待确保服务器已启动
+	time.Sleep(100 * time.Millisecond)
+
+	// 5. 发送下载请求
+	downloadURL := fm.DownloadURL + fileName
+	resp, err := http.Get(downloadURL)
+	if err != nil {
+		server.Close()
+		return "", fmt.Errorf("下载请求失败: %v", err)
 	}
-	return "Download  fileDir successful!", nil
+	resp.Body.Close()
+
+	// 6. 等待传输完成或超时
+	select {
+	case <-done:
+		log.Println("准备关闭服务器...")
+		server.Shutdown(context.Background())
+		return "文件接收成功并保存至 " + savePath, nil
+	case <-time.After(5 * time.Minute):
+		server.Shutdown(context.Background())
+		return "", errors.New("文件接收超时")
+	}
 }
 
 // func (fm *FileManager) DownloadDir(dirPath, savePath string) (string, error) {
