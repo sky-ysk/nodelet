@@ -1,13 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"log"
-	"net/http"
-
-	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
-)
-
 func main() {
 	// url := "http://localhost:8888/download?filename=test.txt"
 	// savePath := "/home/public/goprojects/Combine-ysk-0102/tmp/data/downloads"

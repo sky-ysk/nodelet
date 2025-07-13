@@ -90,7 +90,9 @@ func NewConfig(configPath string) *Config {
 	clusterCategory := GetClusterCategory(config)
 	address := GetAPIServerHost(config)
 	isMaster := GetIsMaster(config)
+	fileRegisrty := GetFileRegistry(config)
 	logs.Infof("address:%v==============", address)
+	logs.Infof("fileRegisrty:%v==============", fileRegisrty)
 	taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
 	if err != nil {
 		logs.Errorf("targetMap build failed")
@@ -100,7 +102,7 @@ func NewConfig(configPath string) *Config {
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
 		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID, isMaster),
-		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, dir, port),
+		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, dir, port, fileRegisrty),
 		apiserverAddr: address,
 	}
 }
@@ -147,6 +149,12 @@ func GetAPIServerHost(config *FrameworkConfig) string {
 	}
 	return "http://localhost:10000"
 }
+func GetFileRegistry(config *FrameworkConfig) string {
+	if config.FileRegistryAddr != "" {
+		return config.FileRegistryAddr
+	}
+	return "http://localhost:8888"
+}
 
 //func GetNameSpace(config *FrameworkConfig) string {
 //	//if addr := os.Getenv("API_SERVER_HOST"); addr != "" {
@@ -172,13 +180,14 @@ func GetWasmConfig(config *FrameworkConfig) (string, string) {
 
 // 定义完整的配置结构体
 type FrameworkConfig struct {
-	EtcdPort        int    `yaml:"EtcdPort"`
-	ApiServerAddr   string `yaml:"ApiServerAddr"`
-	NodeName        string `yaml:"NodeName"`
-	ClusterCategory string `yaml:"ClusterCategory"`
-	LocalClusterID  string `yaml:"LocalClusterID"`
-	IsMasterNode    bool   `yaml:"IsMasterNode"`
-	OtherCluster    map[string]struct {
+	EtcdPort         int    `yaml:"EtcdPort"`
+	ApiServerAddr    string `yaml:"ApiServerAddr"`
+	FileRegistryAddr string `yaml:"FileRegistryAddr"`
+	NodeName         string `yaml:"NodeName"`
+	ClusterCategory  string `yaml:"ClusterCategory"`
+	LocalClusterID   string `yaml:"LocalClusterID"`
+	IsMasterNode     bool   `yaml:"IsMasterNode"`
+	OtherCluster     map[string]struct {
 		ClusterID string `yaml:"ClusterID"`
 		ClusterIP string `yaml:"ClusterIP"`
 	} `yaml:"OtherCluster"`

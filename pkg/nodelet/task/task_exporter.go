@@ -109,7 +109,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet, ctx context.Cont
 	//condition engine配置
 	conditionEngine := utils.NewConditionEngine() // 初始化时传入 clientset
 	// fileManager配置
-	fileManager := fileManager.NewFileManager()
+	fileManager := fileManager.NewFileManager(cfg.FileRegistryAddr)
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers

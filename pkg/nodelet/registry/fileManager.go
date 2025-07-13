@@ -2,6 +2,8 @@ package fileManager
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 
 	"hit.edu/framework/pkg/component-base/logs"
@@ -51,7 +53,7 @@ type FileManager struct {
 // 	DeleteDir(dirPath string) (string, error)
 // }
 
-func NewFileManager() *FileManager {
+func NewFileManager(fileRegistry string) *FileManager {
 	logs.Infof("DataSavedDir: %s", DataSavedDir)
 	logs.Infof("UploadURL: %s", UploadURL)
 	logs.Infof("ForwardURL: %s", ForwardURL)
@@ -61,9 +63,9 @@ func NewFileManager() *FileManager {
 	// 初始化 FileManager
 	FileManager := &FileManager{
 		DataSavedDir:   DataSavedDir,
-		UploadURL:      UploadURL,
-		ForwardURL:     ForwardURL,
-		DownloadURL:    DownloadURL,
+		UploadURL:      fileRegistry + UploadURL,
+		ForwardURL:     fileRegistry + ForwardURL,
+		DownloadURL:    fileRegistry + DownloadURL,
 		DownloadStatus: downloadStatus,
 		UploadStatus:   uploadStatus,
 	}
@@ -95,7 +97,7 @@ func (fm *FileManager) Init() error {
 	}
 
 	//TODO:后续可能会需要在这里进行group目录进行删除操作
-	
+
 	return nil
 }
 
@@ -142,6 +144,32 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 		return "Download successful!", nil
 	}
 	// TODO 更新文件下载的状态
+}
+func (fm *FileManager) DownloadFileDir(fileName, savePath string) (string, error) {
+	url := fm.DownloadURL
+	downloadURL := url + fileName
+	//downloadURL := "http://localhost:8888/download?filename=downloads"
+
+	// 发送 GET 请求
+	resp, err := http.Get(downloadURL)
+	if err != nil {
+		fmt.Println("Request failed:", err)
+		return "Download failed", err
+	}
+	defer resp.Body.Close() // 确保响应体被关闭
+
+	// filePath := "./test"
+	http.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
+		utils.ReceiveDir(w, r, savePath)
+	})
+
+	port := ":8080" // 固定接受的端口为8080
+	log.Printf("Server is running on port %s", port)
+	if err := http.ListenAndServe(port, nil); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+		return "Download failed", err
+	}
+	return "Download  fileDir successful!", nil
 }
 
 // func (fm *FileManager) DownloadDir(dirPath, savePath string) (string, error) {

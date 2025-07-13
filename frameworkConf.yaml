@@ -1,5 +1,6 @@
 EtcdPort : 2376
 ApiServerAddr : "http://172.150.0.24:10000"
+FileRegistryAddr : "http://172.150.0.24:8888"
 NodeName : "cloud"
 ClusterCategory : "Cloud"
 LocalClusterID : "Cloud1"

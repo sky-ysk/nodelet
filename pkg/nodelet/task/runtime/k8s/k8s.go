@@ -166,8 +166,8 @@ func (k *K8sRuntime) monitorPodTimestamp(group *apis.Group, podName string, name
 
 		time.Sleep(time.Duration(retryInterval) * time.Second)
 		cnt += 1
-		if cnt >= 60 {
-			logs.Errorf("monitor times >= 60, can not find the pod%v", podName)
+		if cnt >= 60*60*10 {
+			logs.Errorf("monitor times >= 10h, can not find the pod%v", podName)
 			return
 		}
 		if !podExists(podName, namespace) {
