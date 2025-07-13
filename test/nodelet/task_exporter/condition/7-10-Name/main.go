@@ -100,13 +100,13 @@ func main() {
 				Upperbound: "4",
 			},
 		},
-		Replicas:   group1_1Replicas,
-		Name:       group1_1Name,
-		Desc: &apis.Description{
-			Label: map[string]string{
-				"scheduler":"EdgeNode1",
-			},
-		},
+		Replicas: group1_1Replicas,
+		Name:     group1_1Name,
+		// Desc: &apis.Description{
+		// 	Label: map[string]string{
+		// 		"scheduler": "EdgeNode1",
+		// 	},
+		// },
 		Parents:    make([]string, 0),
 		Conditions: &group1_1Condition,
 		Actions: []apis.ActionSpec{
@@ -114,16 +114,13 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:    runtime1_1_1_1Name,
-						Type:    apis.ByDocker,
-						Command: []string{"docker"},
-						// sudo docker run -itd -v /dev/shm:/dev/shm --ipc=host -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp --volume $HOME/.Xauthority:/root/.Xauthority --volume=/tmp/.X11-unix:/tmp/.X11-unix --volume=/dev/dri:/dev/dri --device=/dev/snd --device=/dev/dri --env QT_X11_NO_MITSHM=1 --env=DISPLAY --env="ROS_DOMAIN_ID=41" --network=host --entrypoint=/mechmind_yolo.sh --name=camera_container 74cea28bb666
-						// Args:                     []string{"run", "-itd", "-v", "/dev/shm:/dev/shm", "--ipc=host", "-e", "RMW_IMPLEMENTATION=rmw_fastrtps_cpp", "--volume", "$HOME/.Xauthority:/root/.Xauthority", "--volume", "/tmp/.X11-unix:/tmp/.X11-unix", "--volume", "/dev/dri:/dev/dri", "--device=/dev/snd", "--device=/dev/dri", "--env", "QT_X11_NO_MITSHM=1", "--env", "DISPLAY", "--env", "ROS_DOMAIN_ID=41", "--network=host", "--entrypoint=/mechmind_yolo.sh", "--name=camera_container", "74cea28bb666"}, // 10s
-						// docker run -it -v $HOME:/home -v $HOME/tmp:/root/tmp python:3.10-slim
-						Args: []string{"run", "-itd", "-v", "$HOME:/home", "-v", "$HOME/tmp:/root/tmp", "--name=sky", "python:3.10-slim"},
-						Inputs:                   []apis.Value{},                                                                                                                                                                                                                                                                                                                                                                                                                                                          //20s
-						Parents:                  make([]string, 0),                                                                                                                                                                                                                                                                                                                                                                                                                                                       // 加入Parents
-						Data:                     []apis.DataSpec{},                                                                                                                                                                                                                                                                                                                                                                                                                                                       // 依赖文件
+						Name:                     runtime1_1_1_1Name,
+						Type:                     apis.ByCommand,
+						Command:                  []string{"python"},
+						Args:                     []string{"/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/task_exporter/condition/7-10-Name/test.py"},
+						Inputs:                   []apis.Value{apis.Value{ValueType: apis.StringType, From: "Runtime{R1}.Name"}},
+						Parents:                  make([]string, 0), // 加入Parents
+						Data:                     []apis.DataSpec{}, // 依赖文件
 						Image:                    "",
 						Conditions:               nil,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},

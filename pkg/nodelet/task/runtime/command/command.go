@@ -14,6 +14,7 @@ import (
 	processV0 "github.com/shirou/gopsutil/v3/process"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/pool"
+	"hit.edu/framework/pkg/utils/value"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
@@ -33,11 +34,13 @@ type CommandRuntime struct {
 	//client      *grpc_client.RuntimeClient
 	stopSignals    map[string]chan struct{} // 用于标记进程是否被外部停止
 	clientsManager *manager.Manager
-	mu             sync.Mutex // 保护clients和stopSignals
+	mu             sync.Mutex    // 保护clients和stopSignals
+	engine         *value.Engine //解析Value类型变量
 }
 
 func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool) *CommandRuntime {
 	pm := process.NewProcessManager()
+	engine := value.NewEngine(clientsManager.ClientSet)
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
@@ -45,6 +48,7 @@ func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.Event
 		stopSignals:    make(map[string]chan struct{}),
 		connectionPool: pool,
 		clientsManager: clientsManager,
+		engine:         engine,
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -109,10 +113,20 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 
 	// TODO: 不同系统平台下的CMD，根据运行平台选择对应路径下的解释器等
 	//判断程序所在Linux还是Windows环境，决定python等解释器路径
+
 	// 创建命令,填入input的值
 	input := runtime.Spec.Inputs
 	for i := range input {
-		args = append(args, input[i].Value)
+		// 使用engine解析input,传入的是runtime的值而不是指针引用
+		newInputValue, err := cr.engine.GetValue(&input[i], *runtime)
+		// 测试logs
+		logs.Infof("engine get value success. Value:%v; Value.Value:%v", newInputValue, newInputValue.Value)
+
+		if err != nil {
+			logs.Errorf("Command.go engine get value err")
+			return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
+		}
+		args = append(args, newInputValue.Value)
 	}
 
 	envVars := runtime.Spec.EnvVar

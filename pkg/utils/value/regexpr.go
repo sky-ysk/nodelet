@@ -12,7 +12,7 @@ const (
 	TaskExpr     = `^Task{([^}]+)}\.(Status){([^}]+)}$`
 	GroupExpr    = `^Group{([^}]+)}\.(Status){([^}]+)}$`
 	ActionExpr   = `^Action{([^}]+)}\.(Status|Outputs){([^}]+)}$`
-	RuntimeExpr  = `^Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
+	RuntimeExpr  = `^Runtime{([^}]+)}\.(Status|Outputs|Name){([^}]+)}$`
 
 	// 用于父子节点之间的相互引用
 	// 目前只支持父引用子
@@ -31,6 +31,7 @@ const (
 
 	// 设备寻址
 	DeviceExpr = `^Device{([^}]+)}\.Ability{([^}]+)}\.Service{([^}]+)}`
+
 )
 
 var SupportedExprs = map[string]string{
