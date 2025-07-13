@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hit.edu/framework/pkg/component-base/logs"
 	"reflect"
+
+	"hit.edu/framework/pkg/component-base/logs"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
@@ -708,6 +709,10 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 		}
 		value.Value = v.Value
 		value.ValueType = v.ValueType
+		return value, nil
+	case "Name":
+		value.Value = string(r.Name)
+		value.ValueType = apis.StringType
 		return value, nil
 	}
 	return nil, errors.New(string("Unsupported Target " + target))

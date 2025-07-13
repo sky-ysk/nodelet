@@ -134,8 +134,6 @@ func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o
 
 	//debug日志
 	// 解析parent的Phase的值
-	// TODO FIXME，调用engine就会报引用空指针的错，目前不清楚是为什么====5-15找到原因：From和Value不完全符合正则表达式定义的规则
-	// panic: runtime error: invalid memory address or nil pointer dereference
 	value, err := ce.engine.GetValue(&(formula.LeftValue), val)
 
 	if err != nil {
