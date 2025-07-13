@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"hit.edu/framework/pkg/component-base/logs"
 
@@ -702,11 +703,26 @@ func (e *Engine) ExtractRuntimeValue(runtime string, namespace string, target st
 		return value, nil
 	case "Outputs":
 		// 检查
-		v, ok := r.Status.Outputs[subTarget]
-		fmt.Printf("output:%v\n", v)
-		if !ok {
-			return nil, errors.New(string("SubTarget is not existed" + subTarget))
+		// v, ok := r.Status.Outputs[subTarget]
+		// if !ok {
+		// 	return nil, errors.New(string("SubTarget is not existed" + subTarget))
+		// }
+		// 下面是测试使用的修改，获取r.Spec的列表Outputs，而不是r.Status里面的map Outputs
+		// 将subTarget转换为数字
+		index, err := strconv.Atoi(subTarget)
+		if err != nil {
+			return nil, errors.New("SubTarget is not a valid number: " + subTarget)
 		}
+
+		// 检查索引是否有效
+		if index < 0 || index >= len(r.Spec.Outputs) {
+			return nil, errors.New("SubTarget index out of range: " + subTarget)
+		}
+
+		// 获取对应的输出
+		v := r.Spec.Outputs[index]
+		fmt.Printf("output:%v\n", v)
+
 		value.Value = v.Value
 		value.ValueType = v.ValueType
 		return value, nil
