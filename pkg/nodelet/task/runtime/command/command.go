@@ -120,7 +120,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 		// 使用engine解析input,传入的是runtime的值而不是指针引用
 		newInputValue, err := cr.engine.GetValue(&input[i], *runtime)
 		// 测试logs
-		logs.Infof("engine get value success. Value:%v; Value.Value:%v", newInputValue, newInputValue.Value)
+		// logs.Infof("engine get value success. Value:%v; Value.Value:%v", newInputValue, newInputValue.Value)
 
 		if err != nil {
 			logs.Errorf("Command.go engine get value err")
@@ -128,11 +128,11 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 		}
 		args = append(args, newInputValue.Value)
 	}
-
+	logs.Infof("final args:%v", args)
 	envVars := runtime.Spec.EnvVar
-	logs.Infof("command.go: EnvVar:%v", envVars)
-	// 处理cmd
-	logs.Infof("command.go: cmd:%v", cmd)
+	// logs.Infof("command.go: EnvVar:%v", envVars)
+	// // 处理cmd
+	// logs.Infof("command.go: cmd:%v", cmd)
 	if cmd == "python" {
 		for _, value := range envVars {
 			if value.Name == "" {
@@ -142,7 +142,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 			cmd = value.Value
 		}
 	}
-	logs.Infof("after cmd:%v", cmd)
+	// logs.Infof("after cmd:%v", cmd)
 
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
@@ -256,7 +256,7 @@ func (cr *CommandRuntime) monitorProcessResource(pid int, runtime *apis.Runtime,
 	for range ticker.C {
 		p, err := processV0.NewProcess(int32(pid))
 		if err != nil {
-			logs.Errorf("Failed to get process %d: %v", pid, err)
+			logs.Warnf("Failed to get process %d: %v", pid, err)
 			return
 		}
 

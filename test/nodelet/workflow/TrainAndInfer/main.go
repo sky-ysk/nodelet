@@ -79,7 +79,8 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt", // 好像这里会卡主 原先；"requirements.txt"
+			From:      "requirements.txt",
+			// From:      "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt", // 好像这里会卡主 原先；"requirements.txt"
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -124,8 +125,8 @@ func main() {
 	UploadFile(filePath)
 	filePath = "/home/public/goprojects/Registry/Registry/cmd/registry/tmp/data/mnist_cnn.pt_v1.0.0"
 	DeleteFile(filePath) // 删除上一轮跑的上传的模型
-	//filePath = "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
-	//UploadFile(filePath)
+	filePath = "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
+	UploadFile(filePath)
 	//filePath = "/home/public/workspace/trainAndInfer/dataset"
 	//UploadFiles(filePath)
 

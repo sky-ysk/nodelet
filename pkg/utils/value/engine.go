@@ -151,8 +151,12 @@ func (e *Engine) ExtractDeviceImage(from string) (string, string, string, error)
 func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	kind := reflect.TypeOf(o).Name()
 	logs.Infof("kind %s, value %v", kind, value)
+	// 下面这一个地方经常报错，原因是Kind匹配问题，如果o是runtime类型的，那么kind就是runtime，无法越级访问上层的正则表达式
+	// 导致Action{}.Name{}这种匹配不到====目前的解决方案，调整runtime的规则范围使其能够概括所有需要的规则
+	// 依复杂情况可以改成单独设计正则规则和解析规则，与device类似：新增input类型的datatype，然后
 	typeName, parts, err := e.comparor.Match(kind, value.From)
 	if err != nil {
+		logs.Errorf("Engine: Extract Local Value Err!")
 		return nil, errors.New("Unsupported kind " + kind)
 	}
 	var name string
@@ -337,7 +341,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 	switch name {
 	case "GroupExpr":
 		// Group{}位置
-		//fmt.Println("GroupExpr")
+		fmt.Println("GroupExpr")
 		target := parts[1]
 		from := parts[2]
 		fromKey := parts[3]
@@ -612,6 +616,23 @@ func (e *Engine) GetNameFromRuntime(name string, parts []string, runtime *apis.R
 				return r.Name, string(RuntimeType), from, fromKey, nil
 			}
 		}
+	case "GroupExpr":
+		// Group{G1}.Name{xx}
+		// targetGroup := parts[1]
+		from := parts[2]
+		fromKey := parts[3]
+
+		// 寻址的是当前Runtime的父亲节点
+		parentAction, err := e.manager.GetAction(runtime.Status.Belong.Name, runtime.Status.Belong.Namespace)
+		if err != nil {
+			return "", string(UnknownType), "", "", errors.New("Failed to get parent action: " + err.Error())
+		}
+		parentGroup, err := e.manager.GetGroup(parentAction.Status.Belong.Name, parentAction.Status.Belong.Namespace)
+		if err != nil {
+			return "", string(UnknownType), "", "", errors.New("Failed to get parent group: " + err.Error())
+		}
+		return parentGroup.Name, string(GroupType), from, fromKey, nil
+		// TODO:如果需要，还可以新增上一级task，然后去遍历找符合groupName的group
 	}
 	return "", string(UnknownType), "", "", errors.New(string("Unsupported runtime " + name))
 }
@@ -665,6 +686,10 @@ func (e *Engine) ExtractGroupValue(group string, namespace string, target string
 		// TODO: 增加更多类型
 		value.Value = string(g.Status.Phase)
 		return value, nil
+	case "Name":
+		value.Value = string(g.Name)
+		value.ValueType = apis.StringType
+		return value, nil
 	}
 	return nil, errors.New(string("Unsupported Target " + target))
 }
@@ -681,6 +706,10 @@ func (e *Engine) ExtractActionValue(action string, namespace string, target stri
 		// 目前只支持Status.Phase
 		// TODO: 增加更多类型
 		value.Value = string(a.Status.Phase)
+		return value, nil
+	case "Name":
+		value.Value = string(a.Name)
+		value.ValueType = apis.StringType
 		return value, nil
 	}
 	return nil, errors.New(string("Unsupported Target " + target))

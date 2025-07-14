@@ -10,17 +10,20 @@ const (
 	// TODO: 支持更多变量类型
 	WorkflowExpr = `^Workflow{([^}]+)}\.(Status){([^}]+)}$`
 	TaskExpr     = `^Task{([^}]+)}\.(Status){([^}]+)}$`
-	GroupExpr    = `^Group{([^}]+)}\.(Status){([^}]+)}$`
-	ActionExpr   = `^Action{([^}]+)}\.(Status|Outputs){([^}]+)}$`
-	RuntimeExpr  = `^Runtime{([^}]+)}\.(Status|Outputs|Name){([^}]+)}$`
+	// GroupExpr    = `^Group{([^}]+)}\.(Status){([^}]+)}$`
+	GroupExpr = `^Group{([^}]+)}\.(Status|Name){([^}]*)}$`
+	// ActionExpr   = `^Action{([^}]+)}\.(Status|Outputs){([^}]+)}$`
+	ActionExpr = `^Action{([^}]+)}\.(Status|Outputs|Name){([^}]*)}$`
+	// RuntimeExpr  = `^Runtime{([^}]+)}\.(Status|Outputs|Name){([^}]+)}$`
+	RuntimeExpr = `^Runtime{([^}]+)}\.(Status|Outputs|Name){([^}]*)}$`
 
 	// 用于父子节点之间的相互引用
 	// 目前只支持父引用子
 	WorkflowTaskExpr       = `^Workflow{([^}]+)}\.Task{([^}]+)}\.(Status){([^}]+)}$`
 	TaskGroupExpr          = `^Task{([^}]+)}\.Group{([^}]+)}\.(Status){([^}]+)}$`
 	GroupActionExpr        = `^Group{([^}]+)}\.Action{([^}]+)}\.(Status){([^}]+)}$`
-	ActionRuntimeExpr      = `^Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
-	GroupActionRuntimeExpr = `^Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
+	ActionRuntimeExpr      = `^Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs|Name){([^}]*)}$`
+	GroupActionRuntimeExpr = `^Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs|Name){([^}]*)}$`
 
 	// 绝对位置寻址
 	// 只支持到Group层级
@@ -31,7 +34,6 @@ const (
 
 	// 设备寻址
 	DeviceExpr = `^Device{([^}]+)}\.Ability{([^}]+)}\.Service{([^}]+)}`
-
 )
 
 var SupportedExprs = map[string]string{
@@ -93,6 +95,8 @@ var RuntimeSupportedExprs = []string{
 	"WorkflowAbsoluteExpr",
 	"TaskGroupExpr",
 	"GroupAbsoluteExpr",
+	"GroupExpr",
+	"ActionExpr",
 }
 
 var DeviceSupportedExprs = []string{
@@ -164,7 +168,7 @@ func NewRegExprComparor() *RegExprComparor {
 	}
 	regExprComparor.exprs[kind] = deviceRegExpr
 
-	// TODO: Device
+	kind = "Value"
 	return regExprComparor
 }
 
