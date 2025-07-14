@@ -368,9 +368,8 @@ func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Act
 func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
 	// client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
-	var port string
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	port, _ := cr.getPortForRuntime(runtime)
+	if port != "" {
 		client := cr.getClient(port)
 		if client == nil {
 			logs.Info("client is nil")
@@ -413,7 +412,6 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//	time.Sleep(100 * time.Millisecond)
 	//}
 	// rpc调用restore()
-	var port string
 	go func() {
 		nowtime := apis.Time{time.Now()}
 		patchGroup, _ := json.Marshal(map[string]interface{}{
@@ -426,8 +424,8 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 			logs.Errorf("Patch group err101:%v", err)
 		}
 	}()
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	port, _ := cr.getPortForRuntime(runtime)
+	if port != "" {
 		client := cr.getClient(port)
 		if client == nil {
 			logs.Info("client is nil")
@@ -513,10 +511,9 @@ func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, ru
 
 	//---------停止
 	// rpc调用restore()
-	var port string
 	var err error
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	port, _ := cr.getPortForRuntime(runtime)
+	if port != "" {
 		client := cr.getClient(port)
 		_, err = client.RunAppStop()
 		if err != nil {
