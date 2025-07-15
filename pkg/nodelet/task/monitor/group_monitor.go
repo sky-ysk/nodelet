@@ -487,12 +487,21 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 						//将任务迁移到Error队列当中
 						ok := gmo.groupQueues.DeleteFromRunningAndAddToError(group.Name)
 						if !ok {
-							logs.Errorf("Delete group from running queue and add to running queue failed")
+							logs.Errorf("Delete group from running queue and add to error queue failed")
 						}
 						logs.Info("put group:%v into error queue", group.Name)
 						break // 这里直接跳出for循环即可，因为该group已经是Failed了，不用看了
 					}
-
+					if actionStatus.Phase == apis.Killed {
+						AllactionisSuccess = false
+						//将任务迁移到Completed队列当中
+						ok := gmo.groupQueues.DeleteFromRunningAndAddToCompleted(group.Name)
+						if !ok {
+							logs.Errorf("Delete group from running queue and add to completed queue failed")
+						}
+						logs.Info("put group:%v into completed queue", group.Name)
+						break // 这里直接跳出for循环即可，因为该group已经是killed了，不用看了
+					}
 					if actionStatus.Phase == apis.DeployCheck { //
 						AllactionisSuccess = false
 						if actionStatus.Waiting == true { //说明是第二次遍历到了这个Action，第一次遍历到该Action的时候，其依赖没有满足
@@ -880,7 +889,7 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 				if err != nil {
 					logs.Errorf("Get task err:%v", err)
 				}
-				if task.Status.Phase == apis.Successed || task.Status.Phase == apis.Failed || task.Status.Phase == apis.Discard {
+				if task.Status.Phase == apis.Successed || task.Status.Phase == apis.Failed || task.Status.Phase == apis.Discard || task.Status.Phase == apis.Killed {
 					logs.Infof("Delete group:%v", gro.Spec.Name)
 					gmo.groupManager.DeleteGroup(gro)
 					gmo.groupQueues.DeleteFromCompleted(gro.Name)
@@ -906,7 +915,7 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 						//	otherGroupCompleted = false
 						//	logs.Infof("groupName:%v has't done, otherGroupCompleted:%v", brotherGroup.Name, otherGroupCompleted)
 						//}
-						if brotherGroup.Status.Phase != apis.Successed && brotherGroup.Status.Phase != apis.Failed && brotherGroup.Status.Phase != apis.Discard { // 说明其他Group还未执行或者还没迁移成功
+						if brotherGroup.Status.Phase != apis.Successed && brotherGroup.Status.Phase != apis.Failed && brotherGroup.Status.Phase != apis.Discard && brotherGroup.Status.Phase != apis.Killed { // 说明其他Group还未执行或者还没迁移成功
 							otherGroupCompleted = false
 							break
 							logs.Infof("groupName:%v has't done, otherGroupCompleted:%v", brotherGroup.Name, otherGroupCompleted)
