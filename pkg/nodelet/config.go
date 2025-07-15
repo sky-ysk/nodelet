@@ -153,7 +153,7 @@ func GetFileRegistry(config *FrameworkConfig) string {
 	if config.FileRegistryAddr != "" {
 		return config.FileRegistryAddr
 	}
-	return "http://localhost:8888"
+	return "http://localhost:8919"
 }
 
 //func GetNameSpace(config *FrameworkConfig) string {
