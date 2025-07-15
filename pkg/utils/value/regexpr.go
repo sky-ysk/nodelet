@@ -30,7 +30,7 @@ const (
 	// 系统中最高层级可能为Workflow、Task或Group
 	WorkflowAbsoluteExpr = `^Workflow{([^}]+)}\.Task{([^}]+)}\.Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
 	TaskAbsoluteExpr     = `^Task{([^}]+)}\.Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
-	// GroupAbsoluteExpr    = `^Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]+)}$`
+	GroupAbsoluteExpr    = `^Group{([^}]+)}\.Action{([^}]+)}\.Runtime{([^}]+)}\.(Status|Outputs){([^}]*)}$`
 
 	// 设备寻址
 	DeviceExpr = `^Device{([^}]+)}\.Ability{([^}]+)}\.Service{([^}]+)}`
@@ -49,7 +49,7 @@ var SupportedExprs = map[string]string{
 	"GroupActionRuntimeExpr": GroupActionRuntimeExpr,
 	"WorkflowAbsoluteExpr":   WorkflowAbsoluteExpr,
 	"TaskAbsoluteExpr":       TaskAbsoluteExpr,
-	// "GroupAbsoluteExpr":      GroupAbsoluteExpr,
+	"GroupAbsoluteExpr":      GroupAbsoluteExpr,
 	"DeviceExpr": DeviceExpr,
 }
 

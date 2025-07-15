@@ -150,7 +150,6 @@ func (mc *MigrationController) eventWatcher() {
 					}
 				}
 				logs.Info("++++++++++++++++++++++Events--------事件为迁移事件")
-				// mc.handleEventEvent(event)
 				// // 所有条件满足时入队
 				logs.Infof("switch controller: event informer AddFunc(): %v", event.Name)
 				// key, _ := cache.MetaNamespaceKeyFunc(obj)
@@ -173,7 +172,7 @@ func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 
 	go func() {
 		defer wg.Done()
-		mc.eventWatcher()
+		mc.eventWatcher() //将事件加入队列
 		//mc.eventInformer.Run(stopCh)
 	}()
 
@@ -188,7 +187,7 @@ func (mc *MigrationController) Run(workers int, stopCh <-chan struct{}) {
 	for i := 0; i < workers; i++ {
 		go func() {
 			defer wg.Done()
-			wait.Until(mc.runWorker, time.Second, stopCh)
+			wait.Until(mc.runWorker, time.Second, stopCh) //消费队列
 		}()
 	}
 	<-stopCh

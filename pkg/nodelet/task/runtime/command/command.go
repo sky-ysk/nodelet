@@ -2,7 +2,10 @@ package command
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -36,6 +39,8 @@ type CommandRuntime struct {
 	clientsManager *manager.Manager
 	mu             sync.Mutex    // 保护clients和stopSignals
 	engine         *value.Engine //解析Value类型变量
+	// 存储各任务的端口(似乎没必要,直接get etcd上的port字段,getClient即可)
+	clientPorts map[string]string
 }
 
 func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool) *CommandRuntime {
@@ -49,6 +54,7 @@ func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.Event
 		connectionPool: pool,
 		clientsManager: clientsManager,
 		engine:         engine,
+		clientPorts:    make(map[string]string),
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -147,6 +153,10 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
 	env := os.Environ() //获取当前环境的环境变量
+	if port, ok := cr.clientPorts[runtime.Name]; ok {
+		port_env := fmt.Sprintf("PORT_FOR_RPC=%s", port)
+		env = append(env, port_env)
+	}
 	CMD.Env = env
 
 	//defer outfile.Close()
@@ -358,9 +368,8 @@ func (cr *CommandRuntime) CheckRuntimeStatus(group *apis.Group, action *apis.Act
 func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) string {
 	// 保存任务状态，调用grpc接口获取任务状态，返回任务状态值即可
 	// client, success := cr.clientsManager.GetRuntimeConnection(action.Status.RuntimeStatus[runtimeIndex].RuntimeID)
-	var port string
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	port, _ := cr.getPortForRuntime(runtime)
+	if port != "" {
 		client := cr.getClient(port)
 		if client == nil {
 			logs.Info("client is nil")
@@ -403,7 +412,6 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//	time.Sleep(100 * time.Millisecond)
 	//}
 	// rpc调用restore()
-	var port string
 	go func() {
 		nowtime := apis.Time{time.Now()}
 		patchGroup, _ := json.Marshal(map[string]interface{}{
@@ -416,8 +424,8 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 			logs.Errorf("Patch group err101:%v", err)
 		}
 	}()
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	port, _ := cr.getPortForRuntime(runtime)
+	if port != "" {
 		client := cr.getClient(port)
 		if client == nil {
 			logs.Info("client is nil")
@@ -437,16 +445,11 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 
 // 细粒度控制（grpc）：启动任务状态
 func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	port, err := cr.getPortForRuntime(runtime)
 	// 运行任务进程
 	go cr.Run(group, action, runtime, actionSpecName, runtimeSpecName) // 这里需要加协程进行启动
-	// 初始化rpc客户端
-	//if cr.client == nil {
-	//	cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, runtime.Name)
-	//}
-	var port string
-	var err error
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	// var port string
+	if port != "" {
 		client := cr.getClient(port)
 		if client == nil {
 			logs.Info("client is nil")
@@ -455,15 +458,17 @@ func (cr *CommandRuntime) StartRuntime(group *apis.Group, action *apis.Action, r
 		if err != nil {
 			logs.Errorf("任务启动失败: %e", err)
 		}
-	} else {
-		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
-		err = fmt.Errorf("EnableFineGrainedControlPort not provide")
 	}
+	//  else {
+	// 	logs.Errorf("EnableFineGrainedControlPort not provide, failed")
+	// 	err = fmt.Errorf("EnableFineGrainedControlPort not provide")
+	// }
 	return err
 }
 
 // 细粒度控制（grpc）：初始化任务
 func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
+	port, err := cr.getPortForRuntime(runtime)
 	// 1、运行任务进程
 	cmd := runtime.Spec.Command
 	// Command的执行参数, 所有的参数都需要作为执行参数传入系统
@@ -483,20 +488,19 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	//if cr.client == nil {
 	//	cr.client = grpc_client.NewRuntimeClient(runtime.EnableFineGrainedControlPort, "")
 	//}
-	var port string
-	var err error
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	// var err error
+	if port != "" {
 		client := cr.getClient(port)
 		// 3、rpc调用init()
 		_, err = client.RunAppInit()
 		if err != nil {
 			logs.Errorf("任务init失败: %e", err)
 		}
-	} else {
-		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
-		err = fmt.Errorf("EnableFineGrainedControlPort not provide")
 	}
+	// else {
+	// 	logs.Errorf("EnableFineGrainedControlPort not provide, failed")
+	// 	err = fmt.Errorf("EnableFineGrainedControlPort not provide")
+	// }
 	//logs.Infof("runtime has Init ====")
 	return err
 }
@@ -507,10 +511,9 @@ func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, ru
 
 	//---------停止
 	// rpc调用restore()
-	var port string
 	var err error
-	if runtime.Spec.EnableFineGrainedControlPort != nil {
-		port = *runtime.Spec.EnableFineGrainedControlPort
+	port, _ := cr.getPortForRuntime(runtime)
+	if port != "" {
 		client := cr.getClient(port)
 		_, err = client.RunAppStop()
 		if err != nil {
@@ -528,4 +531,70 @@ func (cr *CommandRuntime) StopRuntime(group *apis.Group, action *apis.Action, ru
 // 获取或创建指定端口的Client
 func (cr *CommandRuntime) getClient(port string) *grpc_client.RuntimeClient {
 	return grpc_client.NewRuntimeClient(port, cr.connectionPool)
+}
+
+func (cr *CommandRuntime) getPortForRuntime(runtime *apis.Runtime) (string, error) {
+	// 若本地已确定该任务的port,则直接返回,否则找寻一个随机可用端口
+	if _, ok := cr.clientPorts[runtime.Name]; !ok {
+		var port string
+		// 首先查询是否已设置了runtime.Status.PortForRpc
+		runtime, err := cr.clientsManager.GetRuntime(runtime.Name, runtime.Namespace)
+		if err != nil {
+			return "", fmt.Errorf("getPortForRuntime():dont get runtime %v", runtime.Name)
+		}
+		if runtime.Status.PortForRpc != "" {
+			port = runtime.Status.PortForRpc
+		} else { //随机一个可用端口
+			port, err = getAvailablePortWithRetry()
+			if err != nil {
+				return "", err
+			}
+			// 协程,更新etcd上的port字段
+			go func() {
+				patchRuntime, err := json.Marshal(map[string]interface{}{
+					"status": map[string]interface{}{
+						"port_for_rpc": port,
+					},
+				})
+				_, err = cr.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+				if err != nil {
+					logs.Errorf("patch runtimeStatus error")
+				}
+			}()
+		}
+		// 更新本地的port map
+		cr.clientPorts[runtime.Name] = port
+	}
+	logs.Infof("getPortForRuntime: set gRPC port %v for %v", cr.clientPorts[runtime.Name], runtime.Name)
+	return cr.clientPorts[runtime.Name], nil
+}
+
+const (
+	maxRetries  = 10
+	minSafePort = 30000
+	maxSafePort = 32760
+)
+
+// 由于python脚本任务的grpc端口冲突问题,这里尝试获取一个随机可用端口
+func getAvailablePortWithRetry() (string, error) {
+	for i := 0; i < maxRetries; i++ {
+		port := rand.Intn(maxSafePort-minSafePort) + minSafePort
+		if isPortAvailable(port) {
+			return strconv.Itoa(port), nil
+		}
+		// 似乎也不需要delay
+		// time.Sleep(portCheckDelay)
+	}
+	return strconv.Itoa(0), errors.New("port acquisition failed after retries")
+}
+
+func isPortAvailable(port int) bool {
+	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
+	// 尝试监听端口
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return false
+	}
+	defer listener.Close()
+	return true
 }

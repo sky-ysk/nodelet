@@ -79,12 +79,12 @@ func (e *Engine) GetValue(value *apis.Value, o interface{}) (*apis.Value, error)
 		return resultValue, nil
 	case apis.DeviceData:
 		// 对Device进行寻址
-		//result, err := e.ExtractDeviceValue( , value.From, value.NameSpace)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//value.Value = result
-		//value.ValueType = apis.StringType
+		// result, err := e.ExtractDeviceValue( , value.From, value.NameSpace)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// value.Value = result
+		// value.ValueType = apis.StringType
 		return value, nil
 	case apis.ResultsData:
 		return value, nil
@@ -153,7 +153,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 	logs.Infof("kind %s, value %v", kind, value)
 	// 下面这一个地方经常报错，原因是Kind匹配问题，如果o是runtime类型的，那么kind就是runtime，无法越级访问上层的正则表达式
 	// 导致Action{}.Name{}这种匹配不到====目前的解决方案，调整runtime的规则范围使其能够概括所有需要的规则
-	// 依复杂情况可以改成单独设计正则规则和解析规则，与device类似：新增input类型的datatype，然后
+	// 依复杂情况可以改成单独设计正则规则和解析规则，与device类似：新增input类型的datatype，然后再编写对应的解析函数
 	typeName, parts, err := e.comparor.Match(kind, value.From)
 	if err != nil {
 		logs.Errorf("Engine: Extract Local Value Err!")
@@ -633,6 +633,37 @@ func (e *Engine) GetNameFromRuntime(name string, parts []string, runtime *apis.R
 		}
 		return parentGroup.Name, string(GroupType), from, fromKey, nil
 		// TODO:如果需要，还可以新增上一级task，然后去遍历找符合groupName的group
+	case "GroupAbsoluteExpr":
+		// Group{G81}.Action{A1}.Runtime{R1}.Outputs{0}
+		// 下面寻址的前提是Group不是本身的Group, 如果需要在本身Group寻址，不填Group这一项，属于其他规则的寻址
+		targetGroup := parts[1]
+		targetAction := parts[2]
+		targetRuntime := parts[3]
+		from := parts[4]
+		fromKey := parts[5]
+		logs.Infof("GetNameFromRuntime:g a r f fk:%v, %v, %v, %v, %v", targetGroup, targetAction, targetRuntime, from, fromKey)
+		// 下面先去查对应的Task，从runtime开始
+		parentAction, err := e.manager.GetAction(runtime.Status.Belong.Name, runtime.Status.Belong.Namespace)
+		if err != nil {
+			return "", string(UnknownType), "", "", errors.New("Failed to get parent action: " + err.Error())
+		}
+		parentGroup, err := e.manager.GetGroup(parentAction.Status.Belong.Name, parentAction.Status.Belong.Namespace)
+		if err != nil {
+			return "", string(UnknownType), "", "", errors.New("Failed to get parent group: " + err.Error())
+		}
+		parentTask, err := e.manager.GetTask(parentGroup.Status.Belong.Name, parentGroup.Status.Belong.Namespace)
+		if err != nil {
+			return "", string(UnknownType), "", "", errors.New("Failed to get parent task: " + err.Error())
+		}
+		// 找到Task之后，去找对应的G A R
+		gref, _ := parentTask.Status.Groups[targetGroup]
+		g, err := e.manager.GetGroup(gref.Name, gref.Namespace)
+		aref, _ := g.Status.Actions[targetAction]
+		a, err := e.manager.GetAction(aref.Name, aref.Namespace)
+		rref, _ := a.Status.Runtimes[targetRuntime]
+		r, err := e.manager.GetRuntime(rref.Name, rref.Namespace)
+		logs.Infof("Get final runtime %v", r.Name)
+		return r.Name, string(RuntimeType), from, fromKey, nil
 	}
 	return "", string(UnknownType), "", "", errors.New(string("Unsupported runtime " + name))
 }

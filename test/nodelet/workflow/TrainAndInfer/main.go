@@ -181,7 +181,7 @@ func main() {
 						Parents:    make([]string, 0),                                      // 加入Parents
 						Data:       []apis.DataSpec{apis.DataSpec{Name: "train_mnist.py"}}, // 依赖文件
 						Conditions: &runtime1_1_1_1Condition,
-						Outputs:    []apis.Value{apis.Value{Value: "mnist_cnn.pt", ValueType: apis.StringType}},
+						Outputs:    []apis.Value{apis.Value{Type: apis.LocalData, Value: "mnist_cnn.pt", ValueType: apis.StringType}},
 					},
 					apis.RuntimeSpec{
 						Name:       runtime1_1_1_2Name,
@@ -224,7 +224,7 @@ func main() {
 					apis.RuntimeSpec{
 						Name:       runtime1_2_1_1Name,
 						Type:       apis.ByCommand,
-						Inputs:     []apis.Value{apis.Value{Type: apis.LocalData, From: "Group{G1}.Action{A1}.Runtime{R1}.Outputs{0}"}},
+						Inputs:     []apis.Value{apis.Value{Type: apis.LocalData, From: "Group{G81}.Action{A1}.Runtime{R1}.Outputs{0}"}},
 						Command:    []string{"python"},
 						Args:       []string{"inference_mnist.py"},                                                                  // 10s
 						Data:       []apis.DataSpec{apis.DataSpec{Name: "inference_mnist.py"}, apis.DataSpec{Name: "mnist_cnn.pt"}}, // 依赖文件

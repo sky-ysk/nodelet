@@ -334,7 +334,7 @@ func (te *TaskExporter) eventWatcher() {
 	// fieldSelector := fmt.Sprintf("type=%v", apis.EventTypeMigration)
 	startTime := time.Now()
 	// 设置长超时时间
-	var timeout int64 = 7200
+	var timeout int64 = 7 * 24 * 60 * 60
 	watchOptions := meta.ListOptions{
 		TimeoutSeconds: &timeout,
 		// FieldSelector:  fieldSelector,
@@ -366,14 +366,9 @@ func (te *TaskExporter) eventWatcher() {
 				}
 				//logs.Infof("*****************now time:%v,event time:%v", time.Now(), event.EventTime.Time)
 				// 合并时间判断和事件条件判断
-				//if event.EventTime.Time.Before(ctrl.startTime) ||
-				//	event.InvolvedObject.Name != nodeName ||
-				//	(event.Reason != events.TriggerLocalMigration && event.Reason != events.TriggerCrossMigration) { // 不是跨域迁移或者本域迁移的话，跳过
-				//	return // 跳过历史事件/非本节点事件/非迁移触发事件
-				//}
 				if event.EventTime.Time.Before(startTime) ||
-					(event.Reason != events.KillingCommand) { // 不是跨域迁移或者本域迁移的话，跳过
-					continue // 跳过历史事件/非本节点事件/非迁移触发事件
+					(event.Reason != events.KillingCommand) {
+					continue
 				}
 				if event.InvolvedObject.Kind == "Group" {
 					_, err := te.groupManager.GetGroupByName(event.InvolvedObject.Name)
@@ -382,7 +377,6 @@ func (te *TaskExporter) eventWatcher() {
 					}
 				}
 				logs.Info("++++++++++++++++++++++Events--------事件为kill事件")
-				// mc.handleEventEvent(event)
 				// // 所有条件满足时入队
 				logs.Infof("task exporter: event informer AddFunc(): %v", event.Name)
 				// key, _ := cache.MetaNamespaceKeyFunc(obj)
@@ -405,7 +399,7 @@ func (te *TaskExporter) ReceiveKillEventInfo(workers int, stopCh <-chan struct{}
 
 	go func() {
 		defer wg.Done()
-		te.eventWatcher()
+		te.eventWatcher() //将event加入对嘞
 		//mc.eventInformer.Run(stopCh)
 	}()
 	////缓存同步仅指初始的列表操作完成，后续的更新是由Informer的Watch机制自动处理的，不需要手动同步。因此，在控制器启动时只需要等待一次初始同步即可，之后Informer会自动维护缓存的更新，不需要循环检查。
