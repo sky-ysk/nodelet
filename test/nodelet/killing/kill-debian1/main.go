@@ -3,6 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -14,9 +18,6 @@ import (
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
-	"net/http"
-	"os"
-	"time"
 )
 
 // 首先启动一个长时间运行的任务，调用发送kill事件
