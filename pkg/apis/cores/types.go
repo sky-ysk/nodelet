@@ -1321,6 +1321,8 @@ type RuntimeStatus struct {
 	FinishAt *Time `json:"finish,omitempty" yaml:"finish"`
 	// 最新获取状态的时间
 	LastTime *Time `json:"last_time,omitempty" yaml:"last_time"`
+	// 新增字段:细粒度runtime与调度框架进行grpc通信的端口
+	PortForRpc string `json:"port_for_rpc,omitempty" yaml:"port_for_rpc"`
 
 	//增加一个参数0hzy
 	Waiting            bool   `json:"waiting,omitempty" yaml:"waiting"`

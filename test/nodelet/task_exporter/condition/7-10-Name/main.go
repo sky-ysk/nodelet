@@ -66,7 +66,7 @@ func main() {
 	task1Name := "T1" // 第一个Task的Name
 
 	// group
-	group1_1Name := "G1" // 第一个Task下的第一个GroupName
+	group1_1Name := "G91" // 第一个Task下的第一个GroupName
 
 	group1_1Replicas := []int32{0, 0}
 
@@ -117,8 +117,8 @@ func main() {
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"/home/public/goprojects/Combine-ysk-0102/adaptive-scheduling-framework/test/nodelet/task_exporter/condition/7-10-Name/test.py"},
-						Inputs:                   []apis.Value{apis.Value{ValueType: apis.StringType, From: "Runtime{R1}.Name"}},
+						Args:                     []string{"/home/public/goprojects/test-0623/test/nodelet/task_exporter/condition/7-10-Name/test.py"},
+						Inputs:                   []apis.Value{apis.Value{Type: apis.LocalData, From: "Group{G91}.Name{}"}},
 						Parents:                  make([]string, 0), // 加入Parents
 						Data:                     []apis.DataSpec{}, // 依赖文件
 						Image:                    "",

@@ -50,9 +50,9 @@ func CreateClientSet() (*clients.ClientSet, error) {
 }
 
 func main() {
-	namespace1 := "HenanEP"
+	//namespace1 := "HenanEP"
 	namespace2 := "Cosmo"
-	namespace3 := "ShandongHS"
+	//namespace3 := "ShandongHS"
 	clientset, err := CreateClientSet()
 	manager := manager.NewManager(clientset)
 	if err != nil {
@@ -148,94 +148,94 @@ func main() {
 	//}
 	//fmt.Println(d)
 
-	data := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "HenanEP-train2",
-			Namespace: "HenanEP",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "HenanEP-train2",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/train_dianwang_pod.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "模型训练工作流-Pod",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-
-	data2 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "Cosmo-train2",
-			Namespace: "Cosmo",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "Cosmo-train2",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/train_zhizao_pod.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "模型训练工作流-Pod",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-	data3 := &apis.Data{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ShandongHS-train2",
-			Namespace: "ShandongHS",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Data",
-			APIVersion: "resources/v1",
-		},
-		Spec: apis.DataSpec{
-			Name:       "ShandongHS-train2",
-			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/train_jiaotong_pod.json",
-			FileFormat: "json",
-			Desc: &apis.Description{
-				Docs: "模型训练工作流-Pod",
-			},
-		},
-		Status: apis.DataStatus{
-			CreateAt: &apis.Time{time.Now()},
-			LastTime: &apis.Time{time.Now()},
-		},
-	}
-
-	d, err := manager.CreateData(data, namespace1)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-
-	d, err = manager.CreateData(data2, namespace2)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
-
-	d, err = manager.CreateData(data3, namespace3)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(d)
+	//data := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "HenanEP-train2",
+	//		Namespace: "HenanEP",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "HenanEP-train2",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/train_dianwang_pod.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "模型训练工作流-Pod",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//data2 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "Cosmo-train2",
+	//		Namespace: "Cosmo",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "Cosmo-train2",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/train_zhizao_pod.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "模型训练工作流-Pod",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//data3 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "ShandongHS-train2",
+	//		Namespace: "ShandongHS",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "ShandongHS-train2",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/train_jiaotong_pod.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "模型训练工作流-Pod",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//d, err := manager.CreateData(data, namespace1)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data2, namespace2)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data3, namespace3)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
 
 	//data := &apis.Data{
 	//	ObjectMeta: metav1.ObjectMeta{
@@ -501,6 +501,36 @@ func main() {
 	//	panic(err)
 	//}
 	//fmt.Println(d)
+
+	data := &apis.Data{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "Cosmo-task1",
+			Namespace: "HenanEP",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Data",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DataSpec{
+			Name:       "Cosmo-task1",
+			BelongNode: "n19",
+			FilePath:   "/home/lkcoffee/Desktop/proj/reference/bin/tmp/data/docker.json",
+			FileFormat: "json",
+			Desc: &apis.Description{
+				Docs: "相机识别工作流-Docker",
+			},
+		},
+		Status: apis.DataStatus{
+			CreateAt: &apis.Time{time.Now()},
+			LastTime: &apis.Time{time.Now()},
+		},
+	}
+
+	d, err := manager.CreateData(data, namespace2)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(d)
 
 }
 
