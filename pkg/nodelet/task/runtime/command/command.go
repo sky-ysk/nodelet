@@ -380,7 +380,7 @@ func (cr *CommandRuntime) StoreData(group *apis.Group, action *apis.Action, runt
 		}
 		cr.clientsManager.LogEvent(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name), group.Namespace)
 
-		return strconv.FormatInt(index, 10)
+		return index
 	} else {
 		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
 		return ""

@@ -2,45 +2,36 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
-	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/clients/typed/core"
 	"hit.edu/framework/pkg/client-go/rest"
-	"hit.edu/framework/pkg/client-go/tools/recorder"
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
-// 适配从debian1 迁移到 ubuntu2
-// 修改1：
-// 调度器代码: 触发debian1资源不足事件,从Debian1迁移到ubuntu2
-//if strings.Contains(group.ObjectMeta.Name, "G1") {
-//host = "debian1"
-//}
-//if strings.Contains(group.ObjectMeta.Name, "copy") {
-//host = "ubuntu2"
-//}
-//if strings.Contains(group.ObjectMeta.Name, "G2") {
-//host = "ubuntu2"
-//}
-// 修改2：调度器关闭score插件
-// 修改3：const NodeName = "debian1"
-
+// 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
+// if strings.Contains(group.ObjectMeta.Name, "G1") {
+// host = "CloudNode1"
+// }
+// if strings.Contains(group.ObjectMeta.Name, "copy") {
+// host = "CloudNode2"
+// }
 var scheme = runtime.NewScheme()
 
-const NodeName = "debian1"
+const NodeName = "cloudNode1" // 1$
+var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
+var namespace = "HenanEP"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -51,12 +42,11 @@ func main() {
 	//创建ClientSet
 	clientSet := initClientSet(scheme)
 
-	eventclient := clientSet.Core().Events("test")
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
 	// group
-	group1_1Name := "G1" // 第一个Task下的第一个GroupName
+
 	group1_1Replicas := []int32{0, 0}
 
 	// action
@@ -76,7 +66,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements1.txt",
+			From:      "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt", //2$
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -120,7 +110,7 @@ func main() {
 						Name:                         runtime1_1_1_1Name,
 						Type:                         apis.ByCommand,
 						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s
+						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s   //3$
 						Parents:                      make([]string, 0),                                                // 加入Parents
 						Conditions:                   &runtime1_1_1_1Condition,
 						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
@@ -141,7 +131,7 @@ func main() {
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, "test", u.String(), "")
+	task, err := m.CreateTask(ts, nil, namespace, u.String(), "")
 	if err != nil {
 		panic(err)
 	}
@@ -152,7 +142,7 @@ func main() {
 	fmt.Println(str)
 
 	prompt()
-	postEventForMigrate(eventclient)
+	postEventForMigrate_ForGroup()
 	prompt()
 
 }
@@ -170,45 +160,27 @@ func prompt() {
 	logs.Info()
 }
 
-func GetNodeDepencyConditionFormula(parentName string) apis.ConditionFormula {
-	return apis.ConditionFormula{
-		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "NodeDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      parentName,
-		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "NodeDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
-		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
+func postEventForMigrate_ForGroup() {
+	logs.Info("发送跨域迁移事件======")
+	clientSet := initClientSet(scheme)
+	m := manager.NewManager(clientSet)
+	groups, err := m.GetGroups(namespace)
+	if err != nil {
+		logs.Errorf("GetGroups err: %v", err)
 	}
-}
-
-var node = &apis.Node{
-	ObjectMeta: meta.ObjectMeta{Name: NodeName, Namespace: "test"},
-	TypeMeta:   meta.TypeMeta{Kind: "Node", APIVersion: "resources/v1"},
-	Spec:       apis.NodeSpec{NodeName: NodeName},
-}
-
-func postEventForMigrate(client core.EventInterface) {
-	// 这些配置实际在组件初始化时就已经完成
-	ctx := context.Background()
-	eventBroadcaster := recorder.NewBroadcaster(recorder.WithContext(ctx))
-	defer eventBroadcaster.Shutdown()
-	eventBroadcaster.StartRecordingToSink(ctx, &core.EventSinkImpl{Interface: client})
-	recorder := eventBroadcaster.NewRecorder(scheme, "test-controller")
-
-	// 通过 recorder.Event或 recorder.Eventf可以生成事件
-	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The node %vresource is shorted", NodeName), "")
-	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
+	var groupName string
+	for i := range groups.Items {
+		group := groups.Items[i]
+		if group.Spec.Name == group1_1Name && !strings.Contains(group.Name, "copy") && group.Status.Phase == apis.Running {
+			groupName = group.Name
+		}
+	}
+	group, err := m.GetGroup(groupName, namespace)
+	if err != nil {
+		logs.Errorf("GetGroup err: %v", err)
+	}
+	time.Sleep(10 * time.Millisecond)
+	m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
 }
 
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {

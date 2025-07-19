@@ -45,6 +45,7 @@ enum DataType {
 message Result {
   string msg = 1;
   int64 stateCode = 2;
+  string data =3;
 }
 
 // APP状态
@@ -87,7 +88,7 @@ message RestartIntent {
 message StopIntent {
   string app=1;
 //  repeated Data data=2;
-}
+} 
 
 message GetStatusIntent {
   string app=1;

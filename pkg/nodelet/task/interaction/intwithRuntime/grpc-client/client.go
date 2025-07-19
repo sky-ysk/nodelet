@@ -123,10 +123,10 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 }
 
 // rpc远程调用服务端保存应用状态
-func (c *RuntimeClient) RunAppStore() (answer int64, err error) {
+func (c *RuntimeClient) RunAppStore() (answer string, err error) {
 	logs.Infof("RunAppStore()")
 	if !c.checkConnection1() {
-		return 0, errors.New("runAppStore: grpc connection failed")
+		return "", errors.New("runAppStore: grpc connection failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -138,7 +138,7 @@ func (c *RuntimeClient) RunAppStore() (answer int64, err error) {
 		result, err = c.grpcClient.Store(ctx, &pb.StoreIntent{})
 	}
 	logs.Infof("runAppStore: result:%v", result)
-	return result.StateCode, nil
+	return result.Data, nil
 }
 
 // rpc远程调用服务端保存应用状态
