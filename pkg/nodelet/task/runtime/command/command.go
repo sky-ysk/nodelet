@@ -278,7 +278,7 @@ func (cr *CommandRuntime) monitorProcessResource(pid int, runtime *apis.Runtime,
 			logs.Warnf("Failed to get CPU usage for PID %d: %v", pid, err)
 			return
 		} else {
-			logs.Infof("[Monitor] Process %s (PID: %d) CPU: %.2f%%", runtime.Name, pid, cpuPercent)
+			logs.Tracef("[Monitor] Process %s (PID: %d) CPU: %.2f%%", runtime.Name, pid, cpuPercent)
 		}
 		//RuntimeStatus--Resource
 
@@ -290,7 +290,7 @@ func (cr *CommandRuntime) monitorProcessResource(pid int, runtime *apis.Runtime,
 		} else {
 			// 转换为MB
 			memMB := float64(memInfo.RSS) / (1024 * 1024)
-			logs.Infof("[Monitor] Process %s (PID: %d) Memory: %.2f MB", runtime.Name, pid, memMB)
+			logs.Tracef("[Monitor] Process %s (PID: %d) Memory: %.2f MB", runtime.Name, pid, memMB)
 		}
 		// 上传资源的占用
 		// 写到etcd上去

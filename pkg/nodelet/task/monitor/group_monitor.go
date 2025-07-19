@@ -2127,7 +2127,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 			}
 			// 检查这个文件是否存在
 			if _, err := os.Stat(dependencyFile); os.IsNotExist(err) {
-				logs.Tracef("dependency file %v is not exist!", dependencyFile)
+				logs.Info("dependency file %v is not exist!", dependencyFile)
 				return false
 			}
 			// 检查依赖文件TXT是否已经被解析

@@ -110,8 +110,8 @@ func main() {
 						Name:                         runtime1_1_1_1Name,
 						Type:                         apis.ByCommand,
 						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s   //3$
-						Parents:                      make([]string, 0),                                                // 加入Parents
+						Args:                         []string{"/home/public/workspace/yolo_projects_asy/yolo-asy-running.py"}, //20s   //3$
+						Parents:                      make([]string, 0),                                                        // 加入Parents
 						Conditions:                   &runtime1_1_1_1Condition,
 						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
