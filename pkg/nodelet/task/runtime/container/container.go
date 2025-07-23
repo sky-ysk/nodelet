@@ -55,7 +55,7 @@ func (cr *ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime 
 	// 执行的时候区分方式是前者不要填写"image"字段。后者需要填写。
 	if runtime.Spec.Image == "" {
 		// 纯命令行启动docker，使用go的CMD包
-		logs.Infof("cmd and args way to start: docker command for group:%s", group.Name)
+		logs.Infof("cmd and args way to start: docker runtime for group:%s", group.Name)
 		cr.RunCMD(group, action, runtime, actionSpecName, runtimeSpecName)
 		return nil
 	} else {
@@ -107,7 +107,7 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	CMD.Env = env
 	CMD.Stdout = os.Stdout
 	CMD.Stderr = os.Stderr
-	CMD.Dir = runtime.Spec.Directory
+	CMD.Dir = runtime.Status.Directory
 	if _, err := os.Stat(CMD.Dir); os.IsNotExist(err) {
 		logs.Errorf("Directory %s does not exist: %v", CMD.Dir, err)
 		return fmt.Errorf("directory %s does not exist: %w", CMD.Dir, err)
@@ -139,8 +139,8 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	}
 
 	// 根据name查询ID
-	// 不确定会不会出现docker拉起速度较慢，查不到====有这个问题，需要等待数秒,设置为5秒
-	time.Sleep(5 * time.Second)
+	// 可能出现docker拉起速度较慢，查不到====有这个问题，需要等待数秒,设置为5秒
+	time.Sleep(3 * time.Second)
 	containerId := cr.containerManager.GetContainerID(containerName)
 	logs.Infof("Container ID for runtime %s is %s", runtime.Name, containerId)
 	cr.containerManager.AddRuntimeMapping(runtime.Name, containerId)
@@ -154,7 +154,7 @@ func (cr *ContainerRuntime) MonitorContainerStatus(group *apis.Group, action *ap
 	go func() {
 		for {
 			select {
-			case <-time.After(5 * time.Second):
+			case <-time.After(3 * time.Second):
 				logs.Infof("Checking container status for runtime: %s", runtime.Name)
 				container, err := cr.containerManager.GetContainer(containerId)
 				if err != nil {
@@ -165,12 +165,26 @@ func (cr *ContainerRuntime) MonitorContainerStatus(group *apis.Group, action *ap
 				}
 				// String representation of the container state. Can be one of "created", "running", "paused", "restarting", "removing", "exited", or "dead"
 				// TODO:根据更细节的stauts区分，执行不同的操作和通知
-				if container != nil && container.State.Status == "exited" {
-					logs.Infof("Container %s has exited", containerId)
-					cr.Kill(group, action, runtime, actionSpecName, runtimeSpecName)
-					cr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
-					return
+
+				if container.State.Status == "exited" {
+					switch container.State.ExitCode {
+					case 0:
+						logs.Infof("Container %s has exited normally", containerId)
+						cr.Kill(group, action, runtime, actionSpecName, runtimeSpecName)
+						cr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Successed, apis.Time{time.Now()}, apis.Time{time.Now()})
+						return
+					default:
+						logs.Errorf("container exited abnormally with code %d\n", container.State.ExitCode)
+						if container.State.Error != "" {
+							logs.Errorf("error message: %s\n", container.State.Error)
+							cr.Kill(group, action, runtime, actionSpecName, runtimeSpecName)
+							cr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Failed, apis.Time{time.Now()}, apis.Time{time.Now()})
+						}
+						return
+					}
+
 				}
+
 			}
 		}
 	}()
@@ -250,6 +264,20 @@ func (cr *ContainerRuntime) notifyRuntimeEndPhase(groupName, groupNamespace stri
 	}
 	cr.eventBus.Publish(event)
 }
+
+// // TODO:event需要增加start和end以外的update接口，用于上传除了start和end以外的状态
+// func (cr *ContainerRuntime) updateContainerPhase(groupName, groupNamespace string, actionSpeName, runtimeSpecName string, phase apis.Phase, finishTime, lastTime apis.Time) {
+// 	event := events.RuntimeEndPhaseEvent1{
+// 		GroupName:       groupName,
+// 		GroupNamespace:  groupNamespace,
+// 		ActionSpecName:  actionSpeName,
+// 		RuntimeSpecName: runtimeSpecName,
+// 		Phase:           phase,
+// 		FinishAt:        finishTime,
+// 		LastTime:        lastTime,
+// 	}
+// 	cr.eventBus.Publish(event)
+// }
 
 // 解析dokcer命令行参数给到condig和hostConfig
 // 示例命令为：
