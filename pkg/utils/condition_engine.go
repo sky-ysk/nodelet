@@ -195,7 +195,7 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 		case "Runtime":
 			r := (o).(apis.Runtime)
 			//拼接目录,直接拼上runtime的Name
-			folder := r.Spec.Directory
+			folder := r.Status.Directory
 			if _, err := os.Stat(folder); os.IsNotExist(err) {
 				// 文件夹不存在的日志
 				logs.Tracef("checkDataDependency: %v %v's folder:%v is not exist", kind, r.Name, folder)

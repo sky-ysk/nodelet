@@ -74,14 +74,14 @@ func NewFileManager(fileRegistry string) *FileManager {
 	}
 	err := FileManager.Init()
 	if err != nil {
-		logs.Errorf("NewFileManager Init Err!")
+		logs.Errorf("NewFileManager Init Err! 需要创建 home/public/tmp/data 文件夹")
 	}
 	return FileManager
 }
 
 func (fm *FileManager) Init() error {
 	//这个协程用来检查和创建apis.FileFolder
-	tmpDir := "../tmp"
+	tmpDir := "/home/public/tmp"
 	if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
 		// 目录不存在，创建目录
 		err := os.Mkdir(tmpDir, os.ModePerm) // 权限
@@ -90,7 +90,7 @@ func (fm *FileManager) Init() error {
 			return err
 		}
 	}
-	dataFir := "../tmp/data"
+	dataFir := "/home/public/tmp/data"
 	if _, err := os.Stat(dataFir); os.IsNotExist(err) {
 		err := os.Mkdir(dataFir, os.ModePerm)
 		if err != nil {
