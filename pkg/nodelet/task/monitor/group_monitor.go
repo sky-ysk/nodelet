@@ -2123,7 +2123,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 			// 如果dependencyFile这个文件路径不包含/,说明是相对路径，需要拼接为绝对路径
 			if !strings.Contains(dependencyFile, "/") {
 				// 这里需要拼接为绝对路径
-				dependencyFile = runtime.Spec.Directory + "/" + dependencyFile
+				dependencyFile = runtime.Status.Directory + "/" + dependencyFile
 			}
 			// 检查这个文件是否存在
 			if _, err := os.Stat(dependencyFile); os.IsNotExist(err) {

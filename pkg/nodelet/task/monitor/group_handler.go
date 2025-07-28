@@ -191,7 +191,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 		for _, runtimeReference := range action.Status.Runtimes {
 			runtime, err := gh.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 			patchRuntime, err := json.Marshal(map[string]interface{}{
-				"spec": map[string]interface{}{
+				"status": map[string]interface{}{
 					"directory": groupdir, // 设置工作目录
 				},
 			})

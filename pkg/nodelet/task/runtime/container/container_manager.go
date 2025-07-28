@@ -115,13 +115,14 @@ func (cm *ContainerManager) CreateContainer(name string, runtime *apis.Runtime) 
 	defer cm.lock.Unlock()
 	ctx := context.Background()
 	newCmd := append([]string{runtime.Spec.Command[0]}, runtime.Spec.Args...)
-	testFolder := "/home/public/goprojects/Combine-ysk-0102/tmp/data" + "/" + runtime.Name
+	// 使用的是group的文件夹作为工作目录
+	testFolder := runtime.Status.Directory
 	config := &container.Config{
 		Image:      runtime.Spec.Image,
 		Cmd:        newCmd,     // 示例命令
 		WorkingDir: testFolder, // 设置工作目录
 	}
-	logs.Infof("11111111111config:%v\n", config)
+	logs.Infof("docker container config:%v\n", config)
 
 	hostConfig := &container.HostConfig{
 		// 可以在这里添加更多的主机配置选项，例如端口映射、目录挂载

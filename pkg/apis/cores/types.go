@@ -1194,8 +1194,6 @@ type RuntimeSpec struct {
 	// 环境变量
 	// +Optional
 	EnvVar []EnvVar `json:"env_var,omitempty" yaml:"env_var"`
-	// 运行时的工作目录，拉起任务前创建并填入
-	Directory string `json:"directory,omitempty" yaml:"directory"`
 
 	// Runtime条件
 	// +Optional
@@ -1333,6 +1331,7 @@ type RuntimeStatus struct {
 	IsDependencySatisf bool   `json:"dependency_satisf,omitempty" yaml:"dependency_satisf"`
 	IsParsed           bool   `json:"isparsed,omitempty" yaml:"isparsed"`             //是否已经被解析过
 	DepenPreparing     bool   `json:"sepenPreparing,omitempty" yaml:"DepenPreparing"` //是否正在创建虚拟环境，防止多次创建
+	Directory string `json:"directory,omitempty" yaml:"directory"`		// 运行时的工作目录，拉起任务前创建并填入
 }
 
 // 任务的输出结果
@@ -1752,6 +1751,6 @@ const (
 )
 
 const (
-	// 文件的存储位置,暂时位于项目目录同级的tmp/data目录下
-	FileFolder string = "../tmp/data"
+	// 文件的存储位置
+	FileFolder string = "/home/public/tmp/data"
 )
