@@ -1752,5 +1752,5 @@ const (
 
 const (
 	// 文件的存储位置
-	FileFolder string = "home/public/tmp/data"
+	FileFolder string = "/home/public/tmp/data"
 )
