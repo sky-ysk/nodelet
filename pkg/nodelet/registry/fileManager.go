@@ -191,7 +191,7 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, error) {
 	// 1. 创建HTTP服务器
 	// 端口8080
-	server := &http.Server{Addr: ":8080"}
+	server := &http.Server{Addr: ":8920"}
 	done := make(chan bool)
 
 	// 2. 设置处理函数（使用闭包捕获savePath）

@@ -94,7 +94,7 @@ func main() {
 						Name:    runtime1_1_1_1Name,
 						Type:    apis.ByCommand,
 						Command: []string{"python"},
-						// Args:                     []string{"yolo_projects_asy/yolo-asy-running1.py"},
+						Args:                     []string{"yolo_projects_asy/yolo-asy-running1.py"},
 						Data: []apis.DataSpec{apis.DataSpec{Name: "yolo_projects_asy"}, {Name: "requirements.txt"}},
 						// Data:                     []apis.DataSpec{{Name: "requirements.txt"}},
 						Conditions:               &runtime1_1_1_1Condition,

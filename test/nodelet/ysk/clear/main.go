@@ -65,12 +65,12 @@ func main() {
 	// 获取访问Task的客户端
 	// 默认访问的Namespace是 ""
 
-	tasksClient := clientSet.Core().Tasks("test")
-	groupsClient := clientSet.Core().Groups("test")
-	actionsClient := clientSet.Core().Actions("test")
-	runtimesClient := clientSet.Core().Runtimes("test")
-	eventsClient := clientSet.Core().Events("test")
-	nodesClient := clientSet.Core().Nodes("test")
+	tasksClient := clientSet.Core().Tasks("HenanEP")
+	groupsClient := clientSet.Core().Groups("HenanEP")
+	actionsClient := clientSet.Core().Actions("HenanEP")
+	runtimesClient := clientSet.Core().Runtimes("HenanEP")
+	eventsClient := clientSet.Core().Events("HenanEP")
+	nodesClient := clientSet.Core().Nodes("HenanEP")
 
 	// Task资源
 	logs.Info("======Task")

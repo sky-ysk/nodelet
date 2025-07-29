@@ -92,8 +92,8 @@ func main() {
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
 						Command:                  []string{"python"},
-						Args:                     []string{"yolo-asy-running1.py"},
-						Data:                     []apis.DataSpec{apis.DataSpec{Name: "yolov8n.onnx"}, apis.DataSpec{Name: "yolo-asy-running1.py"}, apis.DataSpec{Name: "requirements.txt"}},
+						Args:                     []string{"yolo_projects_asy/yolo-asy-running1.py"},
+						Data:                     []apis.DataSpec{apis.DataSpec{Name: "yolo_projects_asy"}},
 						Conditions:               &runtime1_1_1_1Condition,
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
@@ -101,10 +101,9 @@ func main() {
 			},
 		},
 	}
-	filePath := "/home/public/workspace/yolo_projects_asy/yolo-asy-running1.py"
-	UploadFile(filePath)
-	filePath = "/home/public/workspace/yolo_projects_asy/model/yolov8n.onnx"
-	UploadFile(filePath)
+	filePath := "/home/public/workspace/yolo_projects_asy/"
+	UploadFile(filePath) //---这个方法改传递文件夹
+
 	filePath = "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
 	UploadFile(filePath)
 

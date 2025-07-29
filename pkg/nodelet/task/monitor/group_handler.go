@@ -229,7 +229,9 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 						// 进行文件的下载
 						go gh.fileManager.DownloadFile(filedata.Name, groupdir)
 					} else { // 进行文件夹的下载
-						go gh.fileManager.DownloadFolder(filedata.Name, groupdir)
+						// go gh.fileManager.DownloadFolder(filedata.Name, groupdir)
+						// 阻塞下载
+						gh.fileManager.DownloadFolder(filedata.Name, groupdir)
 					}
 				}
 			}

@@ -211,20 +211,20 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 				if strings.Contains(data.Name, ".") {
 					// 是文件
 					filePath := folder + "/" + data.Name
-					logs.Infof("checkDataDependency: %v %v's file:%v", kind, r.Name, filePath)
+					// logs.Infof("checkDataDependency: %v %v's file:%v", kind, r.Name, filePath)
 					if _, err := os.Stat(filePath); err != nil {
 						// 文件不存在的日志
-						logs.Tracef("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
+						logs.Warnf("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
 						return apis.NotReady, errors.New("dataDependency:file not exist")
 					}
 				} else {
 					// 是文件夹
 					folderPath := strings.TrimSuffix(folder, "/") + "/" + data.Name
-					logs.Infof("checkDataDependency: %v %v's folder:%v", kind, r.Name, folderPath)
+					// logs.Infof("checkDataDependency: %v %v's folder:%v", kind, r.Name, folderPath)
 					// 检查文件夹是否存在
 					if _, err := os.Stat(folderPath); os.IsNotExist(err) {
 						// 文件夹不存在的日志
-						logs.Tracef("checkDataDependency: %v %v's folder:%v is not exist", kind, r.Name, folderPath)
+						logs.Warnf("checkDataDependency: %v %v's folder:%v is not exist", kind, r.Name, folderPath)
 						return apis.NotReady, errors.New("dataDependency:folder not exist")
 					}
 				}

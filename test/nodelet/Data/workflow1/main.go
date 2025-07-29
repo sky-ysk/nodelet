@@ -50,9 +50,9 @@ func CreateClientSet() (*clients.ClientSet, error) {
 }
 
 func main() {
-	//namespace1 := "HenanEP"
+	namespace1 := "HenanEP"
 	namespace2 := "Cosmo"
-	//namespace3 := "ShandongHS"
+	namespace3 := "ShandongHS"
 	clientset, err := CreateClientSet()
 	manager := manager.NewManager(clientset)
 	if err != nil {
@@ -502,9 +502,40 @@ func main() {
 	//}
 	//fmt.Println(d)
 
+	// 卡奥斯-docker
+	//data := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "Cosmo-task1",
+	//		Namespace: "HenanEP",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "Cosmo-task1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/home/lkcoffee/Desktop/proj/reference/bin/tmp/data/docker.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "相机识别工作流-Docker",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//d, err := manager.CreateData(data, namespace2)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+
 	data := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "Cosmo-task1",
+			Name:      "HenanEP-infer1",
 			Namespace: "HenanEP",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -512,12 +543,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "Cosmo-task1",
+			Name:       "HenanEP-infer1",
 			BelongNode: "n19",
-			FilePath:   "/home/lkcoffee/Desktop/proj/reference/bin/tmp/data/docker.json",
+			FilePath:   "/root/goprojects/workflow/dianwang_infer.json",
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "相机识别工作流-Docker",
+				Docs: "推理工作流-Command",
 			},
 		},
 		Status: apis.DataStatus{
@@ -526,12 +557,70 @@ func main() {
 		},
 	}
 
-	d, err := manager.CreateData(data, namespace2)
+	data2 := &apis.Data{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "Cosmo-infer1",
+			Namespace: "Cosmo",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Data",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DataSpec{
+			Name:       "Cosmo-infer1",
+			BelongNode: "n19",
+			FilePath:   "/root/goprojects/workflow/zhizao_infer.json",
+			FileFormat: "json",
+			Desc: &apis.Description{
+				Docs: "推理工作流-Command",
+			},
+		},
+		Status: apis.DataStatus{
+			CreateAt: &apis.Time{time.Now()},
+			LastTime: &apis.Time{time.Now()},
+		},
+	}
+	data3 := &apis.Data{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ShandongHS-infer1",
+			Namespace: "ShandongHS",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Data",
+			APIVersion: "resources/v1",
+		},
+		Spec: apis.DataSpec{
+			Name:       "ShandongHS-infer1",
+			BelongNode: "n19",
+			FilePath:   "/root/goprojects/workflow/jiaotong_infer.json",
+			FileFormat: "json",
+			Desc: &apis.Description{
+				Docs: "推理工作流-Command",
+			},
+		},
+		Status: apis.DataStatus{
+			CreateAt: &apis.Time{time.Now()},
+			LastTime: &apis.Time{time.Now()},
+		},
+	}
+
+	d, err := manager.CreateData(data, namespace1)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(d)
 
+	d, err = manager.CreateData(data2, namespace2)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(d)
+
+	d, err = manager.CreateData(data3, namespace3)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(d)
 }
 
 //func TestGetData(t *testing.T) {
@@ -790,3 +879,4 @@ func main() {
 //	}
 //	return clientSet
 //}
+
