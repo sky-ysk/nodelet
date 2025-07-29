@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 )
 
 func DownloadFile(url string, savePath string) error {
@@ -24,8 +22,8 @@ func DownloadFile(url string, savePath string) error {
 	}
 
 	// 提取文件名
-	fileName := extractFileName(resp.Header.Get("Content-Disposition"))
-
+	// fileName := extractFileName(resp.Header.Get("Content-Disposition"))
+	fileName := extractFileName(url)
 	// 确保 savePath 目录存在
 	savePath = filepath.Clean(savePath)
 	err = os.MkdirAll(savePath, os.ModePerm)
@@ -54,23 +52,44 @@ func DownloadFile(url string, savePath string) error {
 }
 
 // extractFileName 解析 Content-Disposition 头部中的文件名
-func extractFileName(contentDisp string) string {
-	// 解析 filename*=UTF-8''encoded_filename
-	re := regexp.MustCompile(`filename\*=(?i)UTF-8''([^;\r\n]+)`)
-	matches := re.FindStringSubmatch(contentDisp)
-	if len(matches) > 1 {
-		decodedName, err := url.QueryUnescape(matches[1])
-		if err == nil {
-			return decodedName
+// func extractFileName(contentDisp string) string {
+// 	// 解析 filename*=UTF-8''encoded_filename
+// 	re := regexp.MustCompile(`filename\*=(?i)UTF-8''([^;\r\n]+)`)
+// 	matches := re.FindStringSubmatch(contentDisp)
+// 	if len(matches) > 1 {
+// 		decodedName, err := url.QueryUnescape(matches[1])
+// 		if err == nil {
+// 			return decodedName
+// 		}
+// 	}
+
+// 	// 解析 filename="filename"
+// 	re = regexp.MustCompile(`filename="([^"]+)"`)
+// 	matches = re.FindStringSubmatch(contentDisp)
+// 	if len(matches) > 1 {
+// 		return matches[1]
+// 	}
+
+// 	return ""
+// }
+
+func extractFileName(downloadUrl string) string {
+	// url最后的filename=后面的文件名,例如http://localhost:8919/download?filename=requirements.txt里面解析requirements.txt
+	// 解析=后面的内容即可，找到=的位置，然后截取字符串
+	if len(downloadUrl) == 0 {
+		return ""
+	}
+	equalIndex := -1
+	for i := len(downloadUrl) - 1; i >= 0; i-- {
+		if downloadUrl[i] == '=' {
+			equalIndex = i
+			break
 		}
 	}
-
-	// 解析 filename="filename"
-	re = regexp.MustCompile(`filename="([^"]+)"`)
-	matches = re.FindStringSubmatch(contentDisp)
-	if len(matches) > 1 {
-		return matches[1]
+	if equalIndex == -1 || equalIndex == len(downloadUrl)-1 {
+		return ""
 	}
+	fileName := downloadUrl[equalIndex+1:]
+	return fileName
 
-	return ""
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/component-base/logs"
@@ -119,22 +120,59 @@ func (fm *FileManager) UploadFile(filePath string) (string, error) {
 	}
 }
 
-// func (fm *FileManager) uploadDir(dirPath string) (string, error) {
-// 	// 调用 utils.UploadDir 函数上传目录
-// 	// 这里的 dirPath 是要上传的目录路径
-// 	// 返回上传结果和错误信息
-// 	return utils.UploadDir(dirPath, fm.UploadURL)
-// }
+// 上传dirPath这个目录下的所有文件
+func (fm *FileManager) UploadFolder(dirPath string) (string, error) {
+	// 调用 utils.UploadDir 函数上传目录
+	// 这里的 dirPath 是要上传的目录路径
+	// 返回上传结果和错误信息
+	// 根据dirPath获取文件夹名称，最后一个/后面的部分
+	if dirPath == "" {
+		return "", errors.New("dirPath is empty")
+	}
+	parts := strings.Split(dirPath, "/")
+	if len(parts) == 0 {
+		return "", errors.New("dirPath does not contain any parts")
+	}
+	// 获取最后一个部分作为文件夹名称
+	// 如果最后一个部分是空字符串，说明路径以/结尾，可能是一个空目录
+	// 例如 "/home/user/documents/"，最后一个部分是空
+	if parts[len(parts)-1] == "" {
+		if len(parts) < 2 {
+			return "", errors.New("dirPath does not contain a valid folder name")
+		}
+		// 如果是空目录，使用倒数第二个部分作为文件夹名称
+		folderName := parts[len(parts)-2]
+		if folderName == "" {
+			return "", errors.New("folder name is empty")
+		}
+		// fmt.Println("Folder Name:", folderName)
+	}
+	folderName := parts[len(parts)-1]
+	if folderName == "" {
+		return "", errors.New("folder name is empty")
+	}
+	// fmt.Println("Folder Name:", folderName)
+	// 构造上传URL
+	url := fm.UploadURL + "?filename=" + folderName
+
+	err := utils.Traverse(dirPath, url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+	} else {
+		fmt.Println("Upload successful!")
+	}
+	return "Upload successful!", nil
+}
 
 func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 	// 调用 utils.DownloadFile 函数下载文件
 	// 这里的 filename 是要下载的文件名，savePath 是保存路径
 	// 返回下载结果和错误信息
+	// downloadURL := fm.DownloadURL + filename
+
 	url := fm.DownloadURL
 	downloadURL := url + filename
 	fm.DownloadStatus[filename] = Downloading
-	// fmt.Println("Download URL:", downloadURL)
-	// fmt.Println("Save Path:", savePath)
 	err := utils.DownloadFile(downloadURL, savePath)
 	if err != nil {
 		fmt.Println("Download failed:", err)
@@ -149,8 +187,10 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 	// TODO 更新文件下载的状态
 }
 
-func (fm *FileManager) DownloadFileDir(fileName, savePath string) (string, error) {
+// TODO:优化并发下载的情况，尤其是端口如何处理，服务端和客户端都要处理
+func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, error) {
 	// 1. 创建HTTP服务器
+	// 端口8080
 	server := &http.Server{Addr: ":8080"}
 	done := make(chan bool)
 
@@ -177,13 +217,23 @@ func (fm *FileManager) DownloadFileDir(fileName, savePath string) (string, error
 	time.Sleep(100 * time.Millisecond)
 
 	// 5. 发送下载请求
-	downloadURL := fm.DownloadURL + fileName
-	resp, err := http.Get(downloadURL)
+	downloadURL := fm.DownloadURL + folderName
+
+	// 创建 GET 请求
+	req, err := http.NewRequest("GET", downloadURL, nil)
 	if err != nil {
-		server.Close()
-		return "", fmt.Errorf("下载请求失败: %v", err)
+		log.Fatal("Failed to create request:", err)
 	}
-	resp.Body.Close()
+
+	req.Header.Set("FileType", "folder")
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal("Request failed:", err)
+	}
+	defer resp.Body.Close()
 
 	// 6. 等待传输完成或超时
 	select {

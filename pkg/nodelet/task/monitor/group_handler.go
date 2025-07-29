@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	ty "hit.edu/framework/pkg/apimachinery/types"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/nodelet/task/controller"
-	"strings"
 
 	"os"
 	"time"
@@ -168,8 +169,8 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	// 后续还需要考虑到这些目录的删除。例如在运行完成之后，生成的结果要么直接上传到etcd，要么直接上传到文件仓库。在这些操作完成之后，考虑删除这些已完成的任务的文件夹
 	// 1、尝试创建group专属的目录，需要先检查前置的目录apis.FileFolder = "../tmp/data"目录是否存在，然后再开始创建group专属目录
 
-	// groupdir := apis.FileFolder + "/" + gr.Spec.Name
 	groupdir := apis.FileFolder + "/" + gr.Name
+	logs.Infof(groupdir)
 	if _, err := os.Stat(groupdir); os.IsNotExist(err) {
 		// 目录不存在，创建目录
 		err := os.Mkdir(groupdir, os.ModePerm) // 权限
@@ -223,12 +224,12 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				}
 				if gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloading && gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloaded { // 说明没有下载过
 					gh.fileManager.DownloadStatus[fileKey] = fileManager.Downloading
-					logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
+					logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
 					if strings.Contains(filedata.Name, ".") { //暂时考虑这个简单的办法，因为文件仓库里的文件不一定在本机上，所以不清楚这个文件是文件还是文件夹
 						// 进行文件的下载
 						go gh.fileManager.DownloadFile(filedata.Name, groupdir)
 					} else { // 进行文件夹的下载
-						go gh.fileManager.DownloadFileDir(filedata.Name, groupdir)
+						go gh.fileManager.DownloadFolder(filedata.Name, groupdir)
 					}
 				}
 			}

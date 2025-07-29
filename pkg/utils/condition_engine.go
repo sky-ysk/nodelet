@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -204,16 +205,29 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 				logs.Errorf("checkDataDependency: %v %v's folder:%v check failed", kind, r.Name, folder)
 				return apis.False, errors.New("dataDependency:folder check failed")
 			}
-
+			// 上面检查完目录之后，拼接每一个文件的路径，检查每一个文件是否存在，不存在则NotReady状态。只检查文件是否存在，启动文件下载在其他地方
 			for _, data := range r.Spec.Data {
-				// 上面检查完目录之后，拼接每一个文件的路径，检查每一个文件是否存在，不存在则NotReady状态。只检查文件是否存在，启动文件下载在其他地方
-				filePath := folder + "/" + data.Name
-				if _, err := os.Stat(filePath); err != nil {
-					// 文件不存在的日志
-					logs.Tracef("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
-					return apis.NotReady, errors.New("dataDependency:file not exist")
+				// 需要根据是文件还是文件夹来分别检查，目前是依据data.Name是否包含.来判断是否是文件
+				if strings.Contains(data.Name, ".") {
+					// 是文件
+					filePath := folder + "/" + data.Name
+					logs.Infof("checkDataDependency: %v %v's file:%v", kind, r.Name, filePath)
+					if _, err := os.Stat(filePath); err != nil {
+						// 文件不存在的日志
+						logs.Tracef("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, filePath)
+						return apis.NotReady, errors.New("dataDependency:file not exist")
+					}
+				} else {
+					// 是文件夹
+					folderPath := strings.TrimSuffix(folder, "/") + "/" + data.Name
+					logs.Infof("checkDataDependency: %v %v's folder:%v", kind, r.Name, folderPath)
+					// 检查文件夹是否存在
+					if _, err := os.Stat(folderPath); os.IsNotExist(err) {
+						// 文件夹不存在的日志
+						logs.Tracef("checkDataDependency: %v %v's folder:%v is not exist", kind, r.Name, folderPath)
+						return apis.NotReady, errors.New("dataDependency:folder not exist")
+					}
 				}
-				// 日志
 				// logs.Infof("checkDataDependency: %v %v's file:%v is not exist", kind, r.Name, file)
 			}
 			return apis.True, nil

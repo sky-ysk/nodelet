@@ -2143,7 +2143,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 				// 这里需要将Package写到etcd上去
 				patchRuntime, err := json.Marshal(map[string]interface{}{
 					"status": map[string]interface{}{
-						"IsParsed": true,
+						"isParsed": true,
 					},
 					"spec": map[string]interface{}{
 						"packages": runtimeReqPackages,

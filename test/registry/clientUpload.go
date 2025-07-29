@@ -12,18 +12,18 @@ import (
 )
 
 func main() {
-	// url := "http://localhost:8919/download?filename=testsky.txt"
-	// savePath := "./"
+	url := "http://localhost:8919/download?filename=requirements.txt"
+	savePath := "./"
 
-	// err := utils.DownloadFile(url, savePath)
-	// if err != nil {
-	// 	fmt.Println("Download failed:", err)
-	// } else {
-	// 	fmt.Println("Download successful!")
-	// }
+	err := utils.DownloadFile(url, savePath)
+	if err != nil {
+		fmt.Println("Download failed:", err)
+	} else {
+		fmt.Println("Download successful!")
+	}
 
 	// url := "http://localhost:8919/upload"
-	// filePath := "/home/public/registry/Registry/cmd/registry/test/testsky.txt"
+	// filePath := "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
 	// fmt.Println("aaaaaUploading file:", filePath)
 	// err := utils.UploadFile(filePath, "v1.0.0", url)
 	// fmt.Println("bbbbUploading file:", filePath)
@@ -51,12 +51,7 @@ func main() {
 	// 	fmt.Println("Upload successful!")
 	// }
 
-	// filePath := "./dataset"
-	// http.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
-	// 	utils.ReceiveDir(w, r, filePath)
-	// })
-
-	// url := "http://localhost:8919/download?filename=test"
+	// url := "http://localhost:8081/download?filename=test"
 
 	// // 创建 GET 请求
 	// req, err := http.NewRequest("GET", url, nil)
@@ -66,7 +61,6 @@ func main() {
 
 	// // 设置请求头（这里是示例）
 	// req.Header.Set("FileType", "folder")
-	// // req.Header.Set("User-Agent", "MyClient/1.0")
 
 	// // 发送请求
 	// client := &http.Client{}
@@ -76,21 +70,26 @@ func main() {
 	// }
 	// defer resp.Body.Close()
 
-	// port := ":8081"
+	// filePath := "./"
+	// http.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
+	// 	utils.ReceiveDir(w, r, filePath)
+	// })
+
+	// port := ":8080"
 	// log.Printf("Server is running on port %s", port)
 	// if err := http.ListenAndServe(port, nil); err != nil {
 	// 	log.Fatalf("Failed to start server: %v", err)
 	// }
 	// log.Printf("end waiting for close")
 
-	fileName := "test"
-	filePath := "./test"
-	DownloadFileDir(fileName, filePath)
+	// fileName := "test"
+	// filePath := "./"
+	// DownloadFileDir(fileName, filePath)
 }
 
 func DownloadFileDir(fileName, savePath string) (string, error) {
 	// 1. 创建HTTP服务器
-	server := &http.Server{Addr: ":8081"}
+	server := &http.Server{Addr: ":8080"}
 	done := make(chan bool)
 
 	// 2. 设置处理函数（使用闭包捕获savePath）
