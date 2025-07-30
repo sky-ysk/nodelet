@@ -640,7 +640,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							if runtimeStatus.Phase == apis.Discard {
 								continue
 							}
-							if !gmo.runtimeDepenSatisfy(group, runtime, action) {
+							if runtime.Status.Phase == apis.Running || !gmo.runtimeDepenSatisfy(group, runtime, action) {
 								//logs.Infof("Runtime %s depends on parent runtime", r.Name)
 								//r.Waiting = true  // 这里不需要再标记了，因为在DeployCheck阶段就遍历了所有的runtime并标记了
 								continue
