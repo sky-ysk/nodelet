@@ -104,7 +104,7 @@ func (h *EventsHandler) GetEvents(request *restful.Request, response *restful.Re
 		}
 	}
 
-	if page == 0 {
+	if (len(results.Items) <= pageSize && page == 1) || page == 0 {
 		err = response.WriteHeaderAndEntity(http.StatusOK, results)
 		if err != nil {
 			logs.Errorf("failed to return a status code")

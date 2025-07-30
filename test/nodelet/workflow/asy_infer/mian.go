@@ -2,7 +2,13 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -15,10 +21,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
-	"net/http"
-	"os"
-	"strings"
-	"time"
 )
 
 // 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
@@ -62,7 +64,7 @@ func main() {
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
 		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
-			From: "requirements.txt", //2$
+			From: "yolo_projects_asy/requirements.txt", //2$
 		},
 	}
 	// 数据依赖（../tmp/testFolder）
@@ -89,11 +91,12 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                     runtime1_1_1_1Name,
-						Type:                     apis.ByCommand,
-						Command:                  []string{"python"},
-						Args:                     []string{"yolo_projects_asy/yolo-asy-running1.py"},
-						Data:                     []apis.DataSpec{apis.DataSpec{Name: "yolo_projects_asy"}},
+						Name:    runtime1_1_1_1Name,
+						Type:    apis.ByCommand,
+						Command: []string{"python"},
+						Args:    []string{"yolo_projects_asy/yolo-asy-running1.py"},
+						Data:    []apis.DataSpec{apis.DataSpec{Name: "yolo_projects_asy"}},
+						// Data:                     []apis.DataSpec{{Name: "requirements.txt"}},
 						Conditions:               &runtime1_1_1_1Condition,
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
@@ -101,11 +104,13 @@ func main() {
 			},
 		},
 	}
-	filePath := "/home/public/workspace/yolo_projects_asy/"
-	UploadFile(filePath) //---这个方法改传递文件夹
-
-	filePath = "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
-	UploadFile(filePath)
+	folderPath := "/home/public/workspace/yolo_projects_asy"
+	_, err := UploadFolder(folderPath) //---这个方法改传递文件夹
+	if err != nil {
+		fmt.Println("upload folder err!")
+	}
+	//filePath := "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
+	//UploadFile(filePath)
 
 	ts := apis.TaskSpec{
 		Name: task1Name,
@@ -211,4 +216,41 @@ func UploadFile(filePath string) (string, error) {
 		fmt.Println("Upload successful!")
 		return "Upload successful!", nil
 	}
+}
+
+func UploadFolder(folderPath string) (string, error) {
+	if folderPath == "" {
+		return "", errors.New("dirPath is empty")
+	}
+	parts := strings.Split(folderPath, "/")
+	if len(parts) == 0 {
+		return "", errors.New("dirPath does not contain any parts")
+	}
+	// 获取最后一个部分作为文件夹名称
+	// 如果最后一个部分是空字符串，说明路径以/结尾，可能是一个空目录
+	// 例如 "/home/user/documents/"，最后一个部分是空
+	if parts[len(parts)-1] == "" {
+		if len(parts) < 2 {
+			return "", errors.New("dirPath does not contain a valid folder name")
+		}
+		// 如果是空目录，使用倒数第二个部分作为文件夹名称
+		folderName := parts[len(parts)-2]
+		if folderName == "" {
+			return "", errors.New("folder name is empty")
+		}
+		// fmt.Println("Folder Name:", folderName)
+	}
+	folderName := parts[len(parts)-1]
+	if folderName == "" {
+		return "", errors.New("folder name is empty")
+	}
+	fmt.Print("folderPath:%s, folderName:%s", folderPath, folderName)
+	url := "http://localhost:8919/upload?filename=" + folderName
+	err := utils.Traverse(folderPath, url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+	} else {
+		fmt.Println("Upload successful!")
+	}
+	return "", nil
 }

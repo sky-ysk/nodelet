@@ -94,8 +94,8 @@ func main() {
 						Name:    runtime1_1_1_1Name,
 						Type:    apis.ByCommand,
 						Command: []string{"python"},
-						Args:                     []string{"yolo_projects_asy/yolo-asy-running1.py"},
-						Data: []apis.DataSpec{apis.DataSpec{Name: "yolo_projects_asy"}, {Name: "requirements.txt"}},
+						Args:    []string{"yolo_projects_asy/yolo-asy-running1.py"},
+						Data:    []apis.DataSpec{apis.DataSpec{Name: "yolo_projects_asy"}, {Name: "requirements.txt"}},
 						// Data:                     []apis.DataSpec{{Name: "requirements.txt"}},
 						Conditions:               &runtime1_1_1_1Condition,
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
@@ -178,7 +178,7 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	logs.Info(scheme)
 	// 创建ClientSet
 	c := &rest.Config{
-		Host:    "http://127.0.0.1:10002",
+		Host:    "http://127.0.0.1:10000",
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

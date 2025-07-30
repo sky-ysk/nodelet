@@ -47,7 +47,7 @@ func main() {
 
 	// group
 
-	group1_1Replicas := []int32{0, 0}
+	group1_1Replicas := []int32{1, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
@@ -66,7 +66,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt", //2$
+			From:      "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt", //2$
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -103,7 +103,7 @@ func main() {
 		Name:     group1_1Name,
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"scheduler": "EdgeNode1",
+				"scheduler": "CloudNode1",
 			},
 		},
 		Parents: make([]string, 0),
@@ -146,9 +146,9 @@ func main() {
 	}
 	fmt.Println(str)
 
-	//prompt()
-	//postEventForMigrate_ForGroup()
-	//prompt()
+	prompt()
+	postEventForMigrate_ForGroup()
+	prompt()
 
 }
 
