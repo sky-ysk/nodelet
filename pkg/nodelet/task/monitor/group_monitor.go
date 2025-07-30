@@ -2123,7 +2123,6 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 			// 如果dependencyFile这个文件路径的第一位是/，说明是绝对路径
 			if strings.HasPrefix(dependencyFile, "/") {
 				// 这里不需要拼接为绝对路径
-				continue
 			} else {
 				// 如果是相对路径，则需要拼接为绝对路径
 				dependencyFile = runtime.Status.Directory + "/" + dependencyFile

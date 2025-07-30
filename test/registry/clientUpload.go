@@ -12,15 +12,15 @@ import (
 )
 
 func main() {
-	url := "http://localhost:8919/download?filename=requirements.txt"
-	savePath := "./"
+	// url := "http://localhost:8919/download?filename=requirements.txt"
+	// savePath := "./"
 
-	err := utils.DownloadFile(url, savePath)
-	if err != nil {
-		fmt.Println("Download failed:", err)
-	} else {
-		fmt.Println("Download successful!")
-	}
+	// err := utils.DownloadFile(url, savePath)
+	// if err != nil {
+	// 	fmt.Println("Download failed:", err)
+	// } else {
+	// 	fmt.Println("Download successful!")
+	// }
 
 	// url := "http://localhost:8919/upload"
 	// filePath := "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
@@ -82,14 +82,14 @@ func main() {
 	// }
 	// log.Printf("end waiting for close")
 
-	// fileName := "test"
-	// filePath := "./"
-	// DownloadFileDir(fileName, filePath)
+	fileName := "yolo_projects_asy"
+	filePath := "./"
+	DownloadFileDir(fileName, filePath)
 }
 
 func DownloadFileDir(fileName, savePath string) (string, error) {
 	// 1. 创建HTTP服务器
-	server := &http.Server{Addr: ":8080"}
+	server := &http.Server{Addr: ":8920"}
 	done := make(chan bool)
 
 	// 2. 设置处理函数（使用闭包捕获savePath）
