@@ -640,7 +640,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							if runtimeStatus.Phase == apis.Discard {
 								continue
 							}
-							if !gmo.runtimeDepenSatisfy(group, runtime, action) {
+							if runtime.Status.Phase == apis.Running || !gmo.runtimeDepenSatisfy(group, runtime, action) {
 								//logs.Infof("Runtime %s depends on parent runtime", r.Name)
 								//r.Waiting = true  // 这里不需要再标记了，因为在DeployCheck阶段就遍历了所有的runtime并标记了
 								continue
@@ -2120,9 +2120,12 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 				continue
 			}
 			var dependencyFile = i.LeftValue.From
-			// 如果dependencyFile这个文件路径不包含/,说明是相对路径，需要拼接为绝对路径
-			if !strings.Contains(dependencyFile, "/") {
-				// 这里需要拼接为绝对路径
+			// 如果dependencyFile这个文件路径的第一位是/，说明是绝对路径
+			if strings.HasPrefix(dependencyFile, "/") {
+				// 这里不需要拼接为绝对路径
+				continue
+			} else {
+				// 如果是相对路径，则需要拼接为绝对路径
 				dependencyFile = runtime.Status.Directory + "/" + dependencyFile
 			}
 			// 检查这个文件是否存在

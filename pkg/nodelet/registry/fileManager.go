@@ -240,6 +240,7 @@ func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, erro
 	case <-done:
 		log.Println("准备关闭服务器...")
 		server.Shutdown(context.Background())
+		logs.Infof("文件接收成功并保存至%v", savePath)
 		return "文件接收成功并保存至 " + savePath, nil
 	case <-time.After(5 * time.Minute):
 		server.Shutdown(context.Background())
