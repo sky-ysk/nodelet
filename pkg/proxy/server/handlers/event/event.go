@@ -206,14 +206,13 @@ func (h *EventHandler) GetEvent(request *restful.Request, response *restful.Resp
 		}
 		return
 	}
-
-	if page == 0 {
+	if (len(results.Items) <= pageSize && page == 1) || page == 0 {
 		err = response.WriteHeaderAndEntity(http.StatusOK, results)
 		if err != nil {
 			logs.Errorf("failed to return a status code")
 			return
 		}
-		logs.Debugf("Get events ")
+		logs.Debugf("Get groups ")
 	} else {
 		if (page-1)*pageSize < len(results.Items) && (page*pageSize)-1 < len(results.Items) {
 			// 返回一整页
