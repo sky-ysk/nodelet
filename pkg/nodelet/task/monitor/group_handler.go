@@ -138,6 +138,7 @@ func (gh *GroupHandler) LoopIteration(ctx context.Context, updateCh <-chan types
 
 // 处理Group启动指令  主要内容：检查当前节点是否能执行group，以及检查当前节点是否接收过当前group（得依据groupID）
 func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
+	logs.Infof("SSSSSSSSSSSSSSSSSSSStart HandleGroupAdd,group:%v", gr.Name)
 	// TODO: 对Pod按照优先级排序（目前先按照创建时间） ---目前是处理发过来的单个Group，所以无法做排序工作
 	start := time.Now()
 	// TODO: 检查任务是否可以在当前节点上运行, 如果不能，则拒绝Group的部署
@@ -173,6 +174,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	logs.Infof(groupdir)
 	if _, err := os.Stat(groupdir); os.IsNotExist(err) {
 		// 目录不存在，创建目录
+		logs.Infof("handler创建目录:%v", groupdir)
 		err := os.Mkdir(groupdir, os.ModePerm) // 权限
 		if err != nil {
 			logs.Errorf("monitor创建目录时发生错误: %v\n", err)
@@ -231,6 +233,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 					} else { // 进行文件夹的下载
 						// go gh.fileManager.DownloadFolder(filedata.Name, groupdir)
 						// 阻塞下载
+						logs.Infof("DDDDDDownload Folder:%v, groupName:%v, actionName:%v, runtimeName:%v", filedata.Name, gr.Name, action.Name, runtime.Name)
 						gh.fileManager.DownloadFolder(filedata.Name, groupdir)
 					}
 				}
