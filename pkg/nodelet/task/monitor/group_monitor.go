@@ -437,6 +437,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						continue
 					}
 				} else if group.Status.CopyStatus == "Starting" {
+					logs.Infof("time:%v", time.Now())
 					logs.Infof("=============CopyPending--Starting")
 					ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToRunning(group.Name) // 有两种情况，一种是无副本情况的瞬时迁移，另一种是副本任务触发了迁移
 					if !ok {
