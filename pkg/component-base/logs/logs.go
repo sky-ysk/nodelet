@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -79,8 +78,15 @@ func initLogs(conf Config) {
 		writers = append(writers, file) // 添加文件输出
 	}
 	if conf.output.console {
-		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout,
+		writers = append(writers, zerolog.ConsoleWriter{
+			Out:        os.Stdout,
 			TimeFormat: "2006-01-02 15:04:05.000", // 为了评估迁移的延时，这里暂时修改一下 原：time.DateTime
+			PartsOrder: []string{
+				zerolog.TimestampFieldName,
+				zerolog.LevelFieldName,
+				zerolog.CallerFieldName,
+				zerolog.MessageFieldName,
+			},
 		}) // 也可以只输出Stderr
 	}
 
@@ -168,11 +174,16 @@ func checkSavePath(logDir string) string {
 	return logDir
 }
 
+func (l *Logger) addModule(context zerolog.Context, num int) zerolog.Context {
+	context = context.CallerWithSkipFrameCount(num)
+	return context
+}
+
 func (l *Logger) addContext(context zerolog.Context, fields ...interface{}) zerolog.Context {
 	// 添加调用者的信息
-	_, modulePath, line := getModuleName(3)
-	modulePathWithLine := modulePath + ":" + strconv.Itoa(line)
-	context = context.Str("module", modulePathWithLine)
+	//_, modulePath, line := getModuleName(3)
+	//modulePathWithLine := modulePath + ":" + strconv.Itoa(line)
+	//context = context.Str("mod", modulePathWithLine)
 
 	// 添加传入的信息
 	var stringMessage string
@@ -227,6 +238,7 @@ func Trace(fields ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 	context := logs.logger.With()
+	context = logs.addModule(context, 3)
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
 	logger := &newLogger
@@ -236,13 +248,20 @@ func Trace(fields ...interface{}) {
 func Tracef(format string, v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
-	logs.logger.Trace().Msgf(format, v...)
+	context := logs.logger.With()
+	context = logs.addModule(context, 3)
+	str := fmt.Sprintf(format, v...)
+	context = logs.addContext(context, str)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Trace().Msgf("")
 }
 
 func Debug(fields ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 	context := logs.logger.With()
+	context = logs.addModule(context, 3)
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
 	logger := &newLogger
@@ -252,13 +271,20 @@ func Debug(fields ...interface{}) {
 func Debugf(format string, v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
-	logs.logger.Debug().Msgf(format, v...)
+	context := logs.logger.With()
+	context = logs.addModule(context, 3)
+	str := fmt.Sprintf(format, v...)
+	context = logs.addContext(context, str)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Debug().Msgf("")
 }
 
 func Info(fields ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 	context := logs.logger.With()
+	context = logs.addModule(context, 3)
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
 	logger := &newLogger
@@ -268,13 +294,20 @@ func Info(fields ...interface{}) {
 func Infof(format string, v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
-	logs.logger.Info().Msgf(format, v...)
+	context := logs.logger.With()
+	context = logs.addModule(context, 3)
+	str := fmt.Sprintf(format, v...)
+	context = logs.addContext(context, str)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Info().Msgf("")
 }
 
 func Warn(fields ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 	context := logs.logger.With()
+	context = logs.addModule(context, 3)
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
 	logger := &newLogger
@@ -284,13 +317,20 @@ func Warn(fields ...interface{}) {
 func Warnf(format string, v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
-	logs.logger.Warn().Msgf(format, v...)
+	context := logs.logger.With()
+	context = logs.addModule(context, 3)
+	str := fmt.Sprintf(format, v...)
+	context = logs.addContext(context, str)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Warn().Msgf("")
 }
 
 func Error(fields ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 	context := logs.logger.With()
+	context = logs.addModule(context, 3)
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
 	logger := &newLogger
@@ -300,13 +340,20 @@ func Error(fields ...interface{}) {
 func Errorf(format string, v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
-	logs.logger.Error().Msgf(format, v...)
+	context := logs.logger.With()
+	context = logs.addModule(context, 3)
+	str := fmt.Sprintf(format, v...)
+	context = logs.addContext(context, str)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Error().Msgf("")
 }
 
 func Fatal(fields ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 	context := logs.logger.With()
+	context = logs.addModule(context, 3)
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
 	logger := &newLogger
@@ -316,13 +363,20 @@ func Fatal(fields ...interface{}) {
 func Fatalf(format string, v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
-	logs.logger.Fatal().Msgf(format, v...)
+	context := logs.logger.With()
+	context = logs.addModule(context, 3)
+	str := fmt.Sprintf(format, v...)
+	context = logs.addContext(context, str)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Fatal().Msgf("")
 }
 
 func Panic(fields ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 	context := logs.logger.With()
+	context = logs.addModule(context, 3)
 	context = logs.addContext(context, fields...)
 	newLogger := context.Logger()
 	logger := &newLogger
@@ -332,7 +386,13 @@ func Panic(fields ...interface{}) {
 func Panicf(format string, v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
-	logs.logger.Panic().Msgf(format, v...)
+	context := logs.logger.With()
+	context = logs.addModule(context, 3)
+	str := fmt.Sprintf(format, v...)
+	context = logs.addContext(context, str)
+	newLogger := context.Logger()
+	logger := &newLogger
+	logger.Panic().Msgf("")
 }
 
 func parseStructFields(v interface{}) map[string]interface{} {
