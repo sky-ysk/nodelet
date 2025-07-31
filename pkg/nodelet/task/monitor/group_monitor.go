@@ -300,7 +300,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Millisecond * 100):
+		case <-time.After(time.Millisecond * 10):
 			copyPendingGroups := gmo.groupQueues.GetAllCopyPending()
 			for i := range copyPendingGroups {
 				gro := copyPendingGroups[i]
@@ -310,6 +310,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 					logs.Errorf("Etcd get group error-2:%v", err)
 				}
 				if group.Status.CopyStatus == "Waiting" { // 说明副本任务是提前部署好的
+					//logs.Info("====================Waiting")
 					// 这里打算Init初始化group,就是提前进行Running步骤  源任务一个Runtime执行完成后，就修改副本runtime的状态即可，Action执行完成后，也会修改副本Runtime的状态
 					var isSuccess bool                                     // 标记group下面的action是否都执行成功，如果都执行完了，还没有触发迁移，那么关闭副本即可
 					for _, actionReference := range group.Status.Actions { // 遍历group当中的Action
@@ -321,7 +322,6 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						isSuccess = true
 						if actionStatus.CopyStatus == "Running" {
 							isSuccess = false
-							//logs.Info("***************************************************************Running")
 							for _, runtimeReference := range actionStatus.Runtimes {
 								runtime, err := gmo.clientsManager.GetRuntime(runtimeReference.Name, runtimeReference.Namespace)
 								if err != nil {
@@ -329,6 +329,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 								}
 								runtimeStatus := &runtime.Status
 								if runtimeStatus.CopyStatus == "Running" { //说明源任务当中的该runtime已经Running了
+									//logs.Info("***************************************************************Running")
 									// 这里将副本group中的该runtime进行判断，如果是细粒度控制的，就进行init
 									if runtime.Spec.EnableFineGrainedControl && !runtimeStatus.Initing && gmo.runtimeDepenSatisfy(group, runtime, action) { //细粒度控制 且 还未Init初始化过
 										// 启动runtimeStatus的Init方法  --TODO 这里为啥不用依赖检查呢？因为源任务能Running，说明这个runtime是依赖是满足的，所以默认副本对应的runtime依赖也是满足的（所以这里得加一点，就是在init阶段，检查一下依赖再init也OK---最好是这样）
@@ -346,7 +347,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 										if err != nil {
 											logs.Errorf("Patch runtime error-2:%v", err)
 										}
-									} else { // 如果不是细粒度的，那么就标记该runtime的Waiting属性为Waiting（其状态仍然是DeployCheck）
+									} else if !runtime.Spec.EnableFineGrainedControl && runtimeStatus.Waiting != true { // 如果不是细粒度的，那么就标记该runtime的Waiting属性为Waiting（其状态仍然是DeployCheck）
 										//grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Waiting = true // TODO应该是为了适配进入到Running队列的DeployCheck检查后，会重复执行（因为当前状态为DeployCheck状态，进入到Running队列，有可能还是DeployCheck状态，对于DeployCheck状态，需要考虑该runtime是否处于等待的过程），这里的runtime，其实就是处于一种等待的过程
 										patchRuntime, err := json.Marshal(map[string]interface{}{
 											"status": map[string]interface{}{
@@ -443,9 +444,6 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 					}
 				}
 			}
-			//default:
-			//case <-ctx.Done():
-			//	return
 		}
 	}
 }
@@ -459,7 +457,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Millisecond * 100):
+		case <-time.After(time.Millisecond * 10):
 			runningGroups := gmo.groupQueues.GetAllRunning()
 			for i := range runningGroups {
 				gro := runningGroups[i] //不用再加&&
@@ -640,7 +638,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							if runtimeStatus.Phase == apis.Discard {
 								continue
 							}
-							if runtime.Status.Phase == apis.Running || !gmo.runtimeDepenSatisfy(group, runtime, action) {
+							if (runtimeStatus.Phase == apis.Running && !runtimeStatus.Waiting) || !gmo.runtimeDepenSatisfy(group, runtime, action) { // 当runtime的状态为Running并且不是等待状态的话，就continue    因为pod进行预部署的时候，也是Running状态，如果只是 runtimeStatus.Phase == apis.Running || !gmo.runtimeDepenSatisfy(group, runtime, action)，会一直continue，而不会进入下面恢复启动的逻辑
 								//logs.Infof("Runtime %s depends on parent runtime", r.Name)
 								//r.Waiting = true  // 这里不需要再标记了，因为在DeployCheck阶段就遍历了所有的runtime并标记了
 								continue

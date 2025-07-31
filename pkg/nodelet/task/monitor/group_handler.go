@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	ty "hit.edu/framework/pkg/apimachinery/types"
@@ -169,8 +170,13 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	// 4-30 runtime第一次被准备启动，在检查依赖等之前，创建runtime专属的文件目录，并且下载其Data[]里面填入的所有文件===暂时只考虑到单个文件
 	// 后续还需要考虑到这些目录的删除。例如在运行完成之后，生成的结果要么直接上传到etcd，要么直接上传到文件仓库。在这些操作完成之后，考虑删除这些已完成的任务的文件夹
 	// 1、尝试创建group专属的目录，需要先检查前置的目录apis.FileFolder = "../tmp/data"目录是否存在，然后再开始创建group专属目录
-
-	groupdir := apis.FileFolder + "/" + gr.Name
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logs.Errorf("获取用户主目录失败: %v", err)
+	}
+	fileFolder := filepath.Join(homeDir, "tmp", "data")
+	groupdir := fileFolder + "/" + gr.Name
+	//groupdir := apis.FileFolder + "/" + gr.Name
 	logs.Infof(groupdir)
 	if _, err := os.Stat(groupdir); os.IsNotExist(err) {
 		// 目录不存在，创建目录

@@ -418,16 +418,19 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			logs.Errorf("Json Marshal failed, err:%v", err)
 		}
 		// 从etcd-GroupSpec-copyInfo当中获取,还需要获取Condition，是执行一个副本还是执行全部副本---目前做的简单一下 就选一个副本进行迁移即可
+		logs.Info("init copy_status===================================")
 		for key, value := range group.Spec.CopyInfo { // 这里相当于只遍历CopyInfo这个数组当中的第一个元素
 			groupCopyName = key
 			if value == "local" { // && event.Reason == events.TriggerCrossMigration
 				if event.Reason == events.TriggerLocalMigration || event.Reason == events.TriggerCrossMigration { //适配天数环境
 					// 查副本group所在的节点是否为要迁移的目的节点
+					logs.Info("init copy_status===================================1")
 					getCopyGroup, err := mc.clientsManager.GetGroup(groupCopyName, group.Namespace)
 					if err != nil {
 						logs.Errorf("Get group %s failed-66: %v", groupCopyName, err)
 					}
-					if event.MigrationTarget == *getCopyGroup.Status.Node || event.MigrationTarget == "" { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
+					logs.Info("init copy_status===================================2")
+					if event.MigrationTarget == "" || event.MigrationTarget == *getCopyGroup.Status.Node { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
 						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
 						if err != nil {
@@ -635,19 +638,21 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	}
 
 	// 修改源group的Status.phase为Migrating
-	patchGroup, err := json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			"phase": apis.Migrating,
-		},
-	})
-	if err != nil {
-		logs.Errorf("Json Marshal failed, err:%v", err)
-	}
-	group, err = mc.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup) //注意的点：这里将更新好源Group重新赋值给源Group
-	if err != nil {
-		logs.Errorf("Patch group error-7:%v", err)
-	}
-	logs.Infof("Source groupStatus.Phase:%v", group.Status.Phase)
+	go func() {
+		patchGroup, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"phase": apis.Migrating,
+			},
+		})
+		if err != nil {
+			logs.Errorf("Json Marshal failed, err:%v", err)
+		}
+		group, err = mc.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup) //注意的点：这里将更新好源Group重新赋值给源Group
+		if err != nil {
+			logs.Errorf("Patch group error-7:%v", err)
+		}
+		logs.Infof("Source groupStatus.Phase:%v", group.Status.Phase)
+	}()
 	// 获取任务group中需要迁移的runtime的当前的执行状态，并将该状态写入到副本group上的runtimeStatus中的keyStatus，并关闭源group中Running的runtime   注意对于DeployCheck的任务，就不采用这种读取状态并写入的方式
 	// 注意：如果说Runtime本身没有细粒度控制的话，就不用再保存任务状态以及写入到副本任务上去
 	for _, actionReference := range group.Status.Actions {

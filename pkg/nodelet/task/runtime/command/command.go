@@ -402,6 +402,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 			logs.Errorf("Failed to get runtime '%s': %v", runtime.Name, err)
 		}
 		keyStatus = etcdRuntime.Status.KeyStatus
+		logs.Info("===================try")
 	}
 	logs.Infof("keyStatus: %s", keyStatus)
 

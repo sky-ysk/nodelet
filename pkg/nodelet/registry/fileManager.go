@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -82,7 +83,13 @@ func NewFileManager(fileRegistry string) *FileManager {
 
 func (fm *FileManager) Init() error {
 	//这个协程用来检查和创建apis.FileFolder
-	tmpDir := "/home/public/tmp"
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logs.Errorf("获取用户主目录失败: %v", err)
+		return err
+	}
+	tmpDir := filepath.Join(homeDir, "tmp")
+	//tmpDir := "../tmp"
 	if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
 		// 目录不存在，创建目录
 		err := os.Mkdir(tmpDir, os.ModePerm) // 权限
@@ -91,7 +98,8 @@ func (fm *FileManager) Init() error {
 			return err
 		}
 	}
-	dataFir := "/home/public/tmp/data"
+	dataFir := filepath.Join(tmpDir, "data")
+	//dataFir := "../tmp/data"
 	if _, err := os.Stat(dataFir); os.IsNotExist(err) {
 		err := os.Mkdir(dataFir, os.ModePerm)
 		if err != nil {
