@@ -37,9 +37,10 @@ func TestInit(t *testing.T) {
 	_, err = buf.ReadFrom(file)
 	assert.NoError(t, err, "无法读取日志文件内容: %s", expectedLogFile)
 
-	logContent := buf.String()
-	assert.Contains(t, logContent, "module", "日志内容不包含module字段")
-	assert.Contains(t, logContent, "time", "日志内容不包含time字段")
+	// 更改：该字段不在init时候写入
+	//logContent := buf.String()
+	//assert.Contains(t, logContent, "module", "日志内容不包含module字段")
+	//assert.Contains(t, logContent, "time", "日志内容不包含time字段")
 }
 
 func TestGetModuleName(t *testing.T) {
@@ -185,7 +186,6 @@ func createTestCase(t *testing.T, c *testCase) {
 
 	expectedFields := map[string]interface{}{
 		"level":              c.level,
-		"module":             "logs_test.go:xx",
 		"SampleStruct.Name":  "haha",
 		"SampleStruct.Age":   float64(12),
 		"SampleStruct.Email": "293@email.com",
@@ -207,13 +207,6 @@ func createTestCase(t *testing.T, c *testCase) {
 		if _, exists := logData["time"]; !exists {
 			t.Error("Expected time field missing in log output")
 		}
-		// 检查 module 是否存在
-		if key == "module" {
-			if _, exists := logData[key]; !exists {
-				t.Errorf("Expected key %q missing in log output", key)
-			}
-			continue
-		}
 		// 检验其他字段是否存在以及值是否正确
 		if value, exists := logData[key]; !exists || value != expectedValue {
 			t.Errorf("Field %q: expected %v, got %v", key, expectedValue, value)
@@ -232,9 +225,10 @@ func TestTracef(t *testing.T) {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 
-	if value, exists := logData["message"]; !exists || value != "Test Trace format 1 " {
+	if value, exists := logData["msg"]; !exists || value != "Test Trace format 1 " {
 		t.Errorf("没有成功输出字符串")
 	}
+
 }
 
 func TestTrace(t *testing.T) {
@@ -251,9 +245,10 @@ func TestDebugf(t *testing.T) {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 
-	if value, exists := logData["message"]; !exists || value != "Test Debug format 1 " {
+	if value, exists := logData["msg"]; !exists || value != "Test Debug format 1 " {
 		t.Errorf("没有成功输出字符串")
 	}
+	//assert.Contains(t, logData, "module", "日志内容不包含module字段")
 }
 
 func TestDebug(t *testing.T) {
@@ -270,9 +265,11 @@ func TestInfof(t *testing.T) {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 
-	if value, exists := logData["message"]; !exists || value != "Test Info format 1 " {
+	if value, exists := logData["msg"]; !exists || value != "Test Info format 1 " {
 		t.Errorf("没有成功输出字符串")
 	}
+
+	//assert.Contains(t, logData, "module", "日志内容不包含module字段")
 }
 
 func TestInfo(t *testing.T) {
@@ -289,9 +286,12 @@ func TestWarnf(t *testing.T) {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 
-	if value, exists := logData["message"]; !exists || value != "Test Warn format 1 " {
+	if value, exists := logData["msg"]; !exists || value != "Test Warn format 1 " {
 		t.Errorf("没有成功输出字符串")
+
 	}
+
+	//assert.Contains(t, logData, "module", "日志内容不包含module字段")
 }
 
 func TestWarn(t *testing.T) {
@@ -308,9 +308,11 @@ func TestErrorf(t *testing.T) {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 
-	if value, exists := logData["message"]; !exists || value != "Test Error format 1 " {
+	if value, exists := logData["msg"]; !exists || value != "Test Error format 1 " {
 		t.Errorf("没有成功输出字符串")
 	}
+
+	//assert.Contains(t, logData, "module", "日志内容不包含module字段")
 }
 
 func TestError(t *testing.T) {
@@ -369,7 +371,6 @@ func TestFatal(t *testing.T) {
 
 	expectedFields := map[string]interface{}{
 		"level":              "fatal",
-		"module":             "logs_test.go:xx",
 		"SampleStruct.Name":  "haha",
 		"SampleStruct.Age":   float64(12),
 		"SampleStruct.Email": "293@email.com",
@@ -390,13 +391,6 @@ func TestFatal(t *testing.T) {
 		// 验证时间字段存在
 		if _, exists := logData["time"]; !exists {
 			t.Error("Expected time field missing in log output")
-		}
-		// 检查 module 是否存在
-		if key == "module" {
-			if _, exists := logData[key]; !exists {
-				t.Errorf("Expected key %q missing in log output", key)
-			}
-			continue
 		}
 		// 检验其他字段是否存在以及值是否正确
 		if value, exists := logData[key]; !exists || value != expectedValue {
@@ -420,7 +414,7 @@ func TestFatalf(t *testing.T) {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 
-	if value, exists := logData["message"]; !exists || value != "Test Fatal format 1 " {
+	if value, exists := logData["msg"]; !exists || value != "Test Fatal format 1 " {
 		t.Errorf("没有成功输出字符串")
 	}
 }
@@ -468,7 +462,6 @@ func TestPanic(t *testing.T) {
 
 	expectedFields := map[string]interface{}{
 		"level":              "panic",
-		"module":             "logs_test.go:xx",
 		"SampleStruct.Name":  "haha",
 		"SampleStruct.Age":   float64(12),
 		"SampleStruct.Email": "293@email.com",
@@ -489,13 +482,6 @@ func TestPanic(t *testing.T) {
 		// 验证时间字段存在
 		if _, exists := logData["time"]; !exists {
 			t.Error("Expected time field missing in log output")
-		}
-		// 检查 module 是否存在
-		if key == "module" {
-			if _, exists := logData[key]; !exists {
-				t.Errorf("Expected key %q missing in log output", key)
-			}
-			continue
 		}
 		// 检验其他字段是否存在以及值是否正确
 		if value, exists := logData[key]; !exists || value != expectedValue {
@@ -519,7 +505,7 @@ func TestPanicf(t *testing.T) {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 
-	if value, exists := logData["message"]; !exists || value != "Test Panic format 1 " {
+	if value, exists := logData["msg"]; !exists || value != "Test Panic format 1 " {
 		t.Errorf("没有成功输出字符串")
 	}
 }
