@@ -321,7 +321,7 @@ func (gw *groupWorkers) handleCheckingUpdate(gr *apis.Group) {
 			logs.Errorf("Etcd has group:%v, but not has task:%v, get task err:%v,", gr.Name, taskName, err1)
 			return
 		}
-		logs.Infof("==========================Task的Status.Phase:%v", task1.Status.Phase)
+		logs.Infof("The state of the Task to which the group belongs:%v", task1.Status.Phase)
 		if task1.Status.Phase == apis.ReadyToDeploy || task1.Status.Phase == apis.Unknown { // TODO 这里为啥要判断是否DeployCheck--因为group被分配到不同的节点上，遍历到group的时候，都需要修改上层Task的信息的话，是重叠的，没必要  这里逻辑错误，如果第一个group遍历到完并且运行了，这里的Task的状态就行Running
 			//task1.Status.Phase = apis.DeployCheck //首先设置Task的状态为DeployCheck
 			logs.Trace("=================Task的状态被修改为DeployCheck")

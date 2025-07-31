@@ -104,7 +104,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	// 目前只接受Command中第一个元素
 	err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
 	if err != nil {
-		logs.Info("Receive info:\t", err)
+		logs.Infof("Receive info:\t", err)
 		return err
 	}
 	return nil

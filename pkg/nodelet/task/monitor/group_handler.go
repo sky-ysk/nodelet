@@ -139,7 +139,7 @@ func (gh *GroupHandler) LoopIteration(ctx context.Context, updateCh <-chan types
 
 // 处理Group启动指令  主要内容：检查当前节点是否能执行group，以及检查当前节点是否接收过当前group（得依据groupID）
 func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
-	logs.Infof("SSSSSSSSSSSSSSSSSSSStart HandleGroupAdd,group:%v", gr.Name)
+	logs.Infof("Start HandleGroupAdd,group:%v", gr.Name)
 	// TODO: 对Pod按照优先级排序（目前先按照创建时间） ---目前是处理发过来的单个Group，所以无法做排序工作
 	start := time.Now()
 	// TODO: 检查任务是否可以在当前节点上运行, 如果不能，则拒绝Group的部署
@@ -177,10 +177,10 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 	fileFolder := filepath.Join(homeDir, "tmp", "data")
 	groupdir := fileFolder + "/" + gr.Name
 	//groupdir := apis.FileFolder + "/" + gr.Name
-	logs.Infof(groupdir)
+	logs.Infof("File Path:%v", groupdir)
 	if _, err := os.Stat(groupdir); os.IsNotExist(err) {
 		// 目录不存在，创建目录
-		logs.Infof("handler创建目录:%v", groupdir)
+		logs.Infof("handler create directory :%v", groupdir)
 		err := os.Mkdir(groupdir, os.ModePerm) // 权限
 		if err != nil {
 			logs.Errorf("monitor创建目录时发生错误: %v\n", err)
@@ -232,14 +232,14 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				}
 				if gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloading && gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloaded { // 说明没有下载过
 					gh.fileManager.DownloadStatus[fileKey] = fileManager.Downloading
-					logs.Infof("now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
+					logs.Infof("Now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
 					if strings.Contains(filedata.Name, ".") { //暂时考虑这个简单的办法，因为文件仓库里的文件不一定在本机上，所以不清楚这个文件是文件还是文件夹
 						// 进行文件的下载
 						go gh.fileManager.DownloadFile(filedata.Name, groupdir)
 					} else { // 进行文件夹的下载
 						// go gh.fileManager.DownloadFolder(filedata.Name, groupdir)
 						// 阻塞下载
-						logs.Infof("DDDDDDownload Folder:%v, groupName:%v, actionName:%v, runtimeName:%v", filedata.Name, gr.Name, action.Name, runtime.Name)
+						logs.Infof("Download Folder:%v, groupName:%v, actionName:%v, runtimeName:%v", filedata.Name, gr.Name, action.Name, runtime.Name)
 						gh.fileManager.DownloadFolder(filedata.Name, groupdir)
 					}
 				}
@@ -276,6 +276,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				// 复制创建一个全新的副本group信息（注意Succeed的Phase不用修改，DeployCheck和Running状态需要修改），另外还需要将副本的groupStatus改为Starting
 				//groupCopyName := "Reason-Copy"                                               // TODO 这里之后改成随机生成即可源group.Name + 一串随机字符
 				groupCopy := controller.NewGroupInfoCopy(gr, true, "") // 第二个参数为true，表示的是提前写入etcd
+				logs.Infof("Create groupCopy:%v", groupCopy.Name)
 				// 新增操作--5.20--将Group写入到Task当中
 				gh.AddGroupCopyToTaskStatus(groupCopy)
 				// 遍历action和Runtime，依次创建
@@ -306,7 +307,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 					}
 				}
 				// 将副本group信息写入到etcd当中，目前还只适配本域内迁移
-				logs.Infof("group:%v===================", groupCopy.Name)
+				logs.Trace("group:%v===================", groupCopy.Name)
 				groupClient := gh.clientsManager.GetGroupClient(gr.Namespace)
 				_, err = groupClient.Client.Create(context.TODO(), groupCopy, metav1.CreateOptions{}) // 因为是创建同一个域内的Group副本，所以说副本的namespace和源任务相同，直接用源group的namespace
 				if err != nil {
@@ -519,7 +520,7 @@ func (gh *GroupHandler) HandleGroupRestore(gr *apis.Group) {
 // TODO 检查本地资源是否可以启动该Group
 func (gh *GroupHandler) checkResource(g *apis.Group) bool {
 	// 首先检查一下这个group的状态是否为ReadyToDeploy
-	logs.Infof("checkResource方法：g.Status.Phase:%v", g.Status.Phase)
+	logs.Infof("CheckResource：g.Status.Phase:%v", g.Status.Phase)
 	if g.Status.Phase != apis.ReadyToDeploy {
 		return false
 	}

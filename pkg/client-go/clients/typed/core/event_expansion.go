@@ -22,7 +22,7 @@ type EventExpansion interface {
 }
 
 func (e *events) CreateForEventSink(event *apis.Event) (*apis.Event, error) {
-	logs.Info("---CreateForEventSink---")
+	logs.Trace("---CreateForEventSink---")
 	logs.Trace("将该event post到api server")
 	result, err := e.Create(context.TODO(), event, meta.CreateOptions{})
 	return result, err

@@ -185,7 +185,8 @@ func postEventForMigrate_ForGroup() {
 		logs.Errorf("GetGroup err: %v", err)
 	}
 	time.Sleep(10 * time.Millisecond)
-	m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
+	//m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
+	m.LogEventForMigration(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), "", namespace)
 }
 
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {

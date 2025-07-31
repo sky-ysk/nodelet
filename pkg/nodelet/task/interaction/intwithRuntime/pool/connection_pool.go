@@ -88,7 +88,7 @@ func (cp *ConnectionPool) GetConnWithRetry(address string, maxRetries int) (*grp
 			return conn, nil
 		}
 
-		logs.Warnf("Connection attempt %d failed (耗时 %v): %v", i+1, time.Since(startTime), err)
+		logs.Tracef("Connection attempt %d failed (耗时 %v): %v", i+1, time.Since(startTime), err)
 		if i < maxRetries-1 {
 			time.Sleep(15 * time.Millisecond) // 递增间隔：50ms, 100ms... time.Sleep(time.Duration(i+1) * 50 * time.Millisecond)   10mm
 		}

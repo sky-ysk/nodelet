@@ -89,9 +89,9 @@ func (c *RuntimeClient) RunAppInit() (result *pb.Result, err error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logs.Info("==============Init=========1")
+	logs.Info("==============Init=========")
 	result, err = c.grpcClient.Init(ctx, &pb.InitIntent{})
-	logs.Info("==============Init=========2")
+	logs.Trace("==============Init=========")
 	for err != nil {
 		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
 		logs.Debug("retry to runAppInit")
@@ -110,9 +110,9 @@ func (c *RuntimeClient) RunAppStart() (result *pb.Result, err error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logs.Info("==============Start=========1")
+	logs.Info("==============Start=========")
 	result, err = c.grpcClient.Start(ctx, &pb.StartIntent{})
-	logs.Info("==============Start=========2")
+	logs.Trace("==============Start=========")
 	for err != nil {
 		time.Sleep(time.Millisecond * 100) //kcm:这里的延时会影响迁移指标，建议删除
 		logs.Info("retry to runAppStart")
@@ -130,9 +130,9 @@ func (c *RuntimeClient) RunAppStore() (answer string, err error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logs.Info("==============Store=========1")
+	logs.Info("==============Store=========")
 	result, err := c.grpcClient.Store(ctx, &pb.StoreIntent{})
-	logs.Info("==============Store=========2")
+	logs.Trace("==============Store=========")
 	for err != nil {
 		logs.Debug("retry to runAppStore")
 		result, err = c.grpcClient.Store(ctx, &pb.StoreIntent{})
@@ -153,9 +153,9 @@ func (c *RuntimeClient) RunAppRestore(keyStatus string) (result *pb.Result, err 
 		Name: "restoreData",
 		Data: keyStatus,
 	}
-	logs.Info("==============Restore=========1")
+	logs.Info("==============Restore=========")
 	result, err = c.grpcClient.Restore(ctx, &pb.RestoreIntent{Data: []*pb.Data{data}})
-	logs.Info("==============Restore=========2")
+	logs.Trace("==============Restore=========")
 	for err != nil {
 		logs.Debug("retry to runAppRestore")
 		result, err = c.grpcClient.Restore(ctx, &pb.RestoreIntent{Data: []*pb.Data{data}})

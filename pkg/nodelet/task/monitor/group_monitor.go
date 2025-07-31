@@ -580,14 +580,14 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 								if !runtime.Status.Starting { // 还没有调用Start或者Run方法，说明第一次进入  ----Start参数主要解决的问题：Action、Runtime的依赖都满足，且调用了Run、Start方法进入了Runtime的运行时，但是卡在运行时，没有将Runtime、Action的状态设置为Running，导致一直重复进入Action.Status== apis.Deploycheck这个分支
 									logs.Infof("****************************hhhhhhhhhhhhhhhh****************************************")
 									//if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting { //TODO 这个参数好像可以删了，有Waiting是不是就够了？
-									logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
+									//logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
 									if runtimeStatus.KeyStatus == "" { // 说明不是副本任务，还没初始化---TODO 这里需要这个检查的原因：有可能是即时的迁移迁移，那迁移过去的group是没有进入init状态的，所以这边迁移过去的副本是处于DeployCheck的状态开始恢复任务状态
-										logs.Info("))))))))))))))))))))))))))))))))))))))))))))))")
+										logs.Info("Runtime has keyStatus))))))))))))))))))))))))))))))))))))))))))))))")
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									} else {
-										logs.Info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+										logs.Info("Runtime has't keyStatus%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
 										//go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-A
-										go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-B
+										//go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-B
 										go gmo.runtimeManager.RestoreData(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									}
 									patchRuntime, err := json.Marshal(map[string]interface{}{
@@ -595,12 +595,12 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 											"starting": true,
 										},
 									})
-									logs.Infof("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&-1,name:%v,namespace:%v", runtime.Name, runtime.Namespace)
+									logs.Tracef("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&-1,name:%v,namespace:%v", runtime.Name, runtime.Namespace)
 									_, err = gmo.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
 									if err != nil {
 										logs.Errorf("patch runtimeStatus error")
 									}
-									logs.Info("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&-2")
+									logs.Trace("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&-2")
 								}
 							} else {
 								// ①副本任务，但没有细粒度控制 ②原任务（没有副本） 采用Run方式启动任务
@@ -2255,9 +2255,9 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 			IsModify = false
 		}
 	}
-	logs.Infof("------------------------------------------IsModify:%v", IsModify)
+	logs.Tracef("------------------------------------------IsModify:%v", IsModify)
 	if IsModify { // group下面的信息都修改完成，接下来需要将一些DeployCheck的状态进行修改。group修改完后，还需要将group的信息放到Task当中，如果Task下面的所有group都执行成功且都放到了Task下面的话，最后还需要做收尾工作，标记Task状态为Running，当迁移完成后，由Migrated队列轮询检查副本的执行情况，再标记Task的状态为成功或失败
-		logs.Info("---------------进入ISModify----------------------------------------")
+		logs.Trace("---------------into ISModify----------------------------------------")
 		//统一将DeployCheck的Phase都改成Migrate 首先是GroupStatus，如果是成功的Phase就不修改了，其他的都修改，包括running、DeployCheck
 		for _, actionReference := range groupStatus.Actions {
 			allAction, err := gmo.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
@@ -2695,7 +2695,7 @@ func (gmo *GroupMonitor) updateCopyIngfoForRuntime(group *apis.Group, phase apis
 			//if err != nil {
 			//	logs.Errorf("Patch group err-8:%v", err)
 			//}
-			logs.Info("#######################groupSpec.Replicas > 0#########设置副本runtime的状态为running----成功")
+			logs.Info("Set copy runtime status with running----Succeed")
 		}
 	}
 }
@@ -2779,7 +2779,7 @@ func (gmo *GroupMonitor) updateCopyIngfoForAction(group *apis.Group, phase apis.
 			//if err != nil {
 			//	logs.Errorf("Patch group err-7:%v", err)
 			//}
-			logs.Info("#######################groupSpec.Replicas > 0#########设置副本action的状态为running-----成功")
+			logs.Info("Set copy action status with running-----Succeed")
 		}
 	}
 }

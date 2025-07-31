@@ -149,7 +149,7 @@ func (mc *MigrationController) eventWatcher() {
 						continue
 					}
 				}
-				logs.Info("++++++++++++++++++++++Events--------事件为迁移事件")
+				logs.Info("++++++++++++++++++++++Events++++++++The event is the migration event")
 				// // 所有条件满足时入队
 				logs.Infof("switch controller: event informer AddFunc(): %v", event.Name)
 				// key, _ := cache.MetaNamespaceKeyFunc(obj)
@@ -242,7 +242,7 @@ func (mc *MigrationController) handleDeleteEvent(key string) error {
 
 // 触发Group迁移，带重试机制
 func (mc *MigrationController) triggerGroupMigration(groupNamespace, groupName string, event *apis.Event) error {
-	logs.Info("-----------------------人为触发迁移-------------------------")
+	logs.Trace("-----------------------人为触发迁移-------------------------")
 	group, err := mc.clientsManager.GetGroup(groupName, groupNamespace)
 	if err != nil {
 		logs.Errorf("Get group %s failed: %v", groupName, err)
@@ -418,18 +418,18 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			logs.Errorf("Json Marshal failed, err:%v", err)
 		}
 		// 从etcd-GroupSpec-copyInfo当中获取,还需要获取Condition，是执行一个副本还是执行全部副本---目前做的简单一下 就选一个副本进行迁移即可
-		logs.Info("init copy_status===================================")
+		logs.Trace("init copy_status===================================")
 		for key, value := range group.Spec.CopyInfo { // 这里相当于只遍历CopyInfo这个数组当中的第一个元素
 			groupCopyName = key
 			if value == "local" { // && event.Reason == events.TriggerCrossMigration
 				if event.Reason == events.TriggerLocalMigration || event.Reason == events.TriggerCrossMigration { //适配天数环境
 					// 查副本group所在的节点是否为要迁移的目的节点
-					logs.Info("init copy_status===================================1")
+					logs.Trace("init copy_status===================================1")
 					getCopyGroup, err := mc.clientsManager.GetGroup(groupCopyName, group.Namespace)
 					if err != nil {
 						logs.Errorf("Get group %s failed-66: %v", groupCopyName, err)
 					}
-					logs.Info("init copy_status===================================2")
+					logs.Trace("init copy_status===================================2")
 					if event.MigrationTarget == "" || event.MigrationTarget == *getCopyGroup.Status.Node { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
 						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
@@ -704,7 +704,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 							}
 						}
 						// 关闭源任务当中的runtime
-						logs.Info("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+						logs.Info("Shutdown runtime successfully")
 					}
 					err = mc.runtimeManager.Kill(group, action, runtime, action.Spec.Name, runtime.Spec.Name) //最后都需要将runtime进程关闭
 					if err != nil {
@@ -735,7 +735,7 @@ func extractNode(str string) string {
 
 // 新增一个创建一个空白的Group信息，删除不必要的内容（例如Running、DeployCheck的属性都得改为Unknown，时间也得修改）
 func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group { // NodeName表示指定这个Group迁移到哪个节点
-	logs.Info("=====================NewGroupInfoCopy=======================================")
+	logs.Trace("=====================NewGroupInfoCopy=======================================")
 	// 将原始对象序列化为JSON
 	data, err := json.Marshal(g)
 	if err != nil {
@@ -760,10 +760,10 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 
 	// 修改副本group信息中的属性来标记副本任务需要马上启动(这个属性会在copyPending队列当中去轮询检查的)
 	if isAhead {
-		logs.Infof("============预部署副本Group===========")
+		logs.Infof("============Predeployed replica Group===========")
 		groupCopy.Status.CopyStatus = "Waiting" //注意后面真正切换的时候，需要将这个参数改为Starting
 	} else {
-		logs.Infof("============直接启动副本Group===========")
+		logs.Infof("============Start the replica Group directly===========")
 		groupCopy.Status.CopyStatus = "Starting"
 	}
 	//修改group_copy_info
@@ -791,7 +791,7 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 }
 
 func NewActionInfoCopy(a *apis.Action) *apis.Action {
-	logs.Info("=====================NewActionInfoCopy=======================================")
+	logs.Trace("=====================NewActionInfoCopy=======================================")
 	// 将原始对象序列化为JSON
 	data, err := json.Marshal(a)
 	if err != nil {
@@ -823,7 +823,7 @@ func NewActionInfoCopy(a *apis.Action) *apis.Action {
 	return actionCopy
 }
 func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
-	logs.Info("=====================NewRuntimeInfoCopy=======================================")
+	logs.Trace("=====================NewRuntimeInfoCopy=======================================")
 	// 将原始对象序列化为JSON
 	data, err := json.Marshal(r)
 	if err != nil {
