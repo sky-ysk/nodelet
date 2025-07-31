@@ -149,7 +149,7 @@ func (mc *MigrationController) eventWatcher() {
 						continue
 					}
 				}
-				logs.Info("++++++++++++++++++++++Events++++++++The event is the migration event")
+				logs.Info("Received migration event[Start Migration]")
 				// // 所有条件满足时入队
 				logs.Infof("switch controller: event informer AddFunc(): %v", event.Name)
 				// key, _ := cache.MetaNamespaceKeyFunc(obj)
@@ -404,6 +404,9 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 	} else { // 情况3：正常情况
 		copiesInDomain = group.Spec.Replicas[0]
 		copiesInOtherDomain = group.Spec.Replicas[1]
+	}
+	if group.Spec.HasReplca == true {
+		copiesInDomain = 1
 	}
 	// 加一个判断，如果说是域内迁移，迁移的点和副本的点一致，那么走副本预部署这条路；如果说迁移的点和副本不一致，走实时迁移这条路
 	// 如果是跨域迁移，迁移的域和副本的域一致，走副本预部署这条路；如果说迁移的域和副本不一致，走实时迁移这条路
@@ -714,7 +717,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 			}
 		}
 		// 将源group从Running队列迁移到Migrated队列
-		logs.Info("--------------DeleteFromRunningAndAddToMigratedQueue=====================")
+		logs.Trace("--------------DeleteFromRunningAndAddToMigratedQueue=====================")
 		ok := mc.groupQueues.DeleteFromRunningAndAddToMigrated(group.Name)
 		if !ok {
 			logs.Error("Delete group from running queue and add to completed queue failed-2")
@@ -760,10 +763,10 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 
 	// 修改副本group信息中的属性来标记副本任务需要马上启动(这个属性会在copyPending队列当中去轮询检查的)
 	if isAhead {
-		logs.Infof("============Predeployed replica Group===========")
+		logs.Infof("Predeployed replica Group===========")
 		groupCopy.Status.CopyStatus = "Waiting" //注意后面真正切换的时候，需要将这个参数改为Starting
 	} else {
-		logs.Infof("============Start the replica Group directly===========")
+		logs.Infof("Start the replica Group directly===========")
 		groupCopy.Status.CopyStatus = "Starting"
 	}
 	//修改group_copy_info

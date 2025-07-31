@@ -139,7 +139,7 @@ func DownloadFileDir(fileName, savePath string) (string, error) {
 	// 6. 等待传输完成或超时
 	select {
 	case <-done:
-		logs.Infof("Prepare to shut down the server...")
+		logs.Info("Prepare to shut down the server...")
 		server.Shutdown(context.Background())
 		return "文件接收成功并保存至 " + savePath, nil
 	case <-time.After(5 * time.Minute):

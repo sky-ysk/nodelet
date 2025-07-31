@@ -578,11 +578,11 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 							// 这块可以执行到，因为group当中有很多action，有多个Action的话，总有没执行的Action，这时候需要判断runtime的启动方式（细粒度的话使用StartingRuntime启动、粗粒度的话使用Run启动）
 							if runtime.Spec.EnableFineGrainedControl { // 当前group是副本任务，且实现了细粒度控制方法
 								if !runtime.Status.Starting { // 还没有调用Start或者Run方法，说明第一次进入  ----Start参数主要解决的问题：Action、Runtime的依赖都满足，且调用了Run、Start方法进入了Runtime的运行时，但是卡在运行时，没有将Runtime、Action的状态设置为Running，导致一直重复进入Action.Status== apis.Deploycheck这个分支
-									logs.Infof("****************************hhhhhhhhhhhhhhhh****************************************")
+									logs.Trace("****************************hhhhhhhhhhhhhhhh****************************************")
 									//if !grou.Status.ActionStatus[actionIndex].RuntimeStatus[runtimeIndex].Starting { //TODO 这个参数好像可以删了，有Waiting是不是就够了？
 									//logs.Infof("========================runtimeStatus.KeyStatus:%v,runtimeStatus.KeyStatus == \"\"", runtimeStatus.KeyStatus, runtimeStatus.KeyStatus == "")
 									if runtimeStatus.KeyStatus == "" { // 说明不是副本任务，还没初始化---TODO 这里需要这个检查的原因：有可能是即时的迁移迁移，那迁移过去的group是没有进入init状态的，所以这边迁移过去的副本是处于DeployCheck的状态开始恢复任务状态
-										logs.Info("Runtime has keyStatus))))))))))))))))))))))))))))))))))))))))))))))")
+										logs.Info("Runtime has keyStatus")
 										go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									} else {
 										logs.Info("Runtime has't keyStatus%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
@@ -734,7 +734,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 										logs.Errorf("Patch runtime error-8:%v", err)
 									}
 									// 将初始化的runtime真正启动 为了适配迁移，这里先回复runtime的状态
-									logs.Infof("****************************Restore****************************************")
+									logs.Info("The RestoreData method is called")
 									// 注意这里调用RestoreData后直接启动，需要添加一个设置为Running状态的一个步骤
 									go gmo.runtimeManager.RestoreData(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									//// 将runtime真正的启动
@@ -2746,7 +2746,7 @@ func (gmo *GroupMonitor) updateCopyIngfoForAction(group *apis.Group, phase apis.
 			//}
 		} else { // 任务信息存在本域当中
 			copyGroupName := key
-			logs.Infof("==================key：%v", key)
+			logs.Infof("key：%v==========", key)
 			getGroup, err := gmo.clientsManager.GetGroup(copyGroupName, group.Namespace)
 			if err != nil {
 				logs.Infof("Failed to get group: %v", err)

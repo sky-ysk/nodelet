@@ -208,7 +208,7 @@ func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, erro
 
 		// 检查传输完成信号
 		if fileType := r.Header.Get("FileType"); fileType == "completion" {
-			log.Println("文件传输完成")
+			logs.Info("File transfer completed")
 			close(done)
 		}
 	})
@@ -246,7 +246,7 @@ func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, erro
 	// 6. 等待传输完成或超时
 	select {
 	case <-done:
-		log.Println("准备关闭服务器...")
+		logs.Info("Prepare to shut down the server...")
 		server.Shutdown(context.Background())
 		logs.Infof("The file was successfully received and saved to %v", savePath)
 		return "文件接收成功并保存至 " + savePath, nil

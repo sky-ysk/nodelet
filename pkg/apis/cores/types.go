@@ -605,8 +605,8 @@ type GroupSpec struct {
 
 	SkipFilterPlugins []string `json:"skip_filter_plugins,omitempty" yaml:"skip_filter_plugins"`
 	//添加-hzy
-	Replicas []int32 `json:"replicas,omitempty" yaml:"replicas"` //group的副本数量，用户需要输入,例如：[2,0] 第一个值表示本域想部署的副本数量，第二个值表示其他域想部署的副本数量
-
+	Replicas  []int32 `json:"replicas,omitempty" yaml:"replicas"` //group的副本数量，用户需要输入,例如：[2,0] 第一个值表示本域想部署的副本数量，第二个值表示其他域想部署的副本数量
+	HasReplca bool    `json:"hasReplca,omitempty" yaml:"hasReplca"`
 	// +Optional
 	IsCopy   bool              `json:"is_copy,omitempty" yaml:"is_copy"`     //标记当前group是否是副本
 	CopyInfo map[string]string `json:"copy_info,omitempty" yaml:"copy_info"` //存放任务的副本信息的  key：副本的ObjectMeta.Name  value:副本在本域还是在哪个域  如果是本域为："local" ,如果是跨域，则为连接那个域的ip或者是XX（待定）

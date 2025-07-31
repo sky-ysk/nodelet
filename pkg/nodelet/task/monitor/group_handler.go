@@ -269,6 +269,9 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 			copiesInDomain = gr.Spec.Replicas[0]
 			copiesInOtherDomain = gr.Spec.Replicas[1]
 		}
+		if gr.Spec.HasReplca == true {
+			copiesInDomain = 1
+		}
 
 		if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的
 			// 为了适配迁移 ,如果有多个副本要求的话，需要部署多个副本

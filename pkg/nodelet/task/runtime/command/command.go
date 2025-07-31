@@ -240,7 +240,7 @@ func (cr *CommandRuntime) stopCMD(runtime *apis.Runtime) error {
 			return fmt.Errorf("failed to stop task '%s': %w", runtime.Name, err)
 		}
 		// 这里不用进行事件的发送，在Monitor监控部分会进行
-		fmt.Printf("Task '%s' with PID %d has been stopped.\n", runtime.Name, CMD.Process.Pid)
+		logs.Infof("Task '%s' with PID %d has been stopped.\n", runtime.Name, CMD.Process.Pid)
 	} else {
 		logs.Infof("Task '%s' is already stopped.", runtime.Name)
 		return fmt.Errorf("task '%s' process is nil", runtime.Name)
@@ -402,7 +402,7 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 			logs.Errorf("Failed to get runtime '%s': %v", runtime.Name, err)
 		}
 		keyStatus = etcdRuntime.Status.KeyStatus
-		logs.Info("===================try")
+		logs.Trace("===================try")
 	}
 	logs.Infof("keyStatus: %s", keyStatus)
 
