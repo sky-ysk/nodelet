@@ -297,6 +297,9 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	if strings.Contains(group.ObjectMeta.Name, "G61") {
 		host = "EdgeNode1"
 	}
+	if strings.Contains(group.ObjectMeta.Name, "G51") {
+                host = "EndNode1"
+        }
 	if strings.Contains(group.ObjectMeta.Name, "copy") {
 		host = "CloudNode2"
 	}
