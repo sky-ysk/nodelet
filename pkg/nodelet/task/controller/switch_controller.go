@@ -435,6 +435,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 					logs.Trace("init copy_status===================================2")
 					if event.MigrationTarget == "" || event.MigrationTarget == *getCopyGroup.Status.Node { //所要迁的目的地正好和副本所在的节点相同，或者是所要迁的目的地没指定，那么直接走副本的流程
 						// 本域迁移  使用本域的通信总线通信copyGroup进行状态的恢复
+						logs.Infof("time:%v", time.Now())
 						_, err = mc.clientsManager.PatchGroup(groupCopyName, group.Namespace, patchGroup)
 						if err != nil {
 							logs.Errorf("Patch group error-6:%v", err)
@@ -760,6 +761,7 @@ func NewGroupInfoCopy(g *apis.Group, isAhead bool, nodeName string) *apis.Group 
 	groupCopy.Spec.IsCopy = true // 标记改Group为副本group
 	// 这个副本group信息当中，其副本数量直接置为0（意思是：不再为副本订制副本）
 	groupCopy.Spec.Replicas = []int32{0, 0}
+	groupCopy.Spec.HasReplca = false
 
 	// 修改副本group信息中的属性来标记副本任务需要马上启动(这个属性会在copyPending队列当中去轮询检查的)
 	if isAhead {
