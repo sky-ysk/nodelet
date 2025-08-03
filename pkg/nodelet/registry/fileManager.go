@@ -199,11 +199,12 @@ func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
 func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, error) {
 	// 1. 创建HTTP服务器
 	// 端口8080
-	server := &http.Server{Addr: ":8920"}
-	done := make(chan bool)
+	mux := http.NewServeMux()
+	done := make(chan struct{})
 
 	// 2. 设置处理函数（使用闭包捕获savePath）
-	http.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
+
+	mux.HandleFunc("/receive", func(w http.ResponseWriter, r *http.Request) {
 		utils.ReceiveDir(w, r, savePath)
 
 		// 检查传输完成信号
@@ -212,6 +213,7 @@ func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, erro
 			close(done)
 		}
 	})
+	server := &http.Server{Addr: ":8920", Handler: mux}
 
 	// 3. 在goroutine中启动服务器
 	go func() {
@@ -247,46 +249,16 @@ func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, erro
 	select {
 	case <-done:
 		logs.Info("Prepare to shut down the server...")
-		server.Shutdown(context.Background())
+		if err := server.Shutdown(context.Background()); err != nil {
+			logs.Errorf("Server shutdown error: %v", err)
+		}
 		logs.Infof("The file was successfully received and saved to %v", savePath)
 		return "文件接收成功并保存至 " + savePath, nil
 	case <-time.After(5 * time.Minute):
-		server.Shutdown(context.Background())
+		if err := server.Shutdown(context.Background()); err != nil {
+			logs.Errorf("Server shutdown error: %v", err)
+		}
+		logs.Errorf("folder download failed because timeout!")
 		return "", errors.New("文件接收超时")
 	}
 }
-
-// func (fm *FileManager) DownloadDir(dirPath, savePath string) (string, error) {
-// 	// 调用 utils.DownloadDir 函数下载目录
-// 	// 这里的 dirPath 是要下载的目录路径，savePath 是保存路径
-// 	// 返回下载结果和错误信息
-// 	return utils.DownloadDir(dirPath, savePath)
-// }
-
-// func (fm *FileManager) ForwardFile(filePath string) (string, error) {
-// 	// 调用 utils.ForwardFile 函数转发文件
-// 	// 这里的 filePath 是要转发的文件路径
-// 	// 返回转发结果和错误信息
-// 	return utils.ForwardFile(filePath, fm.ForwardURL)
-// }
-
-// func (fm *FileManager) DeleteFile(filePath string) (string, error) {
-// 	// 调用 utils.DeleteFile 函数删除文件
-// 	// 这里的 filePath 是要删除的文件路径
-// 	// 返回删除结果和错误信息
-// 	return utils.DeleteFile(filePath)
-// }
-
-// func (fm *FileManager) DeleteDir(dirPath string) (string, error) {
-// 	// 调用 utils.DeleteDir 函数删除目录
-// 	// 这里的 dirPath 是要删除的目录路径
-// 	// 返回删除结果和错误信息
-// 	return utils.DeleteDir(dirPath)
-// }
-
-// func (fm *FileManager) Traverse(filePath string) (string, error) {
-// 	// 调用 utils.Traverse 函数遍历目录
-// 	// 这里的 filePath 是要遍历的目录路径
-// 	// 返回遍历结果和错误信息
-// 	return utils.Traverse(filePath, fm.UploadURL)
-// }
