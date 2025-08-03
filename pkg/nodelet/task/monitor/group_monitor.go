@@ -366,6 +366,16 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 										// 关闭runtime，直接关闭runtime进程
 										logs.Info("(((((((((((((((((((((((((((((((((((((((-1")
 										gmo.runtimeManager.Kill(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
+										// 这里避免进入actionStatus.CopyStatus == "Succeeded"重复删除Runtime，这里需把Runtime的Initing参数设置为false
+										patchRuntime, err := json.Marshal(map[string]interface{}{
+											"status": map[string]interface{}{
+												"initing": false,
+											},
+										})
+										_, err = gmo.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+										if err != nil {
+											logs.Errorf("Patch runtime error-3:%v", err)
+										}
 									} else { // 如果说runtime不是细粒度的，那这里源任务完成后，副本runtime的状态是不会主动修改的（因为副本runtime没启动无法调用Kill函数来修改runtime状态），所以这里需要主动修改runtime的状态为Succeed
 										gmo.handleRuntimeSucceedUpdate(action, runtime)
 									}
