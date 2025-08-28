@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
 	"os"
@@ -74,7 +75,7 @@ func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
 			http.Error(w, fmt.Sprintf("failed to create directory: %v", err), http.StatusInternalServerError)
 			return
 		}
-		fmt.Printf("Created directory: %s\n", fullDirPath)
+		logs.Infof("Created directory: %s\n", fullDirPath)
 		w.Write([]byte("Directory created successfully"))
 		return
 	}
@@ -98,7 +99,7 @@ func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
 			http.Error(w, fmt.Sprintf("failed to write file: %v", err), http.StatusInternalServerError)
 			return
 		}
-		fmt.Printf("Saved file: %s\n", filePath)
+		logs.Infof("Saved file: %s\n", filePath)
 		w.Write([]byte("File uploaded successfully"))
 		return
 	}

@@ -599,6 +599,8 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 										logs.Info("Runtime has't keyStatus%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
 										//go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-A
 										//go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-B
+										go gmo.runtimeManager.InitRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
+										//time.Sleep(100 * time.Millisecond)
 										go gmo.runtimeManager.RestoreData(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									}
 									patchRuntime, err := json.Marshal(map[string]interface{}{
@@ -1932,12 +1934,7 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 	if group.Spec.IsCopy {
 		return true
 	}
-	if group.Spec.Conditions == nil {
-		return true
-	}
-	if len(group.Spec.Conditions.Formulas) == 0 {
-		return true
-	}
+
 	if len(group.Spec.Parents) == 0 {
 		// 没有父节点，直接去检查后续的依赖
 	} else {
@@ -1952,6 +1949,12 @@ func (gmo *GroupMonitor) groupDepenSatisfy(group *apis.Group, task *apis.Task) b
 				return false
 			}
 		}
+	}
+	if group.Spec.Conditions == nil {
+		return true
+	}
+	if len(group.Spec.Conditions.Formulas) == 0 {
+		return true
 	}
 	// 其他依赖
 	res, err := gmo.conditionEngine.CheckConditions(group.Spec.Conditions, *group)

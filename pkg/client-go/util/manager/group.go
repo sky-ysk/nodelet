@@ -14,6 +14,7 @@ import (
 
 // CreateGroups 根据TaskSpec创建Groups
 func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, prefix string) ([]*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	var groups []*apis.Group
 
 	for _, as := range g.Spec.Groups {
@@ -27,11 +28,15 @@ func (m *Manager) CreateGroups(g *apis.Task, namespace string, uuid string, pref
 		groups = append(groups, a)
 	}
 
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateGroups took %s", elapsed)
+
 	return groups, nil
 }
 
 // CreateGroupWithoutActions 创建Group，不创建Actions
 func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, namespace string, uuid string, prefix string) (*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	// 临时创建一个Group对象
 	g := apis.Group{}
 	// 构造名称
@@ -95,11 +100,15 @@ func (m *Manager) CreateGroupWithoutActions(gs apis.GroupSpec, t *apis.Task, nam
 	}
 
 	logs.Infof("Created group: %v", fg)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateGroupWithoutActions took %s", elapsed)
 	return fg, nil
 }
 
 // FillGroupWithActions 填充Group的Actions
 func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	// 根据当前Group的Name来获取Prefix
 	// Prefix固定为g.Name - uuid的部分
 	suffix := "-" + g.Labels["uuid"]
@@ -133,11 +142,15 @@ func (m *Manager) FillGroupWithActions(g *apis.Group) (*apis.Group, error) {
 	}
 
 	logs.Infof("Created fill: %v", fg)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : FillGroupWithActions took %s", elapsed)
 	return fg, nil
 }
 
 // CreateGroup 创建完整的Group
 func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string, uuid string, prefix string) (*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	// 临时创建一个Group对象
 	g := apis.Group{}
 
@@ -227,10 +240,14 @@ func (m *Manager) CreateGroup(gs apis.GroupSpec, t *apis.Task, namespace string,
 	}
 
 	logs.Debugf("Created group: %v", fg)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateGroup took %s", elapsed)
 	return fg, nil
 }
 
 func (m *Manager) GetGroup(name string, namespace string) (*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetGroupClient(namespace)
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -239,10 +256,14 @@ func (m *Manager) GetGroup(name string, namespace string) (*apis.Group, error) {
 	}
 
 	logs.Debugf("Get group: %v", a)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : GetGroup took %s", elapsed)
 	return a, nil
 }
 
 func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetGroupClient(namespace)
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -251,11 +272,15 @@ func (m *Manager) GetGroups(namespace string) (*apis.GroupList, error) {
 	}
 
 	logs.Debugf("Get groups success")
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : GetGroups took %s", elapsed)
 	return g, nil
 }
 
 // FilterGroups 根据Label查询Groups
 func (m *Manager) FilterGroups(namespace string, labelSelector string) (*apis.GroupList, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetGroupClient(namespace)
 
 	listOptions := metav1.ListOptions{
@@ -269,10 +294,14 @@ func (m *Manager) FilterGroups(namespace string, labelSelector string) (*apis.Gr
 	}
 
 	logs.Infof("Get groups with label success.")
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : FilterGroups took %s", elapsed)
 	return d, nil
 }
 
 func (m *Manager) UpdateGroup(name string, namespace string, a *apis.Group) (*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetGroupClient(namespace)
 
 	// 检查group是否存在
@@ -290,11 +319,15 @@ func (m *Manager) UpdateGroup(name string, namespace string, a *apis.Group) (*ap
 	}
 
 	logs.Debugf("Update group: %v", updatedGroup)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : UpdateGroup took %s", elapsed)
 	return updatedGroup, nil
 
 }
 
 func (m *Manager) PatchGroup(name string, namespace string, patchGroup []byte) (*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetGroupClient(namespace)
 
 	// 检查group是否存在
@@ -312,10 +345,14 @@ func (m *Manager) PatchGroup(name string, namespace string, patchGroup []byte) (
 	}
 
 	logs.Debugf("Patch group: %v", patchedGroup)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : PatchGroup took %s", elapsed)
 	return patchedGroup, nil
 }
 
 func (m *Manager) DeleteGroup(name string, namespace string) error {
+	start := time.Now() // 记录开始时间
 	c := m.GetGroupClient(namespace)
 
 	// 检查group是否存在
@@ -342,12 +379,16 @@ func (m *Manager) DeleteGroup(name string, namespace string) error {
 	}
 
 	logs.Debugf("delete group: %v", name)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : DeleteGroup took %s", elapsed)
 	return nil
 }
 
 // CreateGroupWithLabels 创建带有label的Group
 // TODO: 将这部分全部替换为根据Spec里面的label创建，删除这部分
 func (m *Manager) CreateGroupWithLabels(gs apis.GroupSpec, t *apis.Task, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Group, error) {
+	start := time.Now() // 记录开始时间
 	// 临时创建一个Group对象
 	g := apis.Group{}
 	// 构造名称
@@ -424,5 +465,8 @@ func (m *Manager) CreateGroupWithLabels(gs apis.GroupSpec, t *apis.Task, namespa
 	}
 
 	logs.Debugf("Created group: %v", fg)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateGroupWithLabels took %s", elapsed)
 	return fg, nil
 }

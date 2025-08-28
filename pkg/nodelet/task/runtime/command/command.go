@@ -195,7 +195,7 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 	logs.Infof("process id:\t %d is Running", CMD.Process.Pid)
 
 	// 开启一个协程监控这个pid进程的资源,间隔为1s
-	go cr.monitorProcessResource(CMD.Process.Pid, runtime, 1*time.Second)
+	go cr.monitorProcessResource(CMD.Process.Pid, runtime, 500*time.Millisecond)
 
 	// return nil
 	if err := CMD.Wait(); err != nil { // err := CMD.Wait()会阻塞
@@ -287,17 +287,16 @@ func (cr *CommandRuntime) monitorProcessResource(pid int, runtime *apis.Runtime,
 		if err != nil {
 			logs.Warnf("Failed to get memory info for PID %d: %v", pid, err)
 			return
-		} else {
-			// 转换为MB
-			memMB := float64(memInfo.RSS) / (1024 * 1024)
-			logs.Tracef("[Monitor] Process %s (PID: %d) Memory: %.2f MB", runtime.Name, pid, memMB)
 		}
-		// 上传资源的占用
-		// 写到etcd上去
+		memMB := float64(memInfo.RSS) / (1024 * 1024)
+
+		// 记录详细日志
+		logs.Tracef("[Monitor] Process %s (PID: %d) CPU: %.2f%%, Memory: %.2f MB",
+			runtime.Name, pid, cpuPercent, memMB)
+
 		resourceItem := make(map[string]apis.Item)
-		// 填充Values这个字段，这是一个map
 		resourceItem["cpu"] = apis.Item{Name: "cpu", Values: map[string]string{"cpu": fmt.Sprintf("%.2f%%", cpuPercent)}}
-		resourceItem["memory"] = apis.Item{Name: "memory", Values: map[string]string{"memory": fmt.Sprintf("%.2f MB", float64(memInfo.RSS)/(1024*1024))}}
+		resourceItem["memory"] = apis.Item{Name: "memory", Values: map[string]string{"memory": fmt.Sprintf("%.2f MB", memMB)}}
 		patchRuntime, err := json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
 				"resources": resourceItem,
@@ -305,10 +304,8 @@ func (cr *CommandRuntime) monitorProcessResource(pid int, runtime *apis.Runtime,
 		})
 		_, err = cr.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
 		if err != nil {
-			logs.Errorf("patch runtimeStatus error")
+			logs.Errorf("patch runtimeStatus error: %v", err)
 		}
-
-		// 查到这个Runtime状态是Failed、丢弃、Successed，把这个协程关掉---不确定还需不需要，我觉得直接根据进程还在不在return就行了
 	}
 }
 
