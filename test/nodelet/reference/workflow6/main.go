@@ -249,8 +249,10 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Infer",
+				"type":      "Infer",
+				"scheduler": "CloudNode1",
 			},
+			Docs: "推理",
 		},
 		Replicas:   group1_1Replicas,
 		Name:       group1_1Name,
@@ -300,8 +302,10 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "CloudNode1",
 			},
+			Docs: "训练",
 		},
 		Replicas:   group1_2Replicas,
 		Name:       group1_2Name,
@@ -351,8 +355,10 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "CloudNode1",
 			},
+			Docs: "训练",
 		},
 		Replicas:   group1_3Replicas,
 		Name:       group1_3Name,
@@ -402,8 +408,10 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "CloudNode1",
 			},
+			Docs: "训练",
 		},
 		Replicas:   group1_4Replicas,
 		Name:       group1_4Name,
@@ -453,8 +461,10 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "CloudNode1",
 			},
+			Docs: "训练",
 		},
 		Replicas:   group1_5Replicas,
 		Name:       group1_5Name,
@@ -504,8 +514,10 @@ func main() {
 		},
 		Desc: &apis.Description{
 			Label: map[string]string{
-				"type": "Train",
+				"type":      "Train",
+				"scheduler": "CloudNode1",
 			},
+			Docs: "训练",
 		},
 		Replicas:   group1_6Replicas,
 		Name:       group1_6Name,
@@ -544,6 +556,9 @@ func main() {
 	}
 
 	ts := apis.TaskSpec{
+		Desc: &apis.Description{
+			Docs: "训练推理工作流",
+		},
 		Name: task1Name,
 		Groups: []apis.GroupSpec{
 			gs1, gs2, gs3, gs4, gs5, gs6,
