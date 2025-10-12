@@ -42,6 +42,8 @@ type K8sRuntime struct {
 	monitor   *monitor.Monitor
 	eventBus  *eventbus.EventBus
 	randomNum map[string]int32
+	// 添加node属性--node_exporter
+	node *apis.Node
 }
 
 // 资源占用量
@@ -71,12 +73,12 @@ func NewK8sRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus,
 	k8sMonitor := monitor.NewMonitor(clientset, eventBus, node.Spec.HostName, clientsManager)
 
 	k8sMonitor.Start()
-	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, monitor: k8sMonitor, eventBus: eventBus, clientsManager: clientsManager, randomNum: make(map[string]int32)}
+	return &K8sRuntime{clientset: clientset, metricsClient: metricsClient, connectionPool: pool, monitor: k8sMonitor, eventBus: eventBus, clientsManager: clientsManager, randomNum: make(map[string]int32), node: node}
 }
 func (k *K8sRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("k8s runtime kill runtime: %s", runtime.Name)
 	yamlFilePatch := runtime.Spec.Inputs[0].From
-	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, *group.Status.Node, k.randomNum[group.Name])
+	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, k.node.Spec.HostName, k.randomNum[group.Name])
 	if err != nil {
 		logs.Errorf("Get k8s resources from yaml file failed: %v", err)
 	}
@@ -114,11 +116,12 @@ func (k *K8sRuntime) Run(group *apis.Group, action *apis.Action, runtime *apis.R
 	yamlFilePatch := runtime.Spec.Inputs[0].From
 	logs.Infof("group.Status.Node:%v", *group.Status.Node)
 	// 根据这个NodeName找到主机名
-	get, err2 := k.clientsManager.GetNodeClient("test").Client.Get(context.TODO(), *group.Status.Node, me.GetOptions{})
+	//get, err2 := k.clientsManager.GetNodeClient("test").Client.Get(context.TODO(), *group.Status.Node, me.GetOptions{})
 	if err2 != nil {
 		logs.Errorf("Get node info error")
 	}
-	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, get.Spec.HostName, randomNum)
+	// 将任务的yaml转为k8s的数据类型
+	objList, err := entity.ParseK8sResourcesFromFile(yamlFilePatch, k.node.Spec.HostName, randomNum)
 	if err != nil {
 		logs.Errorf("Get k8s resources from yaml file failed: %v", err)
 	}
@@ -344,18 +347,32 @@ func (k *K8sRuntime) StoreData(group *apis.Group, action *apis.Action, runtime *
 		port = *runtime.Spec.EnableFineGrainedControlPort
 	}
 	logs.Infof("[StoreData]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, port)
-	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	logs.Infof("[StoreData-1]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", k.node.Spec.HostIp, port)
+	//client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	client := k.getClient(k.node.Spec.HostIp, port)
 	// rpc调用store()
-	_, err := client.RunAppStore()
+	index, err := client.RunAppStore()
 	if err != nil {
 		logs.Error(err, "Store application status failed")
 	}
 	k.clientsManager.LogEvent(action, apis.EventTypeNormal, events.StoredCommand, fmt.Sprintf("Runtime Name:\t %s rpc RunAppStore()", runtime.Name), group.Namespace)
-	return "aass"
+	return index
 }
 func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("【【【RestoreData】】】====group.name:%v,randomNum:%v", group.Name, k.randomNum[group.Name])
 	keyStatus := ""
+	etcdRuntime, err := k.clientsManager.GetRuntime(runtime.Name, runtime.Namespace)
+	if err != nil {
+		logs.Errorf("Failed to get runtime '%s': %v", runtime.Name, err)
+	}
+	for keyStatus == "" {
+		etcdRuntime, err = k.clientsManager.GetRuntime(runtime.Name, runtime.Namespace)
+		if err != nil {
+			logs.Errorf("Failed to get runtime '%s': %v", runtime.Name, err)
+		}
+		keyStatus = etcdRuntime.Status.KeyStatus
+		logs.Trace("===================try")
+	}
 	if runtime.Spec.EnableFineGrainedControlService == nil || runtime.Spec.EnableFineGrainedControlPort == nil {
 		logs.Errorf("Need input EnableFineGrainedControlService and EnableFineGrainedControlPort, now all is nil in RestoreData")
 		// 发送失败事件
@@ -387,8 +404,10 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 		port = *runtime.Spec.EnableFineGrainedControlPort
 	}
 	logs.Infof("[RestoreData]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, port)
-	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
-	_, err := client.RunAppRestore(keyStatus)
+	logs.Infof("[RestoreData-1]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", k.node.Spec.HostIp, port)
+	//client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	client := k.getClient(k.node.Spec.HostIp, port)
+	_, err = client.RunAppRestore(keyStatus)
 	if err != nil {
 		logs.Errorf("Restore application status failed")
 	}
@@ -396,13 +415,6 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 	return err
 }
 func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
-	//task, err2 := k.clientsManager.GetTask(group.Labels["belong"], group.Namespace)
-	//if err2 != nil {
-	//	logs.Errorf("Get Task error")
-	//}
-	//randomNum := task.Spec.RandomNum
-	//k.randomNum[group.Name] = randomNum
-	//logs.Infof("【【【StartRuntime】】】====group.name:%v,randomNum:%v", group.Name, k.randomNum[group.Name])
 	err := k.Run(group, action, runtime, actionSpecName, runtimeSpecName)
 	if err != nil {
 		logs.Errorf("StartRuntime failed: %v", err)
@@ -427,7 +439,9 @@ func (k *K8sRuntime) StartRuntime(group *apis.Group, action *apis.Action, runtim
 		port = *runtime.Spec.EnableFineGrainedControlPort
 	}
 	logs.Infof("[StartRuntime]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, port)
-	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	logs.Infof("[StartRuntime-1]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", k.node.Spec.HostIp, port)
+	//client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	client := k.getClient(k.node.Spec.HostIp, port)
 	_, err = client.RunAppStart()
 	if err != nil {
 		logs.Errorf("Start application failed")
@@ -467,7 +481,9 @@ func (k *K8sRuntime) InitRuntime(group *apis.Group, action *apis.Action, runtime
 		port = *runtime.Spec.EnableFineGrainedControlPort
 	}
 	logs.Infof("[Init]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, port)
-	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	logs.Infof("[Init-1]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", k.node.Spec.HostIp, port)
+	//client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	client := k.getClient(k.node.Spec.HostIp, port)
 	_, err = client.RunAppInit()
 	if err != nil {
 		logs.Errorf("Init application failed")
@@ -494,7 +510,9 @@ func (k *K8sRuntime) StopRuntime(group *apis.Group, action *apis.Action, runtime
 		port = *runtime.Spec.EnableFineGrainedControlPort
 	}
 	logs.Infof("[StopRuntime]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", *runtime.Spec.EnableFineGrainedControlService, port)
-	client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	logs.Infof("[StopRuntime-1]开启grpc客户端连接pod当中的grpc服务端，ip：%v,端口：%v", k.node.Spec.HostIp, port)
+	//client := k.getClient(*runtime.Spec.EnableFineGrainedControlService, port)
+	client := k.getClient(k.node.Spec.HostIp, port)
 	_, err := client.RunAppStop()
 	if err != nil {
 		logs.Errorf("Stop application failed")
