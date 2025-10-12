@@ -103,7 +103,7 @@ func injectName(obj runtime.Object, randomNum int32) {
 	}
 }
 
-// 处理Pod的特殊修改
+// 处理Pod的特殊修改,这里我只把grpc客户端连接grpc服务端的端口改了，所以说yaml当中，MY_IP得手动改成grpc服务端所在的ip地址才行
 func handlePod(pod *corev1.Pod, originalName string, randomNum int32) {
 	targetPods := []string{"grpc-client-pod", "grpc-client-pod-copy"}
 

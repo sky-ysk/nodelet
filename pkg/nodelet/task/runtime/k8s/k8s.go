@@ -372,6 +372,9 @@ func (k *K8sRuntime) RestoreData(group *apis.Group, action *apis.Action, runtime
 		}
 		keyStatus = etcdRuntime.Status.KeyStatus
 		logs.Trace("===================try")
+		if strings.Contains(etcdRuntime.Spec.Inputs[0].From, "grpc-client-pod-copy.yaml") { // 因为k8s服务没有关键状态，所以说调用保存方法的函数的时候，keyStatus一直为空，导致一直卡在for循环当中
+			keyStatus = "1"
+		}
 	}
 	if runtime.Spec.EnableFineGrainedControlService == nil || runtime.Spec.EnableFineGrainedControlPort == nil {
 		logs.Errorf("Need input EnableFineGrainedControlService and EnableFineGrainedControlPort, now all is nil in RestoreData")
