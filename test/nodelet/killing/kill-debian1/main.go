@@ -159,7 +159,7 @@ func postEventForkilling_ForGroup() {
 	var groupName string
 	for i := range groups.Items {
 		group := groups.Items[i]
-		if group.Spec.Name == group1_1Name && group.Status.Phase == apis.Running {
+		if group.Spec.Name == group1_1Name && group.Status.Phase == apis.Unknown {
 			groupName = group.Name
 		}
 	}

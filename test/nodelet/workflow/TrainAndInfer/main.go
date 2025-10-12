@@ -193,8 +193,7 @@ func main() {
 						Args:       []string{"upload.py"},
 						Parents:    []string{runtime1_1_1_1Name},                      // 加入Parents
 						Data:       []apis.DataSpec{apis.DataSpec{Name: "upload.py"}}, // 依赖文件
-						Conditions: &runtime1_1_1_2Condition,
-					},
+						Conditions: &runtime1_1_1_2Condition},
 				},
 			},
 		},

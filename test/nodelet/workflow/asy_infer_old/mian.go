@@ -2,7 +2,13 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
@@ -14,10 +20,7 @@ import (
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
-	"net/http"
-	"os"
-	"strings"
-	"time"
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
 // 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
@@ -32,6 +35,10 @@ var scheme = runtime.NewScheme()
 const NodeName = "cloudNode1" // 1$
 var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
 var namespace = "HenanEP"
+
+// var filefold = "yolo_projects_asy"
+// var filename = "yolo-asy-running6.py"
+var command = "python"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -56,77 +63,59 @@ func main() {
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := true
-	runtime1_1_1_1FineGrainedControlPort := "5123"
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
 		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
-			Type:      apis.ResultsData,
-			Name:      "ProgramDependency",
-			Value:     "0",
-			ValueType: "string",
-			From:      "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt", //2$
+			From: "yolo_projects_asy/requirements.txt", //2$
 		},
-		RightValue: apis.Value{
-			Type:      apis.ConstData,
-			Name:      "ProgramDependency",
-			Value:     "1",
-			ValueType: "string",
-			From:      "",
+	}
+	// 数据依赖（../tmp/testFolder）
+	DataDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.DataDependency,
+		LeftValue: apis.Value{
+			Type: apis.FileData,
 		},
-		Signal: apis.Equal,
-		Join:   "",
-		Result: apis.False,
 	}
 
 	runtime1_1_1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
 			ProgramDependencyConditionFormula,
+			DataDependencyConditionFormula,
 		},
 	}
 
 	gs1 := apis.GroupSpec{
-		ResourceRequirements: []apis.ResourceRequirement{
-			apis.ResourceRequirement{
-				Name:       "CPU",
-				Lowbound:   "2",
-				Upperbound: "4",
-			},
-			apis.ResourceRequirement{
-				Name:       "RAM",
-				Lowbound:   "2",
-				Upperbound: "4",
-			},
-		},
 		//Replicas: group1_1Replicas,
 		HasReplca: true,
 		Name:      group1_1Name,
-		Desc: &apis.Description{
-			Label: map[string]string{
-				"scheduler": "CloudNode1",
-			},
-		},
-		Parents: make([]string, 0),
+		Parents:   make([]string, 0),
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                         runtime1_1_1_1Name,
-						Type:                         apis.ByCommand,
-						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s   //3$
-						Parents:                      make([]string, 0),                                                // 加入Parents
-						Conditions:                   &runtime1_1_1_1Condition,
-						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
-						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
+						Name:    runtime1_1_1_1Name,
+						Type:    apis.ByCommand,
+						Command: []string{"python"},
+						Args:    []string{},
+						Data:    []apis.DataSpec{apis.DataSpec{Name: filefold}},
+						// Data:                     []apis.DataSpec{{Name: "requirements.txt"}},
+						Conditions:               &runtime1_1_1_1Condition,
+						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
 				},
 			},
 		},
 	}
+	folderPath := "/home/public/workspace/yolo_projects_asy"
+	_, err := UploadFolder(folderPath) //---这个方法改传递文件夹
+	if err != nil {
+		fmt.Println("upload folder err!")
+	}
+	//filePath := "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
+	//UploadFile(filePath)
 
 	ts := apis.TaskSpec{
 		Name: task1Name,
@@ -186,8 +175,7 @@ func postEventForMigrate_ForGroup() {
 		logs.Errorf("GetGroup err: %v", err)
 	}
 	time.Sleep(10 * time.Millisecond)
-	//m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
-	m.LogEventForMigration(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), "", namespace)
+	m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
 }
 
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
@@ -219,4 +207,55 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 		panic(err)
 	}
 	return clientSet
+}
+func UploadFile(filePath string) (string, error) {
+	// 调用 utils.UploadFile 函数上传文件
+	// 这里的 filePath 是要上传的文件路径
+	// 返回上传结果和错误信息
+	url := "http://localhost:8919/upload"
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+		return "", err
+	} else {
+		fmt.Println("Upload successful!")
+		return "Upload successful!", nil
+	}
+}
+
+func UploadFolder(folderPath string) (string, error) {
+	if folderPath == "" {
+		return "", errors.New("dirPath is empty")
+	}
+	parts := strings.Split(folderPath, "/")
+	if len(parts) == 0 {
+		return "", errors.New("dirPath does not contain any parts")
+	}
+	// 获取最后一个部分作为文件夹名称
+	// 如果最后一个部分是空字符串，说明路径以/结尾，可能是一个空目录
+	// 例如 "/home/user/documents/"，最后一个部分是空
+	if parts[len(parts)-1] == "" {
+		if len(parts) < 2 {
+			return "", errors.New("dirPath does not contain a valid folder name")
+		}
+		// 如果是空目录，使用倒数第二个部分作为文件夹名称
+		folderName := parts[len(parts)-2]
+		if folderName == "" {
+			return "", errors.New("folder name is empty")
+		}
+		// fmt.Println("Folder Name:", folderName)
+	}
+	folderName := parts[len(parts)-1]
+	if folderName == "" {
+		return "", errors.New("folder name is empty")
+	}
+	fmt.Print("folderPath:%s, folderName:%s", folderPath, folderName)
+	url := "http://localhost:8919/upload?filename=" + folderName
+	err := utils.Traverse(folderPath, url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+	} else {
+		fmt.Println("Upload successful!")
+	}
+	return "", nil
 }

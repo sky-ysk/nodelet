@@ -600,7 +600,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 										//go gmo.runtimeManager.StartRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-A
 										//go gmo.runtimeManager.Run(group, action, runtime, action.Spec.Name, runtime.Spec.Name) // plan-B
 										go gmo.runtimeManager.InitRuntime(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
-										//time.Sleep(100 * time.Millisecond)
+
 										go gmo.runtimeManager.RestoreData(group, action, runtime, action.Spec.Name, runtime.Spec.Name)
 									}
 									patchRuntime, err := json.Marshal(map[string]interface{}{

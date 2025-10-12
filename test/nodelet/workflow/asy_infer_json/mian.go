@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -17,7 +19,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/util/manager"
-	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
@@ -29,14 +30,74 @@ const NodeName = "cloudNode1" // 1$
 var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
 var namespace = "test"
 var filefold = "yolo_projects_asy"
-var filename = "yolo-asy-running1.py"
+var filename = "yolo_projects_asy/yolo-asy-running1.py"
 var command = "python"
 var require = "yolo_projects_asy/requirements.txt"
 var folderPath = "/home/public/workspace/yolo_projects_asy"
 
+// 定义JSON解析结构体
+type AppConfig struct {
+	Data []struct {
+		Name string `json:"name"`
+	} `json:"data"`
+	Type          string   `json:"type"`
+	Command       []string `json:"command"`
+	Args          []string `json:"args"`
+	EnableControl bool     `json:"enable_control"`
+	Conditions    struct {
+		Formulas []struct {
+			ConditionType string `json:"condition_type"`
+			From          string `json:"from"`
+		} `json:"formulas"`
+	} `json:"conditions"`
+	HasReplca bool `json:"hasReplca"`
+}
+
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
 func main() {
+	// 第一步：处理命令行参数
+	args := os.Args
+	if len(args) > 1 {
+		folderPath = args[1] // 使用第一个命令行参数覆盖folderPath
+	}
+
+	// 第二步：解析application.json
+	configFile := "application.json" // JSON文件路径
+	if len(args) > 2 {
+		configFile = args[2] // 可选的第二个参数指定JSON路径
+	}
+
+	jsonData, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		panic(fmt.Sprintf("Error reading JSON file: %v", err))
+	}
+
+	var config AppConfig
+	if err := json.Unmarshal(jsonData, &config); err != nil {
+		panic(fmt.Sprintf("Error parsing JSON: %v", err))
+	}
+
+	// 第三步：从JSON提取参数
+	if len(config.Data) > 0 {
+		filefold = config.Data[0].Name // 映射 data[0].name
+	}
+	if len(config.Command) > 0 {
+		command = config.Command[0] // 映射 command[0]
+	}
+	if len(config.Args) > 0 {
+		// 直接使用整个参数字符串作为filename
+		filename = config.Args[0]
+	}
+	if len(config.Conditions.Formulas) > 0 {
+		require = config.Conditions.Formulas[0].From // 映射 conditions.formulas[0].from
+	}
+
+	// 如果命令行未提供folderPath，使用默认值
+	if folderPath == "" {
+		fmt.Println("foldPath is null,please add")
+		return
+	}
 	moduleName := "testModule"
 	logs.Init(moduleName)
 
@@ -89,7 +150,7 @@ func main() {
 						Name:    runtime1_1_1_1Name,
 						Type:    apis.ByCommand,
 						Command: []string{command},
-						Args:    []string{filefold + "/" + filename},
+						Args:    []string{filename},
 						Data:    []apis.DataSpec{apis.DataSpec{Name: filefold}},
 						// Data:                     []apis.DataSpec{{Name: "requirements.txt"}},
 						Conditions:               &runtime1_1_1_1Condition,
@@ -100,7 +161,7 @@ func main() {
 		},
 	}
 
-	_, err := UploadFolder(folderPath) //---这个方法改传递文件夹
+	_, err = UploadFolder(folderPath) //---这个方法改传递文件夹
 	if err != nil {
 		fmt.Println("upload folder err!")
 	}
@@ -114,15 +175,16 @@ func main() {
 	// 生成UUID
 	u := uuid.Must(uuid.NewV7())
 	m := manager.NewManager(clientSet)
-	task, err := m.CreateTask(ts, nil, namespace, u.String(), "")
+	_, err = m.CreateTask(ts, nil, namespace, u.String(), "")
 	if err != nil {
 		panic(err)
 	}
-	str, err := analyzer.SerializeToJson(task)
-	if err != nil {
-		return
-	}
-	fmt.Println(str)
+	fmt.Println("Application description submitted successfully")
+	//str, err := analyzer.SerializeToJson(task)
+	//if err != nil {
+	//	return
+	//}
+	//fmt.Println(str)
 
 	prompt()
 	postEventForMigrate_ForGroup()

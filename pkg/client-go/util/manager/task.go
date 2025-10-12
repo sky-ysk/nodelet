@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
-	"time"
 )
 
 // CreateTasks 根据TaskSpec创建Group
 func (m *Manager) CreateTasks(w *apis.Workflow, namespace string, uuid string, prefix string) ([]*apis.Task, error) {
+	start := time.Now() // 记录开始时间
 	var groups []*apis.Task
 
 	for _, as := range w.Spec.Tasks {
@@ -24,10 +26,14 @@ func (m *Manager) CreateTasks(w *apis.Workflow, namespace string, uuid string, p
 		groups = append(groups, a)
 	}
 
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateTasks took %s", elapsed)
+
 	return groups, nil
 }
 
 func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string) (*apis.Task, error) {
+	start := time.Now() // 记录开始时间
 	// TODO：需要检查一下Spec里面的东西 1.循环依赖  2.也不要允许创建空的任务？没有意义
 	// 临时创建一个Task对象
 	t := apis.Task{}
@@ -115,10 +121,14 @@ func (m *Manager) CreateTask(ts apis.TaskSpec, w *apis.Workflow, namespace strin
 	}
 
 	logs.Debugf("Created task: %v", ft)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateTask took %s", elapsed)
 	return ft, nil
 }
 
 func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetTaskClient(namespace)
 
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -128,10 +138,14 @@ func (m *Manager) GetTask(name string, namespace string) (*apis.Task, error) {
 	}
 
 	logs.Debugf("Get task: %v", a)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateTask took %s", elapsed)
 	return a, nil
 }
 
 func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetTaskClient(namespace)
 
 	g, err := c.Client.List(context.TODO(), metav1.ListOptions{})
@@ -141,11 +155,16 @@ func (m *Manager) GetTasks(namespace string) (*apis.TaskList, error) {
 	}
 
 	logs.Debugf("Get tasks success.")
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : GetTasks took %s", elapsed)
+
 	return g, nil
 }
 
 // FilterTasks 根据Label查询Tasks
 func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.TaskList, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetTaskClient(namespace)
 
 	listOptions := metav1.ListOptions{
@@ -159,10 +178,14 @@ func (m *Manager) FilterTasks(namespace string, labelSelector string) (*apis.Tas
 	}
 
 	logs.Infof("Get tasks with label success.")
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : FilterTasks took %s", elapsed)
 	return d, nil
 }
 
 func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis.Task, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
@@ -180,11 +203,15 @@ func (m *Manager) UpdateTask(name string, namespace string, a *apis.Task) (*apis
 	}
 
 	logs.Debugf("Update task: %v", updatedTask)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : UpdateTask took %s", elapsed)
 	return updatedTask, nil
 
 }
 
 func (m *Manager) PatchTask(name string, namespace string, patchTask []byte) (*apis.Task, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
@@ -202,10 +229,14 @@ func (m *Manager) PatchTask(name string, namespace string, patchTask []byte) (*a
 	}
 
 	logs.Debugf("Patch task: %v", patchedTask)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : PatchTask took %s", elapsed)
 	return patchedTask, nil
 }
 
 func (m *Manager) DeleteTask(name string, namespace string) error {
+	start := time.Now() // 记录开始时间
 	c := m.GetTaskClient(namespace)
 
 	// 检查task是否存在
@@ -234,6 +265,9 @@ func (m *Manager) DeleteTask(name string, namespace string) error {
 	}
 
 	logs.Debugf("Delete task: %v", name)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : DeleteTask took %s", elapsed)
 	return nil
 }
 
@@ -242,6 +276,7 @@ func (m *Manager) DeleteTask(name string, namespace string) error {
 // CreateTaskWithLabels 创建带有label的task
 // TODO: 将这部分全部替换为根据Spec里面的label创建，删除这部分
 func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Task, error) {
+	start := time.Now() // 记录开始时间
 	// 临时创建一个Task对象
 	t := apis.Task{}
 	// 构造名称
@@ -318,5 +353,8 @@ func (m *Manager) CreateTaskWithLabels(ts apis.TaskSpec, w *apis.Workflow, names
 	}
 
 	logs.Debugf("Created task: %v", ft)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateTaskWithLabels took %s", elapsed)
 	return ft, nil
 }

@@ -271,6 +271,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 		}
 		if gr.Spec.HasReplca == true {
 			copiesInDomain = 1
+			logs.Info("Replicas未配置，使用默认值[1,0]")
 		}
 
 		if copiesInDomain > 0 { //如果传进任务的时候该属性没有赋值的话，初始化是为0的

@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/types"
 	apis "hit.edu/framework/pkg/apis/cores"
 	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/component-base/logs"
-	"time"
 )
 
 // CreateActions 创建Actions
 func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, prefix string) ([]*apis.Action, error) {
+	start := time.Now() // 记录开始时间
 	var actions []*apis.Action
 
 	for _, as := range g.Spec.Actions {
@@ -23,11 +25,15 @@ func (m *Manager) CreateActions(g *apis.Group, namespace string, uuid string, pr
 		}
 		actions = append(actions, a)
 	}
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateActions took %s", elapsed)
 
 	return actions, nil
 }
 
 func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string) (*apis.Action, error) {
+	start := time.Now() // 记录开始时间
+
 	// 临时创建一个Action对象
 	a := apis.Action{}
 
@@ -113,10 +119,14 @@ func (m *Manager) CreateAction(as apis.ActionSpec, g *apis.Group, namespace stri
 
 	//
 	logs.Debugf("Created action: %v", fa)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateAction took %s", elapsed)
 	return fa, nil
 }
 
 func (m *Manager) GetAction(name string, namespace string) (*apis.Action, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetActionClient(namespace)
 
 	a, err := c.Client.Get(context.TODO(), name, metav1.GetOptions{})
@@ -127,10 +137,15 @@ func (m *Manager) GetAction(name string, namespace string) (*apis.Action, error)
 
 	//
 	logs.Debugf("Get action: %v", a)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : GetAction took %s", elapsed)
+
 	return a, nil
 }
 
 func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetActionClient(namespace)
 
 	a, err := c.Client.List(context.TODO(), metav1.ListOptions{})
@@ -141,11 +156,15 @@ func (m *Manager) GetActions(namespace string) (*apis.ActionList, error) {
 
 	//
 	logs.Debugf("Get actions success.")
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : GetActions took %s", elapsed)
 	return a, nil
 }
 
 // FilterActions 根据Label查询Actions
 func (m *Manager) FilterActions(namespace string, labelSelector string) (*apis.ActionList, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetActionClient(namespace)
 
 	listOptions := metav1.ListOptions{
@@ -160,10 +179,14 @@ func (m *Manager) FilterActions(namespace string, labelSelector string) (*apis.A
 
 	//
 	logs.Infof("Get actions with label success.")
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : FilterActions took %s", elapsed)
 	return d, nil
 }
 
 func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*apis.Action, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
@@ -182,11 +205,15 @@ func (m *Manager) UpdateAction(name string, namespace string, a *apis.Action) (*
 
 	//
 	logs.Debugf("Update action: %v", updatedAction)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : UpdateAction took %s", elapsed)
 	return updatedAction, nil
 
 }
 
 func (m *Manager) PatchAction(name string, namespace string, patchAction []byte) (*apis.Action, error) {
+	start := time.Now() // 记录开始时间
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
@@ -205,10 +232,14 @@ func (m *Manager) PatchAction(name string, namespace string, patchAction []byte)
 
 	//
 	logs.Debugf("patched action : %v ", patchedAction)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : PatchAction took %s", elapsed)
 	return patchedAction, nil
 }
 
 func (m *Manager) DeleteAction(name string, namespace string) error {
+	start := time.Now() // 记录开始时间
 	c := m.GetActionClient(namespace)
 
 	// 检查action是否存在
@@ -236,12 +267,16 @@ func (m *Manager) DeleteAction(name string, namespace string) error {
 
 	//
 	logs.Debugf("Delete action %v ", err)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : DeleteAction took %s", elapsed)
 	return nil
 }
 
 // CreateActionWithLabels 创建带有label的Action
 // TODO: 将这部分全部替换为根据Spec里面的label创建，删除这部分
 func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, namespace string, uuid string, prefix string, labels map[string]string) (*apis.Action, error) {
+	start := time.Now() // 记录开始时间
 	// 临时创建一个Action对象
 	a := apis.Action{}
 
@@ -323,5 +358,8 @@ func (m *Manager) CreateActionWithLabels(as apis.ActionSpec, g *apis.Group, name
 
 	//
 	logs.Debugf("Created action: %v", fa)
+
+	elapsed := time.Since(start) // 计算耗时
+	logs.Tracef("-------------------------test time : CreateActionWithLabels took %s", elapsed)
 	return fa, nil
 }

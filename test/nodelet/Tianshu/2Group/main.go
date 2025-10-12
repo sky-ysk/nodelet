@@ -13,24 +13,12 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/events"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
-// 调度器代码: 触发CloudNode1资源不足事件,从CloudNode1迁移到CloudNode2
-// if strings.Contains(group.ObjectMeta.Name, "G1") {
-// host = "CloudNode1"
-// }
-// if strings.Contains(group.ObjectMeta.Name, "copy") {
-// host = "CloudNode2"
-// }
 var scheme = runtime.NewScheme()
-
-const NodeName = "cloudNode1" // 1$
-var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
 var namespace = "HenanEP"
 
 // 测试切换
@@ -46,17 +34,20 @@ func main() {
 	task1Name := "T1" // 第一个Task的Name
 
 	// group
-
+	group1_1Name := "G91" // 第一个Task下的第一个GroupName
+	group1_2Name := "G81" // 第一个Task下的第二个GroupName
 	//group1_1Replicas := []int32{1, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+	action1_2_1Name := "A1" // 第一个Task下的第二个Group下的第一个ActionName  "cmd_yolo_train_action"
 
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_2_1_1Name := "R1" // 第一个Task下的第二个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
-	runtime1_1_1_1FineGrainedControl := true
-	runtime1_1_1_1FineGrainedControlPort := "5123"
+	runtime1_2_1_1FineGrainedControl := true
+	runtime1_2_1_1FineGrainedControlPort := "5123"
 
 	// 程序依赖（requirements.txt）
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
@@ -66,7 +57,7 @@ func main() {
 			Name:      "ProgramDependency",
 			Value:     "0",
 			ValueType: "string",
-			From:      "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt", //2$
+			From:      "/root/goprojects/reference/test/nodelet/task_exporter/dependency/requirements.txt", //2$
 		},
 		RightValue: apis.Value{
 			Type:      apis.ConstData,
@@ -85,6 +76,11 @@ func main() {
 			ProgramDependencyConditionFormula,
 		},
 	}
+	runtime1_2_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			ProgramDependencyConditionFormula,
+		},
+	}
 
 	gs1 := apis.GroupSpec{
 		ResourceRequirements: []apis.ResourceRequirement{
@@ -99,13 +95,13 @@ func main() {
 				Upperbound: "4",
 			},
 		},
-		//Replicas: group1_1Replicas,
-		HasReplca: true,
-		Name:      group1_1Name,
+		Name: group1_1Name,
 		Desc: &apis.Description{
 			Label: map[string]string{
 				"scheduler": "CloudNode1",
+				"type":      "Train",
 			},
+			Docs: "Yolo训练任务", // 必须加上，不然前端报错
 		},
 		Parents: make([]string, 0),
 		Actions: []apis.ActionSpec{
@@ -113,15 +109,53 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                         runtime1_1_1_1Name,
+						Name:       runtime1_1_1_1Name,
+						Type:       apis.ByCommand,
+						Command:    []string{"python"},
+						Args:       []string{"/root/workspace/testTask/test.py"},
+						Parents:    make([]string, 0),
+						Conditions: &runtime1_1_1_1Condition,
+					},
+				},
+			},
+		},
+	}
+
+	gs2 := apis.GroupSpec{
+		ResourceRequirements: []apis.ResourceRequirement{
+			apis.ResourceRequirement{
+				Name:       "CPU",
+				Lowbound:   "2",
+				Upperbound: "4",
+			},
+			apis.ResourceRequirement{
+				Name:       "RAM",
+				Lowbound:   "2",
+				Upperbound: "4",
+			},
+		},
+		Name: group1_2Name,
+		Desc: &apis.Description{
+			Label: map[string]string{
+				"scheduler": "EdgeNode1",
+				"type":      "Infer",
+			},
+			Docs: "推理任务", // 必须加上，不然前端报错
+		},
+		Parents: []string{group1_1Name},
+		Actions: []apis.ActionSpec{
+			apis.ActionSpec{
+				Name: action1_2_1Name,
+				Runtimes: []apis.RuntimeSpec{
+					apis.RuntimeSpec{
+						Name:                         runtime1_2_1_1Name,
 						Type:                         apis.ByCommand,
 						Command:                      []string{"python"},
-						Args:                         []string{"/home/public/workspace/yolo_projects/yolo-runner1.py"}, //20s   //3$
-						Parents:                      make([]string, 0),                                                // 加入Parents
-						Conditions:                   &runtime1_1_1_1Condition,
-						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
-						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
+						Args:                         []string{"/root/workspace/yolo_projects/yolo-runner1.py"}, //20s   //3$
+						Parents:                      make([]string, 0),                                         // 加入Parents
+						Conditions:                   &runtime1_2_1_1Condition,
+						EnableFineGrainedControl:     runtime1_2_1_1FineGrainedControl,
+						EnableFineGrainedControlPort: &runtime1_2_1_1FineGrainedControlPort,
 					},
 				},
 			},
@@ -129,9 +163,10 @@ func main() {
 	}
 
 	ts := apis.TaskSpec{
+		Desc: &apis.Description{Docs: "Yolo训练推理工作流"}, // 必须加上，不然前端报错
 		Name: task1Name,
 		Groups: []apis.GroupSpec{
-			gs1,
+			gs1, gs2,
 		},
 	}
 	// 生成UUID
@@ -148,8 +183,6 @@ func main() {
 	fmt.Println(str)
 
 	prompt()
-	postEventForMigrate_ForGroup()
-	prompt()
 
 }
 
@@ -164,30 +197,6 @@ func prompt() {
 		panic(err)
 	}
 	logs.Info()
-}
-
-func postEventForMigrate_ForGroup() {
-	logs.Info("发送跨域迁移事件======")
-	clientSet := initClientSet(scheme)
-	m := manager.NewManager(clientSet)
-	groups, err := m.GetGroups(namespace)
-	if err != nil {
-		logs.Errorf("GetGroups err: %v", err)
-	}
-	var groupName string
-	for i := range groups.Items {
-		group := groups.Items[i]
-		if group.Spec.Name == group1_1Name && !strings.Contains(group.Name, "copy") && group.Status.Phase == apis.Running {
-			groupName = group.Name
-		}
-	}
-	group, err := m.GetGroup(groupName, namespace)
-	if err != nil {
-		logs.Errorf("GetGroup err: %v", err)
-	}
-	time.Sleep(10 * time.Millisecond)
-	//m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
-	m.LogEventForMigration(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), "", namespace)
 }
 
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {

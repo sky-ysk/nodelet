@@ -533,9 +533,98 @@ func main() {
 	//}
 	//fmt.Println(d)
 
+	//data := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "HenanEP-infer1",
+	//		Namespace: "HenanEP",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "HenanEP-infer1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/dianwang_infer.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "推理工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//data2 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "Cosmo-infer1",
+	//		Namespace: "Cosmo",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "Cosmo-infer1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/zhizao_infer.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "推理工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//data3 := &apis.Data{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "ShandongHS-infer1",
+	//		Namespace: "ShandongHS",
+	//	},
+	//	TypeMeta: metav1.TypeMeta{
+	//		Kind:       "Data",
+	//		APIVersion: "resources/v1",
+	//	},
+	//	Spec: apis.DataSpec{
+	//		Name:       "ShandongHS-infer1",
+	//		BelongNode: "n19",
+	//		FilePath:   "/root/goprojects/workflow/jiaotong_infer.json",
+	//		FileFormat: "json",
+	//		Desc: &apis.Description{
+	//			Docs: "推理工作流-Command",
+	//		},
+	//	},
+	//	Status: apis.DataStatus{
+	//		CreateAt: &apis.Time{time.Now()},
+	//		LastTime: &apis.Time{time.Now()},
+	//	},
+	//}
+	//
+	//d, err := manager.CreateData(data, namespace1)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data2, namespace2)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+	//
+	//d, err = manager.CreateData(data3, namespace3)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println(d)
+
 	data := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "HenanEP-infer1",
+			Name:      "HenanEP-trainAndInfer1",
 			Namespace: "HenanEP",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -543,12 +632,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "HenanEP-infer1",
+			Name:       "HenanEP-trainAndinfer1",
 			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/dianwang_infer.json",
+			FilePath:   "/root/goprojects/workflow/dianwang_trainAndInfer.json",
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "推理工作流-Command",
+				Docs: "训练推理工作流-Command",
 			},
 		},
 		Status: apis.DataStatus{
@@ -559,7 +648,7 @@ func main() {
 
 	data2 := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "Cosmo-infer1",
+			Name:      "Cosmo-TrainAndinfer1",
 			Namespace: "Cosmo",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -567,12 +656,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "Cosmo-infer1",
+			Name:       "Cosmo-trainAndInfer1",
 			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/zhizao_infer.json",
+			FilePath:   "/root/goprojects/workflow/zhizao_trainAndInfer.json",
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "推理工作流-Command",
+				Docs: "训练推理工作流-Command",
 			},
 		},
 		Status: apis.DataStatus{
@@ -582,7 +671,7 @@ func main() {
 	}
 	data3 := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ShandongHS-infer1",
+			Name:      "ShandongHS-trainAndInfer1",
 			Namespace: "ShandongHS",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -590,12 +679,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "ShandongHS-infer1",
+			Name:       "ShandongHS-trainAndInfer1",
 			BelongNode: "n19",
-			FilePath:   "/root/goprojects/workflow/jiaotong_infer.json",
+			FilePath:   "/root/goprojects/workflow/jiaotong_trainAndInfer.json",
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "推理工作流-Command",
+				Docs: "训练推理工作流-Command",
 			},
 		},
 		Status: apis.DataStatus{
