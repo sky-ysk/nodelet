@@ -3,7 +3,9 @@ package node
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -65,6 +67,8 @@ func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, 
 		IsmasterNode:    cfg.IsMasterNode,
 	}, nil
 }
+
+// 获取主机名
 func getHostName() string {
 	// 如果运行在Kubernetes中，可以通过Downward API获取节点名称
 	if nodeName := os.Getenv("HOST_NAME"); nodeName != "" {
@@ -76,6 +80,81 @@ func getHostName() string {
 		return hostName
 	}
 	return "unknown-host"
+}
+
+// 获取主机ip地址
+func getHostIP() string {
+	// 1. 优先从Kubernetes环境变量获取（需提前注入）
+	if nodeIP := os.Getenv("NODE_IP"); nodeIP != "" {
+		return nodeIP
+	}
+
+	// 2. 非Kubernetes环境，获取本机IP
+	ip, err := getLocalIP()
+	if err != nil {
+		return "unknown-ip"
+	}
+	return ip
+}
+
+func getLocalIP() (string, error) {
+	// 获取所有网络接口
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+
+	// 遍历接口查找非回环IPv4地址
+	for _, iface := range interfaces {
+		// 跳过无效接口（Linux需跳过docker等虚拟接口）
+		if iface.Flags&net.FlagUp == 0 ||
+			iface.Flags&net.FlagLoopback != 0 ||
+			isVirtualInterface(iface.Name) {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+
+			// 跳过IPv6和回环地址
+			if ip == nil || ip.IsLoopback() || ip.To4() == nil {
+				continue
+			}
+
+			return ip.String(), nil
+		}
+	}
+	return "", errors.New("no suitable IP address found")
+}
+
+// 识别虚拟网络接口（根据操作系统）
+func isVirtualInterface(name string) bool {
+	// Linux虚拟接口通常包含特定前缀
+	if strings.HasPrefix(name, "docker") ||
+		strings.HasPrefix(name, "veth") ||
+		strings.HasPrefix(name, "br-") ||
+		strings.HasPrefix(name, "cni") {
+		return true
+	}
+
+	// Windows虚拟接口通常包含特定后缀
+	if strings.HasSuffix(name, "_tap") ||
+		strings.Contains(name, "Virtual") {
+		return true
+	}
+
+	return false
 }
 
 // 想改成每隔60秒收集一次静态信息，每隔1s收集一次动态信息
@@ -108,6 +187,7 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 				ClusterCategory: n.ClusterCategory,
 				Resource:        make(map[string][]apis.Item),
 				HostName:        getHostName(),
+				HostIp:          getHostIP(),
 			},
 			Status: apis.NodeStatus{
 				Usage: make(map[string][]apis.Item),

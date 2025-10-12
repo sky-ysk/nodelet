@@ -204,6 +204,8 @@ type NodeSpec struct {
 	ClusterCategory string `json:"clusterCategory,omitempty" yaml:"clusterCategory"` //该节点所在的集群类别：1、云集群 2、边集群 3、端集群
 	// hzy 添加 ，节点所属的集群ID
 	ClusterID *string `json:"cluster_id,omitempty" yaml:"cluster_id"`
+	// hzy添加，节点ip地址
+	HostIp string `json:"hostIp,omitempty" yaml:"hostIp"`
 }
 
 // 计算、网络、存储等定量资源
