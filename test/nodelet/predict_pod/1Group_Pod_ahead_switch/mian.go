@@ -24,7 +24,7 @@ import (
 
 var scheme = runtime.NewScheme()
 
-const NodeName = "k8s-master"
+const NodeName = "CloudNode1"
 
 // 测试切换
 // 适配从publicserver0 迁移到 server1
@@ -56,28 +56,28 @@ func main() {
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
 	task1Name := "T1" // 第一个Task的Name
 
-	// group2 -Server-B机器
-	group1_2Name := "G2" // 第一个Task下的第一个GroupName
-	group1_2Replicas := []int32{0, 0}
+	// group1 - Client -A机器
+	group1_1Name := "G91" // 第一个Task下的第一个GroupName
+	group1_1Replicas := []int32{1, 0}
 
 	// action
-	action1_2_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
+	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"
 
 	// runtime
-	runtime1_2_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
+	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
-	runtime1_2_1_1FineGrainedControl := true
-	runtime1_2_1_1FineGrainedControlPort := "30051"
-	runtime1_2_1_1FineGrainedControlService := "172.110.0.121" //B机器ip地址:k8s-node2
+	runtime1_1_1_1FineGrainedControl := true
+	runtime1_1_1_1FineGrainedControlPort := "30052"
+	runtime1_1_1_1FineGrainedControlService := "172.110.0.120" //A机器IP地址:k8s-master
 
-	runtime1_2_1_1Input := []apis.Value{
+	runtime1_1_1_1Input := []apis.Value{
 		apis.Value{
-			From: "/home/public/goprojects/nodelet-1012/test/nodelet/switch/grpc-server-pod.yaml",
+			From: "/home/public/goprojects/nodelet-1012/test/nodelet/switch/grpc-client-pod.yaml",
 		},
 	}
 
-	// Server -B 机器
-	gs2 := apis.GroupSpec{
+	// Server -A 机器
+	gs1 := apis.GroupSpec{
 		ResourceRequirements: []apis.ResourceRequirement{
 			apis.ResourceRequirement{
 				Name:       "CPU",
@@ -90,24 +90,24 @@ func main() {
 				Upperbound: "4",
 			},
 		},
-		Replicas: group1_2Replicas,
-		Name:     group1_2Name,
+		Replicas: group1_1Replicas,
+		Name:     group1_1Name,
 		Parents:  make([]string, 0),
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
-				Name: action1_2_1Name,
+				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                            runtime1_2_1_1Name,
+						Name:                            runtime1_1_1_1Name,
 						Type:                            apis.ByPod,
 						Command:                         []string{},
 						Args:                            []string{},        //20s
 						Parents:                         make([]string, 0), // 加入Parents
 						EnvVar:                          []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						Inputs:                          runtime1_2_1_1Input,
-						EnableFineGrainedControl:        runtime1_2_1_1FineGrainedControl,
-						EnableFineGrainedControlService: &runtime1_2_1_1FineGrainedControlService,
-						EnableFineGrainedControlPort:    &runtime1_2_1_1FineGrainedControlPort,
+						Inputs:                          runtime1_1_1_1Input,
+						EnableFineGrainedControl:        runtime1_1_1_1FineGrainedControl,
+						EnableFineGrainedControlService: &runtime1_1_1_1FineGrainedControlService,
+						EnableFineGrainedControlPort:    &runtime1_1_1_1FineGrainedControlPort,
 					},
 				},
 			},
@@ -117,7 +117,7 @@ func main() {
 	ts := apis.TaskSpec{
 		Name: task1Name,
 		Groups: []apis.GroupSpec{
-			gs2,
+			gs1,
 		},
 	}
 	m := manager.NewManager(clientSet)
@@ -168,7 +168,8 @@ func postEventForMigrate(client core.EventInterface) {
 
 	// 通过 recorder.Event或 recorder.Eventf可以生成事件
 	time.Sleep(10 * time.Millisecond)
-	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerCrossMigration, fmt.Sprintf("Node Name:\t %s is shortage", node.Name), "")
+	recorder.EventForMigration(node, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("Node Name:\t %s is shortage", node.Name), "")
+	logs.Infof("trigger migration")
 	// recorder.Eventf(group, apis.EventTypeNormal, events.ReadyToMigrate, fmt.Sprintf("The task %v is ready for migration", group.Spec.Actions[0].Name))
 }
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
