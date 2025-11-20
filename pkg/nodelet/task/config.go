@@ -14,9 +14,10 @@ type Config struct {
 	wasmToolchainDir string
 	wasmRuntimePort  string
 	FileRegistryAddr string
+	ServiceProxyAddr string
 }
 
-func NewConfig(name string, tasktargetMap map[string]cross_core.TaskInterface, grouptargetMap map[string]cross_core.GroupInterface, actiontargetMap map[string]cross_core.ActionInterface, runtimetargetMap map[string]cross_core.RuntimeInterface, wasmToolchainDir string, wasmRuntimePort string, fileRegistry string) *Config {
+func NewConfig(name string, tasktargetMap map[string]cross_core.TaskInterface, grouptargetMap map[string]cross_core.GroupInterface, actiontargetMap map[string]cross_core.ActionInterface, runtimetargetMap map[string]cross_core.RuntimeInterface, wasmToolchainDir string, wasmRuntimePort string, fileRegistry string, serviceProxyAddr string) *Config {
 	return &Config{
 		NodeName:         name,
 		taskTargetMap:    tasktargetMap,
@@ -26,5 +27,6 @@ func NewConfig(name string, tasktargetMap map[string]cross_core.TaskInterface, g
 		wasmToolchainDir: wasmToolchainDir,
 		wasmRuntimePort:  wasmRuntimePort,
 		FileRegistryAddr: fileRegistry,
+		ServiceProxyAddr: serviceProxyAddr,
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
+	serviceProxy "hit.edu/framework/pkg/nodelet/task/serviceProxy"
 )
 
 type CommandRuntime struct {
@@ -102,7 +104,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	}
 
 	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
+	err := cr.startCMD(group, group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
 	if err != nil {
 		logs.Infof("Receive info:\t", err)
 		return err
@@ -112,7 +114,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 
 // 可能需要区分输出output的指定位置, 后续需要改成使用cmd package里的build cmd等
 // 需要保存进程的pid，检查进程是否是正常执行完成
-func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeName, runtimeSpecName string, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
+func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace string, actionSpeName, runtimeSpecName string, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
 	// exec.Command可以接受的命令
 	// name表示可执行二进制的name
 	// ...args表示命令所需的参数
@@ -149,6 +151,62 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 		}
 	}
 	// logs.Infof("after cmd:%v", cmd)
+
+	// 处理服务端迁移，分为初次部署和迁移后的copy部署
+	// TODO:把这部分移到新的包去处理，后续可以适配其他环境（非cmd任务等）
+	if runtime.Spec.IsHttpService == true {
+		if strings.Contains(group.Name, "copy") {
+			// 说明是迁移后的copy服务端，需要调用服务迁移的接口进行服务迁移
+			addr := serviceProxy.GetServiceProxyAddr()
+			_, port, serviceName := serviceProxy.ExtractFromArgs(args)
+			// 获取当前group所在的node的IP信息
+			nodeName := *group.Status.Node
+			node, err := cr.clientsManager.GetNode(nodeName, groupNamespace)
+			if err != nil {
+				logs.Infof("fail to get node:%s", nodeName)
+			}
+			nodeIp := node.Spec.HostIp
+			err = serviceProxy.MigrateService(addr, serviceName, nodeIp, port)
+
+		} else {
+			// 说明是需要迁移功能的服务端需要调用服务迁移的接口进行服务注册
+			addr := serviceProxy.GetServiceProxyAddr()
+			// 处理服务端启动命令里的ip port和服务名,对于port不动，对于ip则进行替换为当前node的ip，利用服务名进行服务注册
+			_, port, serviceName := serviceProxy.ExtractFromArgs(args)
+			// 获取当前group所在的node的IP信息
+			nodeName := *group.Status.Node
+			node, err := cr.clientsManager.GetNode(nodeName, groupNamespace)
+			if err != nil {
+				logs.Infof("fail to get node:%s", nodeName)
+			}
+			nodeIp := node.Spec.HostIp
+
+			err = serviceProxy.RegisterService(addr, serviceName, nodeIp, port)
+			if err != nil {
+				logs.Errorf("RegisterService failed:%v", err)
+				return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
+			}
+			logs.Infof("RegisterService success:%s %s %s", addr, serviceName, nodeIp)
+		}
+
+	} else if runtime.Spec.IsHttpClient == true {
+		// 说明是需要连接迁移服务端的客户端，需要将ServiceProxy的IP PORT通过args参数注入该二进制的启动命令里
+		// 修改客户端args里的IP Port
+		// addr := serviceProxy.GetServiceProxyAddr()
+		// proxyIp :=
+		// proxyPort :=
+		// for i, arg := range args {
+		// 	if arg == "--ip" && i+1 < len(args) {
+		// 		args[i+1] =
+		// 	}
+		// 	if arg == "--port" && i+1 < len(args) {
+		// 		port = args[i+1]
+		// 	}
+		// 	if arg == "--serviceName" && i+1 < len(args) {
+		// 		serviceName = args[i+1]
+		// 	}
+		// }
+	}
 
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
@@ -473,7 +531,7 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
 	go func() {
-		err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, true)
+		err := cr.startCMD(group, group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, true)
 		if err != nil {
 			logs.Infof("Receive -1 :%v", err)
 			// TODO: 输出Action的详细信息

@@ -91,8 +91,10 @@ func NewConfig(configPath string) *Config {
 	address := GetAPIServerHost(config)
 	isMaster := GetIsMaster(config)
 	fileRegisrty := GetFileRegistry(config)
+	serviceProxy := GetServiceProxy(config)
 	logs.Infof("address:%v==============", address)
 	logs.Infof("fileRegisrty:%v==============", fileRegisrty)
+	logs.Infof("serviceProxy:%v==============", serviceProxy)
 	taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
 	if err != nil {
 		logs.Errorf("targetMap build failed")
@@ -102,7 +104,7 @@ func NewConfig(configPath string) *Config {
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
 		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID, isMaster),
-		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, dir, port, fileRegisrty),
+		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, dir, port, fileRegisrty, serviceProxy),
 		apiserverAddr: address,
 	}
 }
@@ -155,6 +157,12 @@ func GetFileRegistry(config *FrameworkConfig) string {
 	}
 	return "http://localhost:8919"
 }
+func GetServiceProxy(config *FrameworkConfig) string {
+	if config.ServiceProxyAddr != "" {
+		return config.ServiceProxyAddr
+	}
+	return "http://localhost:8920"
+}
 
 //func GetNameSpace(config *FrameworkConfig) string {
 //	//if addr := os.Getenv("API_SERVER_HOST"); addr != "" {
@@ -183,6 +191,7 @@ type FrameworkConfig struct {
 	EtcdPort         int    `yaml:"EtcdPort"`
 	ApiServerAddr    string `yaml:"ApiServerAddr"`
 	FileRegistryAddr string `yaml:"FileRegistryAddr"`
+	ServiceProxyAddr string `yaml:"ServiceProxyAddr"`
 	NodeName         string `yaml:"NodeName"`
 	ClusterCategory  string `yaml:"ClusterCategory"`
 	LocalClusterID   string `yaml:"LocalClusterID"`
