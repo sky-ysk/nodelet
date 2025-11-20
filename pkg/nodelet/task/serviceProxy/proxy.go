@@ -14,13 +14,13 @@ import (
 
 // ServiceInfo 存储服务信息
 type ServiceProxyConfig struct {
-	address string
+	ServiceProxyAddr string `yaml:"ServiceProxyAddr"`
 }
 
 // 获取ServiceProxy的地址
 func GetServiceProxyAddr() string {
 	config := newConfig()
-	return config.address
+	return config.ServiceProxyAddr
 }
 
 func newConfig() *ServiceProxyConfig {
@@ -34,7 +34,7 @@ func newConfig() *ServiceProxyConfig {
 	// 获取当前文件绝对路径
 	_, currentFilePath, _, _ := runtime.Caller(0)
 	// 计算项目根目录路径
-	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..")
+	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..", "..", "..")
 	// 构建配置文件的绝对路径
 	configPath := filepath.Join(projectRoot, fileName)
 
@@ -50,11 +50,12 @@ func newConfig() *ServiceProxyConfig {
 	}
 
 	// 获取必要配置项（环境变量优先于配置文件）
-	serviceProxy := config.address
+	serviceProxy := GetServiceProxy(config)
+	logs.Infof("serviceProxyConfig:%v===========", config)
 	logs.Infof("serviceProxy:%v==============", serviceProxy)
 
 	return &ServiceProxyConfig{
-		address: serviceProxy,
+		ServiceProxyAddr: serviceProxy,
 	}
 }
 
@@ -71,6 +72,13 @@ func loadConfig(path string) (*ServiceProxyConfig, error) {
 	}
 
 	return &config, nil
+}
+
+func GetServiceProxy(config *ServiceProxyConfig) string {
+	if config.ServiceProxyAddr != "" {
+		return config.ServiceProxyAddr
+	}
+	return "http://localhost:8921"
 }
 
 // 在这里写解析IP和PORT、服务名的函数

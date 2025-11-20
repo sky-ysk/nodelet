@@ -233,7 +233,8 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				if gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloading && gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloaded { // 说明没有下载过
 					gh.fileManager.DownloadStatus[fileKey] = fileManager.Downloading
 					logs.Infof("Now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
-					if strings.Contains(filedata.Name, ".") { //暂时考虑这个简单的办法，因为文件仓库里的文件不一定在本机上，所以不清楚这个文件是文件还是文件夹
+					// if strings.Contains(filedata.Name, ".") { //暂时考虑这个简单的办法，因为文件仓库里的文件不一定在本机上，所以不清楚这个文件是文件还是文件夹
+					if filedata.FileFormat == "file" || strings.Contains(filedata.Name, ".") {
 						// 进行文件的下载
 						go gh.fileManager.DownloadFile(filedata.Name, groupdir)
 					} else { // 进行文件夹的下载

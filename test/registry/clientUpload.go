@@ -4,27 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hit.edu/framework/pkg/component-base/logs"
 	"log"
 	"net/http"
 	"time"
+
+	"hit.edu/framework/pkg/component-base/logs"
 
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
 func main() {
-	// url := "http://localhost:8919/download?filename=requirements.txt"
-	// savePath := "./"
+	url := "http://172.150.0.24:8919/download?filename=server"
+	savePath := "./"
 
-	// err := utils.DownloadFile(url, savePath)
-	// if err != nil {
-	// 	fmt.Println("Download failed:", err)
-	// } else {
-	// 	fmt.Println("Download successful!")
-	// }
+	err := utils.DownloadFile(url, savePath)
+	if err != nil {
+		fmt.Println("Download failed:", err)
+	} else {
+		fmt.Println("Download successful!")
+	}
 
-	// url := "http://localhost:8919/upload"
-	// filePath := "/home/public/goprojects/test-0623/test/nodelet/task_exporter/dependency/requirements.txt"
+	// url := "http://172.150.0.24:8919/upload"
+	// filePath := "/home/public/goprojects/ysk-1110/reference-626/test/registry/clientUpload.go"
 	// fmt.Println("aaaaaUploading file:", filePath)
 	// err := utils.UploadFile(filePath, "v1.0.0", url)
 	// fmt.Println("bbbbUploading file:", filePath)
@@ -83,9 +84,9 @@ func main() {
 	// }
 	// log.Printf("end waiting for close")
 
-	fileName := "yolo_projects_asy"
-	filePath := "./"
-	DownloadFileDir(fileName, filePath)
+	// fileName := "yolo_projects_asy"
+	// filePath := "./"
+	// DownloadFileDir(fileName, filePath)
 }
 
 func DownloadFileDir(fileName, savePath string) (string, error) {

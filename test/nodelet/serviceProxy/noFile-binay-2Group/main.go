@@ -36,7 +36,7 @@ var scheme = runtime.NewScheme()
 const NodeName = "cloudNode1" // 1$
 var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
 var group1_2Name = "G71"      // 第一个Task下的第一个GroupName
-var namespace = "HenanEP"
+var namespace = "test"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -63,12 +63,22 @@ func main() {
 	runtime1_1_1_1FineGrainedControl := true
 	runtime1_1_1_1FineGrainedControlPort := "5123"
 
-	runtime1_1_1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{},
+	// 数据依赖（../tmp/testFolder）
+	DataDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.DataDependency,
+		LeftValue: apis.Value{
+			Type: apis.FileData,
+		},
 	}
-	filePath := "/home/public/goprojects/ysk-1110/serviceProxy_test/client/client"
+
+	runtime1_1_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			DataDependencyConditionFormula,
+		},
+	}
+	filePath := "/home/public/goprojects/ysk-1110/serviceProxy_test/client/client.go"
 	UploadFile(filePath)
-	filePath = "/home/public/goprojects/ysk-1110/serviceProxy_test/newServer/server"
+	filePath = "/home/public/goprojects/ysk-1110/serviceProxy_test/newServer/server.go"
 	UploadFile(filePath)
 
 	gs1 := apis.GroupSpec{
@@ -94,9 +104,10 @@ func main() {
 					apis.RuntimeSpec{
 						Name:                         runtime1_1_1_1Name,
 						Type:                         apis.ByCommand,
-						Command:                      []string{"./server"},
-						Args:                         []string{"--ip xx --port 9091 --serviceName add"}, //20s   //3$
-						Parents:                      make([]string, 0),                                 // 加入Parents
+						Command:                      []string{"go"},
+						Args:                         []string{"run", "server.go", "--ip", "xx", "--port", "9091", "--serviceName", "add"}, //20s   //3$
+						Parents:                      make([]string, 0),                                                                    // 加入Parents
+						Data:                         []apis.DataSpec{apis.DataSpec{Name: "server.go", FileFormat: "file"}},                // 数据依赖
 						Conditions:                   &runtime1_1_1_1Condition,
 						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
@@ -123,7 +134,8 @@ func main() {
 		},
 		Replicas: group1_1Replicas,
 		Name:     group1_2Name,
-		Parents:  []string{group1_1Name},
+		// Parents:  []string{group1_1Name},
+		Parents: make([]string, 0),
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
 				Name: action1_1_1Name,
@@ -131,13 +143,15 @@ func main() {
 					apis.RuntimeSpec{
 						Name:                         runtime1_1_1_1Name,
 						Type:                         apis.ByCommand,
-						Command:                      []string{"./client"},
-						Args:                         []string{"--ip xx --port xx"}, //20s   //3$
-						Parents:                      make([]string, 0),             // 加入Parents
+						Command:                      []string{"go"},
+						Args:                         []string{"run", "client.go", "--ip", "xx", "--port", "9091", "--serviceName", "add"}, //20s   //3$
+						Parents:                      make([]string, 0),                                                                    // 加入Parents
+						Data:                         []apis.DataSpec{apis.DataSpec{Name: "client.go", FileFormat: "file"}},                // 数据依赖
 						Conditions:                   &runtime1_1_1_1Condition,
 						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
 						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
+						IsHttpClient:                 true,
 					},
 				},
 			},
@@ -168,11 +182,11 @@ func main() {
 	postEventForMigrate_ForGroup()
 	prompt()
 
-	tasksClient := clientSet.Core().Tasks("HenanEP")
-	groupsClient := clientSet.Core().Groups("HenanEP")
-	actionsClient := clientSet.Core().Actions("HenanEP")
-	runtimesClient := clientSet.Core().Runtimes("HenanEP")
-	eventsClient := clientSet.Core().Events("HenanEP")
+	tasksClient := clientSet.Core().Tasks("test")
+	groupsClient := clientSet.Core().Groups("test")
+	actionsClient := clientSet.Core().Actions("test")
+	runtimesClient := clientSet.Core().Runtimes("test")
+	eventsClient := clientSet.Core().Events("test")
 
 	// Task资源
 	logs.Info("======Task")

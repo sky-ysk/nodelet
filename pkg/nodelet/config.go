@@ -161,7 +161,7 @@ func GetServiceProxy(config *FrameworkConfig) string {
 	if config.ServiceProxyAddr != "" {
 		return config.ServiceProxyAddr
 	}
-	return "http://localhost:8920"
+	return "http://localhost:8921"
 }
 
 //func GetNameSpace(config *FrameworkConfig) string {

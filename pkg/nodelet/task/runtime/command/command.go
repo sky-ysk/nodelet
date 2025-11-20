@@ -154,6 +154,7 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 
 	// 处理服务端迁移，分为初次部署和迁移后的copy部署
 	// TODO:把这部分移到新的包去处理，后续可以适配其他环境（非cmd任务等）
+	logs.Infof("runtime.Spec.IsHttpService:%v, runtime.Spec.IsHttpClient:%v", runtime.Spec.IsHttpService, runtime.Spec.IsHttpClient)
 	if runtime.Spec.IsHttpService == true {
 		if strings.Contains(group.Name, "copy") {
 			// 说明是迁移后的copy服务端，需要调用服务迁移的接口进行服务迁移
@@ -166,13 +167,17 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 				logs.Infof("fail to get node:%s", nodeName)
 			}
 			nodeIp := node.Spec.HostIp
+			logs.Infof("New nodeIp:%s", nodeIp)
+			// BUG:需要先保证新进程已经启动成功，才能进行迁移，否则会在迁移期间报错服务不可用或者无响应
 			err = serviceProxy.MigrateService(addr, serviceName, nodeIp, port)
+			// TODO:杀死之前的进程，否则端口一直被占用
 
 		} else {
 			// 说明是需要迁移功能的服务端需要调用服务迁移的接口进行服务注册
 			addr := serviceProxy.GetServiceProxyAddr()
 			// 处理服务端启动命令里的ip port和服务名,对于port不动，对于ip则进行替换为当前node的ip，利用服务名进行服务注册
 			_, port, serviceName := serviceProxy.ExtractFromArgs(args)
+			logs.Infof("server's port:%s, name:%s", port, serviceName)
 			// 获取当前group所在的node的IP信息
 			nodeName := *group.Status.Node
 			node, err := cr.clientsManager.GetNode(nodeName, groupNamespace)
@@ -180,7 +185,7 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 				logs.Infof("fail to get node:%s", nodeName)
 			}
 			nodeIp := node.Spec.HostIp
-
+			logs.Infof("nodeIp:%s", nodeIp)
 			err = serviceProxy.RegisterService(addr, serviceName, nodeIp, port)
 			if err != nil {
 				logs.Errorf("RegisterService failed:%v", err)
