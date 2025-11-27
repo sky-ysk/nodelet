@@ -42,12 +42,14 @@ type CommandRuntime struct {
 	mu             sync.Mutex    // 保护clients和stopSignals
 	engine         *value.Engine //解析Value类型变量
 	// 存储各任务的端口(似乎没必要,直接get etcd上的port字段,getClient即可)
-	clientPorts map[string]string
+	clientPorts  map[string]string
+	serviceProxy *serviceProxy.ServiceProxy
 }
 
 func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool) *CommandRuntime {
 	pm := process.NewProcessManager()
 	engine := value.NewEngine(clientsManager.ClientSet)
+	serviceProxy := serviceProxy.NewServiceProxy(clientsManager)
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
@@ -57,6 +59,7 @@ func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.Event
 		clientsManager: clientsManager,
 		engine:         engine,
 		clientPorts:    make(map[string]string),
+		serviceProxy:   serviceProxy,
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -157,60 +160,26 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 	logs.Infof("runtime.Spec.IsHttpService:%v, runtime.Spec.IsHttpClient:%v", runtime.Spec.IsHttpService, runtime.Spec.IsHttpClient)
 	if runtime.Spec.IsHttpService == true {
 		if strings.Contains(group.Name, "copy") {
-			// 说明是迁移后的copy服务端，需要调用服务迁移的接口进行服务迁移
-			addr := serviceProxy.GetServiceProxyAddr()
-			_, port, serviceName := serviceProxy.ExtractFromArgs(args)
-			// 获取当前group所在的node的IP信息
-			nodeName := *group.Status.Node
-			node, err := cr.clientsManager.GetNode(nodeName, groupNamespace)
-			if err != nil {
-				logs.Infof("fail to get node:%s", nodeName)
-			}
-			nodeIp := node.Spec.HostIp
-			logs.Infof("New nodeIp:%s", nodeIp)
-			// BUG:需要先保证新进程已经启动成功，才能进行迁移，否则会在迁移期间报错服务不可用或者无响应
-			err = serviceProxy.MigrateService(addr, serviceName, nodeIp, port)
+			err := cr.serviceProxy.MigrateService(group, groupNamespace, runtime, args)
 			// TODO:杀死之前的进程，否则端口一直被占用
-
+			if err != nil {
+				logs.Errorf("MigrateService failed:%v", err)
+				return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
+			}
 		} else {
 			// 说明是需要迁移功能的服务端需要调用服务迁移的接口进行服务注册
-			addr := serviceProxy.GetServiceProxyAddr()
 			// 处理服务端启动命令里的ip port和服务名,对于port不动，对于ip则进行替换为当前node的ip，利用服务名进行服务注册
-			_, port, serviceName := serviceProxy.ExtractFromArgs(args)
-			logs.Infof("server's port:%s, name:%s", port, serviceName)
-			// 获取当前group所在的node的IP信息
-			nodeName := *group.Status.Node
-			node, err := cr.clientsManager.GetNode(nodeName, groupNamespace)
-			if err != nil {
-				logs.Infof("fail to get node:%s", nodeName)
-			}
-			nodeIp := node.Spec.HostIp
-			logs.Infof("nodeIp:%s", nodeIp)
-			err = serviceProxy.RegisterService(addr, serviceName, nodeIp, port)
+
+			err := cr.serviceProxy.RegisterService(group, groupNamespace, runtime, args)
 			if err != nil {
 				logs.Errorf("RegisterService failed:%v", err)
 				return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
 			}
-			logs.Infof("RegisterService success:%s %s %s", addr, serviceName, nodeIp)
+			logs.Infof("RegisterService success: %s %s", groupName, runtime.Name)
 		}
 
 	} else if runtime.Spec.IsHttpClient == true {
-		// 说明是需要连接迁移服务端的客户端，需要将ServiceProxy的IP PORT通过args参数注入该二进制的启动命令里
-		// 修改客户端args里的IP Port
-		// addr := serviceProxy.GetServiceProxyAddr()
-		// proxyIp :=
-		// proxyPort :=
-		// for i, arg := range args {
-		// 	if arg == "--ip" && i+1 < len(args) {
-		// 		args[i+1] =
-		// 	}
-		// 	if arg == "--port" && i+1 < len(args) {
-		// 		port = args[i+1]
-		// 	}
-		// 	if arg == "--serviceName" && i+1 < len(args) {
-		// 		serviceName = args[i+1]
-		// 	}
-		// }
+		cr.serviceProxy.ModifyArgs(args)
 	}
 
 	// 创建命令

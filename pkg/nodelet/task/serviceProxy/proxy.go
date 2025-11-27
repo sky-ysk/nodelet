@@ -9,12 +9,46 @@ import (
 	"runtime"
 
 	"github.com/stretchr/testify/assert/yaml"
+	apis "hit.edu/framework/pkg/apis/cores"
+	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/logs"
 )
+
+// ServiceProxy,用于调用ServiceProxy的接口。本身包含服务迁移组件的地址，
+type ServiceProxy struct {
+	clientsManager *manager.Manager
+	ProxyAddr      string
+	ProxyIp        string
+	ProxyPort      string
+}
 
 // ServiceInfo 存储服务信息
 type ServiceProxyConfig struct {
 	ServiceProxyAddr string `yaml:"ServiceProxyAddr"`
+}
+
+func NewServiceProxy(clientsManager *manager.Manager) *ServiceProxy {
+	addr := GetServiceProxyAddr()
+	ip, port, err := parseAddr(addr)
+	if err != nil {
+		logs.Errorf("Failed to parse ServiceProxy address: %v", err)
+	}
+	return &ServiceProxy{
+		clientsManager: clientsManager,
+		ProxyAddr:      addr,
+		ProxyIp:        ip,
+		ProxyPort:      port,
+	}
+}
+
+func parseAddr(addr string) (string, string, error) {
+	// 假设addr格式为"ip:port"
+	var ip, port string
+	_, err := fmt.Sscanf(addr, "%s:%s", &ip, &port)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid address format: %v", err)
+	}
+	return ip, port, nil
 }
 
 // 获取ServiceProxy的地址
@@ -82,7 +116,7 @@ func GetServiceProxy(config *ServiceProxyConfig) string {
 }
 
 // 在这里写解析IP和PORT、服务名的函数
-func ExtractFromArgs(args []string) (string, string, string) {
+func (sp *ServiceProxy) ExtractFromArgs(args []string) (string, string, string) {
 	var ip, port, serviceName string
 	for i, arg := range args {
 		if arg == "--ip" && i+1 < len(args) {
@@ -98,9 +132,42 @@ func ExtractFromArgs(args []string) (string, string, string) {
 	return ip, port, serviceName
 }
 
+// 在这里进行args的修改，ip和port进行替换
+func (sp *ServiceProxy) ModifyArgs(args []string) {
+	// modifiedArgs := make([]string, len(args))
+	// copy(modifiedArgs, args)
+
+	for i, arg := range args {
+		if arg == "--ip" && i+1 < len(args) {
+			args[i+1] = sp.ProxyIp
+		}
+		if arg == "--port" && i+1 < len(args) {
+			args[i+1] = sp.ProxyPort
+		}
+	}
+}
+
 // 迁移服务
-func MigrateService(proxyAddr, serviceName, newHost, newPort string) error {
-	url := fmt.Sprintf("http://%s/migrate?name=%s&host=%s&port=%s", proxyAddr, serviceName, newHost, newPort)
+func (sp *ServiceProxy) MigrateService(group *apis.Group, groupNamespace string, runtime *apis.Runtime, args []string) error {
+
+	logs.Infof("runtime.Spec.IsHttpService:%v, runtime.Spec.IsHttpClient:%v", runtime.Spec.IsHttpService, runtime.Spec.IsHttpClient)
+
+	// 说明是迁移后的copy服务端，需要调用服务迁移的接口进行服务迁移
+	_, port, serviceName := sp.ExtractFromArgs(args)
+	// 获取当前group所在的node的IP信息
+	nodeName := *group.Status.Node
+	node, err := sp.clientsManager.GetNode(nodeName, groupNamespace)
+	if err != nil {
+		logs.Infof("fail to get node:%s", nodeName)
+	}
+	nodeIp := node.Spec.HostIp
+	logs.Infof("New nodeIp:%s", nodeIp)
+
+	// BUG:需要先保证新进程已经启动成功，才能进行迁移，否则会在迁移期间报错服务不可用或者无响应
+	// TODO:杀死之前的进程，否则端口一直被占用
+	// 在这里处理：先检查新runtime的running是否，再继续后续的操作，最后再想办法用kill杀掉原进程
+
+	url := fmt.Sprintf("http://%s/migrate?name=%s&host=%s&port=%s", sp.ProxyAddr, serviceName, nodeIp, port)
 	resp, err := http.Post(url, "application/x-www-form-urlencoded", nil)
 	if err != nil {
 		return fmt.Errorf("failed to migrate service: %v", err)
@@ -114,12 +181,25 @@ func MigrateService(proxyAddr, serviceName, newHost, newPort string) error {
 
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Printf("Migration response: %s\n", string(body))
+	logs.Infof("MigrateService success: %s %s", serviceName, nodeIp)
 	return nil
 }
 
 // 注册服务
-func RegisterService(proxyAddr, serviceName, host, port string) error {
-	url := fmt.Sprintf("http://%s/register?name=%s&host=%s&port=%s", proxyAddr, serviceName, host, port)
+func (sp *ServiceProxy) RegisterService(group *apis.Group, groupNamespace string, runtime *apis.Runtime, args []string) error {
+
+	_, port, serviceName := sp.ExtractFromArgs(args)
+	logs.Infof("server's port:%s, name:%s", port, serviceName)
+	// 获取当前group所在的node的IP信息
+	nodeName := *group.Status.Node
+	node, err := sp.clientsManager.GetNode(nodeName, groupNamespace)
+	if err != nil {
+		logs.Infof("fail to get node:%s", nodeName)
+	}
+	nodeIp := node.Spec.HostIp
+	logs.Infof("nodeIp:%s", nodeIp)
+
+	url := fmt.Sprintf("http://%s/register?name=%s&host=%s&port=%s", sp.ProxyAddr, serviceName, nodeIp, port)
 	resp, err := http.Post(url, "application/x-www-form-urlencoded", nil)
 	if err != nil {
 		return fmt.Errorf("failed to register service: %v", err)
