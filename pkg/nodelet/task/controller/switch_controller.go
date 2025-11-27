@@ -4,17 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/watch"
 	"hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients/typed/core"
 
-	"hit.edu/framework/pkg/client-go/util/manager"
-	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"hit.edu/framework/pkg/client-go/util/manager"
+	cross_core "hit.edu/framework/test/etcd_sync/active/clients/typed/core"
 
 	"hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/apimachinery/util/wait"
@@ -710,6 +712,7 @@ func (mc *MigrationController) migrateGroup(group *apis.Group, event *apis.Event
 						// 关闭源任务当中的runtime
 						logs.Info("Shutdown runtime successfully")
 					}
+					time.Sleep(500 * time.Millisecond)                                                        // 等待一会，确保状态保存成功
 					err = mc.runtimeManager.Kill(group, action, runtime, action.Spec.Name, runtime.Spec.Name) //最后都需要将runtime进程关闭
 					if err != nil {
 						logs.Errorf("Stop group error:%v", err)

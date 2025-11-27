@@ -156,20 +156,21 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 	// logs.Infof("after cmd:%v", cmd)
 
 	// 处理服务端迁移，分为初次部署和迁移后的copy部署
-	// TODO:把这部分移到新的包去处理，后续可以适配其他环境（非cmd任务等）
 	logs.Infof("runtime.Spec.IsHttpService:%v, runtime.Spec.IsHttpClient:%v", runtime.Spec.IsHttpService, runtime.Spec.IsHttpClient)
 	if runtime.Spec.IsHttpService == true {
 		if strings.Contains(group.Name, "copy") {
-			err := cr.serviceProxy.MigrateService(group, groupNamespace, runtime, args)
-			// TODO:杀死之前的进程，否则端口一直被占用
-			if err != nil {
-				logs.Errorf("MigrateService failed:%v", err)
-				return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
-			}
+			// 使用协程，尝试等本Start结束，让runtime变成running之后，才真正在Migrate查到running之后再调用迁移接口。
+			go func() {
+				err := cr.serviceProxy.MigrateService(group, groupNamespace, runtime, args)
+				// TODO:杀死之前的进程，否则端口一直被占用
+				if err != nil {
+					logs.Errorf("MigrateService failed:%v", err)
+					return
+				}
+			}()
 		} else {
 			// 说明是需要迁移功能的服务端需要调用服务迁移的接口进行服务注册
 			// 处理服务端启动命令里的ip port和服务名,对于port不动，对于ip则进行替换为当前node的ip，利用服务名进行服务注册
-
 			err := cr.serviceProxy.RegisterService(group, groupNamespace, runtime, args)
 			if err != nil {
 				logs.Errorf("RegisterService failed:%v", err)
@@ -179,6 +180,7 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 		}
 
 	} else if runtime.Spec.IsHttpClient == true {
+		// 处理客户端启动命令里的ip port和服务名
 		cr.serviceProxy.ModifyArgs(args)
 	}
 

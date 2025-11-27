@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/stretchr/testify/assert/yaml"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -42,11 +44,14 @@ func NewServiceProxy(clientsManager *manager.Manager) *ServiceProxy {
 }
 
 func parseAddr(addr string) (string, string, error) {
-	// 假设addr格式为"ip:port"
-	var ip, port string
-	_, err := fmt.Sscanf(addr, "%s:%s", &ip, &port)
-	if err != nil {
-		return "", "", fmt.Errorf("invalid address format: %v", err)
+	parts := strings.Split(addr, ":")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid address format: expected 'ip:port', got %q", addr)
+	}
+	ip := parts[0]
+	port := parts[1]
+	if ip == "" || port == "" {
+		return "", "", fmt.Errorf("invalid address format: empty ip or port in %q", addr)
 	}
 	return ip, port, nil
 }
@@ -166,7 +171,29 @@ func (sp *ServiceProxy) MigrateService(group *apis.Group, groupNamespace string,
 	// BUG:需要先保证新进程已经启动成功，才能进行迁移，否则会在迁移期间报错服务不可用或者无响应
 	// TODO:杀死之前的进程，否则端口一直被占用
 	// 在这里处理：先检查新runtime的running是否，再继续后续的操作，最后再想办法用kill杀掉原进程
+	cnt := 0
+	for {
+		cnt++
+		// 100s如果还没拉起，则认为迁移出错；
+		//后续可能优化一下，尝试重新调用迁移接口
+		if cnt >= 1000 {
+			logs.Infof("100s waiting already, migrated server still not running, migrated Error!")
+			return fmt.Errorf("migrated Error for waiting too long time!")
+		}
+		newRuntime, err := sp.clientsManager.GetRuntime(runtime.Name, runtime.Namespace)
+		if err != nil {
+			logs.Errorf("GetRuntime Err")
+		}
+		if newRuntime.Status.Phase == apis.Running {
+			logs.Infof("migrated server runtime already running, start migrate interface!")
+			break
+		} else {
+			logs.Warnf("migrated server runtime still pending, wait for running!")
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 
+	// 向组件发送迁移服务的请求
 	url := fmt.Sprintf("http://%s/migrate?name=%s&host=%s&port=%s", sp.ProxyAddr, serviceName, nodeIp, port)
 	resp, err := http.Post(url, "application/x-www-form-urlencoded", nil)
 	if err != nil {
