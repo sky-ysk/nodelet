@@ -77,8 +77,6 @@ func (cr *ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime 
 			return nil
 		}
 		cr.containerManager.AddRuntimeMapping(runtime.Name, containerId)
-		// 启动容器资源监控 <-- 在这里添加
-		go cr.monitorContainerResource(containerId, runtime, 500*time.Millisecond)
 		// 监控容器状态
 		cr.MonitorContainerStatus(group, action, runtime, actionSpecName, runtimeSpecName, containerId)
 		logs.Infof("Runtime: %s, Container %s started successfully", runtime.Name, containerId)
@@ -149,7 +147,8 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	logs.Infof("Container ID for runtime %s is %s", runtime.Name, containerId)
 	cr.containerManager.AddRuntimeMapping(runtime.Name, containerId)
 	cr.MonitorContainerStatus(group, action, runtime, actionSpecName, runtimeSpecName, containerId)
-
+	// 启动容器资源监控 <-- 在这里添加
+	go cr.monitorContainerResource(containerId, runtime, 1*time.Millisecond)
 	return nil
 }
 
