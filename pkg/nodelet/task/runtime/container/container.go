@@ -1,6 +1,8 @@
 package container
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -75,6 +77,8 @@ func (cr *ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime 
 			return nil
 		}
 		cr.containerManager.AddRuntimeMapping(runtime.Name, containerId)
+		// 启动容器资源监控 <-- 在这里添加
+		go cr.monitorContainerResource(containerId, runtime, 500*time.Millisecond)
 		// 监控容器状态
 		cr.MonitorContainerStatus(group, action, runtime, actionSpecName, runtimeSpecName, containerId)
 		logs.Infof("Runtime: %s, Container %s started successfully", runtime.Name, containerId)
@@ -188,6 +192,125 @@ func (cr *ContainerRuntime) MonitorContainerStatus(group *apis.Group, action *ap
 			}
 		}
 	}()
+}
+
+// 监控容器资源使用情况
+func (cr *ContainerRuntime) monitorContainerResource(containerId string, runtime *apis.Runtime, interval time.Duration) {
+	logs.Infof("Starting resource monitoring for container %s (ID: %s)", runtime.Name, containerId)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// 获取容器统计信息
+		stats, err := cr.client.ContainerStats(context.Background(), containerId, false)
+		if err != nil {
+			logs.Warnf("Failed to get container stats for %s: %v", containerId, err)
+			continue
+		}
+		defer stats.Body.Close()
+
+		// 使用通用的JSON解析而不是具体类型
+		var containerStats map[string]interface{}
+		if err := json.NewDecoder(stats.Body).Decode(&containerStats); err != nil {
+			logs.Warnf("Failed to decode container stats for %s: %v", containerId, err)
+			continue
+		}
+
+		// 计算CPU使用率
+		cpuPercent := cr.calculateContainerCPUPercent(containerStats)
+
+		// 计算内存使用量
+		memUsage := cr.calculateContainerMemoryUsage(containerStats)
+
+		// 记录详细日志
+		logs.Tracef("[Monitor] Container %s (ID: %s) CPU: %.2f%%, Memory: %.2f MB",
+			runtime.Name, containerId, cpuPercent, memUsage)
+
+		// 更新runtime状态
+		resourceItem := make(map[string]apis.Item)
+		resourceItem["cpu"] = apis.Item{
+			Name:   "cpu",
+			Values: map[string]string{"cpu": fmt.Sprintf("%.2f%%", cpuPercent)},
+		}
+		resourceItem["memory"] = apis.Item{
+			Name:   "memory",
+			Values: map[string]string{"memory": fmt.Sprintf("%.2f MB", memUsage)},
+		}
+
+		patchRuntime, err := json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"resources": resourceItem,
+			},
+		})
+		if err != nil {
+			logs.Errorf("Failed to marshal runtime status: %v", err)
+			continue
+		}
+
+		_, err = cr.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+		if err != nil {
+			logs.Errorf("Failed to patch runtime status: %v", err)
+		}
+	}
+}
+
+// 计算容器CPU使用率（修复版本）
+func (cr *ContainerRuntime) calculateContainerCPUPercent(stats map[string]interface{}) float64 {
+	// 辅助函数：安全提取嵌套字段的值
+	extract := func(data map[string]interface{}, path ...string) interface{} {
+		current := data
+		for i, key := range path {
+			if i == len(path)-1 {
+				return current[key]
+			}
+			if next, ok := current[key].(map[string]interface{}); ok {
+				current = next
+			} else {
+				return nil
+			}
+		}
+		return nil
+	}
+
+	// 提取必要的CPU数据
+	cpuStats, _ := stats["cpu_stats"].(map[string]interface{})
+	precpuStats, _ := stats["precpu_stats"].(map[string]interface{})
+
+	// 获取CPU使用量差值
+	totalUsage, _ := extract(cpuStats, "cpu_usage", "total_usage").(float64)
+	pretotalUsage, _ := extract(precpuStats, "cpu_usage", "total_usage").(float64)
+	cpuDelta := totalUsage - pretotalUsage
+
+	// 获取系统时间差值
+	systemUsage, _ := extract(cpuStats, "system_cpu_usage").(float64)
+	presystemUsage, _ := extract(precpuStats, "system_cpu_usage").(float64)
+	systemDelta := systemUsage - presystemUsage
+
+	// 计算CPU使用率
+	if systemDelta > 0 && cpuDelta > 0 {
+		// 获取CPU核心数
+		cores := 1
+		if percpu, ok := extract(cpuStats, "cpu_usage", "percpu_usage").([]interface{}); ok {
+			cores = len(percpu)
+		}
+		return (cpuDelta / systemDelta) * float64(cores) * 100.0
+	}
+
+	return 0.0
+}
+
+// 计算容器内存使用量
+func (cr *ContainerRuntime) calculateContainerMemoryUsage(stats map[string]interface{}) float64 {
+	if memoryStats, ok := stats["memory_stats"].(map[string]interface{}); ok {
+		// 尝试多个可能的内存使用量字段
+		for _, field := range []string{"usage", "max_usage", "rss"} {
+			if usage, ok := memoryStats[field].(float64); ok && usage > 0 {
+				return usage / (1024 * 1024) // 转换为MB
+			}
+		}
+	}
+	return 0.0
 }
 
 // kill相当于stop然后再remove
