@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -200,21 +201,28 @@ func (cr *ContainerRuntime) monitorContainerResource(containerId string, runtime
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	// 用于跟踪上一次的统计值
+	var lastCPUPercent, lastMemUsage float64
+	var updateCount int
+
 	for range ticker.C {
+		updateCount++
+
 		// 获取容器统计信息
 		stats, err := cr.client.ContainerStats(context.Background(), containerId, false)
 		if err != nil {
 			logs.Warnf("Failed to get container stats for %s: %v", containerId, err)
 			continue
 		}
-		defer stats.Body.Close()
 
 		// 使用通用的JSON解析而不是具体类型
 		var containerStats map[string]interface{}
 		if err := json.NewDecoder(stats.Body).Decode(&containerStats); err != nil {
 			logs.Warnf("Failed to decode container stats for %s: %v", containerId, err)
+			stats.Body.Close()
 			continue
 		}
+		stats.Body.Close()
 
 		// 计算CPU使用率
 		cpuPercent := cr.calculateContainerCPUPercent(containerStats)
@@ -222,8 +230,19 @@ func (cr *ContainerRuntime) monitorContainerResource(containerId string, runtime
 		// 计算内存使用量
 		memUsage := cr.calculateContainerMemoryUsage(containerStats)
 
+		// 如果值没有变化，且不是第一次更新，可以跳过更新
+		if updateCount > 1 &&
+			math.Abs(cpuPercent-lastCPUPercent) < 0.01 &&
+			math.Abs(memUsage-lastMemUsage) < 0.01 {
+			logs.Tracef("[Monitor] No significant change for container %s, skipping update", runtime.Name)
+			continue
+		}
+
+		lastCPUPercent = cpuPercent
+		lastMemUsage = memUsage
+
 		// 记录详细日志
-		logs.Tracef("[Monitor] Container %s (ID: %s) CPU: %.2f%%, Memory: %.2f MB",
+		logs.Debugf("[Monitor] Container %s (ID: %s) CPU: %.2f%%, Memory: %.2f MB",
 			runtime.Name, containerId, cpuPercent, memUsage)
 
 		// 更新runtime状态
@@ -250,6 +269,8 @@ func (cr *ContainerRuntime) monitorContainerResource(containerId string, runtime
 		_, err = cr.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
 		if err != nil {
 			logs.Errorf("Failed to patch runtime status: %v", err)
+		} else {
+			logs.Debugf("[Monitor] Successfully updated resource stats for %s", runtime.Name)
 		}
 	}
 }
