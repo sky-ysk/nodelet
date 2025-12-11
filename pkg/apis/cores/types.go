@@ -1219,6 +1219,11 @@ type RuntimeSpec struct {
 	//ysk添加
 	Dependency *string       `json:"dependency,omitempty" yaml:"dependency"` //依赖文件的地址，后续改成多种依赖
 	Packages   []Requirement `json:"package,omitempty" yaml:"package"`       //解析之后的包
+
+	//是否是需要迁移的http服务端
+	// is server or client
+	IsHttpService bool `json:"is_http_service,omitempty" yaml:"is_http_service"`
+	IsHttpClient  bool `json:"is_http_client,omitempty" yaml:"is_http_client"`
 }
 
 //	 输入的数据有以下几类

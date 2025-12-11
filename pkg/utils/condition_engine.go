@@ -208,7 +208,7 @@ func (ce *ConditionEngine) checkDataDependency(formula *apis.ConditionFormula, o
 			// 上面检查完目录之后，拼接每一个文件的路径，检查每一个文件是否存在，不存在则NotReady状态。只检查文件是否存在，启动文件下载在其他地方
 			for _, data := range r.Spec.Data {
 				// 需要根据是文件还是文件夹来分别检查，目前是依据data.Name是否包含.来判断是否是文件
-				if strings.Contains(data.Name, ".") {
+				if data.FileFormat == "file" || strings.Contains(data.Name, ".") {
 					// 是文件
 					filePath := folder + "/" + data.Name
 					// logs.Infof("checkDataDependency: %v %v's file:%v", kind, r.Name, filePath)
