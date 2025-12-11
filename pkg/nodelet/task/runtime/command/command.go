@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
+	serviceProxy "hit.edu/framework/pkg/nodelet/task/serviceProxy"
 )
 
 type CommandRuntime struct {
@@ -40,12 +42,14 @@ type CommandRuntime struct {
 	mu             sync.Mutex    // 保护clients和stopSignals
 	engine         *value.Engine //解析Value类型变量
 	// 存储各任务的端口(似乎没必要,直接get etcd上的port字段,getClient即可)
-	clientPorts map[string]string
+	clientPorts  map[string]string
+	serviceProxy *serviceProxy.ServiceProxy
 }
 
 func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool) *CommandRuntime {
 	pm := process.NewProcessManager()
 	engine := value.NewEngine(clientsManager.ClientSet)
+	serviceProxy := serviceProxy.NewServiceProxy(clientsManager)
 	return &CommandRuntime{
 		processManager: pm,
 		eventBus:       eventBus,
@@ -55,6 +59,7 @@ func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.Event
 		clientsManager: clientsManager,
 		engine:         engine,
 		clientPorts:    make(map[string]string),
+		serviceProxy:   serviceProxy,
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -102,7 +107,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 	}
 
 	// 目前只接受Command中第一个元素
-	err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
+	err := cr.startCMD(group, group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, false)
 	if err != nil {
 		logs.Infof("Receive info:\t", err)
 		return err
@@ -112,7 +117,7 @@ func (cr *CommandRuntime) Run(group *apis.Group, action *apis.Action, runtime *a
 
 // 可能需要区分输出output的指定位置, 后续需要改成使用cmd package里的build cmd等
 // 需要保存进程的pid，检查进程是否是正常执行完成
-func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeName, runtimeSpecName string, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
+func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace string, actionSpeName, runtimeSpecName string, runtime *apis.Runtime, cmd string, args []string, isInit bool) error {
 	// exec.Command可以接受的命令
 	// name表示可执行二进制的name
 	// ...args表示命令所需的参数
@@ -149,6 +154,35 @@ func (cr *CommandRuntime) startCMD(groupName, groupNamespace string, actionSpeNa
 		}
 	}
 	// logs.Infof("after cmd:%v", cmd)
+
+	// 处理服务端迁移，分为初次部署和迁移后的copy部署
+	logs.Infof("runtime.Spec.IsHttpService:%v, runtime.Spec.IsHttpClient:%v", runtime.Spec.IsHttpService, runtime.Spec.IsHttpClient)
+	if runtime.Spec.IsHttpService == true {
+		if strings.Contains(group.Name, "copy") {
+			// 使用协程，尝试等本Start结束，让runtime变成running之后，才真正在Migrate查到running之后再调用迁移接口。
+			go func() {
+				err := cr.serviceProxy.MigrateService(group, groupNamespace, runtime, args)
+				// TODO:杀死之前的进程，否则端口一直被占用
+				if err != nil {
+					logs.Errorf("MigrateService failed:%v", err)
+					return
+				}
+			}()
+		} else {
+			// 说明是需要迁移功能的服务端需要调用服务迁移的接口进行服务注册
+			// 处理服务端启动命令里的ip port和服务名,对于port不动，对于ip则进行替换为当前node的ip，利用服务名进行服务注册
+			err := cr.serviceProxy.RegisterService(group, groupNamespace, runtime, args)
+			if err != nil {
+				logs.Errorf("RegisterService failed:%v", err)
+				return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
+			}
+			logs.Infof("RegisterService success: %s %s", groupName, runtime.Name)
+		}
+
+	} else if runtime.Spec.IsHttpClient == true {
+		// 处理客户端启动命令里的ip port和服务名
+		cr.serviceProxy.ModifyArgs(args)
+	}
 
 	// 创建命令
 	CMD := exec.Command(cmd, args...)
@@ -473,7 +507,7 @@ func (cr *CommandRuntime) InitRuntime(group *apis.Group, action *apis.Action, ru
 	args := runtime.Spec.Args
 	// 目前只接受Command中第一个元素
 	go func() {
-		err := cr.startCMD(group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, true)
+		err := cr.startCMD(group, group.Name, group.Namespace, actionSpecName, runtimeSpecName, runtime, cmd[0], args, true)
 		if err != nil {
 			logs.Infof("Receive -1 :%v", err)
 			// TODO: 输出Action的详细信息
