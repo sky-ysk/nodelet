@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	url := "http://172.150.0.24:8919/download?filename=server"
+	url := "http://localhost:8919/download?filename=server"
 	savePath := "./"
 
 	err := utils.DownloadFile(url, savePath)

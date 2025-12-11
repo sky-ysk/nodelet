@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -62,25 +61,45 @@ func GetServiceProxyAddr() string {
 	return config.ServiceProxyAddr
 }
 
+func getConfigPath() string {
+	// 获取可执行文件的绝对路径
+	execPath, err := os.Executable()
+	if err != nil {
+		logs.Warnf("无法获取可执行文件路径: %v", err)
+		return "./frameworkConf.yaml" // 降级
+	}
+
+	// 可执行文件所在目录
+	execDir := filepath.Dir(execPath)
+
+	// 配置文件放在同目录下（约定）
+	configPath := filepath.Join(execDir, "frameworkConf.yaml")
+
+	// 如果存在就用它
+	if _, err := os.Stat(configPath); err == nil {
+		return configPath
+	}
+
+	// 否则尝试当前工作目录（兼容开发）
+	if _, err := os.Stat("./frameworkConf.yaml"); err == nil {
+		return "./frameworkConf.yaml"
+	}
+
+	// 最后 fallback 到默认位置（或报错）
+	return "./frameworkConf.yaml"
+}
+
 func newConfig() *ServiceProxyConfig {
 	var config *ServiceProxyConfig
 	var err error
-	// logs.Info("framework-conf ", configPath)
-	//没有指定配置文件位置，则去默认位置加载
-
-	logs.Info("ConfigPath is empty, using default")
-	fileName := "frameworkConf.yaml"
-	// 获取当前文件绝对路径
-	_, currentFilePath, _, _ := runtime.Caller(0)
-	// 计算项目根目录路径
-	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "..", "..", "..", "..")
 	// 构建配置文件的绝对路径
-	configPath := filepath.Join(projectRoot, fileName)
+	configPath := getConfigPath()
 
 	logs.Infof("configPath:%v", configPath)
 	// 验证路径有效性
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		logs.Errorf("配置文件不存在于：%s", configPath)
+		logs.Errorf("配置文件不存在于：%s，使用默认./frameworkConf.yaml", configPath)
+		configPath = "./frameworkConf.yaml"
 	}
 	config, err = loadConfig(configPath)
 	if err != nil {
@@ -117,7 +136,8 @@ func GetServiceProxy(config *ServiceProxyConfig) string {
 	if config.ServiceProxyAddr != "" {
 		return config.ServiceProxyAddr
 	}
-	return "http://localhost:8921"
+	logs.Info("Using default ServiceProxyAddr: localhost:8921")
+	return "localhost:8921"
 }
 
 // 在这里写解析IP和PORT、服务名的函数

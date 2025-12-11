@@ -25,7 +25,7 @@ if [ -f "$NODELET_PATH" ]; then
   fi
   # 将 nodelet 放到前台运行
   echo "Starting nodelet in the foreground ..."
-  nohup "$NODELET_PATH" &
+  nohup "$NODELET_PATH" --framework-conf ./frameworkConf.yaml &
 else
     echo "The nodelet file at $NODELET_PATH does not exist."
     exit 1

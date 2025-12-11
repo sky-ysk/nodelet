@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,7 +21,6 @@ import (
 	"hit.edu/framework/pkg/client-go/util/manager"
 	"hit.edu/framework/pkg/component-base/analyzer"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/events"
 	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
 )
 
@@ -34,8 +34,7 @@ import (
 var scheme = runtime.NewScheme()
 
 const NodeName = "cloudNode1" // 1$
-var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
-var group1_2Name = "G11"      // 第一个Task下的第一个GroupName
+var group1_1Name = "G1"       // 第一个Task下的第一个GroupName
 var namespace = "test"
 
 // 测试切换
@@ -60,8 +59,7 @@ func main() {
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
-	runtime1_1_1_1FineGrainedControl := true
-	runtime1_1_1_1FineGrainedControlPort := "5123"
+	runtime1_1_1_1FineGrainedControl := false
 
 	// 数据依赖（../tmp/testFolder）
 	DataDependencyConditionFormula := apis.ConditionFormula{
@@ -76,24 +74,8 @@ func main() {
 			DataDependencyConditionFormula,
 		},
 	}
-	filePath := "/home/public/goprojects/ysk-1106/tmp/client.go"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/ysk-1106/tmp/server.go"
-	UploadFile(filePath)
 
 	gs1 := apis.GroupSpec{
-		ResourceRequirements: []apis.ResourceRequirement{
-			apis.ResourceRequirement{
-				Name:       "CPU",
-				Lowbound:   "2",
-				Upperbound: "4",
-			},
-			apis.ResourceRequirement{
-				Name:       "RAM",
-				Lowbound:   "2",
-				Upperbound: "4",
-			},
-		},
 		Replicas: group1_1Replicas,
 		Name:     group1_1Name,
 		Parents:  make([]string, 0),
@@ -102,56 +84,12 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                         runtime1_1_1_1Name,
-						Type:                         apis.ByCommand,
-						Command:                      []string{"go"},
-						Args:                         []string{"run", "server.go", "--ip", "xx", "--port", "9091", "--serviceName", "add"}, //20s   //3$
-						Parents:                      make([]string, 0),                                                                    // 加入Parents
-						Data:                         []apis.DataSpec{apis.DataSpec{Name: "server.go", FileFormat: "file"}},                // 数据依赖
-						Conditions:                   &runtime1_1_1_1Condition,
-						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
-						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
-						IsHttpService:                true,
-					},
-				},
-			},
-		},
-	}
-
-	gs2 := apis.GroupSpec{
-		ResourceRequirements: []apis.ResourceRequirement{
-			apis.ResourceRequirement{
-				Name:       "CPU",
-				Lowbound:   "2",
-				Upperbound: "4",
-			},
-			apis.ResourceRequirement{
-				Name:       "RAM",
-				Lowbound:   "2",
-				Upperbound: "4",
-			},
-		},
-		Replicas: group1_1Replicas,
-		Name:     group1_2Name,
-		// Parents:  []string{group1_1Name},
-		Parents: make([]string, 0),
-		Actions: []apis.ActionSpec{
-			apis.ActionSpec{
-				Name: action1_1_1Name,
-				Runtimes: []apis.RuntimeSpec{
-					apis.RuntimeSpec{
-						Name:                         runtime1_1_1_1Name,
-						Type:                         apis.ByCommand,
-						Command:                      []string{"go"},
-						Args:                         []string{"run", "client.go", "--ip", "xx", "--port", "9091", "--serviceName", "add"}, //20s   //3$
-						Parents:                      make([]string, 0),                                                                    // 加入Parents
-						Data:                         []apis.DataSpec{apis.DataSpec{Name: "client.go", FileFormat: "file"}},                // 数据依赖
-						Conditions:                   &runtime1_1_1_1Condition,
-						EnvVar:                       []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
-						EnableFineGrainedControl:     runtime1_1_1_1FineGrainedControl,
-						EnableFineGrainedControlPort: &runtime1_1_1_1FineGrainedControlPort,
-						IsHttpClient:                 true,
+						Name:                     runtime1_1_1_1Name,
+						Type:                     apis.ByCommand,
+						Command:                  []string{"/home/deploy/workspace/power_rust_infer_server_dist/power_rust_infer_server"},
+						Args:                     []string{"--host", "0.0.0.0", "--port", "9100"},
+						Conditions:               &runtime1_1_1_1Condition,
+						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
 				},
 			},
@@ -162,7 +100,6 @@ func main() {
 		Name: task1Name,
 		Groups: []apis.GroupSpec{
 			gs1,
-			gs2,
 		},
 	}
 	// 生成UUID
@@ -179,9 +116,6 @@ func main() {
 	fmt.Println(str)
 
 	prompt()
-	postEventForMigrate_ForGroup()
-	prompt()
-
 	tasksClient := clientSet.Core().Tasks("test")
 	groupsClient := clientSet.Core().Groups("test")
 	actionsClient := clientSet.Core().Actions("test")
@@ -254,6 +188,7 @@ func main() {
 		}
 		logs.Infof("Event删除成功: %v", event.Name)
 	}
+	prompt()
 
 }
 
@@ -268,29 +203,6 @@ func prompt() {
 		panic(err)
 	}
 	logs.Info()
-}
-
-func postEventForMigrate_ForGroup() {
-	logs.Info("发送跨域迁移事件======")
-	clientSet := initClientSet(scheme)
-	m := manager.NewManager(clientSet)
-	groups, err := m.GetGroups(namespace)
-	if err != nil {
-		logs.Errorf("GetGroups err: %v", err)
-	}
-	var groupName string
-	for i := range groups.Items {
-		group := groups.Items[i]
-		if group.Spec.Name == group1_1Name && !strings.Contains(group.Name, "copy") && group.Status.Phase == apis.Running {
-			groupName = group.Name
-		}
-	}
-	group, err := m.GetGroup(groupName, namespace)
-	if err != nil {
-		logs.Errorf("GetGroup err: %v", err)
-	}
-	time.Sleep(10 * time.Millisecond)
-	m.LogEvent(group, apis.EventTypeNormal, events.TriggerLocalMigration, fmt.Sprintf("The group %v is need to migrate", group.Name), group.Namespace)
 }
 
 func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
@@ -323,8 +235,6 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	}
 	return clientSet
 }
-
-// 上传文件
 func UploadFile(filePath string) (string, error) {
 	// 调用 utils.UploadFile 函数上传文件
 	// 这里的 filePath 是要上传的文件路径
@@ -338,4 +248,41 @@ func UploadFile(filePath string) (string, error) {
 		fmt.Println("Upload successful!")
 		return "Upload successful!", nil
 	}
+}
+
+func UploadFolder(folderPath string) (string, error) {
+	if folderPath == "" {
+		return "", errors.New("dirPath is empty")
+	}
+	parts := strings.Split(folderPath, "/")
+	if len(parts) == 0 {
+		return "", errors.New("dirPath does not contain any parts")
+	}
+	// 获取最后一个部分作为文件夹名称
+	// 如果最后一个部分是空字符串，说明路径以/结尾，可能是一个空目录
+	// 例如 "/home/user/documents/"，最后一个部分是空
+	if parts[len(parts)-1] == "" {
+		if len(parts) < 2 {
+			return "", errors.New("dirPath does not contain a valid folder name")
+		}
+		// 如果是空目录，使用倒数第二个部分作为文件夹名称
+		folderName := parts[len(parts)-2]
+		if folderName == "" {
+			return "", errors.New("folder name is empty")
+		}
+		// fmt.Println("Folder Name:", folderName)
+	}
+	folderName := parts[len(parts)-1]
+	if folderName == "" {
+		return "", errors.New("folder name is empty")
+	}
+	fmt.Print("folderPath:%s, folderName:%s", folderPath, folderName)
+	url := "http://localhost:8919/upload?filename=" + folderName
+	err := utils.Traverse(folderPath, url)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+	} else {
+		fmt.Println("Upload successful!")
+	}
+	return "", nil
 }

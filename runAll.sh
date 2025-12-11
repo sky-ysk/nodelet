@@ -44,7 +44,7 @@ if [ -f "$SCHEDULER_PATH" ]; then
       sleep 1
   fi
   # 使用 nohup 将 scheduler 放到后台运行，并将输出重定向到 scheduler_log.log 文件
-  nohup "$SCHEDULER_PATH" > scheduler_log.log 2>&1 &
+  nohup "$SCHEDULER_PATH" --framework-conf ./frameworkConf.yaml > scheduler_log.log 2>&1 &
   echo "Started scheduler and redirected output to scheduler_log.log."
 else
     echo "The scheduler file at $SCHEDULER_PATH does not exist."
@@ -63,7 +63,7 @@ if [ -f "$NODELET_PATH" ]; then
   fi
   # 将 nodelet 放到前台运行
   echo "Starting nodelet in the foreground ..."
-  nohup "$NODELET_PATH" &
+  nohup "$NODELET_PATH" --framework-conf ./frameworkConf.yaml &
 else
     echo "The nodelet file at $NODELET_PATH does not exist."
     exit 1
