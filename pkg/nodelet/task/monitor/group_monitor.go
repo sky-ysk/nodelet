@@ -482,6 +482,9 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 					action, err := gmo.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
 					if err != nil {
 						logs.Errorf("Etcd get action error-4:%v", err)
+						continue
+						// 删除未找到的action的内存队列里面的记录
+
 					}
 					actionStatus := &action.Status
 					// 为了适配迁移，状态为Migrated也说明Action成功结束了，然后接下来就通过Action成功标记Group成功了
