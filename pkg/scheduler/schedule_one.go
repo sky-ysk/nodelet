@@ -298,8 +298,8 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 		host = "EdgeNode1"
 	}
 	if strings.Contains(group.ObjectMeta.Name, "G51") {
-                host = "EndNode1"
-        }
+		host = "EndNode1"
+	}
 	if strings.Contains(group.ObjectMeta.Name, "copy") {
 		host = "CloudNode2"
 	}
@@ -401,7 +401,20 @@ func (sched *Scheduler) findNodesThatFitGroup(ctx context.Context, fwk framework
 	//	}
 	//	diagnosis.UnschedulablePlugins.Insert(framework.ExtenderName)
 	//}
-
+	// 在这里删除不是当前命名空间的边缘节点
+	namespace := group.Namespace
+	for i := 0; i < len(feasibleNodes); i++ {
+		// logs.Infof("-----------test------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
+		currentNode := feasibleNodes[i]
+		if strings.Contains(currentNode.Node().Name, "edge") || strings.Contains(currentNode.Node().Name, "Edge") {
+			// 检查命名空间是否和group一致，不一致移除当前node
+			if namespace != currentNode.Node().Namespace {
+				// logs.Infof("-----------remove node------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
+				feasibleNodes = append(feasibleNodes[:i], feasibleNodes[i+1:]...)
+				i--
+			}
+		}
+	}
 	return feasibleNodes, nil
 }
 
