@@ -128,9 +128,6 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	logs.Infof("Command %s started successfully with PID %d", cmd, CMD.Process.Pid)
 	// 通知group_monitor，来修改全局的group信息（其中的runtime属性）
 
-	cr.notifyRuntimeStartPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, strconv.Itoa(CMD.Process.Pid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
-	cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name), group.Namespace)
-
 	// TODO:根据容器名字查找ID，然后放入manager，并通过monitor监管
 	// 名字是args其中的一个字符串，包含 --name=
 	var containerName string
@@ -142,15 +139,61 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	}
 
 	// 根据name查询ID
-	// 可能出现docker拉起速度较慢，查不到====有这个问题，需要等待数秒,设置为5秒
-	time.Sleep(3 * time.Second)
-	containerId := cr.containerManager.GetContainerID(containerName)
+	// 可能出现docker拉起速度较慢，查不到====有这个问题，需要等待数秒,设置为500ms
+	var containerId string
+	var cnt int = 0
+	for {
+		cnt++
+		time.Sleep(500 * time.Millisecond)
+		containerId = cr.containerManager.GetContainerID(containerName)
+		if containerId != "" {
+			logs.Infof("Found container ID: %s for name: %s", containerId, containerName)
+		} else {
+			logs.Infof("Waiting for container ID for name: %s", containerName)
+		}
+		containerPid, err := cr.getContainerHostPid(containerName)
+		if err != nil {
+			logs.Errorf("Failed to get host PID for container %s: %v, maybe need time to start", containerName, err)
+		} else {
+			logs.Infof("Container %s is running with host PID %d", containerName, containerPid)
+		}
+		if containerId != "" && containerPid != 0 {
+			cr.notifyRuntimeStartPhase(group.Name, group.Namespace, action.Spec.Name, runtime.Spec.Name, strconv.Itoa(containerPid), apis.Running, apis.Time{time.Now()}, apis.Time{time.Now()})
+			cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name), group.Namespace)
+			break
+		}
+		if cnt >= 200 {
+			logs.Errorf("Timeout waiting for container ID for name: %s", containerName)
+			return fmt.Errorf("timeout waiting for container ID for name: %s", containerName)
+		}
+	}
+
 	logs.Infof("Container ID for runtime %s is %s", runtime.Name, containerId)
 	cr.containerManager.AddRuntimeMapping(runtime.Name, containerId)
 	cr.MonitorContainerStatus(group, action, runtime, actionSpecName, runtimeSpecName, containerId)
 	// 启动容器资源监控 <-- 在这里添加
 	go cr.monitorContainerResource(containerId, runtime, 500*time.Millisecond)
 	return nil
+}
+
+func (cr *ContainerRuntime) getContainerHostPid(containerNameOrID string) (int, error) {
+	cmd := exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerNameOrID)
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, fmt.Errorf("failed to run docker inspect: %w", err)
+	}
+
+	pidStr := strings.TrimSpace(string(output))
+	if pidStr == "0" {
+		return 0, fmt.Errorf("container is not running or PID is 0")
+	}
+
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse PID '%s': %w", pidStr, err)
+	}
+
+	return pid, nil
 }
 
 // 监控容器状态，如果退出等，判断是否是某些异常，然后调用Kill
