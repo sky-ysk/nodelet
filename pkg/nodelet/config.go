@@ -92,9 +92,11 @@ func NewConfig(configPath string) *Config {
 	isMaster := GetIsMaster(config)
 	fileRegisrty := GetFileRegistry(config)
 	serviceProxy := GetServiceProxy(config)
+	namespace := GetNamespace(config)
 	logs.Infof("address:%v==============", address)
 	logs.Infof("fileRegisrty:%v==============", fileRegisrty)
 	logs.Infof("serviceProxy:%v==============", serviceProxy)
+	logs.Infof("namespace:%v==============", namespace)
 	taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, err := BuildTargetMap(config)
 	if err != nil {
 		logs.Errorf("targetMap build failed")
@@ -103,7 +105,7 @@ func NewConfig(configPath string) *Config {
 	dir, port := GetWasmConfig(config)
 	return &Config{
 		//需要修改成从配置文件中读取内容 例如：config.json
-		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID, isMaster),
+		nc:            node.NewConfig([]string{"CPU", "Memory", "Storage"}, "", nodeName, clusterCategory, LocalClusterID, isMaster, namespace),
 		tc:            task.NewConfig(nodeName, taskTargetMap, groupTargetMap, actionTargetMap, runtimeTargetMap, dir, port, fileRegisrty, serviceProxy),
 		apiserverAddr: address,
 	}
@@ -162,6 +164,13 @@ func GetServiceProxy(config *FrameworkConfig) string {
 		return config.ServiceProxyAddr
 	}
 	return "http://localhost:8921"
+}
+
+func GetNamespace(config *FrameworkConfig) string {
+	if config.Namespace != "" {
+		return config.Namespace
+	}
+	return "test"
 }
 
 //func GetNameSpace(config *FrameworkConfig) string {

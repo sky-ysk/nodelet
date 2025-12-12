@@ -54,7 +54,7 @@ func NewNodeExporter(cfg *Config, clientset *clients.ClientSet) (*NodeExporter, 
 		return nil, err
 	}
 	// Client-Go配置
-	nodeClient := clientset.Core().Nodes("test")
+	nodeClient := clientset.Core().Nodes(cfg.Namespace)
 	// 配置const常量
 	return &NodeExporter{
 		nodeCollector:   nc,
