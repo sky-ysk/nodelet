@@ -14,26 +14,26 @@ import (
 )
 
 func main() {
-	url := "http://localhost:8919/download?filename=server"
-	savePath := "./"
+	// url := "http://localhost:8919/download?filename=server"
+	// savePath := "./"
 
-	err := utils.DownloadFile(url, savePath)
-	if err != nil {
-		fmt.Println("Download failed:", err)
-	} else {
-		fmt.Println("Download successful!")
-	}
-
-	// url := "http://172.150.0.24:8919/upload"
-	// filePath := "/home/public/goprojects/ysk-1110/reference-626/test/registry/clientUpload.go"
-	// fmt.Println("aaaaaUploading file:", filePath)
-	// err := utils.UploadFile(filePath, "v1.0.0", url)
-	// fmt.Println("bbbbUploading file:", filePath)
+	// err := utils.DownloadFile(url, savePath)
 	// if err != nil {
-	// 	fmt.Println("Upload failed:", err)
+	// 	fmt.Println("Download failed:", err)
 	// } else {
-	// 	fmt.Println("Upload successful!")
+	// 	fmt.Println("Download successful!")
 	// }
+
+	url := "http://172.150.0.24:8919/upload"
+	filePath := "/home/public/goprojects/ysk-1110/reference-626/test/registry/clientUpload.go"
+	fmt.Println("aaaaaUploading file:", filePath)
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	fmt.Println("bbbbUploading file:", filePath)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+	} else {
+		fmt.Println("Upload successful!")
+	}
 
 	// url := "http://localhost:8888/upload"
 	// filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
