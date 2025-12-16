@@ -1,7 +1,7 @@
 EtcdPort : 2377
-ApiServerAddr : "http://172.150.0.24:10000"
-FileRegistryAddr : "http://172.150.0.24:8919"
-ServiceProxyAddr : "172.150.0.11:8921"
+ApiServerAddr : "http://10.31.10.20:8120"
+FileRegistryAddr : "http://10.31.10.20:8121"
+ServiceProxyAddr : "10.31.10.20:8123"
 NodeName : "CloudNode1"
 ClusterCategory : "Cloud"
 LocalClusterID : "Cloud1"
@@ -14,3 +14,21 @@ WasmConfig:
   WasmToolchainDir: "/home/kcm/tmp/wasm"
   WasmRuntimePort: "8080"
 Namespace: ""
+
+#下面这个用于外网其他节点连接master节点的配置
+# EtcdPort : 2377
+# ApiServerAddr : "http://120.220.95.189:48120"
+# FileRegistryAddr : "http://120.220.95.189:48121"
+# ServiceProxyAddr : "120.220.95.189:48123"
+# NodeName : "EdgeNode1"
+# ClusterCategory : "Edge"
+# LocalClusterID : "EdgeCloud1"
+# #OtherCluster:
+# #  cluster1:
+# #    ClusterID : "broker"
+# #    ClusterIP : "172.100.0.130"
+# IsMasterNode : true
+# WasmConfig:
+#   WasmToolchainDir: "/home/kcm/tmp/wasm"
+#   WasmRuntimePort: "8080"
+# Namespace: ""

@@ -32,7 +32,7 @@ func main() {
 	// 	fmt.Println("Download successful!")
 	// }
 
-	url := "http://120.220.95.189:8121/upload"
+	url := "http://120.220.95.189:48121/upload"
 	fmt.Println("aaaaaUploading file:", *filepath)
 	err := utils.UploadFile(*filepath, "v1.0.0", url)
 	fmt.Println("bbbbUploading file:", *filepath)

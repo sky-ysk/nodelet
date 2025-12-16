@@ -24,6 +24,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/nodelet/events"
 	"hit.edu/framework/pkg/nodelet/events/eventbus"
+	fileManager "hit.edu/framework/pkg/nodelet/registry"
 	grpc_client "hit.edu/framework/pkg/nodelet/task/interaction/intwithRuntime/grpc-client"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command/process"
 	serviceProxy "hit.edu/framework/pkg/nodelet/task/serviceProxy"
@@ -44,9 +45,10 @@ type CommandRuntime struct {
 	// 存储各任务的端口(似乎没必要,直接get etcd上的port字段,getClient即可)
 	clientPorts  map[string]string
 	serviceProxy *serviceProxy.ServiceProxy
+	fileManager  *fileManager.FileManager
 }
 
-func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool) *CommandRuntime {
+func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.EventBus, pool *pool.ConnectionPool, fileManager *fileManager.FileManager) *CommandRuntime {
 	pm := process.NewProcessManager()
 	engine := value.NewEngine(clientsManager.ClientSet)
 	serviceProxy := serviceProxy.NewServiceProxy(clientsManager)
@@ -60,6 +62,7 @@ func NewCommandRuntime(clientsManager *manager.Manager, eventBus *eventbus.Event
 		engine:         engine,
 		clientPorts:    make(map[string]string),
 		serviceProxy:   serviceProxy,
+		fileManager:    fileManager,
 	}
 }
 func (cr *CommandRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
@@ -252,6 +255,28 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 		}
 	}
 	logs.Infof("command %s completed", runtime.Name)
+
+	// 上传outputs里面写定的文件到文件仓库
+	for _, output := range runtime.Spec.Outputs {
+		switch output.Type {
+		case apis.FileData:
+			fileName := output.Name
+			if output.Name == "" {
+				// 如果没有指定Name，则使用Value作为文件名
+				fileName = output.Value
+			}
+			filePath := runtime.Status.Directory + "/" + fileName
+			_, err := cr.fileManager.UploadFile(filePath)
+			if err != nil {
+				logs.Errorf("runtime finished, but Upload output file failed: %v", err)
+				return fmt.Errorf("upload output file failed: %w", err)
+			}
+			logs.Infof("Upload output file success: %s", filePath)
+		default:
+			logs.Warnf("Unsupported output type: %s, do nothing", output.Type)
+		}
+	}
+
 	//TODO 正常执行完之后通知修改queues和Manager对应的group信息，group当中Runtime的phase
 	cr.processManager.MoveProcessToSucess(runtime.Name) //移入successProcess，同时移出process
 	// 修改RuntimeStatus的Phase为Successed，ActionStatus的Phase也为Successed
