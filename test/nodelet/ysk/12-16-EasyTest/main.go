@@ -203,7 +203,7 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	logs.Info(scheme)
 	// 创建ClientSet
 	c := &rest.Config{
-		Host:    "http://10.31.10.20:8120",
+		Host:    "http://172.150.0.24:10000",
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
