@@ -98,7 +98,11 @@ func (ce *ConditionEngine) CheckConditions(conditions *apis.Conditions, o interf
 func (ce *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
 	switch formula.ConditionType {
 	case apis.NodeDependency:
-		return apis.True, nil
+		res, err := ce.checkNodeDependency(formula, o)
+		if err != nil {
+			return apis.False, err
+		}
+		return res, nil
 	case apis.DataDependency:
 		res, err := ce.checkDataDependency(formula, o)
 		if err != nil {
@@ -123,30 +127,30 @@ func (ce *ConditionEngine) checkFormula(formula *apis.ConditionFormula, o interf
 	}
 }
 
-// TODO:细化每一种依赖里面的每一种情况
 func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o interface{}) (apis.ResultType, error) {
-	// logs.Infof("checkNodeDependency val : %v", o)
+	logs.Infof("checkNodeDependency val : %v", o)
 	val := reflect.ValueOf(o)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem() // 解引用指针，获取指针所指向的值
 	}
 	kind := val.Type().Name()
 	Name := val.FieldByName("Name")
-
+	leftValue := &formula.LeftValue
 	//debug日志
 	// 解析parent的Phase的值
-	value, err := ce.engine.GetValue(&(formula.LeftValue), val)
+	newLeftValue, err := ce.engine.ExtractLocalValue(leftValue, o)
 
 	if err != nil {
 		logs.Error("condititon Engine: check Dodedependency GetValue error: ", err)
 		return apis.False, err
 	}
-	if value.Value != string(apis.Successed) {
-		// parent未完成
-		logs.Tracef("condititon Engine: check Dodedependency error: %v %v's parent not succeed!", kind, Name)
-		return apis.NotReady, errors.New("nodedependency is not ready")
-	} else {
+	if newLeftValue.Value == string(apis.Running) || newLeftValue.Value == string(apis.Successed) {
+		logs.Infof("nodeDependency satisfied!")
 		return apis.True, nil
+	} else {
+		// 前置节点任务未运行或未完成
+		logs.Tracef("condititon Engine: nodedependency is not ready: %v %v's parent not running or seccessed!", kind, Name)
+		return apis.NotReady, nil
 	}
 }
 

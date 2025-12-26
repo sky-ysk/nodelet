@@ -131,10 +131,19 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	// TODO:根据容器名字查找ID，然后放入manager，并通过monitor监管
 	// 名字是args其中的一个字符串，包含 --name=
 	var containerName string
-	for _, str := range runtime.Spec.Args {
+	for i, str := range runtime.Spec.Args {
 		if strings.Contains(str, "--name=") {
 			containerName = strings.TrimPrefix(str, "--name=")
 			logs.Infof("Found container name: %s", containerName)
+			break
+		}
+		// 或者填的是--name 后面跟一个空格 name
+		if strings.Contains(str, "--name") {
+			if i+1 < len(runtime.Spec.Args) {
+				containerName = runtime.Spec.Args[i+1]
+				logs.Infof("Found container name: %s", containerName)
+				break
+			}
 		}
 	}
 
