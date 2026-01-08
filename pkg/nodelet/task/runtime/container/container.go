@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
 	"math"
 	"os"
 	"os/exec"
@@ -389,17 +390,132 @@ func (cr *ContainerRuntime) calculateContainerMemoryUsage(stats map[string]inter
 func (cr *ContainerRuntime) Kill(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("container runtime kill group:%s, action:%s, runtime:%s", group.Name, action.Name, runtime.Name)
 
-	// //关闭容器
-	// err := cr.containerManager.StopContainer(runtime.Name)
-	// if !err {
-	// 	return fmt.Errorf("failed to stop container for runtime: %s. ContainerId:%s", runtime.Name, cr.containerManager.manager[runtime.Name])
-	// }
-	// 删除容器
-	cr.containerManager.RemoveContainer(cr.containerManager.manager[runtime.Name])
+	// 获取容器ID
+	containerID, exists := cr.containerManager.getContainerIDByRuntimeName(runtime.Name)
+	if !exists {
+		logs.Infof("Container for runtime %s not found or already removed", runtime.Name)
+		cr.containerManager.DeleteRuntimeMapping(runtime.Name)
+		return nil
+	}
+	// 记录操作开始时间
+	startTime := time.Now()
+	var stopErr, removeErr error
+	// 1. 先尝试优雅停止容器
+	stopErr = cr.stopContainer(containerID, runtime.Name)
+	if stopErr != nil {
+		logs.Warnf("Failed to stop container %s: %v, attempting removal anyway", containerID, stopErr)
+	} else {
+		logs.Infof("Container %s stopped successfully", containerID)
+	}
+
+	// 2. 删除容器（无论停止是否成功都尝试删除）
+	removeErr = cr.removeContainer(containerID, runtime.Name)
+	if removeErr != nil {
+		// 删除失败，记录错误但继续清理映射
+		logs.Errorf("Failed to remove container %s: %v", containerID, removeErr)
+	} else {
+		logs.Infof("Container %s removed successfully", containerID)
+	}
 	logs.Infof("Container %s removed successfully", cr.containerManager.manager[runtime.Name])
+	// 3. 清理运行时映射（必须执行）
 	cr.containerManager.DeleteRuntimeMapping(runtime.Name)
-	logs.Infof("Runtime: %s, Container %s stopped and removed successfully", runtime.Name, cr.containerManager.manager[runtime.Name])
+	// 4. 汇总错误信息
+	if stopErr != nil && removeErr != nil {
+		return fmt.Errorf("both stop and remove failed for container %s: stop_err=%v, remove_err=%v",
+			containerID, stopErr, removeErr)
+	} else if removeErr != nil {
+		return fmt.Errorf("remove failed for container %s: %w", containerID, removeErr)
+	} else if stopErr != nil {
+		// 停止失败但删除成功，只记录警告
+		logs.Warnf("Container %s removed but stop had issues: %v", containerID, stopErr)
+	}
+	//5. 通知部署器修改Runtime、Action、Group的状态为killed
+	cr.notifyRuntimeEndPhase(group.Name, group.Namespace, actionSpecName, runtimeSpecName, apis.Unknown, apis.Time{time.Now()}, apis.Time{time.Now()})
+	cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.KilledCommand, fmt.Sprintf("Runtime Name:\t %s start to close", runtime.Name), group.Namespace) // 发送事件：Runtime收到终止信号进行关闭
+
+	logs.Infof("Runtime: %s, Container %s cleanup completed in %v",
+		runtime.Name, containerID, time.Since(startTime))
 	return nil
+}
+
+// 增强的停止容器方法
+func (cr *ContainerRuntime) stopContainer(containerID, runtimeName string) error {
+	if containerID == "" {
+		return fmt.Errorf("empty container ID for runtime %s", runtimeName)
+	}
+
+	ctx := context.Background()
+
+	// 先检查容器状态
+	containerInfo, err := cr.client.ContainerInspect(ctx, containerID)
+	if err != nil {
+		if client.IsErrNotFound(err) {
+			logs.Infof("Container %s not found, may already be removed", containerID)
+			return nil
+		}
+		return fmt.Errorf("failed to inspect container %s: %w", containerID, err)
+	}
+
+	if !containerInfo.State.Running {
+		logs.Infof("Container %s is not running (status: %s)", containerID, containerInfo.State.Status)
+		return nil
+	}
+
+	logs.Infof("Stopping container %s (runtime: %s), current status: %s",
+		containerID, runtimeName, containerInfo.State.Status)
+
+	// 设置优雅停止的超时时间（30秒）
+	timeout := 30
+	stopOptions := container.StopOptions{
+		Timeout: &timeout,
+	}
+
+	// 尝试优雅停止
+	logs.Infof("Attempting graceful stop for container %s with %d seconds timeout", containerID, timeout)
+	if err := cr.client.ContainerStop(ctx, containerID, stopOptions); err != nil {
+		// 检查特定错误类型
+		if client.IsErrNotFound(err) {
+			logs.Infof("Container %s not found during stop, may already be removed", containerID)
+			return nil
+		}
+		if strings.Contains(err.Error(), "is not running") {
+			logs.Infof("Container %s is already stopped", containerID)
+			return nil
+		}
+
+		// 优雅停止失败，尝试强制杀死
+		logs.Warnf("Graceful stop failed for container %s, attempting force kill: %v", containerID, err)
+
+		if killErr := cr.client.ContainerKill(ctx, containerID, "SIGKILL"); killErr != nil {
+			if client.IsErrNotFound(killErr) {
+				logs.Infof("Container %s not found during force kill, may already be terminated", containerID)
+				return nil
+			}
+			return fmt.Errorf("both graceful stop and force kill failed: stop_err=%v, kill_err=%v", err, killErr)
+		}
+		logs.Infof("Container %s force killed successfully", containerID)
+	} else {
+		logs.Infof("Container %s stopped gracefully", containerID)
+	}
+
+	return nil
+}
+
+// 增强的删除容器方法
+func (cr *ContainerRuntime) removeContainer(containerID, runtimeName string) error {
+	if containerID == "" {
+		return fmt.Errorf("empty container ID for runtime %s", runtimeName)
+	}
+	logs.Infof("Removing container %s (runtime: %s)", containerID, runtimeName)
+
+	// 使用ContainerManager的RemoveContainer方法
+	if success, err := cr.containerManager.RemoveContainer(containerID); success {
+		logs.Infof("Container %s removed successfully via ContainerManager", containerID)
+		return nil
+	} else {
+		logs.Errorf("failed to remove container %s: %w", containerID, err)
+		return err
+	}
 }
 
 // 支持暂时停止，后续可以恢复

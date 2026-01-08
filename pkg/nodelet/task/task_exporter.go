@@ -79,23 +79,9 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet, ctx context.Cont
 	groupTargetMap := cfg.groupTargetMap
 	actionTargetMap := cfg.actionTargetMap
 	runtimeTargetMap := cfg.runtimeTargetMap
-	// Client-Go配置
-	//nodeClient := clientset.Core().Nodes("test")
-	//taskClient := clientset.Core().Tasks("test")
-	//groupClient := clientset.Core().Groups("test")
-	//eventClient := clientset.Core().Events("test")
-	//actionClient := clientset.Core().Actions("test")
-	//deviceClient := clientset.Core().Devices("test")
-	//runtimeClient := clientset.Core().Runtimes("test")
 	clientsManager := manager.NewManager(clientset)
 	//事件总线--只使用与Runtime运行时传输状态的
 	eb := eventbus.NewEventBus()
-	// 全局事件组件的配置
-	//eventBroadcaster := recorder.NewBroadcaster()
-	//eventBroadcaster.StartRecordingToSink(context.Background(), &core.EventSinkImpl{Interface: eventClient})
-	//scheme := scheme.NewScheme()
-	//apis.AddToScheme(scheme)
-	//recorder := eventBroadcaster.NewRecorder(scheme, "TaskExporter")
 
 	// Manager配置 group
 	groupManager := group.NewGroupManager()
@@ -171,7 +157,7 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	}()
 	go func() {
 		defer wg.Done()
-		te.ReceiveKillEventInfo(2, ctx.Done()) // 持续从etcd当中读取kill-group的指令
+		te.ReceiveKillEventInfo(2, ctx.Done()) // 持续从etcd当中读取kill-group的指令,现在也可以读取kill-task的指令
 	}()
 
 	go te.migrationController.Run(5, ctx.Done())
@@ -184,61 +170,6 @@ func (te *TaskExporter) Run(ctx context.Context) error {
 	//	return ctx.Err() //退出是返回错误
 	//}
 }
-
-//func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
-//	for {
-//		select {
-//		case <-ctx.Done():
-//			logs.Info("ReceiveGroupInfo exiting due to context cancel")
-//			return
-//		default:
-//			//读取 etcd当中的group列表
-//			//groupsClient := te.clientsManager.GetGroupClient("test")
-//			groupList, err := te.allGroupsClient.List(context.TODO(), metav1.ListOptions{})
-//			if err != nil {
-//				logs.Errorf("List task err:%v", err)
-//			}
-//			// 遍历group
-//			for i := range groupList.Items {
-//				gr := &groupList.Items[i] // 修改了此处，如果不行的话，改为原来的
-//				//groupName := gr.Name // 这里是一个坑
-//				//// 从etcd当中读group的信息
-//				//gr, err := te.gropsClient.Get(context.TODO(), groupName, metav1.GetOptions{})
-//				//if err != nil {
-//				//	logs.Errorf("get group:%s failed", groupName)
-//				//}
-//				if gr.Status.Node != nil && *gr.Status.Node == te.nodeName { //gr.Status.Node == "CloudNode1"       gr.Status.Node == "EdgeNode1" || gr.Status.Node == "EndNode1"
-//					if gr.Status.Phase == apis.ReadyToDeploy {
-//						logs.Infof("Receive-GroupName：%v,groupStatus:%v", gr.Name, gr.Status.Phase)
-//						groupUpdate := types.GroupUpdate{
-//							Group: gr,
-//							Op:    types.ADD,
-//						}
-//						te.updateCh <- groupUpdate
-//					} else if gr.Status.Phase == apis.ReadyToKill {
-//						groupUpdate := types.GroupUpdate{
-//							Group: gr,
-//							Op:    types.KILL,
-//						}
-//						te.updateCh <- groupUpdate
-//					}
-//				}
-//				// 读完一个Group暂停一会
-//				select {
-//				case <-ctx.Done():
-//					return
-//				case <-time.After(100 * time.Millisecond):
-//				}
-//			}
-//		}
-//		// GroupList 读完暂停一会
-//		select {
-//		case <-ctx.Done():
-//			return
-//		case <-time.After(100 * time.Millisecond):
-//		}
-//	}
-//}
 
 func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 	var watchTimeout int64 = 7 * 24 * 3600
@@ -286,50 +217,6 @@ func (te *TaskExporter) ReceiveGroupInfo(ctx context.Context) {
 	}
 }
 
-//	func (te *TaskExporter) ReceiveKillEventInfo(ctx context.Context) {
-//		nowtime := time.Now() // 启动监听的时刻，为了放置启动nodelet组件的时候，etcd里已经有这类的数据，导致收到了老的event
-//		fieldSelector := fmt.Sprintf("reason=%v", events.KillingCommand)
-//		watchOptions := meta.ListOptions{
-//			FieldSelector: fieldSelector,
-//		}
-//		watcher, err := te.allEventsClient.Watch(context.TODO(), watchOptions)
-//		if err != nil {
-//			logs.Errorf("Watch group error:%v", err)
-//		}
-//		defer watcher.Stop() // 确保 watcher 被停止
-//		watchChan := watcher.ResultChan()
-//		for {
-//			select {
-//			case event, ok := <-watchChan:
-//				if !ok {
-//					logs.Infof("watchChan closed")
-//					return
-//				}
-//				// 打印事件类型和对象的相关信息
-//				logs.Tracef("接收到事件类型: %v\n", event.Type)
-//				switch event.Type {
-//				case watch.Added:
-//					logs.Infof("资源被添加: ", event.Object)
-//					newEvent := event.Object.(*apis.Event)
-//					group, err := te.groupManager.GetGroupByName(newEvent.InvolvedObject.Name) //groupManager当中有此group
-//					if err != nil {
-//						logs.Infof("Group not in nodelet")
-//						return
-//					}
-//					if group != nil && newEvent.EventTime.Time.After(nowtime) { //前者晚于后者返回true
-//						// 调用kill方法
-//						groupUpdate := types.GroupUpdate{
-//							Group: group,
-//							Op:    types.KILL,
-//						}
-//						te.updateCh <- groupUpdate
-//					}
-//				default:
-//					logs.Infof("未识别的事件类型: ", event.Type)
-//				}
-//			}
-//		}
-//	}
 func (te *TaskExporter) eventWatcher() {
 	// 筛选出 type是 EventTypeMigration 的事件
 	// fieldSelector := fmt.Sprintf("type=%v", apis.EventTypeMigration)
@@ -428,11 +315,32 @@ func (te *TaskExporter) runWorker() {
 	}
 }
 
+// 处理收到的Event（原本是只处理Group的kill命令，现在的话可以接收Task的kill命令了）
 func (te *TaskExporter) handleEventEvent(item *apis.Event) {
-	group, _ := te.groupManager.GetGroupByName(item.InvolvedObject.Name)
-	groupUpdate := types.GroupUpdate{
-		Group: group,
-		Op:    types.KILL,
+	if item.InvolvedObject.Kind == "Task" {
+		// 遍历整个Task下面的Group，然后调用kill方法去killGroup
+		task, err := te.clientsManager.GetTask(item.InvolvedObject.Name, item.InvolvedObject.Namespace)
+		if err != nil {
+			return
+		}
+		for _, groupReference := range task.Status.Groups {
+			getGroup, err := te.clientsManager.GetGroup(groupReference.Name, groupReference.Namespace)
+			if err != nil {
+				logs.Errorf("Get group error from etcd-321:%v", err)
+			}
+			groupUpdate := types.GroupUpdate{
+				Group: getGroup,
+				Op:    types.KILL,
+			}
+			te.updateCh <- groupUpdate
+		}
+	} else {
+		group, _ := te.groupManager.GetGroupByName(item.InvolvedObject.Name)
+		groupUpdate := types.GroupUpdate{
+			Group: group,
+			Op:    types.KILL,
+		}
+		te.updateCh <- groupUpdate
 	}
-	te.updateCh <- groupUpdate
+
 }

@@ -94,6 +94,15 @@ func (cm *ContainerManager) GetContainerID(name string) string {
 	return ""
 }
 
+// 根据runtime名称获取容器ID（线程安全）
+func (cm *ContainerManager) getContainerIDByRuntimeName(runtimeName string) (string, bool) {
+	cm.lock.Lock()
+	defer cm.lock.Unlock()
+
+	containerID, exists := cm.manager[runtimeName]
+	return containerID, exists
+}
+
 // 获取单个容器信息
 func (cm *ContainerManager) GetContainer(id string) (*container.InspectResponse, error) {
 	cm.lock.Lock()
@@ -196,15 +205,15 @@ func (cm *ContainerManager) StopContainer(id string) bool {
 
 // 根据名称和镜像删除容器
 // 注意：删除容器前需要先停止它
-func (cm *ContainerManager) RemoveContainer(id string) bool {
+func (cm *ContainerManager) RemoveContainer(id string) (bool, error) {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
 	ctx := context.Background()
 	err := cm.client.ContainerRemove(ctx, id, container.RemoveOptions{Force: true})
 	if err != nil {
 		logs.Errorf("Error: remove container failed. %v\n", err)
-		return false
+		return false, err
 	}
 	logs.Infof("Container removed: %s\n", id)
-	return true
+	return true, nil
 }
