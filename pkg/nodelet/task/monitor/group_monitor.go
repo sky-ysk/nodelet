@@ -204,6 +204,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 				getGroup, err := gmo.clientsManager.GetGroup(gr.Name, gr.Namespace)
 				if err != nil {
 					logs.Errorf("Etcd get group error-1:%v", err)
+					continue
 				}
 				task, exists := gmo.belongTasks[gr.Name]
 				if exists {
@@ -233,6 +234,7 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 						task, err = gmo.clientsManager.GetTask(gr.Status.Belong.Name, gr.Status.Belong.Namespace)
 						if err != nil {
 							logs.Errorf("Etcd get task error:%v", err)
+							continue
 						}
 						gmo.belongTasks[gr.Name] = task
 					}
@@ -308,6 +310,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 				group, err := gmo.clientsManager.GetGroup(gro.Name, gro.Namespace)
 				if err != nil {
 					logs.Errorf("Etcd get group error-2:%v", err)
+					continue
 				}
 				if group.Status.CopyStatus == "Waiting" { // 说明副本任务是提前部署好的
 					//logs.Info("====================Waiting")
@@ -317,6 +320,7 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 						action, err := gmo.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
 						if err != nil {
 							logs.Errorf("Etcd get action error-2:%v", err)
+							continue
 						}
 						actionStatus := &action.Status
 						isSuccess = true
@@ -476,6 +480,7 @@ func (gmo *GroupMonitor) RunningQueueCheck(ctx context.Context) { //主要针对
 				group, err := gmo.clientsManager.GetGroup(gro.Name, gro.Namespace)
 				if err != nil {
 					logs.Errorf("Etcd get group error-3:%v", err)
+					continue
 				}
 				var AllactionisSuccess = true                          // 标记group下面的action是否都执行成功
 				for _, actionReference := range group.Status.Actions { // 遍历group当中的Action
@@ -829,6 +834,7 @@ func (gmo *GroupMonitor) MigratedQueueCheck(ctx context.Context) {
 				group, err := gmo.clientsManager.GetGroup(gro.Name, gro.Namespace)
 				if err != nil {
 					logs.Errorf("Etcd get group error-4:%v", err)
+					continue
 				}
 				for key, value := range group.Spec.CopyInfo {
 					copyGroupName := key
@@ -902,6 +908,7 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 				task, err := gmo.clientsManager.GetTask(taskName, gro.Status.Belong.Namespace)
 				if err != nil {
 					logs.Errorf("Get task err:%v", err)
+					continue
 				}
 				if task.Status.Phase == apis.Successed || task.Status.Phase == apis.Failed || task.Status.Phase == apis.Discard || task.Status.Phase == apis.Killed {
 					logs.Infof("Delete group:%v", gro.Spec.Name)
@@ -923,6 +930,7 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 						brotherGroup, err := gmo.clientsManager.GetGroup(groupReference.Name, groupReference.Namespace)
 						if err != nil {
 							logs.Errorf("Etcd get group error-4:%v", err)
+							continue
 						}
 						//logs.Infof("brotherGroupStatus.Phase:%v,groupName:%v", brotherGroup.Status.Phase, brotherGroup.Name)
 						//if brotherGroup.Status.Phase == apis.Running || brotherGroup.Status.Phase == apis.DeployCheck || brotherGroup.Status.Phase == apis.Migrating || brotherGroup.Status.Phase == apis.Init || brotherGroup.Status.Phase == apis.ReadyToDeploy || brotherGroup.Status.Phase == apis.Unknown { // 说明其他Group还未执行或者还没迁移成功
@@ -931,8 +939,8 @@ func (gmo *GroupMonitor) CompletedQueueCheck(ctx context.Context) {
 						//}
 						if brotherGroup.Status.Phase != apis.Successed && brotherGroup.Status.Phase != apis.Failed && brotherGroup.Status.Phase != apis.Discard && brotherGroup.Status.Phase != apis.Killed { // 说明其他Group还未执行或者还没迁移成功
 							otherGroupCompleted = false
-							break
 							logs.Infof("groupName:%v has't done, otherGroupCompleted:%v", brotherGroup.Name, otherGroupCompleted)
+							break
 						}
 						if brotherGroup.Status.Phase == apis.Migrated { // 还得去查对应副本任务的状态，如果状态为Running（大概率是这个状态）或者是DeployChek（说明迁移过去的group依赖不满足，暂时还不能执行），那么otherGroupCompleted参数也是false
 							// 为了适配迁移，目前还是处理同域的迁移,这里怎么根据源任务找到副本任务，还是一个遗留的问题
@@ -1018,6 +1026,7 @@ func (gmo *GroupMonitor) ErrorQueueCheck(ctx context.Context) {
 				group, err := gmo.clientsManager.GetGroup(gro.Name, gro.Namespace)
 				if err != nil {
 					logs.Errorf("Etcd get group error-4:%v", err)
+					continue
 				}
 				//TODO 通知调度器
 				gmo.clientsManager.LogEvent(group, apis.EventTypeWarning, events.GroupRunError, fmt.Sprintf("Group name:%v run error", group.Name), group.Namespace)
@@ -1049,6 +1058,7 @@ func (gmo *GroupMonitor) handleRuntimeStartUpdate(event events.RuntimeStartPhase
 	getGroup, err := gmo.clientsManager.GetGroup(groupName, event.GroupNamespace)
 	if err != nil {
 		logs.Errorf("Failed get group:%v from etcd, err:%v", groupName, err)
+		return
 	}
 
 	actionSpecName := event.ActionSpecName
@@ -2124,7 +2134,7 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 		return false
 	}
 
-	for _, i := range runtime.Spec.Conditions.Formulas {
+	for index, i := range runtime.Spec.Conditions.Formulas {
 		// 这里需要判断这个条件的类型，如果是ProgramDependency类型的条件，则需要进行特殊处理(nodelet这里直接使用Parents来处理，暂时不使用ConditionEngine)
 		if i.ConditionType == apis.ProgramDependency {
 			//runtime运行之前,需要检查程序依赖是不是满足，如果满足则将符合条件的环境变量加入runtime的Env中，方便后续CMD注入环境变量；
@@ -2187,6 +2197,20 @@ func (gmo *GroupMonitor) runtimeDepenSatisfy(group *apis.Group, runtime *apis.Ru
 			}
 
 			i.Result = apis.True
+			// TODO:上传检查的结果到condition当中去,防止重复检查
+			runtime.Spec.Conditions.Formulas[index].Result = apis.True
+			patchRuntime, err1 := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"conditions": runtime.Spec.Conditions,
+				},
+			})
+			if err1 != nil {
+				logs.Errorf("Marshal patch runtime err:%v", err)
+			}
+			_, err1 = gmo.clientsManager.PatchRuntime(runtime.Name, runtime.Namespace, patchRuntime)
+			if err1 != nil {
+				logs.Errorf("patch runtime condition result error")
+			}
 
 			envVar := []apis.EnvVar{}
 			envVar = append(envVar, apis.EnvVar{Name: "PATH", Value: envPath})
@@ -2230,6 +2254,7 @@ func (gmo *GroupMonitor) handleStatusUpdate(group *apis.Group, failed apis.Phase
 	task, err := gmo.clientsManager.GetTask(taskName, group.Status.Belong.Namespace)
 	if err != nil {
 		logs.Errorf("Get task from etcd err:%v", err)
+		return
 	}
 	task.Status.Phase = failed
 	task.Status.StartAt = &time
@@ -2266,6 +2291,7 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 		action, err := gmo.clientsManager.GetAction(actionReference.Name, actionReference.Namespace)
 		if err != nil {
 			logs.Errorf("Get action from etcd err:%v", err)
+			continue
 		}
 
 		if action.Status.Phase == apis.Running {
@@ -2315,6 +2341,7 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 		task, err = gmo.clientsManager.GetTask(taskName, group.Status.Belong.Namespace)
 		if err != nil {
 			logs.Error("Get task by taskID error from etcd:%v", err)
+			return
 		}
 		// 检查其他的group是否完成,修改Task的状态 ---需要适配迁移（目前只适配了本域迁移）
 		for gSpecName, groupReference := range task.Status.Groups {
@@ -2322,6 +2349,7 @@ func (gmo *GroupMonitor) handleRuntimeMigratedUpdate(group *apis.Group, action *
 				allGroup, err := gmo.clientsManager.GetGroup(groupReference.Name, groupReference.Namespace)
 				if err != nil {
 					logs.Errorf("Get group from etcd err:%v", err)
+					continue
 				}
 				groupStatus := &allGroup.Status
 				//logs.Infof("groupStatus.Phase:%v,groupID:%v", grStatus.Phase, grStatus.GroupID)
@@ -2535,6 +2563,7 @@ func (gmo *GroupMonitor) handleTaskFailedUpdate(gro *apis.Group) {
 	task, err2 = gmo.clientsManager.GetTask(taskName, gro.Status.Belong.Namespace)
 	if err2 != nil {
 		logs.Error("Get task by taskID error from etcd:%v", err2)
+		return
 	}
 	if task.Status.Phase == apis.Failed { // 有可能有这种情况，就是有多个迁移的group，可能其中一个已经执行了该方法，将Task的phase改为了Failed了
 		return
@@ -2572,6 +2601,7 @@ func (gmo *GroupMonitor) handleTaskSucceedUpdate(gro *apis.Group) {
 	task, err2 = gmo.clientsManager.GetTask(taskName, gro.Status.Belong.Namespace)
 	if err2 != nil {
 		logs.Error("Get task by taskID error from etcd:%v", err2)
+		return
 	}
 	if task.Status.Phase == apis.Successed { // 有可能有这种情况，就是有多个迁移的group，可能其中一个已经执行了该方法，将Task的phase改为了Succeed了
 		return

@@ -102,14 +102,15 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet, ctx context.Cont
 
 	// lister
 	lister := groupManager.GetGroups(nil)
+	// fileManager配置
+	fileManager := fileManager.NewFileManager(cfg.FileRegistryAddr)
 	// runtimeManager的配置
-	runtimeManager := runtime.NewRuntimeManager(ctx, eb, clientsManager, cfg.NodeName, cfg.wasmToolchainDir, cfg.wasmRuntimePort)
+	runtimeManager := runtime.NewRuntimeManager(ctx, eb, clientsManager, cfg.NodeName, cfg.wasmToolchainDir, cfg.wasmRuntimePort, fileManager)
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
 	conditionEngine := utils.NewConditionEngine() // 初始化时传入 clientset
-	// fileManager配置
-	fileManager := fileManager.NewFileManager(cfg.FileRegistryAddr)
+
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)
 	// workers

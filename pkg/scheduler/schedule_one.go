@@ -5,6 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"net/http"
+	"strings"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -15,10 +20,6 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/scheduler/apis/config"
 	"hit.edu/framework/pkg/scheduler/utils"
-	"math/rand"
-	"net/http"
-	"strings"
-	"time"
 
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/workflow"
@@ -445,6 +446,21 @@ func (sched *Scheduler) findNodesThatPassFilters(
 			feasibleNodes = append(feasibleNodes, node)
 		} else {
 			logs.Info(filterState.Message())
+		}
+	}
+
+	// 在这里删除不是当前命名空间的边缘节点
+	namespace := group.Namespace
+	for i := 0; i < len(feasibleNodes); i++ {
+		// logs.Infof("-----------test------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
+		currentNode := feasibleNodes[i]
+		if strings.Contains(currentNode.Node().Name, "edge") || strings.Contains(currentNode.Node().Name, "Edge") {
+			// 检查命名空间是否和group一致，不一致移除当前node
+			if namespace != currentNode.Node().Namespace {
+				// logs.Infof("-----------remove node------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
+				feasibleNodes = append(feasibleNodes[:i], feasibleNodes[i+1:]...)
+				i--
+			}
 		}
 	}
 	return feasibleNodes, nil

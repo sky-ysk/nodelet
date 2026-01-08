@@ -13,6 +13,7 @@ import (
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
+	fileManager "hit.edu/framework/pkg/nodelet/registry"
 	"hit.edu/framework/pkg/nodelet/task/runtime/binary"
 	"hit.edu/framework/pkg/nodelet/task/runtime/command"
 	"hit.edu/framework/pkg/nodelet/task/runtime/container"
@@ -42,10 +43,11 @@ type RuntimeManager struct {
 	wasmToolchainDir string
 	wasmRuntimePort  string
 	// 为了合理关闭wasm运行时进程
-	ctx context.Context
+	ctx         context.Context
+	fileManager *fileManager.FileManager
 }
 
-func NewRuntimeManager(ctx context.Context, bus *eventbus.EventBus, clientsManager *manager.Manager, nodeName string, wasmToolchainDir string, wasmRuntimePort string) *RuntimeManager {
+func NewRuntimeManager(ctx context.Context, bus *eventbus.EventBus, clientsManager *manager.Manager, nodeName string, wasmToolchainDir string, wasmRuntimePort string, fileManager *fileManager.FileManager) *RuntimeManager {
 	return &RuntimeManager{
 		runtimes: make(map[apis.RuntimeType]Runtime),
 		eventbus: bus,
@@ -59,6 +61,7 @@ func NewRuntimeManager(ctx context.Context, bus *eventbus.EventBus, clientsManag
 		wasmToolchainDir: wasmToolchainDir,
 		wasmRuntimePort:  wasmRuntimePort,
 		ctx:              ctx,
+		fileManager:      fileManager,
 	}
 }
 
@@ -87,7 +90,7 @@ func (rm *RuntimeManager) GetRuntime(rt apis.RuntimeType) Runtime {
 			runtime = wasm.NewWasmRuntime(rm.clientsManager, rm.eventbus, rm.wasmToolchainDir, rm.wasmRuntimePort, rm.ctx)
 			break
 		case apis.ByCommand: //任务作为系统命令执行
-			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.pool)
+			runtime = command.NewCommandRuntime(rm.clientsManager, rm.eventbus, rm.pool, rm.fileManager)
 			break
 		case apis.ByDocker: //部署在Docker运行时上，非k8s
 			runtime = container.NewContainerRuntime(rm.clientsManager, rm.eventbus)

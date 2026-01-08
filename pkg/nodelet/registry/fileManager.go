@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"hit.edu/framework/pkg/component-base/logs"
@@ -17,23 +18,26 @@ import (
 
 // 测试使用，暂时只支持单个文件的上传和下载，删除需要手动。
 // 在config.go中配置上传和下载的url、保存路径等信息。
+
+type DownloadStatus string
+
 const (
 	//未下载
-	NotDownloaded string = "not_downloaded"
+	NotDownloaded DownloadStatus = "not_downloaded"
 	//正在下载
-	Downloading string = "downloading"
+	Downloading DownloadStatus = "downloading"
 	//下载完成
-	Downloaded string = "download_completed"
+	Downloaded DownloadStatus = "download_completed"
 	//下载失败
-	DownloadFailed string = "download_failed"
+	DownloadFailed DownloadStatus = "download_failed"
 	//未上传
-	NotUploaded string = "not_uploaded"
+	NotUploaded DownloadStatus = "not_uploaded"
 	//正在上传
-	Uploading string = "uploading"
+	Uploading DownloadStatus = "uploading"
 	//上传完成
-	Uploaded string = "upload_completed"
+	Uploaded DownloadStatus = "upload_completed"
 	//上传失败
-	UploadFailed string = "upload_failed"
+	UploadFailed DownloadStatus = "upload_failed"
 )
 
 type FileManager struct {
@@ -43,9 +47,12 @@ type FileManager struct {
 	ForwardURL   string
 	DownloadURL  string
 	// 记录本地的runtime的文件下载情况：未下载、正在下载、下载完成、下载失败。key是带后缀的runtime.Name-文件名（例如R1-xxxxx...-test.txt），value是文件的下载状态
-	DownloadStatus map[string]string
-	// 记录本地的runtime的文件上传情况：未上传、正在上传、上传完成、上传失败。key是带后缀的runtime.Name，value是data[]里面所有文件的上传状态
-	UploadStatus map[string]string
+	downloadStatus   map[string]DownloadStatus
+	downloadStatusMu sync.RWMutex
+	// 记录本地的runtime的文件上传情况：未上传、正在上传、上传完成、上传失败。key是带后缀的runtime.Name，value是data[]里面所有文件的上传状态===未启用
+	UploadStatus  map[string]string
+	maxRetries    int
+	retryInterval time.Duration
 }
 
 // type FileHandler interface {
@@ -60,10 +67,10 @@ type FileManager struct {
 
 func NewFileManager(fileRegistry string) *FileManager {
 	logs.Infof("DataSavedDir: %s", DataSavedDir)
-	logs.Infof("UploadURL: %s", UploadURL)
-	logs.Infof("ForwardURL: %s", ForwardURL)
-	logs.Infof("DownloadURL: %s", DownloadURL)
-	downloadStatus := make(map[string]string)
+	// logs.Infof("UploadURL: %s", UploadURL)
+	// logs.Infof("ForwardURL: %s", ForwardURL)
+	// logs.Infof("DownloadURL: %s", DownloadURL)
+	downloadStatus := make(map[string]DownloadStatus)
 	uploadStatus := make(map[string]string)
 	// 初始化 FileManager
 	FileManager := &FileManager{
@@ -71,8 +78,10 @@ func NewFileManager(fileRegistry string) *FileManager {
 		UploadURL:      fileRegistry + UploadURL,
 		ForwardURL:     fileRegistry + ForwardURL,
 		DownloadURL:    fileRegistry + DownloadURL,
-		DownloadStatus: downloadStatus,
+		downloadStatus: downloadStatus,
 		UploadStatus:   uploadStatus,
+		maxRetries:     60,
+		retryInterval:  1 * time.Second,
 	}
 	err := FileManager.Init()
 	if err != nil {
@@ -111,6 +120,46 @@ func (fm *FileManager) Init() error {
 	//TODO:后续可能会需要在这里进行group目录进行删除操作
 
 	return nil
+}
+
+// GetStatus 安全地获取状态
+func (fm *FileManager) GetStatus(key string) (DownloadStatus, bool) {
+	fm.downloadStatusMu.RLock()
+	defer fm.downloadStatusMu.RUnlock()
+	status, ok := fm.downloadStatus[key]
+	return status, ok
+}
+
+// SetStatus 安全地设置状态
+func (fm *FileManager) SetStatus(key string, status DownloadStatus) {
+	fm.downloadStatusMu.Lock()
+	defer fm.downloadStatusMu.Unlock()
+	fm.downloadStatus[key] = status
+}
+
+// DeleteStatus 安全地删除某个 key 的状态记录
+func (fm *FileManager) DeleteStatus(key string) {
+	fm.downloadStatusMu.Lock()
+	defer fm.downloadStatusMu.Unlock()
+	delete(fm.downloadStatus, key)
+}
+
+// CompareAndSetStatus 原子性地“检查+设置”，防止竞态（关键！）
+func (fm *FileManager) CompareAndSetStatus(key string, expected, newStatus DownloadStatus) bool {
+	fm.downloadStatusMu.Lock()
+	defer fm.downloadStatusMu.Unlock()
+
+	current, exists := fm.downloadStatus[key]
+	if !exists && expected == NotDownloaded {
+		// 允许从“不存在”视为 NotDownloaded
+		fm.downloadStatus[key] = newStatus
+		return true
+	}
+	if current == expected {
+		fm.downloadStatus[key] = newStatus
+		return true
+	}
+	return false
 }
 
 func (fm *FileManager) UploadFile(filePath string) (string, error) {
@@ -172,27 +221,52 @@ func (fm *FileManager) UploadFolder(dirPath string) (string, error) {
 	return "Upload successful!", nil
 }
 
-func (fm *FileManager) DownloadFile(filename, savePath string) (string, error) {
-	// 调用 utils.DownloadFile 函数下载文件
-	// 这里的 filename 是要下载的文件名，savePath 是保存路径
-	// 返回下载结果和错误信息
-	// downloadURL := fm.DownloadURL + filename
+func (fm *FileManager) DownloadFile(filename, savePath string) error {
+	downloadURL := fm.DownloadURL + filename
 
-	url := fm.DownloadURL
-	downloadURL := url + filename
-	fm.DownloadStatus[filename] = Downloading
-	err := utils.DownloadFile(downloadURL, savePath)
+	// 设置重试策略：最多 5 次，每次间隔 3 秒
+	err := DownloadWithRetry(downloadURL, savePath, fm.maxRetries, fm.retryInterval)
 	if err != nil {
-		fmt.Println("Download failed:", err)
-		fm.DownloadStatus[filename] = DownloadFailed
-		fmt.Printf("file:%s,Download status:%s", filename, DownloadFailed)
-		return "", err
+		fmt.Printf("❌ Final download failed for %s: %v\n", filename, err)
+		fm.downloadStatus[filename] = DownloadFailed
+		fmt.Printf("file:%s,Download status:%s\n", filename, DownloadFailed)
+		return err
 	} else {
-		fm.DownloadStatus[filename] = Downloaded
+		fm.downloadStatus[filename] = Downloaded
 		fmt.Println("Download successful!")
-		return "Download successful!", nil
+		return nil
 	}
-	// TODO 更新文件下载的状态
+
+}
+
+// DownloadWithRetry 带重试的下载函数
+// 参数：
+//   - downloadURL: 完整下载地址（如 "https://example.com/files/report.pdf"）
+//   - savePath: 本地保存路径
+//   - maxRetries: 最大重试次数（例如 5）
+//   - retryInterval: 重试间隔（例如 3 * time.Second）
+func DownloadWithRetry(downloadURL, savePath string, maxRetries int, retryInterval time.Duration) error {
+	var lastErr error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		err := utils.DownloadFile(downloadURL, savePath)
+		if err == nil {
+			fmt.Println("✅ Download successful!")
+			return nil // 成功，直接返回
+		}
+
+		lastErr = err
+		fmt.Printf("Attempt %d failed: %v\n", attempt+1, err)
+
+		// 如果还有重试机会，等待后继续
+		if attempt < maxRetries {
+			fmt.Printf("⏳ Retrying in %v...\n", retryInterval)
+			time.Sleep(retryInterval)
+		}
+	}
+
+	// 所有重试失败
+	return fmt.Errorf("download failed after %d attempts: %w", maxRetries+1, lastErr)
 }
 
 // TODO:优化并发下载的情况，尤其是端口如何处理，服务端和客户端都要处理
@@ -213,7 +287,7 @@ func (fm *FileManager) DownloadFolder(folderName, savePath string) (string, erro
 			close(done)
 		}
 	})
-	server := &http.Server{Addr: ":8920", Handler: mux}
+	server := &http.Server{Addr: ":48122", Handler: mux}
 
 	// 3. 在goroutine中启动服务器
 	go func() {

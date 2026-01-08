@@ -213,35 +213,46 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				logs.Errorf("Get runtime error-3:%v", err)
 			}
 			logs.Tracef("runtime Data[]:%v", runtime.Spec.Data)
-			for _, filedata := range runtime.Spec.Data { // 这里需要考虑到runtime的Data[]里面填入的所有文件
-				// 检查DownloadStatus[]是否存在
-				// FIXME: 5-15测试发现有bug，fileManager针对的是文件名，那么多个runtime使用到同名文件的时候会出错，导致文件不再被下载---已解决，增加runtime的信息保证不重复
-				// 修改建议：1、当一个文件下载完成之后，立刻删除filaManager里面的记录，保证能再次下载（这里会不会有同步的问题？感觉会有）
-				// 2、fileManager对文件下载的记录增加针对runtime的记录，保证每个文件都与runtime联系，这样就不会导致不同的runtime下载直接相互冲突了
+			for _, filedata := range runtime.Spec.Data {
 				fileKey := runtime.Name + "-" + filedata.Name
-				if _, ok := gh.fileManager.DownloadStatus[fileKey]; !ok { // 说明没有下载过
-					gh.fileManager.DownloadStatus[fileKey] = fileManager.NotDownloaded
-					logs.Tracef("file not downloaded filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
+				// 检查当前状态
+				if status, ok := gh.fileManager.GetStatus(fileKey); ok {
+					switch status {
+					case fileManager.Downloaded:
+						logs.Tracef("file already downloaded: %v", fileKey)
+						continue
+					case fileManager.Downloading:
+						logs.Tracef("file is downloading: %v", fileKey)
+						continue
+					}
 				}
-				if gh.fileManager.DownloadStatus[fileKey] == fileManager.Downloaded { // 说明已经下载过了
-					logs.Tracef("file already downloaded filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
-					continue
-				} else if gh.fileManager.DownloadStatus[fileKey] == fileManager.Downloading { // 说明正在下载
-					logs.Tracef("file is downloading filedata.Name:%v,filedata.Path:%v", fileKey, groupdir)
+				// 尝试将状态从 NotDownloaded（或不存在） → Downloading
+				// 如果失败，说明已被其他 goroutine 抢占
+				if !gh.fileManager.CompareAndSetStatus(fileKey, fileManager.NotDownloaded, fileManager.Downloading) {
+					logs.Debugf("Another goroutine is handling %v, skip", fileKey)
 					continue
 				}
-				if gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloading && gh.fileManager.DownloadStatus[fileKey] != fileManager.Downloaded { // 说明没有下载过
-					gh.fileManager.DownloadStatus[fileKey] = fileManager.Downloading
-					logs.Infof("Now start downloading filedata.Name:%v,filedata.Path:%v", filedata.Name, groupdir)
-					// if strings.Contains(filedata.Name, ".") { //暂时考虑这个简单的办法，因为文件仓库里的文件不一定在本机上，所以不清楚这个文件是文件还是文件夹
-					if filedata.FileFormat == "file" || strings.Contains(filedata.Name, ".") {
-						// 进行文件的下载
-						go gh.fileManager.DownloadFile(filedata.Name, groupdir)
-					} else { // 进行文件夹的下载
-						// go gh.fileManager.DownloadFolder(filedata.Name, groupdir)
-						// 阻塞下载
-						logs.Infof("Download Folder:%v, groupName:%v, actionName:%v, runtimeName:%v", filedata.Name, gr.Name, action.Name, runtime.Name)
-						gh.fileManager.DownloadFolder(filedata.Name, groupdir)
+				logs.Infof("Start downloading file: %v", fileKey)
+				if filedata.FileFormat == "file" || strings.Contains(filedata.Name, ".") {
+					// 异步下载文件
+					go func(filename string, key string) { // 注意：捕获变量
+						err := gh.fileManager.DownloadFile(filename, groupdir)
+						if err != nil {
+							gh.fileManager.SetStatus(key, fileManager.DownloadFailed)
+						} else {
+							gh.fileManager.SetStatus(key, fileManager.Downloaded)
+							// 可选：下载成功后删除记录（下次重新下载）
+							gh.fileManager.DeleteStatus(key)
+						}
+					}(filedata.Name, fileKey)
+				} else {
+					// 同步下载文件夹（阻塞）
+					logs.Infof("Download Folder: %v", fileKey)
+					_, err := gh.fileManager.DownloadFolder(filedata.Name, groupdir)
+					if err != nil {
+						gh.fileManager.SetStatus(fileKey, fileManager.DownloadFailed)
+					} else {
+						gh.fileManager.SetStatus(fileKey, fileManager.Downloaded)
 					}
 				}
 			}

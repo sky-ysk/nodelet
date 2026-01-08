@@ -1224,6 +1224,7 @@ type RuntimeSpec struct {
 	// is server or client
 	IsHttpService bool `json:"is_http_service,omitempty" yaml:"is_http_service"`
 	IsHttpClient  bool `json:"is_http_client,omitempty" yaml:"is_http_client"`
+	PlantformType   string `json:"plantform_type,omitempty" yaml:"plantform_type"` //部署的平台类型 例如:win linux等，默认linux
 }
 
 //	 输入的数据有以下几类
