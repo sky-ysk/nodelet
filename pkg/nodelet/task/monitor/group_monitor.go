@@ -200,6 +200,12 @@ func (gmo *GroupMonitor) CheckingQueueCheck(ctx context.Context) { //主要针�
 			checkingGroups := gmo.groupQueues.GetAllChecking()
 			for i := range checkingGroups {
 				gr := checkingGroups[i]
+				if gr.Status.Phase == apis.Killed {
+					ok := gmo.groupQueues.DeleteFromCheckingAndAddToCompleted(gr.Name)
+					if !ok {
+						logs.Error("Delete group from checking queue and add to completed queue failed")
+					}
+				}
 				// 从etcd当中读取group信息
 				getGroup, err := gmo.clientsManager.GetGroup(gr.Name, gr.Namespace)
 				if err != nil {

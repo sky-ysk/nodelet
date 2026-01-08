@@ -188,6 +188,23 @@ func (gq *GroupQueues) DeleteFromCheckingAndAddToCopyPending(key string) bool {
 	return true
 }
 
+func (gq *GroupQueues) DeleteFromCheckingAndAddToCompleted(key string) bool {
+	gq.queueLock.Lock()
+	defer gq.queueLock.Unlock()
+	if _, exists := gq.checkingQueue[key]; !exists {
+		logs.Infof("Group:%v not in checking queue, delete failed-2", key)
+		return false
+	}
+	group := gq.checkingQueue[key]
+	delete(gq.checkingQueue, key)
+	if _, exists := gq.completedQueue[key]; exists {
+		logs.Infof("Group:%v has been added to completed queue, it's a error", key)
+		return false
+	}
+	gq.completedQueue[key] = group
+	return true
+}
+
 func (gq *GroupQueues) DeleteFromCopyPendingAndAddToRunning(key string) bool {
 	gq.queueLock.Lock()
 	defer gq.queueLock.Unlock()
