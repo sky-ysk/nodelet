@@ -1,5 +1,11 @@
 package main
 
+import (
+	"fmt"
+
+	utils "hit.edu/framework/pkg/nodelet/registry/Utils"
+)
+
 func main() {
 	// url := "http://localhost:8888/download?filename=test.txt"
 	// savePath := "/home/public/goprojects/Combine-ysk-0102/tmp/data/downloads"
@@ -11,16 +17,16 @@ func main() {
 	// 	fmt.Println("Download successful!")
 	// }
 
-	// url := "http://localhost:8888/upload"
-	// filePath := "./downloads/test.txt"
-	// fmt.Println("aaaaaUploading file:", filePath)
-	// err := utils.UploadFile(filePath, "v1.0.0", url)
-	// fmt.Println("bbbbUploading file:", filePath)
-	// if err != nil {
-	// 	fmt.Println("Upload failed:", err)
-	// } else {
-	// 	fmt.Println("Upload successful!")
-	// }
+	url := "http://localhost:8919/upload?filename=main.go"
+	filePath := "./main.go"
+	fmt.Println("aaaaaUploading file:", filePath)
+	err := utils.UploadFile(filePath, "v1.0.0", url)
+	fmt.Println("bbbbUploading file:", filePath)
+	if err != nil {
+		fmt.Println("Upload failed:", err)
+	} else {
+		fmt.Println("Upload successful!")
+	}
 
 	// url := "http://localhost:8888/upload?filename=downloads"
 	// filePath := "./downloads"

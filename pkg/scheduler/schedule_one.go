@@ -238,6 +238,56 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	//if sched.nodeInfoSnapshot.NumNodes() == 0 {
 	//	return result, ErrNoNodesAvailable
 
+	host := ""
+
+	if strings.Contains(group.ObjectMeta.Name, "G91") {
+		host = "CloudNode1"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G92") {
+		host = "CloudNode2"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G93") {
+		host = "CloudNode3"
+	}
+
+	if strings.Contains(group.ObjectMeta.Name, "G81") {
+		host = "EdgeNode1"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G82") {
+		host = "EdgeNode2"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G83") {
+		host = "EdgeNode3"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G84") {
+		host = "EdgeNode4"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G85") {
+		host = "EdgeNode5"
+	}
+
+	if strings.Contains(group.ObjectMeta.Name, "G71") {
+		host = "EndNode1"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G72") {
+		host = "EndNode2"
+	}
+	if strings.Contains(group.ObjectMeta.Name, "G73") {
+		host = "EndNode3"
+	}
+
+	if strings.Contains(group.ObjectMeta.Name, "copy") {
+		host = "EdgeNode2"
+	}
+
+	if host != ""{
+		return ScheduleResult{
+			SuggestedHost: host,
+			Group:         group,
+			FeasibleNodes: 1,
+		}, nil 
+	}
+
 	feasibleNodes, err := sched.findNodesThatFitGroup(ctx, fwk, state, group)
 	if err != nil {
 		return result, err
@@ -271,7 +321,7 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	//TODO out-tree input nodes + group
 	// 筛选
 	//host, _, err := selectHost(priorityList, numberOfHighestScoredNodesToReport)
-	host, err := selectHostByProbability(priorityList)
+	host, err = selectHostByProbability(priorityList)
 	logs.Infof("host select by probability is %s, group %s", host, group.ObjectMeta.Name)
 	if err != nil {
 		logs.Error(err.Error())
@@ -286,24 +336,7 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	//	}
 	//}
 	//}
-	if strings.Contains(group.ObjectMeta.Name, "G91") {
-		host = "CloudNode1"
-	}
-	if strings.Contains(group.ObjectMeta.Name, "G81") {
-		host = "CloudNode1"
-	}
-	if strings.Contains(group.ObjectMeta.Name, "G71") {
-		host = "CloudNode2"
-	}
-	if strings.Contains(group.ObjectMeta.Name, "G61") {
-		host = "EdgeNode1"
-	}
-	if strings.Contains(group.ObjectMeta.Name, "G51") {
-		host = "EndNode1"
-	}
-	if strings.Contains(group.ObjectMeta.Name, "copy") {
-		host = "CloudNode2"
-	}
+	
 	return ScheduleResult{
 		SuggestedHost: host,
 		Group:         group,
@@ -439,6 +472,11 @@ func (sched *Scheduler) findNodesThatPassFilters(
 	// 在这里删除不是当前命名空间的边缘节点
 	namespace := group.Namespace
 	for i := 0; i < len(feasibleNodes); i++ {
+		// 云端的任务
+		if namespace == "test" {
+			break
+		}
+		logs.Infof("namespace filter ")
 		// logs.Infof("-----------test------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
 		currentNode := feasibleNodes[i]
 		if strings.Contains(currentNode.Node().Name, "edge") || strings.Contains(currentNode.Node().Name, "Edge") {
@@ -450,6 +488,19 @@ func (sched *Scheduler) findNodesThatPassFilters(
 			}
 		}
 	}
+
+	if namespace == "test" {
+		logs.Infof("test namespace filter ")
+		// 10号展示，暂时设置成云端任务在HenanEp命名空间下执行（展示之后需要注释掉）
+		for j := 0; j < len(feasibleNodes); j++ {
+			if feasibleNodes[j].Node().Namespace != "HenanEP" {
+				feasibleNodes = append(feasibleNodes[:j], feasibleNodes[j+1:]...)
+				j--
+			}
+		}
+	}
+
+	logs.Infof("feasibleNodes number: " , len(feasibleNodes))
 	return feasibleNodes, nil
 }
 

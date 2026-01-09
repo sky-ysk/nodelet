@@ -191,16 +191,18 @@ func (sp *ServiceProxy) MigrateService(group *apis.Group, groupNamespace string,
 	// BUG:需要先保证新进程已经启动成功，才能进行迁移，否则会在迁移期间报错服务不可用或者无响应
 	// TODO:杀死之前的进程，否则端口一直被占用
 	// 在这里处理：先检查新runtime的running是否，再继续后续的操作，最后再想办法用kill杀掉原进程
+	runtimeNameNocopy := strings.ReplaceAll(runtime.Name, "-copy", "")
 	cnt := 0
 	for {
 		cnt++
-		// 100s如果还没拉起，则认为迁移出错；
+		// 10s如果还没拉起，则认为迁移出错；
 		//后续可能优化一下，尝试重新调用迁移接口
-		if cnt >= 1000 {
-			logs.Infof("100s waiting already, migrated server still not running, migrated Error!")
+		if cnt >= 200 {
+			logs.Infof("10s waiting already, migrated server still not running, migrated Error!")
 			return fmt.Errorf("migrated Error for waiting too long time!")
 		}
-		newRuntime, err := sp.clientsManager.GetRuntime(runtime.Name, runtime.Namespace)
+		
+		newRuntime, err := sp.clientsManager.GetRuntime(runtimeNameNocopy, runtime.Namespace)
 		if err != nil {
 			logs.Errorf("GetRuntime Err")
 		}
@@ -208,12 +210,13 @@ func (sp *ServiceProxy) MigrateService(group *apis.Group, groupNamespace string,
 			logs.Infof("migrated server runtime already running, start migrate interface!")
 			break
 		} else {
-			logs.Warnf("migrated server runtime still pending, wait for running!")
-			time.Sleep(100 * time.Millisecond)
+			// logs.Warnf("migrated server runtime still pending, wait for running!")
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 
 	// 向组件发送迁移服务的请求
+	logs.Info("before migrate http")
 	url := fmt.Sprintf("http://%s/migrate?name=%s&host=%s&port=%s", sp.ProxyAddr, serviceName, nodeIp, port)
 	resp, err := http.Post(url, "application/x-www-form-urlencoded", nil)
 	if err != nil {
@@ -227,7 +230,7 @@ func (sp *ServiceProxy) MigrateService(group *apis.Group, groupNamespace string,
 	}
 
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Migration response: %s\n", string(body))
+	logs.Infof("Migration response: %s\n", string(body))
 	logs.Infof("MigrateService success: %s %s", serviceName, nodeIp)
 	return nil
 }

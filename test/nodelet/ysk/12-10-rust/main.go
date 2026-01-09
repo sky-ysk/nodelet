@@ -32,7 +32,7 @@ import (
 var scheme = runtime.NewScheme()
 
 const NodeName = "cloudNode1" // 1$
-var group1_1Name = "G1"      // 第一个Task下的第一个GroupName
+var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
 var namespace = "test"
 
 // 测试切换
@@ -49,7 +49,7 @@ func main() {
 
 	// group
 
-	group1_1Replicas := []int32{1, 0}
+	group1_1Replicas := []int32{0, 0}
 
 	// action
 	action1_1_1Name := "A1" // 第一个Task下的第一个Group下的第一个ActionName  "cmd_yolo_train_action"

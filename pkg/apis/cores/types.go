@@ -1222,9 +1222,9 @@ type RuntimeSpec struct {
 
 	//是否是需要迁移的http服务端
 	// is server or client
-	IsHttpService bool `json:"is_http_service,omitempty" yaml:"is_http_service"`
-	IsHttpClient  bool `json:"is_http_client,omitempty" yaml:"is_http_client"`
-	PlantformType   string `json:"plantform_type,omitempty" yaml:"plantform_type"` //部署的平台类型 例如:win linux等，默认linux
+	IsHttpService bool   `json:"is_http_service,omitempty" yaml:"is_http_service"`
+	IsHttpClient  bool   `json:"is_http_client,omitempty" yaml:"is_http_client"`
+	PlantformType string `json:"plantform_type,omitempty" yaml:"plantform_type"` //部署的平台类型 例如:win linux等，默认linux
 }
 
 //	 输入的数据有以下几类
@@ -1762,3 +1762,44 @@ const (
 	// 文件的存储位置
 	FileFolder string = "/home/public/tmp/data"
 )
+
+// 进程资源限制
+type ProcessLimit struct {
+	meta.TypeMeta
+	meta.ObjectMeta
+	NodeName         string  `json:"node_name,omitempty" yaml:"node_name"`
+	PID              int32   `json:"pid,omitempty" yaml:"pid"`                               // 进程ID
+	CPULimit         float64 `json:"cpu_limit,omitempty" yaml:"cpu_limit"`                   // CPU限制 (cores)
+	MemoryLimitMB    int64   `json:"memory_limit_mb,omitempty" yaml:"memory_limit_mb"`       // 内存限制 (MB)
+	NetworkLimitMbps int64   `json:"network_limit_mbps,omitempty" yaml:"network_limit_mbps"` // 网络限制 (Mbps)
+	StorageLimitMB   int64   `json:"storage_limit_mb,omitempty" yaml:"storage_limit_mb"`     // 存储限制 (MB)
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type ResourceSchema struct {
+	meta.TypeMeta
+	meta.ObjectMeta
+	NodeName      string            `json:"node_name,omitempty" yaml:"node_name"`
+	ProcessLimits []ProcessLimit    `json:"process_limits,omitempty" yaml:"process_limits"`
+	MetaInfo      map[string]string `json:"meta_info,omitempty" yaml:"meta_info"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type ResourceSchemaList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []ResourceSchema `json:"items" yaml:"items"`
+}
+
+type ResourceManager struct {
+	meta.TypeMeta
+	meta.ObjectMeta
+	NodeName    string `json:"node_name"`
+	IsAllocated bool   `json:"is_allocated"`
+}
+
+type ResourceManagerList struct {
+	meta.TypeMeta
+	meta.ListMeta
+	Items []ResourceManager `json:"items" yaml:"items"`
+}

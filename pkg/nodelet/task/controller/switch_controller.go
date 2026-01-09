@@ -856,6 +856,10 @@ func NewRuntimeInfoCopy(r *apis.Runtime, isCrossDomain bool) *apis.Runtime {
 	runtimeCopy.Status.IsDependencySatisf = false
 	runtimeCopy.Status.IsParsed = false
 	runtimeCopy.Status.DepenPreparing = false
+	// 修改condition的result为false
+	for index, _ := range runtimeCopy.Spec.Conditions.Formulas {
+		runtimeCopy.Spec.Conditions.Formulas[index].Result = apis.False
+	}
 
 	if runtimeCopy.Status.Phase != apis.Successed {
 		runtimeCopy.Status.Phase = apis.Unknown

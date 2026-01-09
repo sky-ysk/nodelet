@@ -210,7 +210,7 @@ func (cr *ContainerRuntime) MonitorContainerStatus(group *apis.Group, action *ap
 	go func() {
 		for {
 			select {
-			case <-time.After(3 * time.Second):
+			case <-time.After(10 * time.Second):
 				logs.Infof("Checking container status for runtime: %s", runtime.Name)
 				container, err := cr.containerManager.GetContainer(containerId)
 				if err != nil {

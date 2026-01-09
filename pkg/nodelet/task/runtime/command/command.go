@@ -161,17 +161,7 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 	// 处理服务端迁移，分为初次部署和迁移后的copy部署
 	logs.Infof("runtime.Spec.IsHttpService:%v, runtime.Spec.IsHttpClient:%v", runtime.Spec.IsHttpService, runtime.Spec.IsHttpClient)
 	if runtime.Spec.IsHttpService == true {
-		if strings.Contains(group.Name, "copy") {
-			// 使用协程，尝试等本Start结束，让runtime变成running之后，才真正在Migrate查到running之后再调用迁移接口。
-			go func() {
-				err := cr.serviceProxy.MigrateService(group, groupNamespace, runtime, args)
-				// TODO:杀死之前的进程，否则端口一直被占用
-				if err != nil {
-					logs.Errorf("MigrateService failed:%v", err)
-					return
-				}
-			}()
-		} else {
+		if !strings.Contains(group.Name, "copy") {
 			// 说明是需要迁移功能的服务端需要调用服务迁移的接口进行服务注册
 			// 处理服务端启动命令里的ip port和服务名,对于port不动，对于ip则进行替换为当前node的ip，利用服务名进行服务注册
 			err := cr.serviceProxy.RegisterService(group, groupNamespace, runtime, args)
@@ -180,6 +170,16 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 				return fmt.Errorf("Run failure:\t %s is Failed", runtime.Name)
 			}
 			logs.Infof("RegisterService success: %s %s", groupName, runtime.Name)
+
+			// // 使用协程，尝试等本Start结束，让runtime变成running之后，才真正在Migrate查到running之后再调用迁移接口。
+			// go func() {
+			// 	err := cr.serviceProxy.MigrateService(group, groupNamespace, runtime, args)
+			// 	// TODO:杀死之前的进程，否则端口一直被占用
+			// 	if err != nil {
+			// 		logs.Errorf("MigrateService failed:%v", err)
+			// 		return
+			// 	}
+			// }()
 		}
 
 	} else if runtime.Spec.IsHttpClient == true {
@@ -470,6 +470,9 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//}
 	// rpc调用restore()
 	go func() {
+		// 休眠一定毫秒
+
+
 		nowtime := apis.Time{time.Now()}
 		patchGroup, _ := json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
@@ -480,7 +483,36 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 		if err != nil {
 			logs.Errorf("Patch group err101:%v", err)
 		}
+
+		// 休眠一定毫秒
+		
+
 	}()
+
+	// 使用协程，尝试等本Start结束，让runtime变成running之后，才真正在Migrate查到running之后再调用迁移接口。
+	go func() {
+		input := runtime.Spec.Inputs
+		args := runtime.Spec.Args
+		for i := range input {
+			// 使用engine解析input,传入的是runtime的值而不是指针引用
+			newInputValue, err := cr.engine.GetValue(&input[i], *runtime)
+			// 测试logs
+			// logs.Infof("engine get value success. Value:%v; Value.Value:%v", newInputValue, newInputValue.Value)
+			if err != nil {
+				logs.Errorf("Command.go engine get value err")
+			}
+			args = append(args, newInputValue.Value)
+		}
+		err := cr.serviceProxy.MigrateService(group, group.Namespace, runtime, args)
+		// TODO:杀死之前的进程，否则端口一直被占用
+		if err != nil {
+			logs.Errorf("MigrateService failed:%v", err)
+			return
+		}
+	}()
+
+	time1 := time.Now()
+	logs.Infof("grpc restore start time:%v", time1)
 	port, _ := cr.getPortForRuntime(runtime)
 	if port != "" {
 		client := cr.getClient(port)
@@ -497,6 +529,9 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 		logs.Errorf("EnableFineGrainedControlPort not provide, failed")
 		err = fmt.Errorf("EnableFineGrainedControlPort not provide")
 	}
+	time2 := time.Now()
+	logs.Infof("grpc restore end time:%v", time2)
+	logs.Infof("grpc restore duration time:%v", time2.Sub(time1))
 	return err
 }
 

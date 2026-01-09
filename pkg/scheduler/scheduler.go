@@ -29,12 +29,13 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/nodelet"
-	"hit.edu/framework/pkg/scheduler/utils"
 	"os"
 	"path/filepath"
 	run "runtime"
 	"time"
+
+	"hit.edu/framework/pkg/nodelet"
+	"hit.edu/framework/pkg/scheduler/utils"
 
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
@@ -44,6 +45,7 @@ import (
 	"hit.edu/framework/pkg/scheduler/framework"
 	"hit.edu/framework/pkg/scheduler/framework/plugins"
 	"hit.edu/framework/pkg/scheduler/internal"
+
 	// extension "hit.edu/framework/pkg/scheduler/schedulechain"
 	"net/http"
 
@@ -218,7 +220,9 @@ func GetSchedName(configPath string) string {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("the config is ", cf.Namespace)
+	fmt.Println("the config namespace is ", cf.Namespace)
+	fmt.Println("the config name is ", cf.NodeName)
+	
 	return cf.NodeName
 }
 
@@ -436,7 +440,7 @@ func GetAPIServerHost() string {
 	if host := os.Getenv("API_SERVER_HOST"); host != "" {
 		return host
 	}
-	return "http://localhost:10000"
+	return "http://localhost:8120"
 }
 
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
@@ -463,7 +467,12 @@ func (sched *Scheduler) checkShouldSchedule(group *apis.Group) bool {
 	if !exists || nominateHost == "" {
 		nominateHost = "CloudNode1"
 	}
+	// 10号展示 ， 暂时更改为EdgeNode1 
+	nominateHost = "EdgeNode1"
 	// 比较当前调度器名称与标签中指定的调度器名称
+
+	// fmt.Println("sched.Name : " , sched.Name)
+	// fmt.Println("nominateHost : " , nominateHost)
 	return sched.Name == nominateHost
 }
 

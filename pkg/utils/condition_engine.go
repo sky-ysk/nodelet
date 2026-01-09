@@ -2,19 +2,12 @@ package utils
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
 	"os"
 	"reflect"
 	"strings"
-	"time"
 
-	"hit.edu/framework/pkg/apimachinery/runtime"
-	"hit.edu/framework/pkg/apimachinery/runtime/schema"
-	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/client-go/clients"
-	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/utils/value"
 )
@@ -24,47 +17,7 @@ type ConditionEngine struct {
 	engine *value.Engine // 添加 Engine 字段
 }
 
-func InitClient() (*clients.ClientSet, error) {
-	//初始化ClientSet客户端
-	scheme := runtime.NewScheme()
-	apis.AddToScheme(scheme)
-	c := &rest.Config{
-		Host:    GetAPIServerHost(), //http://localhost:10000   http://suda801.wangwanu.com:11006   //连接api-server
-		APIPath: "/apis/resources/v1",
-		ContentConfig: rest.ContentConfig{
-			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
-			ContentType:        "application/json; charset=UTF-8", //application/json; charset=UTF-8
-			GroupVersion: &schema.GroupVersion{
-				Group:   "resources",
-				Version: "v1",
-			},
-			NegotiatedSerializer: serializer.NewCodecFactory(scheme),
-		},
-		UserAgent: "defaultUserAgent",
-		Transport: &http.Transport{
-			MaxIdleConns:        100,              // 最大空闲连接数
-			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
-			TLSHandshakeTimeout: 10 * time.Second, // TLS 握手超时时间
-		},
-		Timeout: 3600 * time.Second,
-	}
-	clientSet, err := clients.NewForConfig(c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize clientSet: %v", err)
-	}
-	return clientSet, nil
-}
-func GetAPIServerHost() string {
-	if host := os.Getenv("API_SERVER_HOST"); host != "" {
-		return host
-	}
-	return "http://localhost:10000"
-}
-func NewConditionEngine() *ConditionEngine {
-	client, err := InitClient()
-	if err != nil {
-		logs.Errorf("Failed to initialize client: %v", err)
-	}
+func NewConditionEngine(client *clients.ClientSet) *ConditionEngine {
 	engine := value.NewEngine(client)
 	return &ConditionEngine{
 		engine: engine, // 初始化 Engine
@@ -149,7 +102,7 @@ func (ce *ConditionEngine) checkNodeDependency(formula *apis.ConditionFormula, o
 		return apis.True, nil
 	} else {
 		// 前置节点任务未运行或未完成
-		logs.Tracef("condititon Engine: nodedependency is not ready: %v %v's parent not running or seccessed!", kind, Name)
+		logs.Warnf("condititon Engine: nodedependency is not ready: %v %v's parent not running or seccessed!", kind, Name)
 		return apis.NotReady, nil
 	}
 }

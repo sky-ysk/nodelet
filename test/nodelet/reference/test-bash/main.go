@@ -34,7 +34,7 @@ func main() {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    "http://localhost:10000", //http://suda801.wangwanu.com:11006
+		Host:    "http://120.220.95.189:48120", //http://suda801.wangwanu.com:11006
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -64,10 +64,10 @@ func main() {
 	//groupsClient := clientSet.Core().Groups("test")
 
 	// Task  总共1个Task、3个Group、3个Action、6个runtime
-	task1Name := "T1" // 第一个Task的Name
+	task1Name := "T100" // 第一个Task的Name
 
 	// group
-	group1_1Name := "G1" // 第一个Task下的第一个GroupName
+	group1_1Name := "G61" // 第一个Task下的第一个GroupName
 
 	group1_1Replicas := []int32{0, 0}
 
@@ -123,11 +123,11 @@ func main() {
 		Join:   "",
 		Result: apis.False,
 	}
-	//上传文件，runtime的Data[]里面的每一个文件都需要上传
-	filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
-	UploadFile(filePath)
-	filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/bash.sh"
-	UploadFile(filePath)
+	// //上传文件，runtime的Data[]里面的每一个文件都需要上传
+	// filePath := "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/test.txt"
+	// UploadFile(filePath)
+	// filePath = "/home/public/goprojects/Combine-ysk-0102/tmp/ForUploadServerRegistry/bash.sh"
+	// UploadFile(filePath)
 
 	runtime1_1_1_1Condition := apis.Conditions{
 		Formulas: []apis.ConditionFormula{
@@ -163,11 +163,11 @@ func main() {
 					apis.RuntimeSpec{
 						Name:                     runtime1_1_1_1Name,
 						Type:                     apis.ByCommand,
-						Command:                  []string{"sh"},
-						Args:                     []string{"bash.sh"}, // 10s
-						Inputs:                   []apis.Value{apis.Value{}},                                        //20s
-						Parents:                  make([]string, 0),                                                                  // 加入Parents
-						Data:                     []apis.DataSpec{apis.DataSpec{Name: "bash.sh"}, apis.DataSpec{Name: "test.txt"}}, // 依赖文件
+						Command:                  []string{"ls"},
+						Args:                     []string{"-a"},             // 10s
+						Inputs:                   []apis.Value{apis.Value{}}, //20s
+						Parents:                  make([]string, 0),          // 加入Parents
+						Data:                     []apis.DataSpec{},          // 依赖文件
 						Conditions:               &runtime1_1_1_1Condition,
 						EnvVar:                   []apis.EnvVar{apis.EnvVar{Name: "", Value: ""}},
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,

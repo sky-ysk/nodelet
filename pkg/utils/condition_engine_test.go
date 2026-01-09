@@ -187,7 +187,8 @@ func TestNodeDependency(t *testing.T) {
 // TODO 测试DataDependency
 func TestDataDependency(t *testing.T) {
 	//创建condition Engine
-	ce := NewConditionEngine()
+	client, _ := CreateClientSet()
+	ce := NewConditionEngine(client)
 	fmt.Println(ce)
 	logs.Init("====test condition engine init====")
 
@@ -261,19 +262,18 @@ func CreateLocalTest() (apis.Action, apis.Runtime) {
 		},
 	}
 	Action := apis.ActionSpec{
-			Name: action1_1_1Name,
-			Runtimes: []apis.RuntimeSpec{
-				apis.RuntimeSpec{
-					Name:                     runtime1_1_1_1Name,
-					Type:                     apis.ByCommand,
-					Command:                  []string{"python"},
-					Args:                     []string{"upload.py", "test.txt", "uotput.txt"}, // 10s
-					Inputs:                   []apis.Value{apis.Value{Value: "test.txt"}},                                                                                                                                               // 加入Parents
-					Conditions:               &runtime1_1_1_1Condition,
-				},
+		Name: action1_1_1Name,
+		Runtimes: []apis.RuntimeSpec{
+			apis.RuntimeSpec{
+				Name:       runtime1_1_1_1Name,
+				Type:       apis.ByCommand,
+				Command:    []string{"python"},
+				Args:       []string{"upload.py", "test.txt", "uotput.txt"}, // 10s
+				Inputs:     []apis.Value{apis.Value{Value: "test.txt"}},     // 加入Parents
+				Conditions: &runtime1_1_1_1Condition,
 			},
-		}
-
+		},
+	}
 
 	a, err := m.CreateAction(Action, nil, namespace, u.String(), "")
 	if err != nil {

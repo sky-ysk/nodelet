@@ -4,6 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -16,9 +20,6 @@ import (
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
-	"net/http"
-	"os"
-	"time"
 )
 
 // 创建一个Rest Client
@@ -35,7 +36,7 @@ func main() {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    "http://localhost:10000", //http://suda801.wangwanu.com:11006
+		Host:    "http://120.220.95.189:48120", //http://suda801.wangwanu.com:11006
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -64,13 +65,13 @@ func main() {
 	// 这里以访问资源Task为例，
 	// 获取访问Task的客户端
 	// 默认访问的Namespace是 ""
-
-	tasksClient := clientSet.Core().Tasks("HenanEP")
-	groupsClient := clientSet.Core().Groups("HenanEP")
-	actionsClient := clientSet.Core().Actions("HenanEP")
-	runtimesClient := clientSet.Core().Runtimes("HenanEP")
-	eventsClient := clientSet.Core().Events("HenanEP")
-	nodesClient := clientSet.Core().Nodes("HenanEP")
+	namespace := "HenanEP"
+	tasksClient := clientSet.Core().Tasks(namespace)
+	groupsClient := clientSet.Core().Groups(namespace)
+	actionsClient := clientSet.Core().Actions(namespace)
+	runtimesClient := clientSet.Core().Runtimes(namespace)
+	eventsClient := clientSet.Core().Events(namespace)
+	// nodesClient := clientSet.Core().Nodes("HenanEP")
 
 	// Task资源
 	logs.Info("======Task")
@@ -138,19 +139,19 @@ func main() {
 		}
 		logs.Infof("Event删除成功: %v", event.Name)
 	}
-	// Node资源
-	logs.Info("======Node")
-	list6, err := nodesClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	for _, node := range list6.Items {
-		err := nodesClient.Delete(context.TODO(), node.Name, metav1.DeleteOptions{})
-		if err != nil {
-			panic(err)
-		}
-		logs.Infof("Node删除成功: %v", node.Name)
-	}
+	// // Node资源
+	// logs.Info("======Node")
+	// list6, err := nodesClient.List(context.TODO(), metav1.ListOptions{})
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// for _, node := range list6.Items {
+	// 	err := nodesClient.Delete(context.TODO(), node.Name, metav1.DeleteOptions{})
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	logs.Infof("Node删除成功: %v", node.Name)
+	// }
 	// 删除service、pod
 	clientset := config.LoadConfig()
 	if clientset == nil {

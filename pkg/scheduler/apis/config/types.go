@@ -9,7 +9,7 @@ import (
 //TODO: 将K8s相关组件替换为我们自己的
 
 const (
-	DefaultSchedulerPort = 10000
+	DefaultSchedulerPort = 8120
 )
 
 type SchedulerConfiguration struct {

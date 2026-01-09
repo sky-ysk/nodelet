@@ -453,6 +453,8 @@ func (gmo *GroupMonitor) CopyPendingQueueCheck(ctx context.Context) { //TODO 对
 				} else if group.Status.CopyStatus == "Starting" {
 					logs.Infof("time:%v", time.Now())
 					logs.Infof("=============CopyPending--Starting")
+					// 向服务迁移组件注册迁移后的新的路由。
+					// 可能有个问题，无副本的瞬时迁移情况下，新节点的任务有可能还没拉起，如果立刻服务迁移它的路由，会出现问题===如果要实现无副本迁移，需要考虑这一点，
 					ok := gmo.groupQueues.DeleteFromCopyPendingAndAddToRunning(group.Name) // 有两种情况，一种是无副本情况的瞬时迁移，另一种是副本任务触发了迁移
 					if !ok {
 						logs.Error("Delete group from copy checking queue and add to running queue failed")

@@ -150,7 +150,7 @@ func (e *Engine) ExtractDeviceImage(from string) (string, string, string, error)
 
 func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Value, error) {
 	kind := reflect.TypeOf(o).Name()
-	logs.Infof("kind %s, value %v", kind, value)
+	// logs.Infof("kind %s, value %v", kind, value)
 	// 下面这一个地方经常报错，原因是Kind匹配问题，如果o是runtime类型的，那么kind就是runtime，无法越级访问上层的正则表达式
 	// 导致Action{}.Name{}这种匹配不到====目前的解决方案，调整runtime的规则范围使其能够概括所有需要的规则
 	// 依复杂情况可以改成单独设计正则规则和解析规则，与device类似：新增input类型的datatype，然后再编写对应的解析函数
@@ -341,7 +341,7 @@ func (e *Engine) GetNameFromGroup(name string, parts []string, group *apis.Group
 	switch name {
 	case "GroupExpr":
 		// Group{}位置
-		fmt.Println("GroupExpr")
+		// fmt.Println("GroupExpr")
 		target := parts[1]
 		from := parts[2]
 		fromKey := parts[3]

@@ -109,7 +109,7 @@ func NewTaskExporter(cfg *Config, clientset *clients.ClientSet, ctx context.Cont
 	//dependencyManager配置
 	depenManager := dependency.NewDependencyManager()
 	//condition engine配置
-	conditionEngine := utils.NewConditionEngine() // 初始化时传入 clientset
+	conditionEngine := utils.NewConditionEngine(clientset) // 初始化时传入 clientset
 
 	// queue_manager
 	groupQueues := group.NewGroupQueues(groupManager)

@@ -85,7 +85,7 @@ func initializeConfig(configPath string) error {
 		panic(err)
 		if errors.Is(err, os.ErrNotExist) {
 			// 文件不存在时使用默认值
-			apiServerHost = "http://localhost:10000"
+			apiServerHost = "http://localhost:8120"
 			return nil
 		}
 		return fmt.Errorf("读取配置文件失败: %w", err)
@@ -101,7 +101,7 @@ func initializeConfig(configPath string) error {
 	if cfg.APIServerHost != "" {
 		apiServerHost = cfg.APIServerHost
 	} else {
-		apiServerHost = "http://localhost:10000" // 默认值
+		apiServerHost = "http://localhost:8120" // 默认值
 	}
 
 	return nil

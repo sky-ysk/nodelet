@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	apis "hit.edu/framework/pkg/apis/cores"
-	metav1 "hit.edu/framework/pkg/apis/meta"
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/client-go/util/manager"
@@ -31,8 +29,8 @@ import (
 var scheme = runtime.NewScheme()
 
 const NodeName = "cloudNode1" // 1$
-var group1_1Name = "G91"      // 第一个Task下的第一个GroupName
-var namespace = "test1"
+var group1_1Name = "G91"       // 第一个Task下的第一个GroupName
+var namespace = "test"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -55,9 +53,21 @@ func main() {
 
 	// runtime
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
-	runtime1_1_1_2Name := "R2" // 第一个Task下的第一个Group下的第一个ActionName下的第二个RuntimeName
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
+	// 程序依赖（requirements.txt）
+	ProgramDependencyConditionFormula := apis.ConditionFormula{
+		ConditionType: apis.ProgramDependency,
+		LeftValue: apis.Value{
+			From: "/home/goprojects/workspace/inferServer/requirements_dianli.txt", //2$
+		},
+	}
+
+	runtime1_1_1_1Condition := apis.Conditions{
+		Formulas: []apis.ConditionFormula{
+			ProgramDependencyConditionFormula,
+		},
+	}
 
 	gs1 := apis.GroupSpec{
 		Replicas: group1_1Replicas,
@@ -68,20 +78,12 @@ func main() {
 				Name: action1_1_1Name,
 				Runtimes: []apis.RuntimeSpec{
 					apis.RuntimeSpec{
-						Name:                     runtime1_1_1_1Name,
-						Type:                     apis.ByCommand,
-						Command:                  []string{"pwd"},
-						Args:                     []string{""},
-						Conditions:               nil,
-						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
-					},
-					apis.RuntimeSpec{
-						Name:                     runtime1_1_1_2Name,
-						Type:                     apis.ByCommand,
-						Parents:                  []string{runtime1_1_1_1Name},
-						Command:                  []string{"pwd"},
-						Args:                     []string{""},
-						Conditions:               nil,
+						Name:    runtime1_1_1_1Name,
+						Type:    apis.ByCommand,
+						Command: []string{"python"},
+						Args:    []string{"/home/workspace/inferServer/main.py", "--port","20010", "--config", "config.yaml"},
+						Data:    []apis.DataSpec{},
+						Conditions:               &runtime1_1_1_1Condition,
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
 					},
 				},
@@ -109,78 +111,7 @@ func main() {
 	fmt.Println(str)
 
 	prompt()
-	tasksClient := clientSet.Core().Tasks(namespace)
-	groupsClient := clientSet.Core().Groups(namespace)
-	actionsClient := clientSet.Core().Actions(namespace)
-	runtimesClient := clientSet.Core().Runtimes(namespace)
-	eventsClient := clientSet.Core().Events(namespace)
 
-	// Task资源
-	logs.Info("======Task")
-	list1, err := tasksClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	for _, task := range list1.Items {
-		err := tasksClient.Delete(context.TODO(), task.Name, metav1.DeleteOptions{})
-		if err != nil {
-			panic(err)
-		}
-		logs.Infof("Task删除成功: %v", task.Name)
-	}
-	// group资源
-	logs.Info("======Group")
-	list2, err := groupsClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	for _, group := range list2.Items {
-		err := groupsClient.Delete(context.TODO(), group.Name, metav1.DeleteOptions{})
-		if err != nil {
-			panic(err)
-		}
-		logs.Infof("Group删除成功: %v", group.Name)
-	}
-	// action 资源
-	logs.Info("======Action")
-	list3, err := actionsClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	for _, action := range list3.Items {
-		err := actionsClient.Delete(context.TODO(), action.Name, metav1.DeleteOptions{})
-		if err != nil {
-			panic(err)
-		}
-		logs.Infof("Action删除成功: %v", action.Name)
-	}
-	// runtime 资源
-	logs.Info("======Runtime")
-	list4, err := runtimesClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	for _, runtime := range list4.Items {
-		err := runtimesClient.Delete(context.TODO(), runtime.Name, metav1.DeleteOptions{})
-		if err != nil {
-			panic(err)
-		}
-		logs.Infof("Runtime删除成功:%v", runtime.Name)
-	}
-
-	// Event资源
-	logs.Info("======Event")
-	list5, err := eventsClient.List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	for _, event := range list5.Items {
-		err := eventsClient.Delete(context.TODO(), event.Name, metav1.DeleteOptions{})
-		if err != nil {
-			panic(err)
-		}
-		logs.Infof("Event删除成功: %v", event.Name)
-	}
 	prompt()
 
 }
