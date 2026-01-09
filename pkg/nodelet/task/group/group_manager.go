@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-// 管理当前节点上运行的所有Group
+// 管理当前节点上运行的所有Group-相当与内存当中存的group信息
 // TODO: Group包含Actions, Action相关的运行方式
 
 type Manager interface {
