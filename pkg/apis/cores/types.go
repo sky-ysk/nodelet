@@ -206,6 +206,7 @@ type NodeSpec struct {
 	ClusterID *string `json:"cluster_id,omitempty" yaml:"cluster_id"`
 	// hzy添加，节点ip地址
 	HostIp string `json:"hostIp,omitempty" yaml:"hostIp"`
+	OperatingSystem string `json:"operating_system,omitempty" yaml:"operating_system"` //节点操作系统
 }
 
 // 计算、网络、存储等定量资源
@@ -1225,6 +1226,7 @@ type RuntimeSpec struct {
 	IsHttpService bool   `json:"is_http_service,omitempty" yaml:"is_http_service"`
 	IsHttpClient  bool   `json:"is_http_client,omitempty" yaml:"is_http_client"`
 	PlantformType string `json:"plantform_type,omitempty" yaml:"plantform_type"` //部署的平台类型 例如:win linux等，默认linux
+	AbsDirectory  string `json:"abs_directory,omitempty" yaml:"abs_directory"`   //绝对路径，程序运行时的路径，可选填。如果填写，则cmd启动的Dir最终设置为这个值
 }
 
 //	 输入的数据有以下几类

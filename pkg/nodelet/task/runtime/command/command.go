@@ -203,12 +203,15 @@ func (cr *CommandRuntime) startCMD(group *apis.Group, groupName, groupNamespace 
 	// CMD.Env = append(CMD.Env, )
 
 	CMD.Dir = runtime.Status.Directory
+	// 如果Spec中指定了工作目录，则使用指定的工作目录
+	if runtime.Spec.AbsDirectory != "" {
+		CMD.Dir = runtime.Spec.AbsDirectory
+	}
 	// 检查工作目录，如果不存在说明数据出问题了
 	if _, err := os.Stat(CMD.Dir); os.IsNotExist(err) {
 		logs.Errorf("Directory %s does not exist: %v", CMD.Dir, err)
 		return fmt.Errorf("directory %s does not exist: %w", CMD.Dir, err)
 	}
-
 	// 启动命令
 	logs.Infof("runtime Name:\t %s is Running", runtime.Name)
 
@@ -470,8 +473,11 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	//}
 	// rpc调用restore()
 	go func() {
-		// 休眠一定毫秒
-
+		// 休眠一定毫秒,在100~200ms之间,生成随机数
+		rand.Seed(time.Now().UnixNano())
+		randomDelay := rand.Intn(100) + 100 // 生成100到200之间的随机数
+		time.Sleep(time.Duration(randomDelay) * time.Millisecond)
+		// 更新group的restoreTime字段为当前时间
 
 		nowtime := apis.Time{time.Now()}
 		patchGroup, _ := json.Marshal(map[string]interface{}{
@@ -484,9 +490,21 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 			logs.Errorf("Patch group err101:%v", err)
 		}
 
-		// 休眠一定毫秒
-		
+		// 休眠一定毫秒,在200~400ms之间,生成随机数
 
+		randomDelay = rand.Intn(200) + 200 // 生成200到400之间的随机数
+		time.Sleep(time.Duration(randomDelay) * time.Millisecond)
+		//
+		nowtime = apis.Time{time.Now()}
+		patchGroup, _ = json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"serviceRestoreTime": nowtime,
+			},
+		})
+		_, err = cr.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+		if err != nil {
+			logs.Errorf("Patch group err202:%v", err)
+		}
 	}()
 
 	// 使用协程，尝试等本Start结束，让runtime变成running之后，才真正在Migrate查到running之后再调用迁移接口。

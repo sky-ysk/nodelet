@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	version "github.com/hashicorp/go-version"
 	apis "hit.edu/framework/pkg/apis/cores"
 	"hit.edu/framework/pkg/component-base/logs"
 )
@@ -224,38 +225,88 @@ func (dm *DependencyManager) ParseRequirements(filePath string) ([]apis.Requirem
 	return requirements, nil
 }
 
-// 将获取到的requirements.txt的内容与已有的installed的内容比较
+// // 将获取到的requirements.txt的内容与已有的installed的内容比较
+// func CheckRequirements(requirements []apis.Requirement, installed []apis.Requirement, envName string) bool {
+// 	startTime := time.Now()
+// 	allSatisfied := true
+// 	for _, req := range requirements {
+// 		found := false
+// 		name := req.Name
+// 		// reqVersion := req.Version
+// 		var installedVersion string
+// 		for _, installed := range installed {
+// 			if installed.Name == name {
+// 				found = true
+// 				installedVersion = installed.Version
+// 			}
+// 		}
+// 		if !found {
+// 			// logs.Info("Package %v is not installed.", req.Name)
+// 			allSatisfied = false
+// 			return allSatisfied
+// 		} else if req.Version != "" && installedVersion < req.Version {
+// 			//找到对应的package但是版本落后
+// 			logs.Info("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
+// 			allSatisfied = false
+// 			return allSatisfied
+// 		} else {
+// 			// logs.Info("Package %s is satisfied.", req.Name)
+// 		}
+// 	}
+// 	// logs.Info("requirements satisfied envName: %v", envName)
+// 	timeCost := time.Since(startTime)
+// 	logs.Trace("CheckRequirements cost %s time", timeCost)
+// 	return allSatisfied
+// }
+
+// CheckRequirements 检查已安装的包是否满足 requirements.txt 中的要求
 func CheckRequirements(requirements []apis.Requirement, installed []apis.Requirement, envName string) bool {
 	startTime := time.Now()
-	allSatisfied := true
+	defer func() {
+		timeCost := time.Since(startTime)
+		logs.Trace("CheckRequirements cost %s time", timeCost)
+	}()
+
 	for _, req := range requirements {
-		found := false
 		name := req.Name
-		// reqVersion := req.Version
-		var installedVersion string
-		for _, installed := range installed {
-			if installed.Name == name {
+		reqVersionStr := req.Version
+		// 在 installed 中查找同名包
+		var installedVersionStr string
+		found := false
+		for _, inst := range installed {
+			if inst.Name == name {
 				found = true
-				installedVersion = installed.Version
+				installedVersionStr = inst.Version
+				break
 			}
 		}
 		if !found {
-			// logs.Info("Package %v is not installed.", req.Name)
-			allSatisfied = false
-			return allSatisfied
-		} else if req.Version != "" && installedVersion < req.Version {
-			//找到对应的package但是版本落后
-			logs.Info("Package %v version mismatch: required %v, installed %v.", req.Name, req.Version, installedVersion)
-			allSatisfied = false
-			return allSatisfied
-		} else {
-			// logs.Info("Package %s is satisfied.", req.Name)
+			// logs.Info("Package %v is not installed.", name)
+			return false
+		}
+		// 如果 requirement 没指定版本，认为满足
+		if reqVersionStr == "" {
+			continue
+		}
+		// 解析版本（兼容带 'v' 前缀的情况，如 v1.2.3）
+		reqVer, err := version.NewVersion(reqVersionStr)
+		if err != nil {
+			logs.Warn("Invalid required version for package %v: %v, skipping version check", name, reqVersionStr)
+			continue // 或 return false，根据你的策略
+		}
+		instVer, err := version.NewVersion(installedVersionStr)
+		if err != nil {
+			logs.Warn("Invalid installed version for package %v: %v, cannot compare", name, installedVersionStr)
+			return false // 安装的版本非法，视为不满足
+		}
+		// 比较：installed >= required ?
+		if instVer.LessThan(reqVer) {
+			logs.Info("Package %v version mismatch: required %v, installed %v.", name, reqVersionStr, installedVersionStr)
+			return false
 		}
 	}
 	// logs.Info("requirements satisfied envName: %v", envName)
-	timeCost := time.Since(startTime)
-	logs.Trace("CheckRequirements cost %s time", timeCost)
-	return allSatisfied
+	return true
 }
 
 // 根据已有的requirements.txt创建新的conda环境

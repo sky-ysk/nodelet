@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +139,10 @@ func getLocalIP() (string, error) {
 	return "", errors.New("no suitable IP address found")
 }
 
+func GetOS() string {
+	return runtime.GOOS
+}
+
 // 识别虚拟网络接口（根据操作系统）
 func isVirtualInterface(name string) bool {
 	// Linux虚拟接口通常包含特定前缀
@@ -188,6 +193,7 @@ func (n *NodeExporter) Run(ctx context.Context) error {
 				Resource:        make(map[string][]apis.Item),
 				HostName:        getHostName(),
 				HostIp:          getHostIP(),
+				OperatingSystem: GetOS(),
 			},
 			Status: apis.NodeStatus{
 				Usage: make(map[string][]apis.Item),
