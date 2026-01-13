@@ -181,6 +181,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		name, kindType, from, fromKey, err = e.GetNameFromAction(typeName, parts, &r)
 		logs.Infof(" name %s, kindType %s, from %s %s", name, kindType, from, fromKey)
 		if err != nil {
+			logs.Error(err.Error())
 			return nil, err
 		}
 	case "Group":
@@ -189,6 +190,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		name, kindType, from, fromKey, err = e.GetNameFromGroup(typeName, parts, &r)
 		// fmt.Println(name, kindType, from, fromKey, err)
 		if err != nil {
+			logs.Error(err.Error())
 			return nil, err
 		}
 	case "Task":
@@ -196,6 +198,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromTask(typeName, parts, &r)
 		if err != nil {
+			logs.Error(err.Error())
 			return nil, err
 		}
 	case "Workflow":
@@ -203,6 +206,7 @@ func (e *Engine) ExtractLocalValue(value *apis.Value, o interface{}) (*apis.Valu
 		namespace = r.Namespace
 		name, kindType, from, fromKey, err = e.GetNameFromWorkflow(typeName, parts, &r)
 		if err != nil {
+			logs.Error(err.Error())
 			return nil, err
 		}
 	}

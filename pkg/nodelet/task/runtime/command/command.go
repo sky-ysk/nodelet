@@ -475,10 +475,10 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 	go func() {
 		// 休眠一定毫秒,在100~200ms之间,生成随机数
 		rand.Seed(time.Now().UnixNano())
-		randomDelay := rand.Intn(100) + 100 // 生成100到200之间的随机数
+		randomDelay := rand.Intn(200) + 100 // 生成100到300之间的随机数
 		time.Sleep(time.Duration(randomDelay) * time.Millisecond)
+		logs.Infof("randomDelay1:%v", randomDelay)
 		// 更新group的restoreTime字段为当前时间
-
 		nowtime := apis.Time{time.Now()}
 		patchGroup, _ := json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
@@ -489,19 +489,22 @@ func (cr *CommandRuntime) RestoreData(group *apis.Group, action *apis.Action, ru
 		if err != nil {
 			logs.Errorf("Patch group err101:%v", err)
 		}
-
+		group_new, err := cr.clientsManager.GetGroup(group.Name, group.Namespace)
+		if err != nil {
+			logs.Errorf("Patch group err101:%v", err)
+		}
 		// 休眠一定毫秒,在200~400ms之间,生成随机数
 
-		randomDelay = rand.Intn(200) + 200 // 生成200到400之间的随机数
+		randomDelay = rand.Intn(100) + 50 // 生成50到150之间的随机数
 		time.Sleep(time.Duration(randomDelay) * time.Millisecond)
-		//
-		nowtime = apis.Time{time.Now()}
-		patchGroup, _ = json.Marshal(map[string]interface{}{
+		logs.Infof("randomDelay2:%v", randomDelay)
+		nowtime1 := apis.Time{time.Now()}
+		patchGroup1, _ := json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
-				"serviceRestoreTime": nowtime,
+				"serviceRestoreTime": nowtime1,
 			},
 		})
-		_, err = cr.clientsManager.PatchGroup(group.Name, group.Namespace, patchGroup)
+		_, err = cr.clientsManager.PatchGroup(group_new.Name, group_new.Namespace, patchGroup1)
 		if err != nil {
 			logs.Errorf("Patch group err202:%v", err)
 		}

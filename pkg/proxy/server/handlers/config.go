@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"net/http"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
 	"hit.edu/framework/pkg/client-go/clients/scheme"
 	"hit.edu/framework/pkg/client-go/rest"
-	"net/http"
-	"time"
 )
 
 type ClientSetConfig struct {
@@ -48,7 +49,7 @@ func (c *ClientSetConfig) GetRestConfig() *rest.Config {
 	//	Timeout: 10 * time.Second,
 	//}
 	r := &rest.Config{
-		Host:    "http://localhost:10000",
+		Host:    "http://localhost:8120",
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

@@ -29,8 +29,8 @@ import (
 var scheme = runtime.NewScheme()
 
 const NodeName = "cloudNode1" // 1$
-var group1_1Name = "G91"       // 第一个Task下的第一个GroupName
-var namespace = "test"
+var group1_1Name = "G81"      // 第一个Task下的第一个GroupName
+var namespace = "HenanEP"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -55,24 +55,18 @@ func main() {
 	runtime1_1_1_1Name := "R1" // 第一个Task下的第一个Group下的第一个ActionName下的第一个RuntimeName
 	// runtime是否细粒度控制
 	runtime1_1_1_1FineGrainedControl := false
-	// 程序依赖（requirements.txt）
-	ProgramDependencyConditionFormula := apis.ConditionFormula{
-		ConditionType: apis.ProgramDependency,
-		LeftValue: apis.Value{
-			From: "/home/goprojects/workspace/inferServer/requirements_dianli.txt", //2$
-		},
-	}
-
-	runtime1_1_1_1Condition := apis.Conditions{
-		Formulas: []apis.ConditionFormula{
-			ProgramDependencyConditionFormula,
-		},
-	}
+	IsHttpService := false
+	IsHttpClient := false
+	PlantformType := "linux"
 
 	gs1 := apis.GroupSpec{
 		Replicas: group1_1Replicas,
 		Name:     group1_1Name,
-		Parents:  make([]string, 0),
+		Desc: &apis.Description{
+			Label: map[string]string{"scheduler": "EdgeNode1"},
+			Docs:  "wasm-linux测试任务",
+		},
+		Parents: make([]string, 0),
 		Actions: []apis.ActionSpec{
 			apis.ActionSpec{
 				Name: action1_1_1Name,
@@ -80,11 +74,17 @@ func main() {
 					apis.RuntimeSpec{
 						Name:    runtime1_1_1_1Name,
 						Type:    apis.ByCommand,
-						Command: []string{"python"},
-						Args:    []string{"/home/workspace/inferServer/main.py", "--port","20013", "--config", "config.yaml"},
-						Data:    []apis.DataSpec{},
-						Conditions:               &runtime1_1_1_1Condition,
+						Command: []string{"./power_rust_infer_server_v260103"},
+						//  /tmp/file/power_rust_infer_server/power_rust_infer_server_v260103 --port 20012 --config ./ftp.SECRET.yaml
+						// Args:                     []string{"--port", "20013", "--config", "/tmp/file/power_rust_infer_server/ftp.SECRET.yaml", "--serviceName", "picAnalyse"},
+						Args:                     []string{"--port", "20012", "--config", "./ftp.SECRET.yaml"},
+						Data:                     []apis.DataSpec{},
+						Conditions:               nil,
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
+						IsHttpService:            IsHttpService,
+						IsHttpClient:             IsHttpClient,
+						PlantformType:            PlantformType,
+						AbsDirectory: "/tmp/file/power_rust_infer_server",
 					},
 				},
 			},
@@ -93,6 +93,10 @@ func main() {
 
 	ts := apis.TaskSpec{
 		Name: task1Name,
+		Desc: &apis.Description{
+			Label: map[string]string{"scheduler": "EdgeNode1"},
+			Docs:  "wasm-linux测试任务",
+		},
 		Groups: []apis.GroupSpec{
 			gs1,
 		},
@@ -112,13 +116,11 @@ func main() {
 
 	prompt()
 
-	prompt()
-
 }
 
 // From K8s
 func prompt() {
-	fmt.Printf("-> Press Return key to continue.发送一个迁移事件")
+	fmt.Printf("-> Press Return key to continue.")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		break
@@ -134,7 +136,7 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	logs.Info(scheme)
 	// 创建ClientSet
 	c := &rest.Config{
-		Host:    "http://10.31.10.20:8120",
+		Host:    "http://120.220.95.189:48120",
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

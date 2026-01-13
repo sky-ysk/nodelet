@@ -48,7 +48,7 @@ func NewConfig() *Config {
 	// TODO: 临时性配置
 	handlerConfig := handlers.NewForConfig(
 		"127.0.0.1",
-		10000,
+		8120,
 		schema.GroupVersion{
 			"resources",
 			"v1",

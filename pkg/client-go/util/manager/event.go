@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+
 	"hit.edu/framework/pkg/apimachinery/types"
 	"hit.edu/framework/pkg/component-base/logs"
 
@@ -70,6 +71,7 @@ func (m *Manager) GetEvents(namespace string) (*apis.EventList, error) {
 }
 
 func (m *Manager) LogEvent(object runtime.Object, eventtype, reason, message string, namespace string) error {
+	logs.Infof("create event")
 	c := m.GetEventClient(namespace)
 	c.Recoder.Event(object, eventtype, reason, message)
 	return nil
