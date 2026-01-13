@@ -853,7 +853,6 @@ func (gmo *GroupMonitor) MigratedQueueCheck(ctx context.Context) {
 						if err != nil {
 							logs.Errorf("Get copy group err:%v", err)
 						}
-
 					} else {
 						// TODO 通过跨域的连接取到getGroup
 						groupTarget := gmo.groupTargets[value]
@@ -872,8 +871,12 @@ func (gmo *GroupMonitor) MigratedQueueCheck(ctx context.Context) {
 						gmo.handleTaskFailedUpdate(group) // 设置当前group的状态（copyStatus的值）为Failed
 						logs.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@!=5")
 						gmo.groupQueues.DeleteFromMigratedAndAddToCompleted(group.Name)
+					} else if getGroup.Status.Phase == apis.Killed { // 说明group迁移过去被用户手动kill关闭了，这个时候把Task状态置为killed即可
+						gmo.handleTaskKilledUpdate(group) // 设置当前group的状态（copyStatus的值）为Failed
+						logs.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@!=6")
+						gmo.groupQueues.DeleteFromMigratedAndAddToCompleted(group.Name)
 					}
-					// 如果上述两个分支都没有执行，说明副本group还在执行
+					// 如果上述三个分支都没有执行，说明副本group还在执行
 					break // 这里是只针对遍历到的第一个副本group
 				}
 			}
@@ -2579,6 +2582,44 @@ func (gmo *GroupMonitor) handleTaskFailedUpdate(gro *apis.Group) {
 	patchTask, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
 			"phase":     apis.Failed,
+			"finish":    nowTime,
+			"last_time": nowTime,
+		},
+	})
+	_, err = gmo.clientsManager.PatchTask(task.Name, task.Namespace, patchTask)
+	if err != nil {
+		logs.Errorf("Patch task err:%v", err)
+	}
+}
+
+// 设置当前group的状态(copyStatus的值)为Killed，标记其副本任务执行失败了，同时修改当前Group所属的Task的phase为Killed
+func (gmo *GroupMonitor) handleTaskKilledUpdate(gro *apis.Group) {
+	// 设置group的状态(copyStatus的值)为Kiled
+	patchGroup, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"copy_status": "Killed",
+		},
+	})
+	_, err = gmo.clientsManager.PatchGroup(gro.Name, gro.Namespace, patchGroup)
+	if err != nil {
+		logs.Errorf("Patch task err-15:%v", err)
+	}
+	// 修改Group所属的Task的Phase为Failed
+	nowTime := apis.Time{time.Now()}
+	taskName := gro.Status.Belong.Name // group的Belongs属性当中的TaskID
+	var task *apis.Task
+	var err2 error
+	task, err2 = gmo.clientsManager.GetTask(taskName, gro.Status.Belong.Namespace)
+	if err2 != nil {
+		logs.Error("Get task by taskID error from etcd:%v", err2)
+		return
+	}
+	if task.Status.Phase == apis.Killed { // 有可能有这种情况，就是有多个迁移的group，可能其中一个已经执行了该方法，将Task的phase改为了Failed了
+		return
+	}
+	patchTask, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase":     apis.Killed,
 			"finish":    nowTime,
 			"last_time": nowTime,
 		},
