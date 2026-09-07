@@ -1,0 +1,51 @@
+{
+  "kind": "Task",
+  "apiVersion": "resources/v1",
+  "namespace": "HenanEP",
+  "spec": {
+    "name": "T1",
+    "desc": {
+      "docs": "wasm-windows测试任务"
+    },
+    "groups": [
+      {
+        "name": "G71",
+        "desc": {
+          "label": {
+            "scheduler": "EdgeNode1"
+          },
+          "docs": "电网windows测试"
+        },
+        "actions": [
+          {
+            "name": "A1",
+            "runtimes": [
+              {
+                "name": "R1-wasm",
+                "type": "command",
+                "command": [
+                  ".\\power_rust_infer_server_v260112.exe"
+                ],
+                "args": [
+                  "--port",
+                  "20013",
+                  "--config",
+                  ".\\ftp.SECRET.yaml",
+                  "--serviceName",
+                  "picAnalyse"
+                ],
+                "is_http_service": true,
+                "plantform_type": "windows",
+                "abs_directory": "C:\\\\project\\\\power_rust_infer_server_v260112\\\\power_rust_infer_server"
+              }
+            ]
+          }
+        ],
+        "replicas": [
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

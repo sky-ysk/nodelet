@@ -60,7 +60,7 @@ func main() {
 	}
 	data := &apis.Data{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "Dianli",
+			Name:      "wasm-windows-HenanEP",
 			Namespace: "HenanEP",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -68,12 +68,12 @@ func main() {
 			APIVersion: "resources/v1",
 		},
 		Spec: apis.DataSpec{
-			Name:       "电网迁移测试",
+			Name:       "电网wasm-windows-HenanEP测试",
 			BelongNode: "n20",
-			FilePath:   "/root/goprojects/workflow/Dianli.json", //这个就是咱们放工作流文件的地方，然后前端读到这个文件名（注意是文件名），然后根据文件名再去到文件仓库当中读取这个json文件，最后展示到前端
+			FilePath:   "/root/goprojects/workflow/wasm-windows-HenanEP.json", //这个就是咱们放工作流文件的地方，然后前端读到这个文件名（注意是文件名），然后根据文件名再去到文件仓库当中读取这个json文件，最后展示到前端
 			FileFormat: "json",
 			Desc: &apis.Description{
-				Docs: "电网迁移测试",
+				Docs: "电网wasm-windows-HenanEP测试",
 			},
 		},
 		Status: apis.DataStatus{

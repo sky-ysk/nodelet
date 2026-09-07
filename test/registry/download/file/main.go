@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	url := "http://localhost:8919/download?filename=server"
+	url := "http://120.220.95.189:48121/download?filename=clientUpload.go"
 	savePath := "./"
 
 	err := utils.DownloadFile(url, savePath)

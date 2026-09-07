@@ -1,0 +1,63 @@
+{
+  "kind": "Task",
+  "apiVersion": "resources/v1",
+  "namespace": "HenanEP",
+  "spec": {
+    "name": "T1",
+    "desc": {
+        "docs": "电网迁移测试"
+    },
+    "groups": [
+      {
+        "name": "G81",
+        "desc": {
+          "label": {
+            "scheduler": "EdgeNode1"
+          },
+          "docs": "电网迁移测试"
+        },
+        "actions": [
+          {
+            "name": "A1",
+            "runtimes": [
+              {
+                "name": "R1",
+                "type": "command",
+                "command": [
+                  "python"
+                ],
+                "args": [
+                  "/home/workspace/inferServer/main.py",
+                  "--port",
+                  "20014",
+                  "--config",
+                  "config.yaml",
+                  "--serviceName",
+                  "picAnalyse"
+                ],
+                "conditions": {
+                  "formulas": [
+                    {
+                      "condition_type": "ProgramDependency",
+                      "left_value": {
+                        "from": "/home/goprojects/workspace/inferServer/requirements_dianli.txt"
+                      },
+                      "right_value": {}
+                    }
+                  ]
+                },
+                "enable_control": true,
+                "is_http_service": true,
+                "plantform_type": "linux"
+              }
+            ]
+          }
+        ],
+        "replicas": [
+          1,
+          0
+        ]
+      }
+    ]
+  }
+}
