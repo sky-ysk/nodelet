@@ -40,7 +40,7 @@ COPY --from=builder  /workspace/third_party/swagger-ui /tmp/swagger-ui
 RUN chmod +x /workspace/proxy
 
 # 暴露需要的端口（假设 proxy 监听 8080 端口）
-EXPOSE 8899
+EXPOSE 8101
 
 # 设置容器启动命令
 CMD ["/workspace/proxy"]

@@ -13,11 +13,11 @@ func NewInTreeRegistry() runtime.Registry {
 
 		//下面这仨是打分插件，测试性能的时候，同一时间只开一个，用不到的注释掉
 		//贪心调度策略（CPU占用率低优先调度）
-		//	"GreedyScore": NewGreedyScorePlugin,
+		// "GreedyScore": NewGreedyScorePlugin,
 		//随机调度
-		"DefaultScorePlugin": NewDefaultScorePlugin,
+		// "DefaultScorePlugin": NewDefaultScorePlugin,
 		//DTS插件策略
-		//"ScorePluginForDBY": NewScorePluginDBY,
+		"ScorePluginForDBY": NewScorePluginDBY,
 
 		"DefaultBindPlugin": NewDefaultBindPlugin,
 	}

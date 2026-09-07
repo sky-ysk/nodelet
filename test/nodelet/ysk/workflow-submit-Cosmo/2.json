@@ -1,0 +1,140 @@
+{
+  "kind": "Task",
+  "apiVersion": "resources/v1",
+  "namespace": "Cosmo",
+  "spec": {
+    "name": "T1",
+    "desc": {
+      "docs": "卡奥斯拉起容器工作流"
+    },
+    "groups": [
+      {
+        "name": "G85",
+        "desc": {
+          "label": {
+            "scheduler": "EdgeNode1"
+          },
+          "docs": "卡奥斯拉起端侧盒子容器"
+        },
+        "conditions": {},
+        "actions": [
+          {
+            "name": "A1",
+            "runtimes": [
+              {
+                "name": "R4",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "--entrypoint",
+                  "/2f_entrypoint.sh",
+                  "-d",
+                  "--network=host",
+                  "--name",
+                  "control_v9",
+                  "-e",
+                  "RMW_FASTRTPS_LOG_VERBOSITY=DEBUG",
+                  "-v",
+                  "/dev/shm:/dev/shm",
+                  "--ipc=host",
+                  "-e",
+                  "RMW_IMPLEMENTATION=rmw_fastrtps_cpp",
+                  "-e",
+                  "ROS_DOMAIN_ID=41",
+                  "-it",
+                  "control_v9"
+                ],
+                "env_var": [
+                  {}
+                ]
+              },
+              {
+                "name": "R5",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-itd",
+                  "--name",
+                  "mainflow",
+                  "--entrypoint",
+                  "bash",
+                  "--network=host",
+                  "--restart",
+                  "always",
+                  "mainflow_v1.8"
+                ],
+                "env_var": [
+                  {}
+                ],
+                "conditions": {
+                  "formulas": [
+                    {
+                      "condition_type": "NodeDependency",
+                      "left_value": {
+                        "namespace": "Cosmo",
+                        "from": "Group{G85}.Action{A1}.Runtime{R4}.Status{}"
+                      },
+                      "right_value": {}
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "R6",
+                "type": "command",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "exec",
+                  "-i",
+                  "mainflow",
+                  "bash",
+                  "-c",
+                  "python main1.py"
+                ],
+                "env_var": [
+                  {}
+                ],
+                "conditions": {
+                  "formulas": [
+                    {
+                      "condition_type": "NodeDependency",
+                      "left_value": {
+                        "namespace": "Cosmo",
+                        "from": "Group{G85}.Action{A1}.Runtime{R5}.Status{}"
+                      },
+                      "right_value": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "resource_requirements": [
+          {
+            "name": "CPU",
+            "lowbound": "2",
+            "upperbound": "4"
+          },
+          {
+            "name": "RAM",
+            "lowbound": "2",
+            "upperbound": "4"
+          }
+        ],
+        "replicas": [
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

@@ -11,9 +11,9 @@ mkdir -p "$OUTPUT_DIR"
 # 定义要构建的二进制列表：格式为 "输出名:源文件"
 BINARIES=(
     "nodelet:./nodelet/nodelet.go"
-    "scheduler:./scheduler/scheduler.go"
-    "proxy:./proxy/proxy.go"
-    "apiserver:./apiserver/apiserver.go"
+    # "scheduler:./scheduler/scheduler.go"
+    # "proxy:./proxy/proxy.go"
+    # "apiserver:./apiserver/apiserver.go"
 )
 
 echo "开始静态编译 Go 二进制文件（CGO_ENABLED=0）..."

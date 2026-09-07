@@ -236,7 +236,7 @@ func (gh *GroupHandler) HandleGroupAdd(gr *apis.Group) {
 				if filedata.FileFormat == "file" || strings.Contains(filedata.Name, ".") {
 					// 异步下载文件
 					go func(filename string, key string) { // 注意：捕获变量
-						err := gh.fileManager.DownloadFile(filename, groupdir)
+						err := gh.fileManager.DownloadFile(runtime.Name, filename, groupdir)
 						if err != nil {
 							gh.fileManager.SetStatus(key, fileManager.DownloadFailed)
 						} else {

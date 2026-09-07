@@ -28,9 +28,9 @@ import (
 // }
 var scheme = runtime.NewScheme()
 
-const NodeName = "cloudNode1" // 1$
+const NodeName = "CloudNode1" // 1$
 var group1_1Name = "G91"       // 第一个Task下的第一个GroupName
-var namespace = "test"
+var namespace = "HenanEP"
 
 // 测试切换
 // 1个group，1个Action，每个Action1个Runtime， 一共1个Runtime
@@ -59,7 +59,7 @@ func main() {
 	ProgramDependencyConditionFormula := apis.ConditionFormula{
 		ConditionType: apis.ProgramDependency,
 		LeftValue: apis.Value{
-			From: "/home/goprojects/workspace/inferServer/requirements_dianli.txt", //2$
+			From: "/home/workspace/kcm1222/inferServer/requirements_dianli.txt", //2$
 		},
 	}
 
@@ -81,7 +81,7 @@ func main() {
 						Name:    runtime1_1_1_1Name,
 						Type:    apis.ByCommand,
 						Command: []string{"python"},
-						Args:    []string{"/home/workspace/inferServer/main.py", "--port","20013", "--config", "config.yaml"},
+						Args:    []string{"/home/workspace/kcm1222/inferServer/main.py"},
 						Data:    []apis.DataSpec{},
 						Conditions:               &runtime1_1_1_1Condition,
 						EnableFineGrainedControl: runtime1_1_1_1FineGrainedControl,
@@ -134,7 +134,7 @@ func initClientSet(scheme *runtime.Scheme) *clients.ClientSet {
 	logs.Info(scheme)
 	// 创建ClientSet
 	c := &rest.Config{
-		Host:    "http://10.31.10.20:8120",
+		Host:    "http://localhost:8120",
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8

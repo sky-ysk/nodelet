@@ -1,0 +1,222 @@
+{
+  "kind": "Task",
+  "apiVersion": "resources/v1",
+  "namespace": "HenanEP",
+  "spec": {
+    "name": "T1",
+    "desc": {
+      "docs": "电力拉起容器工作流"
+    },
+    "groups": [
+      {
+        "name": "G81",
+        "desc": {
+          "label": {
+            "scheduler": "EdgeNode1"
+          }
+        },
+        "conditions": {},
+        "actions": [
+          {
+            "name": "A1",
+            "runtimes": [
+              {
+                "name": "R1",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-d",
+                  "--name=front_v3",
+                  "--network",
+                  "host",
+                  "--restart",
+                  "always",
+                  "-v",
+                  "/znxs/conf/nginx/nginx.conf:/etc/nginx/nginx.conf",
+                  "-v",
+                  "/znxs/conf/nginx/ssl:/etc/nginx/ssl",
+                  "-v",
+                  "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime",
+                  "192.168.102.228:8088/znxs/front_v3:1.4.18.1"
+                ],
+                "env_var": [
+                  {}
+                ]
+              },
+              {
+                "name": "R2",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-d",
+                  "--name=admin",
+                  "--network",
+                  "znxs_default",
+                  "--restart",
+                  "always",
+                  "--privileged",
+                  "-p",
+                  "20001:20001",
+                  "-v",
+                  "/znxs/data/resource:/resource",
+                  "-v",
+                  "/run/docker.sock:/var/run/docker.sock",
+                  "-v",
+                  "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime",
+                  "-v",
+                  "/znxs/logs/admin:/logs",
+                  "192.168.102.228:8088/znxs/admin:1.4.18.1"
+                ],
+                "env_var": [
+                  {}
+                ]
+              },
+              {
+                "name": "R3",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-d",
+                  "--name=hardware",
+                  "--network",
+                  "znxs_default",
+                  "--restart",
+                  "always",
+                  "-p",
+                  "20005:20005",
+                  "-p",
+                  "8972:8972",
+                  "-v",
+                  "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime",
+                  "-v",
+                  "/znxs/data/resource:/resource",
+                  "-v",
+                  "/znxs/logs/hardware:/logs",
+                  "192.168.102.228:8088/znxs/hardware:1.4.18.1"
+                ],
+                "env_var": [
+                  {}
+                ]
+              },
+              {
+                "name": "R4",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-d",
+                  "--name=device",
+                  "--network",
+                  "znxs_default",
+                  "--restart",
+                  "always",
+                  "-p",
+                  "20002:20002",
+                  "-v",
+                  "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime",
+                  "-v",
+                  "/run/docker.sock:/var/run/docker.sock",
+                  "-v",
+                  "/znxs/data/resource:/resource",
+                  "-v",
+                  "/znxs/logs/device:/logs",
+                  "192.168.102.228:8088/znxs/device:1.4.18.1"
+                ],
+                "env_var": [
+                  {}
+                ]
+              },
+              {
+                "name": "R5",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-d",
+                  "--name=patrol",
+                  "--network",
+                  "znxs_default",
+                  "--restart",
+                  "always",
+                  "-p",
+                  "20003:20003",
+                  "-v",
+                  "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime",
+                  "-v",
+                  "/znxs/data/resource:/resource",
+                  "-v",
+                  "/znxs/logs/patrol:/logs",
+                  "192.168.102.228:8088/znxs/patrol:1.4.18.1"
+                ],
+                "env_var": [
+                  {}
+                ]
+              },
+              {
+                "name": "R6",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-d",
+                  "--name=protocol",
+                  "--network",
+                  "znxs_default",
+                  "--restart",
+                  "always",
+                  "-p",
+                  "20004:20004",
+                  "-p",
+                  "51001:10011",
+                  "-p",
+                  "9300:9300/udp",
+                  "-v",
+                  "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime",
+                  "-v",
+                  "/znxs/data/resource:/resource",
+                  "-v",
+                  "/znxs/logs/protocol:/logs",
+                  "192.168.102.228:8088/znxs/protocol:1.4.18.1"
+                ],
+                "env_var": [
+                  {}
+                ]
+              }
+            ]
+          }
+        ],
+        "resource_requirements": [
+          {
+            "name": "CPU",
+            "lowbound": "2",
+            "upperbound": "4"
+          },
+          {
+            "name": "RAM",
+            "lowbound": "2",
+            "upperbound": "4"
+          }
+        ],
+        "replicas": [
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

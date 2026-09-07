@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"hit.edu/framework/pkg/apimachinery/runtime"
@@ -16,10 +13,6 @@ import (
 	"hit.edu/framework/pkg/client-go/clients"
 	"hit.edu/framework/pkg/client-go/rest"
 	"hit.edu/framework/pkg/component-base/logs"
-	"hit.edu/framework/pkg/nodelet/task/runtime/k8s/config"
-	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/utils/pointer"
 )
 
 // 创建一个Rest Client
@@ -36,7 +29,7 @@ func main() {
 	// TODO: 填写参数
 	//部分参数之后可以在core_client等 编写setConfigDefaults函数进行填充
 	c := &rest.Config{
-		Host:    "http://120.220.95.189:48120", //http://suda801.wangwanu.com:11006
+		Host:    "http://localhost:8120", //http://suda801.wangwanu.com:11006
 		APIPath: "/apis/resources/v1",
 		ContentConfig: rest.ContentConfig{
 			AcceptContentTypes: "application/json; charset=UTF-8", //text/plain; charset=UTF-8
@@ -139,88 +132,5 @@ func main() {
 		}
 		logs.Infof("Event删除成功: %v", event.Name)
 	}
-	// // Node资源
-	// logs.Info("======Node")
-	// list6, err := nodesClient.List(context.TODO(), metav1.ListOptions{})
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// for _, node := range list6.Items {
-	// 	err := nodesClient.Delete(context.TODO(), node.Name, metav1.DeleteOptions{})
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	logs.Infof("Node删除成功: %v", node.Name)
-	// }
-	// 删除service、pod
-	clientset := config.LoadConfig()
-	if clientset == nil {
-		logs.Infof("clientset is nil")
-	}
-	DeletePod(clientset, "grpc-client-pod", "switch")
-	DeleteService(clientset, "grpc-client-service", "switch") // 删除k8s当中的Service
-	DeletePod(clientset, "grpc-client-pod-copy", "switch")
-	DeleteService(clientset, "grpc-client-service-copy", "switch") // 删除k8s当中的Service
 
-	DeletePod(clientset, "grpc-server-pod", "switch")
-	DeleteService(clientset, "grpc-server-service", "switch") // 删除k8s当中的Service
-
-}
-
-// From K8s
-func prompt() {
-	fmt.Printf("-> Press Return key to continue.")
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		break
-	}
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
-	logs.Info()
-}
-func DeletePod(clientset *kubernetes.Clientset, podName, podNamespace string) {
-	// 使用与创建时一致的日志记录风格
-	err := clientset.CoreV1().Pods(podNamespace).Delete(
-		context.TODO(),
-		podName, // 直接从Pod对象获取名称
-		k8smetav1.DeleteOptions{
-			GracePeriodSeconds: pointer.Int64Ptr(5), // 可选：优雅删除等待时间
-		},
-	)
-
-	if err != nil {
-		// 带上下文的错误日志，保持与你的风格一致
-		logs.Error(err, "删除Pod失败", "Pod名称", podName, "命名空间", podNamespace)
-	} else {
-		// 成功日志包含结构化参数
-		logs.Info("Pod删除成功",
-			"Pod名称", podName,
-			"命名空间", podNamespace,
-			"删除时间", time.Now().Format(time.RFC3339))
-	}
-
-	// 如果EM需要清理，可以在此处调用
-	// EM.GetInstance().RemovePod(pod.Namespace, pod.Name)
-}
-
-// 删除 Service
-func DeleteService(clientset *kubernetes.Clientset, serviceName, serviceNamespace string) {
-	err := clientset.CoreV1().Services(serviceNamespace).Delete(
-		context.TODO(),
-		serviceName,
-		k8smetav1.DeleteOptions{
-			GracePeriodSeconds: pointer.Int64Ptr(30), // 优雅删除等待时间
-		},
-	)
-
-	if err != nil {
-		logs.Error(err, "删除Service失败",
-			"Service名称", serviceName,
-			"命名空间", serviceNamespace)
-	} else {
-		logs.Info("Service删除成功",
-			"Service名称", serviceName,
-			"命名空间", serviceNamespace)
-	}
 }

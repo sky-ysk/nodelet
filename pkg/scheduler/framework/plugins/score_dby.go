@@ -5,6 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math/rand"
+	"net/http"
+	"time"
+
 	"hit.edu/framework/pkg/apimachinery/runtime"
 	"hit.edu/framework/pkg/apimachinery/runtime/schema"
 	"hit.edu/framework/pkg/apimachinery/runtime/serializer"
@@ -17,10 +22,6 @@ import (
 	"hit.edu/framework/pkg/scheduler/transport"
 	"hit.edu/framework/pkg/scheduler/utils"
 	"hit.edu/framework/pkg/utils/value"
-	"io"
-	"math/rand"
-	"net/http"
-	"time"
 )
 
 type ScorePluginDBY struct {
@@ -36,8 +37,9 @@ type ScorePluginClient struct {
 
 func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, error) {
 	// 自动处理 Content-Length 和 Body 封装
-	httpReq, err := http.NewRequest("POST", "http://172.150.0.11:5000"+path, bytes.NewBuffer(data))
+	httpReq, err := http.NewRequest("POST", "http://127.0.0.1:8000"+path, bytes.NewBuffer(data))
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -47,6 +49,7 @@ func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, err
 		logs.Error(err.Error())
 		return nil, err
 	}
+
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
@@ -56,9 +59,17 @@ func (client *ScorePluginClient) SendData(data []byte, path string) ([]byte, err
 	//TODO 后续再确定下返回的细节
 	res, err := io.ReadAll(httpRes.Body)
 	if err != nil {
+		fmt.Println(err)
 		logs.Fatal(err)
 		return nil, err
 	}
+
+	if httpRes.StatusCode < 200 || httpRes.StatusCode >= 300 {
+		logs.Error("SendData non-2xx: status=%d url=%s resp=%s req=%s",
+			httpRes.StatusCode, string(res), string(data))
+		return res, fmt.Errorf("http status %d", httpRes.StatusCode)
+	}
+
 	return res, nil
 }
 

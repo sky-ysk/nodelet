@@ -445,7 +445,7 @@ func GetAPIServerHost() string {
 
 func (sched *Scheduler) handleGroupAdd(ctx context.Context, event watch.Event) {
 	if g, ok := event.Object.(*apis.Group); ok {
-		//logs.Info("group add: ", g.Name)
+		logs.Info("group add: ", g.Name)
 		if !sched.checkShouldSchedule(g) {
 			logs.Errorf("group %s should not schedule on %s", g.Name, sched.Name)
 			return
@@ -468,7 +468,17 @@ func (sched *Scheduler) checkShouldSchedule(group *apis.Group) bool {
 		nominateHost = "CloudNode1"
 	}
 	// 10号展示 ， 暂时更改为EdgeNode1 
-	nominateHost = "EdgeNode1"
+	// nominateHost = "EdgeNode1"
+
+
+	// if !exists || nominateHost == "" {
+	// 	nominateHost = "EdgeNode1"
+	// }
+	// // 10号展示 ， 暂时更改为EdgeNode1 
+	// if nominateHost == "CloudNode1" {
+	// 	nominateHost = "EdgeNode1"
+	// }
+	
 	// 比较当前调度器名称与标签中指定的调度器名称
 
 	// fmt.Println("sched.Name : " , sched.Name)

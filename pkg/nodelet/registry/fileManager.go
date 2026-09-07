@@ -85,7 +85,7 @@ func NewFileManager(fileRegistry string) *FileManager {
 	}
 	err := FileManager.Init()
 	if err != nil {
-		logs.Errorf("NewFileManager Init Err! 需要创建 home/public/tmp/data 文件夹")
+		logs.Errorf("NewFileManager Init Err! 需要创建 /home/public/tmp/data 文件夹")
 	}
 	return FileManager
 }
@@ -221,22 +221,23 @@ func (fm *FileManager) UploadFolder(dirPath string) (string, error) {
 	return "Upload successful!", nil
 }
 
-func (fm *FileManager) DownloadFile(filename, savePath string) error {
-	downloadURL := fm.DownloadURL + filename
+// 方案二：在 DownloadFile 内部构造完整 key
+func (fm *FileManager) DownloadFile(runtimeName, filename, savePath string) error {
+    fullKey := fmt.Sprintf("%s-%s", runtimeName, filename) // 构造完整 key
+    downloadURL := fm.DownloadURL + filename
 
-	// 设置重试策略：最多 5 次，每次间隔 3 秒
-	err := DownloadWithRetry(downloadURL, savePath, fm.maxRetries, fm.retryInterval)
-	if err != nil {
-		fmt.Printf("❌ Final download failed for %s: %v\n", filename, err)
-		fm.downloadStatus[filename] = DownloadFailed
-		fmt.Printf("file:%s,Download status:%s\n", filename, DownloadFailed)
-		return err
-	} else {
-		fm.downloadStatus[filename] = Downloaded
-		fmt.Println("Download successful!")
-		return nil
-	}
-
+    // 设置重试策略：最多 5 次，每次间隔 3 秒
+    err := DownloadWithRetry(downloadURL, savePath, fm.maxRetries, fm.retryInterval)
+    if err != nil {
+        fmt.Printf("❌ Final download failed for %s: %v\n", filename, err)
+        fm.SetStatus(fullKey, DownloadFailed)  // 使用构造的完整 key
+        fmt.Printf("file:%s,Download status:%s\n", filename, DownloadFailed)
+        return err
+    } else {
+        fm.SetStatus(fullKey, Downloaded)      // 使用构造的完整 key
+        fmt.Println("Download successful!")
+        return nil
+    }
 }
 
 // DownloadWithRetry 带重试的下载函数

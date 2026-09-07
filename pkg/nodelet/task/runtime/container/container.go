@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
 	"math"
 	"os"
 	"os/exec"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
 
 	client "github.com/docker/docker/client"
 	apis "hit.edu/framework/pkg/apis/cores"
@@ -69,14 +70,14 @@ func (cr *ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime 
 		res, containerId := cr.containerManager.CreateContainer(containerName, runtime)
 		if !res {
 			logs.Errorf("Failed to create container for group: %s", containerName)
-			return nil
+			return fmt.Errorf("failed to create container for group: %s", containerName)
 		}
 
 		// 启动
-		err := cr.containerManager.StartContainer(containerId)
-		if !err {
+		res = cr.containerManager.StartContainer(containerId)
+		if !res {
 			logs.Errorf("Failed to start container for runtime: %s", runtime.Name)
-			return nil
+			return fmt.Errorf("failed to start container for runtime: %s", runtime.Name)
 		}
 		cr.containerManager.AddRuntimeMapping(runtime.Name, containerId)
 		// 监控容器状态
@@ -95,6 +96,9 @@ func (cr *ContainerRuntime) Run(group *apis.Group, action *apis.Action, runtime 
 // 因为容器的名字固定在了cmd里，后续可以加入根据名字找到ID来监控和自动删除
 func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string) error {
 	logs.Infof("RunCMD for group:%s, action:%s, runtime:%s", group.Name, action.Name, runtime.Name)
+	if len(runtime.Spec.Command) == 0 {
+		return fmt.Errorf("runtime.Spec.Command is empty for runtime %s", runtime.Name)
+	}
 	cmd := runtime.Spec.Command[0]
 	args := runtime.Spec.Args
 	// TODO：根据Spec里面的用户提前填写的Env信息一个个查找args里面的字符串，进行替换
@@ -153,6 +157,9 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 	var containerId string
 	var cnt int = 0
 	for {
+		if containerName == "" {
+			return fmt.Errorf("no container name found in runtime.Spec.Args for runtime %s", runtime.Name)
+		}
 		cnt++
 		time.Sleep(500 * time.Millisecond)
 		containerId = cr.containerManager.GetContainerID(containerName)
@@ -172,7 +179,7 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 			cr.clientsManager.LogEvent(runtime, apis.EventTypeNormal, events.StartedCommand, fmt.Sprintf("Runtime Name:\t %s start to Running", runtime.Name), group.Namespace)
 			break
 		}
-		if cnt >= 200 {
+		if cnt >= 20 {
 			logs.Errorf("Timeout waiting for container ID for name: %s", containerName)
 			return fmt.Errorf("timeout waiting for container ID for name: %s", containerName)
 		}
@@ -187,32 +194,29 @@ func (cr *ContainerRuntime) RunCMD(group *apis.Group, action *apis.Action, runti
 }
 
 func (cr *ContainerRuntime) getContainerHostPid(containerNameOrID string) (int, error) {
-	cmd := exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerNameOrID)
-	output, err := cmd.Output()
+	ctx := context.Background()
+	info, err := cr.client.ContainerInspect(ctx, containerNameOrID)
 	if err != nil {
-		return 0, fmt.Errorf("failed to run docker inspect: %w", err)
+		if client.IsErrNotFound(err) {
+			return 0, fmt.Errorf("container not found: %s", containerNameOrID)
+		}
+		return 0, fmt.Errorf("failed to inspect container: %w", err)
 	}
-
-	pidStr := strings.TrimSpace(string(output))
-	if pidStr == "0" {
+	if info.State.Pid == 0 {
 		return 0, fmt.Errorf("container is not running or PID is 0")
 	}
-
-	pid, err := strconv.Atoi(pidStr)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse PID '%s': %w", pidStr, err)
-	}
-
-	return pid, nil
+	return info.State.Pid, nil
 }
 
 // 监控容器状态，如果退出等，判断是否是某些异常，然后调用Kill
 func (cr *ContainerRuntime) MonitorContainerStatus(group *apis.Group, action *apis.Action, runtime *apis.Runtime, actionSpecName, runtimeSpecName string, containerId string) {
 	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		logs.Infof("Checking container status for runtime: %s", runtime.Name)
 		for {
 			select {
-			case <-time.After(10 * time.Second):
-				logs.Infof("Checking container status for runtime: %s", runtime.Name)
+			case <-ticker.C:
 				container, err := cr.containerManager.GetContainer(containerId)
 				if err != nil {
 					logs.Errorf("Failed to get container info for %s: %v", containerId, err)
@@ -239,9 +243,7 @@ func (cr *ContainerRuntime) MonitorContainerStatus(group *apis.Group, action *ap
 						}
 						return
 					}
-
 				}
-
 			}
 		}
 	}()

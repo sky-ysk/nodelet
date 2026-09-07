@@ -1,0 +1,144 @@
+{
+  "kind": "Task",
+  "apiVersion": "resources/v1",
+  "namespace": "Cosmo",
+  "spec": {
+    "name": "T1",
+    "desc": {
+      "docs": "卡奥斯拉起容器工作流"
+    },
+    "groups": [
+      {
+        "name": "G84",
+        "desc": {
+          "label": {
+            "scheduler": "EdgeNode1"
+          },
+          "docs": "卡奥斯拉起边侧容器"
+        },
+        "conditions": {},
+        "actions": [
+          {
+            "name": "A1",
+            "runtimes": [
+              {
+                "name": "R1",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-it",
+                  "-d",
+                  "--name",
+                  "opcuanode",
+                  "-e",
+                  "RMW_IMPLEMENTATION=rmw_fastrtps_cpp",
+                  "-e",
+                  "ROS_DOMAIN_ID=41",
+                  "-e",
+                  "RMW_FASTRTPS_LOG_VERBOSITY=DEBUG",
+                  "-v",
+                  "/dev/shm:/dev/shm",
+                  "--ipc=host",
+                  "--network=host",
+                  "--restart",
+                  "always",
+                  "--entrypoint",
+                  "/ros_entrypoint.sh",
+                  "registry2-qingdao.cosmoplat.com/62_flexassemble/opcuadriver:v1.1"
+                ]
+              },
+              {
+                "name": "R2",
+                "type": "docker",
+                "command": [
+                  "docker"
+                ],
+                "args": [
+                  "run",
+                  "-it",
+                  "-d",
+                  "--name",
+                  "rosbridgeserver",
+                  "-e",
+                  "RMW_IMPLEMENTATION=rmw_fastrtps_cpp",
+                  "-e",
+                  "ROS_DOMAIN_ID=41",
+                  "-e",
+                  "RMW_FASTRTPS_LOG_VERBOSITY=DEBUG",
+                  "-v",
+                  "/dev/shm:/dev/shm",
+                  "--ipc=host",
+                  "--network=host",
+                  "--restart",
+                  "always",
+                  "--entrypoint",
+                  "/ros_entrypoint.sh",
+                  "registry2-qingdao.cosmoplat.com/62_flexassemble/rosbridge:v1.0"
+                ],
+                "env_var": [
+                  {}
+                ],
+                "conditions": {
+                  "formulas": [
+                    {
+                      "condition_type": "NodeDependency",
+                      "left_value": {
+                        "namespace": "Cosmo",
+                        "from": "Group{G84}.Action{A1}.Runtime{R1}.Status{}"
+                      },
+                      "right_value": {}
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "R3",
+                "type": "command",
+                "command": [
+                  "bash"
+                ],
+                "args": [
+                  "/home/cosmo/wangkun-projects/ts_platform/run_all.sh"
+                ],
+                "env_var": [
+                  {}
+                ],
+                "conditions": {
+                  "formulas": [
+                    {
+                      "condition_type": "NodeDependency",
+                      "left_value": {
+                        "namespace": "Cosmo",
+                        "from": "Group{G84}.Action{A1}.Runtime{R2}.Status{}"
+                      },
+                      "right_value": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "resource_requirements": [
+          {
+            "name": "CPU",
+            "lowbound": "2",
+            "upperbound": "4"
+          },
+          {
+            "name": "RAM",
+            "lowbound": "2",
+            "upperbound": "4"
+          }
+        ],
+        "replicas": [
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

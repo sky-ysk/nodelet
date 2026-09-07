@@ -84,7 +84,7 @@ func main() {
 						IsHttpService:            IsHttpService,
 						IsHttpClient:             IsHttpClient,
 						PlantformType:            PlantformType,
-						AbsDirectory: "/tmp/file/power_rust_infer_server",
+						AbsDirectory: "/tmp/file/power_rust_infer_server", // 如果填了这一项，则会固定在这个路径去执行cmd
 					},
 				},
 			},

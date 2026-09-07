@@ -72,8 +72,8 @@ func (r *Proxy) Run(ctx context.Context) error {
 	// TODO: 服务器配置，如超时时间等
 
 	// Openapi文档
-	logs.Info("Get the API using http://localhost:8899/apidocs.json")
-	logs.Info("Open Swagger UI using http://localhost:8899/apidocs")
+	logs.Info("Get the API using http://localhost:8101/apidocs.json")
+	logs.Info("Open Swagger UI using http://localhost:8101/apidocs")
 
 	err := http.Serve(r.ServingInfo.Listener, &handler)
 	if err != nil {

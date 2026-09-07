@@ -279,6 +279,23 @@ func (sched *Scheduler) scheduleGroup(ctx context.Context,
 	if strings.Contains(group.ObjectMeta.Name, "copy") {
 		host = "EdgeNode2"
 	}
+	
+	
+	if strings.Contains(group.ObjectMeta.Name, "G1-Data") {
+		host = "EdgeNode3"
+	}
+
+	if strings.Contains(group.ObjectMeta.Name, "G2-Infra") {
+		host = "EdgeNode2"
+	}
+
+	if strings.Contains(group.ObjectMeta.Name, "G3-Business") {
+		host = "EdgeNode2"
+	}
+
+	if strings.Contains(group.ObjectMeta.Name, "G4-Frontend") {
+		host = "EdgeNode1"
+	}
 
 	if host != ""{
 		return ScheduleResult{
@@ -435,20 +452,22 @@ func (sched *Scheduler) findNodesThatFitGroup(ctx context.Context, fwk framework
 	//	}
 	//	diagnosis.UnschedulablePlugins.Insert(framework.ExtenderName)
 	//}
+
+	// TODO: 这个是啥时候、咋到这里来的？
 	// 在这里删除不是当前命名空间的边缘节点
-	namespace := group.Namespace
-	for i := 0; i < len(feasibleNodes); i++ {
-		// logs.Infof("-----------test------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
-		currentNode := feasibleNodes[i]
-		if strings.Contains(currentNode.Node().Name, "edge") || strings.Contains(currentNode.Node().Name, "Edge") {
-			// 检查命名空间是否和group一致，不一致移除当前node
-			if namespace != currentNode.Node().Namespace {
-				// logs.Infof("-----------remove node------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
-				feasibleNodes = append(feasibleNodes[:i], feasibleNodes[i+1:]...)
-				i--
-			}
-		}
-	}
+	// namespace := group.Namespace
+	// for i := 0; i < len(feasibleNodes); i++ {
+	// 	// logs.Infof("-----------test------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
+	// 	currentNode := feasibleNodes[i]
+	// 	if strings.Contains(currentNode.Node().Name, "edge") || strings.Contains(currentNode.Node().Name, "Edge") {
+	// 		// 检查命名空间是否和group一致，不一致移除当前node
+	// 		if namespace != currentNode.Node().Namespace {
+	// 			// logs.Infof("-----------remove node------------,current group namesapce is %s, node name is %s, node namespace is %s", namespace, feasibleNodes[i].Node().Name, feasibleNodes[i].Node().Namespace)
+	// 			feasibleNodes = append(feasibleNodes[:i], feasibleNodes[i+1:]...)
+	// 			i--
+	// 		}
+	// 	}
+	// }
 	return feasibleNodes, nil
 }
 
@@ -502,18 +521,27 @@ func (sched *Scheduler) findNodesThatPassFilters(
 		}
 	}
 
-	if namespace == "test" {
-		logs.Infof("test namespace filter ")
-		// 10号展示，暂时设置成云端任务在HenanEp命名空间下执行（展示之后需要注释掉）
-		for j := 0; j < len(feasibleNodes); j++ {
-			if feasibleNodes[j].Node().Namespace != "HenanEP" {
-				feasibleNodes = append(feasibleNodes[:j], feasibleNodes[j+1:]...)
-				j--
-			}
-		}
-	}
+	// // 仅用于dts演示 
+	// if namespace == "test" {
+	// 	logs.Infof("test namespace filter , feasibleNodes before filter number: %d", len(feasibleNodes))
+	// 	// 10号展示，暂时设置成云端任务在HenanEp命名空间下执行（展示之后需要注释掉）
+	// 	for j := 0; j < len(feasibleNodes); j++ {
+	// 		system := feasibleNodes[j].Node().Spec.OperatingSystem
+	// 		if feasibleNodes[j].Node().Namespace != "HenanEP" {
+	// 			// logs.Infof("remove node not in HenanEP namespace, node name is %s, node namespace is %s", feasibleNodes[j].Node().Name, feasibleNodes[j].Node().Namespace)
+	// 			feasibleNodes = append(feasibleNodes[:j], feasibleNodes[j+1:]...)
+	// 			j--
+	// 		}
+	// 		if system == "windows" {
+	// 			// logs.Infof("remove windows node for test namespace, node name is %s, node namespace is %s", feasibleNodes[j].Node().Name, feasibleNodes[j].Node().Namespace)
+	// 			feasibleNodes = append(feasibleNodes[:j], feasibleNodes[j+1:]...)
+	// 			j--
+	// 		} 
 
-	logs.Infof("feasibleNodes number: " , len(feasibleNodes))
+	// 	}
+	// }
+
+	logs.Infof("feasibleNodes number: %d", len(feasibleNodes))
 	return feasibleNodes, nil
 }
 

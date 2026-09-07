@@ -55,6 +55,6 @@ type ServingOptions struct {
 func NewServingOptions() *ServingOptions {
 	return &ServingOptions{
 		BindAddress: net.ParseIP("0.0.0.0"),
-		BindPort:    8899,
+		BindPort:    8101,
 	}
 }
