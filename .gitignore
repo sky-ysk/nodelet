@@ -8,3 +8,6 @@ test/deepcopy_generate/default.etcd/member/wal/0000000000000000-0000000000000000
 cmd/apiserver/apiserver
 __debug_bin*
 default.etcd/
+cmd/scheduler/scheduler_dts
+cmd/scheduler/scheduler_tx
+cmd/scheduler/scheduler
